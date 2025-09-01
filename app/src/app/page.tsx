@@ -6,12 +6,14 @@ import { HowItWorks } from '../components/mainpage/how-it-works'
 import { Features } from '../components/mainpage/features'
 import { Testimonials } from '../components/mainpage/testimonials'
 import { Categories } from '../components/mainpage/categories'
+import { FeaturedServices } from '../components/mainpage/featured-services'
 
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       <HeroSection />
       <Stats />
+      <FeaturedServices />
       <TaskExamples />
       <HowItWorks />
       <Features />

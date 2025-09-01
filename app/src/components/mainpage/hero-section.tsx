@@ -7,7 +7,7 @@ import { motion } from "framer-motion"
 import { Button } from "../../components/ui/button"
 import { Input } from "../../components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select"
-import { ArrowRight, Search, Wrench, Users, Star } from "lucide-react"
+import { ArrowRight, Search, Wrench, Users, Star, Heart, Palette } from "lucide-react"
 
 export function HeroSection() {
   const [taskType, setTaskType] = useState("")
@@ -103,7 +103,8 @@ export function HeroSection() {
                     <SelectItem value="moving">Help me move</SelectItem>
                     <SelectItem value="cleaning">House cleaning</SelectItem>
                     <SelectItem value="handyman">Handyman services</SelectItem>
-                    <SelectItem value="delivery">Delivery</SelectItem>
+                    <SelectItem value="caregiving">Caregiving</SelectItem>
+                    <SelectItem value="creative">Creative services</SelectItem>
                     <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
@@ -123,76 +124,67 @@ export function HeroSection() {
             transition={{ type: "spring", stiffness: 50, damping: 20, delay: 0.5 }}
           >
             <div className="relative">
-              {/* Main Tasker Image */}
+              {/* Main Image - Caregiving Scene */}
               <div className="relative overflow-hidden rounded-2xl shadow-2xl">
-                <div className="w-[400px] h-[500px] md:w-[450px] md:h-[550px] bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center relative overflow-hidden">
-                  {/* Tasker working image placeholder */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-200 to-indigo-300 opacity-80"></div>
+                <div className="w-[500px] h-[600px] md:w-[550px] md:h-[650px] relative overflow-hidden">
+                  {/* Main caregiving image */}
+                  <Image
+                    src="/images/image1.jpeg"
+                    alt="Caregiving services - helping elderly with compassion"
+                    fill
+                    className="object-cover"
+                  />
                   
-                  {/* Tasker silhouette/icon */}
-                  <div className="relative z-10 text-center">
-                    <div className="w-40 h-40 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                      <Wrench className="h-20 w-20 text-white" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-gray-800 mb-3">Professional Tasker</h3>
-                    <p className="text-gray-700 text-lg mb-4">Ready to help with your tasks</p>
-                    
-                    {/* Tasker stats */}
-                    <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
-                      <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 text-center">
-                        <div className="text-2xl font-bold text-blue-600">500+</div>
-                        <div className="text-xs text-gray-600">Tasks Completed</div>
+                  {/* Overlay with text */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
+                  
+                  {/* Content overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
+                        <Heart className="h-8 w-8 text-white" />
                       </div>
-                      <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 text-center">
-                        <div className="text-2xl font-bold text-green-600">4.9★</div>
-                        <div className="text-xs text-gray-600">Rating</div>
+                      <div>
+                        <h3 className="text-3xl font-bold mb-2">Compassionate Care</h3>
+                        <p className="text-lg text-blue-100">Professional caregivers ready to help</p>
+                      </div>
+                    </div>
+                    
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold">300+</div>
+                        <div className="text-sm text-blue-100">Caregivers</div>
+                      </div>
+                      <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold">4.9★</div>
+                        <div className="text-sm text-blue-100">Rating</div>
                       </div>
                     </div>
                   </div>
-                  
-                  {/* Decorative elements */}
-                  <div className="absolute top-4 right-4 w-16 h-16 bg-yellow-400 rounded-full opacity-20"></div>
-                  <div className="absolute bottom-8 left-6 w-12 h-12 bg-green-400 rounded-full opacity-20"></div>
                 </div>
                 
-                {/* Floating stats cards */}
+                {/* Floating stats cards - only top-left */}
                 <motion.div
-                  className="absolute -top-4 -left-4 bg-white p-4 rounded-xl shadow-xl border border-gray-100"
+                  className="absolute -top-6 -left-6 bg-white p-5 rounded-xl shadow-xl border border-gray-100"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 1 }}
                 >
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Users className="h-5 w-5 text-blue-600" />
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                      <Users className="h-6 w-6 text-blue-600" />
                     </div>
                     <div>
-                      <div className="text-lg font-bold text-gray-800">2,500+</div>
-                      <p className="text-xs text-gray-500">Happy customers</p>
-                    </div>
-                  </div>
-                </motion.div>
-                
-                <motion.div
-                  className="absolute -bottom-4 -right-4 bg-white p-4 rounded-xl shadow-xl border border-gray-100"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 1.2 }}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                      <Star className="h-5 w-5 text-yellow-500 fill-current" />
-                    </div>
-                    <div>
-                      <div className="text-lg font-bold text-gray-800">4.9</div>
-                      <p className="text-xs text-gray-500">Average rating</p>
+                      <div className="text-xl font-bold text-gray-800">2,500+</div>
+                      <p className="text-sm text-gray-500">Happy customers</p>
                     </div>
                   </div>
                 </motion.div>
               </div>
               
               {/* Background decorative elements */}
-              <div className="absolute -z-10 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[500px] h-[600px] bg-gradient-to-br from-blue-200/30 to-indigo-300/30 rounded-full blur-3xl"></div>
+              <div className="absolute -z-10 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[700px] bg-gradient-to-br from-blue-200/30 to-indigo-300/30 rounded-full blur-3xl"></div>
             </div>
           </motion.div>
         </div>
@@ -217,10 +209,15 @@ export function HeroSection() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Tasker 1 - Handyman */}
               <div className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
-                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Wrench className="h-10 w-10 text-blue-600" />
+                <div className="relative w-20 h-20 mx-auto mb-4">
+                  <Image
+                    src="/images/image2.jpeg"
+                    alt="Handyman services"
+                    fill
+                    className="object-cover rounded-full"
+                  />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">Handyman Services</h3>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Handyman Services</h3>
                 <p className="text-gray-600 text-sm mb-3">Furniture assembly, repairs, installations</p>
                 <div className="flex items-center justify-center text-sm text-gray-500">
                   <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
@@ -228,26 +225,36 @@ export function HeroSection() {
                 </div>
               </div>
               
-              {/* Tasker 2 - Moving */}
+              {/* Tasker 2 - Creative Services */}
               <div className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
-                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <div className="text-2xl">📦</div>
+                <div className="relative w-20 h-20 mx-auto mb-4">
+                  <Image
+                    src="/images/mobileapp.png"
+                    alt="Creative services"
+                    fill
+                    className="object-cover rounded-full"
+                  />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">Moving & Delivery</h3>
-                <p className="text-gray-600 text-sm mb-3">Heavy lifting, packing, transportation</p>
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">Creative Services</h3>
+                <p className="text-gray-600 text-sm mb-3">Art, crafts, design, and creative projects</p>
                 <div className="flex items-center justify-center text-sm text-gray-500">
                   <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
                   <span>4.8 (95 reviews)</span>
                 </div>
               </div>
               
-              {/* Tasker 3 - Cleaning */}
+              {/* Tasker 3 - Caregiving */}
               <div className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
-                <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <div className="text-2xl">🧹</div>
+                <div className="relative w-20 h-20 mx-auto mb-4">
+                  <Image
+                    src="/images/image1.jpeg"
+                    alt="Caregiving services"
+                    fill
+                    className="object-cover rounded-full"
+                  />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">House Cleaning</h3>
-                <p className="text-gray-600 text-sm mb-3">Deep cleaning, organizing, maintenance</p>
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">Caregiving</h3>
+                <p className="text-gray-600 text-sm mb-3">Elderly care, companionship, assistance</p>
                 <div className="flex items-center justify-center text-sm text-gray-500">
                   <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
                   <span>4.9 (88 reviews)</span>
