@@ -168,14 +168,25 @@ export default function Dashboard() {
         const result = response.data;
 
         if (result.status_code === 200 && result.data?.jobs) {
+          // First, get the basic task data
           const tasks: Task[] = result.data.jobs.map((job) => {
             let jobStatus = "open";
+            console.log(`🔍 Task ${job.job_id} status debug:`, {
+              job_completion_status: job.job_completion_status,
+              deletion_status: job.deletion_status,
+              cancel_status: job.cancel_status,
+              status: job.status,
+              allKeys: Object.keys(job)
+            });
+            
             if (job.job_completion_status === 1) {
               jobStatus = "completed";
             } else if (job.deletion_status) {
               jobStatus = "deleted";
             } else if (job.cancel_status) {
               jobStatus = "canceled";
+            } else if (job.status === "in_progress" || job.status === "working" || job.status === "assigned") {
+              jobStatus = "in_progress";
             }
 
             return {
@@ -188,7 +199,7 @@ export default function Dashboard() {
               postedAt: job.job_due_date
                 ? new Date(job.job_due_date).toLocaleDateString("en-GB")
                 : "Unknown",
-              offers: job.offers || 0,
+              offers: 0, // We'll update this with real bid count
               posted_by: job.posted_by || "Unknown",
               category: job.job_category || "general",
               job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
@@ -197,16 +208,33 @@ export default function Dashboard() {
             };
           });
 
-          // Sort tasks: In Progress first, then others, deleted last
-          const sortedTasks = tasks.sort((a, b) => {
-            if (a.status === "in_progress") return -1;
-            if (b.status === "in_progress") return 1;
-            if (a.deletion_status && !b.deletion_status) return 1;
-            if (!a.deletion_status && b.deletion_status) return -1;
-            return 0;
-          });
+          // Now fetch the actual bid count for each task
+          console.log('🔍 Starting to fetch bid counts for tasks...');
+          const tasksWithBidCounts = await Promise.all(
+            tasks.map(async (task) => {
+              try {
+                console.log(`🔍 Fetching bids for task ${task.id} (${task.title})...`);
+                const bidResponse = await axiosInstance.get<APIResponse<{ bids: any[] }>>(`/get-bids/${task.id}/`);
+                console.log(`🔍 Bid response for task ${task.id}:`, bidResponse.data);
+                
+                if (bidResponse.data.status_code === 200 && bidResponse.data.data?.bids) {
+                  console.log(`✅ Task ${task.id} has ${bidResponse.data.data.bids.length} bids`);
+                  return {
+                    ...task,
+                    offers: bidResponse.data.data.bids.length
+                  };
+                } else {
+                  console.log(`⚠️ Task ${task.id} - No bids data or API error:`, bidResponse.data);
+                }
+              } catch (error) {
+                console.error(`❌ Error fetching bids for task ${task.id}:`, error);
+              }
+              return task;
+            })
+          );
 
-          setPostedTasks(sortedTasks);
+          console.log('📊 Tasks with bid counts:', tasksWithBidCounts.map(t => ({ id: t.id, title: t.title, offers: t.offers })));
+          setPostedTasks(tasksWithBidCounts);
         } else {
           console.warn("No jobs found or API error:", result.message);
         }
@@ -287,7 +315,7 @@ export default function Dashboard() {
                 postedAt: job.job_due_date
                   ? new Date(job.job_due_date).toLocaleDateString("en-GB")
                   : "Unknown",
-                offers: job.offers || 0,
+                offers: 0, // We'll update this with real bid count
                 posted_by: job.posted_by || "Unknown",
                 category: job.job_category || "general",
                 job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
@@ -296,7 +324,33 @@ export default function Dashboard() {
               };
             });
 
-          setAvailableTasks(tasks);
+          // Now fetch the actual bid count for each available task
+          console.log('🔍 Starting to fetch bid counts for available tasks...');
+          const availableTasksWithBidCounts = await Promise.all(
+            tasks.map(async (task) => {
+              try {
+                console.log(`🔍 Fetching bids for available task ${task.id} (${task.title})...`);
+                const bidResponse = await axiosInstance.get<APIResponse<{ bids: any[] }>>(`/get-bids/${task.id}/`);
+                console.log(`🔍 Bid response for available task ${task.id}:`, bidResponse.data);
+                
+                if (bidResponse.data.status_code === 200 && bidResponse.data.data?.bids) {
+                  console.log(`✅ Available task ${task.id} has ${bidResponse.data.data.bids.length} bids`);
+                  return {
+                    ...task,
+                    offers: bidResponse.data.data.bids.length
+                  };
+                } else {
+                  console.log(`⚠️ Available task ${task.id} - No bids data or API error:`, bidResponse.data);
+                }
+              } catch (error) {
+                console.error(`❌ Error fetching bids for available task ${task.id}:`, error);
+              }
+              return task;
+            })
+          );
+
+          console.log('📊 Available tasks with bid counts:', availableTasksWithBidCounts.map(t => ({ id: t.id, title: t.title, offers: t.offers })));
+          setAvailableTasks(availableTasksWithBidCounts);
         } else {
           console.warn("No jobs found or API error:", result.message);
         }
@@ -640,7 +694,7 @@ export default function Dashboard() {
             <p className="text-lg text-muted-foreground mt-2">Manage your tasks and bids efficiently</p>
           </div>
           <div className="flex items-center gap-4">
-            {/* Profile Dropdown */}
+            {/* Profile Dropdown - Now in top right edge */}
             <div className="relative">
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
@@ -674,13 +728,16 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-            
-            <Link href="/post-task" passHref>
-              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5">
-                + Post a Task
-              </Button>
-            </Link>
           </div>
+        </div>
+
+        {/* Post Task Button - Now below the header */}
+        <div className="flex justify-start mb-6">
+          <Link href="/post-task" passHref>
+            <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5">
+              + Post a Task
+            </Button>
+          </Link>
         </div>
 
         <Tabs defaultValue="available" className="w-full">
@@ -731,44 +788,75 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {postedTasks.map((task) => (
-                  <Card
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {postedTasks
+                  .sort((a, b) => {
+                    // Sort "Working" (accepted bids + paid) tasks to the top
+                    if (a.status === "in_progress" && b.status !== "in_progress") return -1;
+                    if (b.status === "in_progress" && a.status !== "in_progress") return 1;
+                    
+                    // Sort tasks with offers (potential bids) to top
+                    if (a.offers > 0 && b.offers === 0) return -1;
+                    if (b.offers > 0 && a.offers === 0) return 1;
+                    
+                    // Sort by number of offers (more offers = higher priority)
+                    if (a.offers !== b.offers) return b.offers - a.offers;
+                    
+                    // Sort "Deleted" tasks to the bottom
+                    if (a.deletion_status && !b.deletion_status) return 1;
+                    if (!a.deletion_status && b.deletion_status) return -1;
+                    
+                    // Sort "Canceled" tasks to the bottom
+                    if (a.cancel_status && !b.cancel_status) return 1;
+                    if (!a.cancel_status && b.cancel_status) return -1;
+                    
+                    return 0;
+                  })
+                  .map((task) => (
+                                    <Card
                     key={task.id}
-                    className={`relative transition-all duration-300 hover:shadow-xl hover:-translate-y-1 rounded-xl overflow-hidden h-48 ${
+                    className={`relative transition-all duration-300 hover:shadow-xl hover:-translate-y-1 rounded-xl overflow-hidden ${
                       task.deletion_status || task.cancel_status
                         ? "opacity-50 bg-gray-100 border-gray-300 cursor-not-allowed"
                         : task.status === "in_progress"
-                        ? "shadow-lg hover:shadow-2xl border-0 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 border-l-4 border-l-emerald-500"
-                        : "shadow-lg hover:shadow-2xl border-0 bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50 border-l-4 border-l-sky-500"
+                        ? "shadow-xl hover:shadow-2xl border-0 bg-gradient-to-br from-emerald-100 via-green-100 to-teal-100 border-l-4 border-l-emerald-600 ring-2 ring-emerald-200"
+                        : "shadow-lg hover:shadow-2xl border-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-l-4 border-l-blue-500"
                     }`}
                   >
+                    {/* Working Task Banner */}
+                    {task.status === "in_progress" && (
+                      <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-emerald-600 to-green-600 text-white text-center py-2 px-4 rounded-t-xl font-semibold text-sm shadow-lg z-10">
+                        🚀 TASK IN PROGRESS - WORKING
+                      </div>
+                    )}
+                    
+                    {/* Offers Notification Banner */}
+                    {task.offers > 0 && task.status !== "in_progress" && (
+                      <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-center py-2 px-4 rounded-t-xl font-semibold text-sm shadow-lg z-10">
+                        💼 {task.offers} OFFER{task.offers > 1 ? 'S' : ''} RECEIVED
+                      </div>
+                    )}
                     <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start gap-2">
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-sm font-semibold leading-tight line-clamp-2 text-gray-900">
-                            {task.title}
-                          </CardTitle>
-                          <p className="text-xs text-gray-500 mt-1">{task.postedAt}</p>
-                        </div>
-                        <div className="flex flex-col gap-1 flex-shrink-0">
+                      <div className="flex justify-between items-start">
+                        <CardTitle className="text-lg">{task.title}</CardTitle>
+                        <div className="flex gap-2">
                           {!task.deletion_status && !task.cancel_status && task.status === "open" && (
                             <>
                               <button
                                 onClick={() => handleCancelClick(task.id)}
-                                className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded-full shadow-lg transition-all duration-200 hover:scale-110 font-medium text-xs h-6 w-6 flex items-center justify-center"
+                                className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-full shadow-lg transition-all duration-200 hover:scale-110 font-medium text-sm"
                                 aria-label="Cancel task"
                                 title="Cancel task"
                               >
-                                ❌
+                                ❌ Cancel
                               </button>
                               <button
                                 onClick={() => handleDeleteClick(task.id)}
-                                className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-full shadow-lg transition-all duration-200 hover:scale-110 font-medium text-xs h-6 w-6 flex items-center justify-center"
+                                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full shadow-lg transition-all duration-200 hover:scale-110 font-medium text-sm"
                                 aria-label="Delete task"
                                 title="Delete task"
                               >
-                                🗑️
+                                🗑️ Delete
                               </button>
                             </>
                           )}
@@ -789,7 +877,7 @@ export default function Dashboard() {
                           }
                           className={
                             task.status === "in_progress"
-                              ? "bg-green-600 hover:bg-green-700 text-white font-semibold"
+                              ? "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm px-3 py-1 shadow-lg"
                               : ""
                           }
                         >
@@ -798,7 +886,7 @@ export default function Dashboard() {
                             : task.deletion_status
                             ? "Deleted"
                             : task.status === "in_progress"
-                            ? "🚀 In Progress"
+                            ? "🔄 Working"
                             : task.status.charAt(0).toUpperCase() +
                               task.status.slice(1)}
                         </Badge>
@@ -821,9 +909,20 @@ export default function Dashboard() {
                           <MapPin className="h-4 w-4 text-muted-foreground" />
                           <span>{task.location}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Briefcase className="h-4 w-4 text-muted-foreground" />
-                          <span>{task.offers || 0} offers</span>
+                        <div className="flex items-center gap-2 bg-orange-50 px-3 py-2 rounded-lg border border-orange-200">
+                          <Briefcase className="h-4 w-4 text-orange-600" />
+                          <span className="font-medium text-orange-800">
+                            {task.offers > 0 ? (
+                              <span className="flex items-center gap-2">
+                                <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-bold">
+                                  {task.offers}
+                                </span>
+                                offers received
+                              </span>
+                            ) : (
+                              "0 offers"
+                            )}
+                          </span>
                         </div>
                       </div>
                     </CardContent>
@@ -971,51 +1070,52 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {filteredTasks.map((task) => {
                       const hasUserBid = requestedTasks.some(bid => bid.task_id === task.id);
                       
                       return (
-                        <Card key={task.id} className="flex flex-col bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 border-l-4 border-l-violet-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden h-48">
+                                                <Card key={task.id} className="flex flex-col bg-gradient-to-br from-pink-50 via-rose-50 to-red-50 border-l-4 border-l-pink-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
                           <CardHeader className="pb-2">
-                            <div className="flex justify-between items-start gap-2">
-                              <div className="flex-1 min-w-0">
-                                <CardTitle className="text-sm font-semibold leading-tight line-clamp-2 text-gray-900">{task.title}</CardTitle>
-                                <p className="text-xs text-gray-500 mt-1">{task.postedAt}</p>
-                              </div>
-                              <Badge variant="outline" className="border-purple-500 text-purple-600 font-medium text-xs flex-shrink-0">
+                            <div className="flex justify-between items-start">
+                              <CardTitle className="text-lg">{task.title}</CardTitle>
+                              <Badge variant="outline" className="border-pink-500 text-pink-600 font-medium">
                                 {task.status === "open" ? "🔓 Open" : 
                                  task.status === "completed" ? "✅ Completed" :
                                  task.status.charAt(0).toUpperCase() + task.status.slice(1)}
                               </Badge>
                             </div>
+                            <CardDescription className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              <span>{task.postedAt}</span>
+                            </CardDescription>
                           </CardHeader>
-                          <CardContent className="flex-1 pb-2">
-                            <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+                          <CardContent>
+                            <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
                               {task.description}
                             </p>
-                            <div className="flex flex-col gap-2 text-xs">
-                              <div className="flex items-center gap-2 bg-purple-100 px-2 py-1.5 rounded-lg">
-                                <IndianRupee className="h-4 w-4 text-purple-600 font-bold" />
-                                <span className="text-sm font-bold text-purple-800">₹{task.budget}</span>
+                            <div className="flex flex-col gap-3 text-sm">
+                              <div className="flex items-center gap-2 bg-pink-100 px-3 py-2 rounded-lg">
+                                <IndianRupee className="h-5 w-5 text-pink-700 font-bold" />
+                                <span className="text-lg font-bold text-pink-800">₹{task.budget}</span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <MapPin className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-xs truncate">{task.location}</span>
+                                <MapPin className="h-4 w-4 text-muted-foreground" />
+                                <span>{task.location}</span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Avatar className="h-3 w-3">
+                                <Avatar className="h-4 w-4">
                                   <AvatarFallback className="text-xs">
                                     {task.posted_by?.charAt(0) || "?"}
                                   </AvatarFallback>
                                 </Avatar>
-                                <span className="text-xs truncate">{task.posted_by || "Unknown"}</span>
+                                <span>{task.posted_by || "Unknown"}</span>
                               </div>
                             </div>
                           </CardContent>
-                          <CardFooter className="pt-0">
+                          <CardFooter>
                             <Link href={`/tasks/${task.id}`} className="w-full">
-                              <Button size="sm" className="w-full text-xs h-8">
+                              <Button variant="outline" className="w-full">
                                 {hasUserBid ? "View Offer" : "Make an Offer"}
                               </Button>
                             </Link>
@@ -1040,53 +1140,53 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {assignedTasks.map((task) => (
-                  <Card key={task.id} className="bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 border-l-4 border-l-amber-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden h-48">
+                  <Card key={task.id} className="bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 border-l-4 border-l-amber-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
                     <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start gap-2">
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-sm font-semibold leading-tight line-clamp-2 text-gray-900">{task.title}</CardTitle>
-                          <p className="text-xs text-gray-500 mt-1">{task.postedAt}</p>
-                        </div>
-                        <Badge className="bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs flex-shrink-0">
+                      <div className="flex justify-between items-start">
+                        <CardTitle className="text-lg">{task.title}</CardTitle>
+                        <Badge className="bg-orange-600 hover:bg-orange-700 text-white font-semibold">
                           🚀 In Progress
                         </Badge>
                       </div>
+                      <CardDescription className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span>{task.postedAt}</span>
+                      </CardDescription>
                     </CardHeader>
-                    <CardContent className="flex-1 pb-2">
-                      <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
                         {task.description}
                       </p>
-                      <div className="flex flex-col gap-2 text-xs">
-                        <div className="flex items-center gap-2 bg-orange-100 px-2 py-1.5 rounded-lg">
-                          <IndianRupee className="h-4 w-4 text-orange-600 font-bold" />
-                          <span className="text-sm font-bold text-orange-800">₹{task.budget}</span>
+                      <div className="flex flex-col gap-3 text-sm">
+                        <div className="flex items-center gap-2 bg-orange-100 px-3 py-2 rounded-lg">
+                          <IndianRupee className="h-5 w-5 text-orange-600 font-bold" />
+                          <span className="text-lg font-bold text-orange-800">₹{task.budget}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <MapPin className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs truncate">{task.location}</span>
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span>{task.location}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Avatar className="h-3 w-3">
+                          <Avatar className="h-4 w-4">
                             <AvatarFallback className="text-xs">
                               {task.posted_by?.charAt(0) || "?"}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="text-xs truncate">{task.posted_by}</span>
+                          <span>{task.posted_by}</span>
                         </div>
                       </div>
                     </CardContent>
-                    <CardFooter className="pt-0">
+                    <CardFooter>
                       <div className="flex gap-2 w-full">
                         <Link href={`/tasks/${task.id}`} className="flex-1">
-                          <Button size="sm" variant="outline" className="w-full text-xs h-8">
+                          <Button variant="outline" className="w-full">
                             View Details
                           </Button>
                         </Link>
                         <Button
-                          size="sm"
-                          className="flex-1 text-xs h-8"
+                          className="flex-1"
                           onClick={() => handleComplete(task.id)}
                         >
                           Complete
@@ -1110,42 +1210,43 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {completedTasks.map((task) => (
-                  <Card key={task.id} className="bg-gradient-to-br from-emerald-50 via-green-50 to-lime-50 border-l-4 border-l-emerald-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden h-48">
+                  <Card key={task.id} className="bg-gradient-to-br from-emerald-50 via-green-50 to-lime-50 border-l-4 border-l-emerald-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
                     <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start gap-2">
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-sm font-semibold leading-tight line-clamp-2 text-gray-900">{task.title}</CardTitle>
-                          <p className="text-xs text-gray-500 mt-1">Completed: {task.completedDate}</p>
-                        </div>
-                        <Badge className="bg-green-600 hover:bg-green-700 text-white font-semibold text-xs flex-shrink-0">
+                      <div className="flex justify-between items-start">
+                        <CardTitle className="text-lg">{task.title}</CardTitle>
+                        <Badge className="bg-green-600 hover:bg-green-700 text-white font-semibold">
                           ✅ Completed
                         </Badge>
                       </div>
+                      <CardDescription className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span>Completed: {task.completedDate}</span>
+                      </CardDescription>
                     </CardHeader>
-                    <CardContent className="flex-1 pb-2">
-                      <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
                         {task.description}
                       </p>
-                      <div className="flex flex-col gap-2 text-xs">
-                        <div className="flex items-center gap-2 bg-green-100 px-2 py-1.5 rounded-lg">
-                          <IndianRupee className="h-4 w-4 text-green-600 font-bold" />
-                          <span className="text-sm font-bold text-green-800">₹{task.budget}</span>
+                      <div className="flex flex-col gap-3 text-sm">
+                        <div className="flex items-center gap-2 bg-green-100 px-3 py-2 rounded-lg">
+                          <IndianRupee className="h-5 w-5 text-green-600 font-bold" />
+                          <span className="text-lg font-bold text-green-800">₹{task.budget}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <MapPin className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs truncate">{task.location}</span>
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span>{task.location}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
-                          <span className="text-xs">Rating: {task.rating || "Not rated"}/5</span>
+                          <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                          <span>Rating: {task.rating || "Not rated"}/5</span>
                         </div>
                       </div>
                     </CardContent>
-                    <CardFooter className="pt-0">
+                    <CardFooter>
                       <Link href={`/tasks/${task.id}`} className="w-full">
-                        <Button size="sm" variant="outline" className="w-full text-xs h-8">
+                        <Button variant="outline" className="w-full">
                           View Details
                         </Button>
                       </Link>
@@ -1170,7 +1271,7 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {requestedTasks.map((bid) => (
                   <Card key={bid.bid_id} className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
                     <CardHeader className="pb-2">
