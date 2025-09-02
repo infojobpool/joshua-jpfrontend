@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Send, ArrowLeft, MoreVertical } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import axiosInstance from "@/lib/axiosInstance"
-import { useAuthStore } from "@/lib/Zustand"
+import useStore from "@/lib/Zustand"
 
 interface Message {
   id: string;
@@ -41,7 +41,7 @@ interface ChatInfo {
 export default function ChatPage() {
   const router = useRouter()
   const params = useParams()
-  const { userId, logout } = useAuthStore()
+  const { userId, logout } = useStore()
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [message, setMessage] = useState("")
@@ -124,10 +124,10 @@ export default function ChatPage() {
           id: response.data.data.message_id || Date.now().toString(),
           description: message.trim(),
           tstamp: new Date().toISOString(),
-          sender_id: userId,
-          receiver_id: chatInfo.otherUser.id,
+          sender_id: userId || "",
+          receiver_id: chatInfo?.otherUser?.id || "",
           sender_name: "You",
-          receiver_name: chatInfo.otherUser.name,
+          receiver_name: chatInfo?.otherUser?.name || "Unknown User",
           is_read: false,
         };
 
@@ -212,13 +212,13 @@ export default function ChatPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-3">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-blue-100 text-blue-600 font-semibold">
-                {otherUserName.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h2 className="font-semibold text-gray-900">{otherUserName}</h2>
+                          <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-blue-100 text-blue-600 font-semibold">
+                  {otherUserName?.charAt(0)?.toUpperCase() || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h2 className="font-semibold text-gray-900">{otherUserName || "Unknown User"}</h2>
               <p className="text-xs text-gray-500">Active now</p>
             </div>
           </div>

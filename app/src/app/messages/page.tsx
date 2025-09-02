@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Send, Paperclip, MoreVertical, Search, MessageSquare } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import axiosInstance from "@/lib/axiosInstance"
-import { useAuthStore } from "@/lib/Zustand"
+import useStore from "@/lib/Zustand"
 
 // Define proper TypeScript interfaces
 interface User {
@@ -57,7 +57,7 @@ interface ChatSummary {
 
 export default function MessagesPage() {
   const router = useRouter()
-  const { userId, logout } = useAuthStore()
+  const { userId, logout } = useStore()
   const [loading, setLoading] = useState(true)
   const [activeChat, setActiveChat] = useState<string | null>(null)
   const [message, setMessage] = useState("")

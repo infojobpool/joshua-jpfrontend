@@ -11,12 +11,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Send } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import axiosInstance from "@/lib/axiosInstance"
-import { useAuthStore } from "@/lib/Zustand"
+import useStore from "@/lib/Zustand"
 
 export default function NewMessagePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { userId, logout } = useAuthStore()
+  const { userId, logout } = useStore()
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
   
