@@ -348,13 +348,23 @@ export default function ProfilePage() {
     }
   };
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) return (
+    <div className="flex h-screen items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="relative">
+          <div className="h-12 w-12 rounded-full border-4 border-blue-500/20 border-t-blue-600 animate-spin" />
+          <div className="absolute inset-0 m-auto h-5 w-5 rounded-full bg-blue-600/10 animate-ping" />
+        </div>
+        <span className="text-sm text-muted-foreground animate-pulse">Loading profile...</span>
+      </div>
+    </div>
+  );
   if (error) return <div>Error: {error}</div>;
 
   return (
     <div className="flex min-h-screen flex-col">
       <Header user={profileuser} onSignOut={handleSignOut} />
-      <main className="flex-1 container py-6 md:py-10 px-4 md:px-6">
+      <main className="flex-1 container mx-auto max-w-6xl py-8 md:py-12 px-4 md:px-6">
         <Link
           href="/dashboard"
           className="text-sm text-muted-foreground hover:underline"
@@ -362,8 +372,8 @@ export default function ProfilePage() {
           ← Back to Dashboard
         </Link>
 
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card className="md:col-span-1">
+        <div className="grid gap-8 md:grid-cols-3 mt-4">
+          <Card className="md:col-span-1 border-0 shadow-sm rounded-xl">
             <CardHeader className="flex flex-col items-center space-y-2 text-center">
               {profileuser.isEditing ? (
                 <div className="relative">
@@ -419,8 +429,8 @@ export default function ProfilePage() {
                 </Avatar>
               )}
               <div>
-                <CardTitle className="text-xl">{profileuser.name}</CardTitle>
-                <CardDescription>{profileuser.email}</CardDescription>
+                <CardTitle className="text-xl font-semibold tracking-tight">{profileuser.name}</CardTitle>
+                <CardDescription className="text-sm text-muted-foreground">{profileuser.email}</CardDescription>
               </div>
               <Button
                 variant="outline"
@@ -432,7 +442,25 @@ export default function ProfilePage() {
                 {profileuser.isEditing ? "Cancel" : "Edit Profile"}
               </Button>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5">
+              {!profileuser.isEditing && (
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-lg bg-gray-50 p-3">
+                    <p className="text-[10px] uppercase text-muted-foreground">Member since</p>
+                    <p className="text-sm font-medium">{profileuser.joinDate || "—"}</p>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 p-3">
+                    <p className="text-[10px] uppercase text-muted-foreground">Verification</p>
+                    <p className="text-sm font-medium">
+                      {verificationStatus.bank.completed ? "Verified" : verificationStatus.aadhar.completed ? "Aadhar" : verificationStatus.pan.completed ? "PAN" : "Pending"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 p-3">
+                    <p className="text-[10px] uppercase text-muted-foreground">Contact</p>
+                    <p className="text-sm font-medium">{profileuser.phone || "—"}</p>
+                  </div>
+                </div>
+              )}
               {profileuser.isEditing ? (
                 <form onSubmit={saveProfileChanges} className="space-y-4">
                   <div className="space-y-2">
@@ -640,21 +668,19 @@ export default function ProfilePage() {
               )}
             </CardContent>
           </Card>
-          <Card className="md:col-span-2">
+          <Card className="md:col-span-2 border-0 shadow-sm rounded-xl">
             <CardHeader>
-              <CardTitle>Verification Details</CardTitle>
-              <CardDescription>
-                View and manage your verification documents and information
-              </CardDescription>
+              <CardTitle className="text-2xl font-semibold tracking-tight">Profile Details</CardTitle>
+              <CardDescription>Manage your verification and reviews</CardDescription>
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="bank">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="bank">Bank Account</TabsTrigger>
-                  <TabsTrigger value="reviews">Reviews</TabsTrigger>
+                <TabsList className="w-full grid grid-cols-2 rounded-xl bg-gray-100 p-2">
+                  <TabsTrigger value="bank" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary">Bank Account</TabsTrigger>
+                  <TabsTrigger value="reviews" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary">Reviews</TabsTrigger>
                 </TabsList>
                 <TabsContent value="bank" className="space-y-4 pt-4">
-                  <div className="flex flex-col gap-4 md:flex-row">
+                  <div className="flex flex-col gap-6 md:flex-row">
                     <div className="w-full md:w-1/3">
                       <div className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
                         <img
@@ -766,13 +792,12 @@ export default function ProfilePage() {
                 </TabsContent>
                 <TabsContent value="reviews" className="space-y-4 pt-4">
                   <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                    </div>
+                    <div className="flex justify-between items-center"></div>
                     {reviews.length > 0 ? (
                       reviews.map((review) => (
                         <div
                           key={review.id}
-                          className="rounded-lg border p-4 space-y-3"
+                          className="rounded-lg border p-4 space-y-3 bg-white shadow-sm"
                         >
                           <div className="flex justify-between items-start">
                             <div className="flex flex-col space-y-2">

@@ -1,46 +1,48 @@
-// "use client";
+"use client";
 
-// import { useEffect, useState } from "react";
-// import Link from "next/link";
-// import { useRouter } from "next/navigation";
-// import { Button } from "@/components/ui/button";
-// import {
-//   Card,
-//   CardContent,
-//   CardDescription,
-//   CardFooter,
-//   CardHeader,
-//   CardTitle,
-// } from "@/components/ui/card";
-// import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-// import { Badge } from "@/components/ui/badge";
-// import {
-//   Clock,
-//   MapPin,
-//   Star,
-//   Briefcase,
-//   CheckCircle,
-//   Search,
-//   Filter,
-//   Trash2,
-//   IndianRupee,
-// } from "lucide-react";
-// import { Input } from "@/components/ui/input";
-// import {
-//   Select,
-//   SelectContent,
-//   SelectItem,
-//   SelectTrigger,
-//   SelectValue,
-// } from "@/components/ui/select";
-// import { Slider } from "@/components/ui/slider";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  Clock,
+  MapPin,
+  Star,
+  Briefcase,
+  CheckCircle,
+  Search,
+  Filter,
+  Trash2,
+  IndianRupee,
+  X,
+  RefreshCw
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 
-// import axiosInstance from "@/lib/axiosInstance";
-// import useStore from "@/lib/Zustand";
-// import { toast } from "sonner";
-// import Header from "@/components/Header"; // Import the Header component
-// import { ConfirmDialog } from "@/components/ConfirmDialog"; // Import the ConfirmDialog component
+import axiosInstance from "@/lib/axiosInstance";
+import useStore from "@/lib/Zustand";
+import { toast } from "sonner";
+import Header from "@/components/Header";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 // // Interfaces
 // interface User {

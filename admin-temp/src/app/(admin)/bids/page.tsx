@@ -114,29 +114,61 @@ export default function BidsPage() {
     return `${day}/${month}/${year}`;
   };
 
-  // Fetch bids from API
+  // Fetch bids from API by aggregating across jobs
   const fetchBids = async () => {
     try {
       setIsLoading(true);
-      const response = await axiosInstance.get("/admin/get-all-bids/");
-      if (response.data.status_code === 200) {
-        const bidsData: Bid[] = response.data.data.bids;
-        setBids(bidsData);
-        setStatistics({
-          total_count: response.data.data.total_count,
-          total_amount: response.data.data.total_amount,
-          accepted_count: response.data.data.accepted_count,
-          accepted_amount: response.data.data.accepted_amount,
-          pending_count: response.data.data.pending_count,
-          completed_count: response.data.data.completed_count,
-          cancelled_count: response.data.data.cancelled_count,
-        });
-      } else {
-        toast.error(response.data.message || "Failed to fetch bids");
+      const jobsRes = await axiosInstance.get("/get-all-jobs-admin/");
+      const jobs = jobsRes.data?.data?.jobs || [];
+      const openJobs = jobs; // include all; filter by status if needed
+
+      const all: Bid[] = [];
+      for (const job of openJobs) {
+        const jId = job.job_id ?? job.id;
+        if (!jId) continue;
+        const bidsRes = await axiosInstance.get(`/get-bids/${jId}/`);
+        const rows: any[] = bidsRes.data?.data?.bids || bidsRes.data?.data || [];
+        rows.forEach((r: any) =>
+          all.push({
+            bid_id: r.bid_id ?? r.id ?? 0,
+            job_id: jId,
+            job_title: job.job_title || r.task_title || "",
+            job_description: job.job_description || "",
+            job_category: job.job_category_name || job.job_category || "",
+            job_budget: Number(job.job_budget ?? 0),
+            job_location: job.job_location || "",
+            job_due_date: job.job_due_date || new Date().toISOString(),
+            bidder_id: r.user_id ?? r.tasker_id ?? r.bidder_id ?? "",
+            bidder_name: r.user_name ?? r.tasker_name ?? r.bidder_name ?? "",
+            bidder_email: r.user_email ?? "",
+            bid_amount: Number(r.bid_amount ?? r.amount ?? 0),
+            bid_description: r.bid_description ?? r.message ?? "",
+            bid_timestamp: r.created_at ?? r.createdAt ?? new Date().toISOString(),
+            job_status: (r.status ?? "pending") as Bid["job_status"],
+            job_completion_status: job.job_completion_status ?? 0,
+            is_completed: job.job_completion_status === 1,
+            is_cancelled: job.deletion_status === true,
+            posted_by: job.posted_by ?? "",
+            posted_by_id: job.user_ref_id ?? "",
+            is_confirmed: r.is_confirmed ?? false,
+          })
+        );
       }
+      setBids(all);
+      // Simple statistics
+      setStatistics({
+        total_count: all.length,
+        total_amount: all.reduce((s, b) => s + (b.bid_amount || 0), 0),
+        accepted_count: all.filter((b) => b.job_status === "accepted").length,
+        accepted_amount: all
+          .filter((b) => b.job_status === "accepted")
+          .reduce((s, b) => s + (b.bid_amount || 0), 0),
+        pending_count: all.filter((b) => b.job_status === "pending").length,
+        completed_count: all.filter((b) => b.is_completed).length,
+        cancelled_count: all.filter((b) => b.is_cancelled).length,
+      });
     } catch (error) {
-      console.error("Error fetching bids:", error);
-      toast.error("An error occurred while fetching bids");
+      toast.error("Failed to load bids");
     } finally {
       setIsLoading(false);
     }
@@ -398,6 +430,22 @@ export default function BidsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem
+                          onClick={async () => {
+                            try {
+                              setIsLoading(true)
+                              await axiosInstance.put(`/accept-bid/${bid.job_id}/${bid.bidder_id}/`)
+                              toast.success("Bid accepted")
+                              fetchBids()
+                            } catch {
+                              toast.error("Failed to accept bid")
+                            } finally {
+                              setIsLoading(false)
+                            }
+                          }}
+                        >
+                          Accept Bid
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
                             setSelectedBid(bid);

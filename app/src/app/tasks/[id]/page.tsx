@@ -1341,6 +1341,14 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         const job = data.data;
         console.log("API Response Data (Job):", job);
 
+        const assignedId =
+          job.assigned_tasker_id ||
+          job.assigned_user_id ||
+          job.assigned_to ||
+          job.accepted_bidder_id ||
+          job.worker_id ||
+          null;
+
         const mappedTask: Task = {
           id: job.job_id,
           title: job.job_title,
@@ -1387,7 +1395,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
             joinedDate: job.joined_date ?? null,
           },
           offers: [],
-          assignedTasker: undefined,
+          assignedTasker: assignedId ? { id: String(assignedId) } as any : undefined,
         };
         setTask(mappedTask);
         console.log("Mapped Task:", mappedTask);
@@ -1457,6 +1465,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                 timeZone: "UTC",
               })
             : "Just now",
+          status: bid.status || "pending",
         }));
 
         setOffers(newOffers);
@@ -1538,6 +1547,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                   timeZone: "UTC",
                 })
               : "Just now",
+            status: bid.status || "pending",
           }));
           setOffers(newOffers);
           setBids(taskBids);
@@ -1658,9 +1668,17 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     }
 
     try {
-      const response = await axiosInstance.get(
+      let response = await axiosInstance.get(
         `/get-chat-id/?sender=${senderId}&receiver=${targetReceiverId}&job_id=${id}`
       );
+      // If the GET route isn't supported, fall back to POST body
+      if (response.status === 404) {
+        response = await axiosInstance.post(`/get-chat-id/`, {
+          sender: senderId,
+          receiver: targetReceiverId,
+          job_id: id,
+        });
+      }
       console.log("handleMessageUser - API Response:", response.data);
       if (response.data.status_code === 200 && response.data.data.chat_id) {
         const chatId = response.data.data.chat_id;
@@ -1677,11 +1695,34 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         );
       }
     } catch (error: any) {
+      // Retry with POST if server responded 404 for GET
+      if (error?.response?.status === 404) {
+        try {
+          const postResp = await axiosInstance.post(`/get-chat-id/`, {
+            sender: senderId,
+            receiver: targetReceiverId,
+            job_id: id,
+          });
+          if (postResp.data.status_code === 200 && postResp.data.data.chat_id) {
+            const chatId = postResp.data.data.chat_id;
+            const storedChats = localStorage.getItem("userChats");
+            const chatIds: string[] = storedChats ? JSON.parse(storedChats) : [];
+            if (!chatIds.includes(chatId)) {
+              chatIds.push(chatId);
+              localStorage.setItem("userChats", JSON.stringify(chatIds));
+            }
+            router.push(`/messages/${chatId}`);
+            return;
+          }
+        } catch (postErr: any) {
+          console.error("handleMessageUser - POST fallback failed:", postErr?.response?.data || postErr);
+        }
+      }
       console.error(
         "handleMessageUser - Error initiating chat:",
-        error.response?.data || error
+        error?.response?.data || error
       );
-      toast.error(error.response?.data?.message || "Failed to initiate chat");
+      toast.error(error?.response?.data?.message || "Failed to initiate chat");
     }
   };
 
@@ -1718,7 +1759,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
   if (authLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center text-sm text-muted-foreground">
+        <svg className="animate-spin h-6 w-6 text-gray-400 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
         Checking authentication...
       </div>
     );
@@ -1727,7 +1769,13 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        Loading task details...
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative">
+            <div className="h-12 w-12 rounded-full border-4 border-blue-500/20 border-t-blue-600 animate-spin" />
+            <div className="absolute inset-0 m-auto h-5 w-5 rounded-full bg-blue-600/10 animate-ping" />
+          </div>
+          <span className="text-sm text-muted-foreground animate-pulse">Loading task details...</span>
+        </div>
       </div>
     );
   }
@@ -1758,16 +1806,16 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const isTaskPoster: boolean = task.poster.id === userId;
   const hasSubmittedOffer = offers.some((offer) => offer.tasker.id === userId);
   const bidAmountNumber = parseFloat(offerAmount) || 0;
-  const handlingCharges = bidAmountNumber * 0.2;
-  const totalAmount = bidAmountNumber + handlingCharges;
+  const handlingCharges = bidAmountNumber * 0.23; // 23% handling charges incl. GST
+  const totalAmount = Math.max(bidAmountNumber - handlingCharges, 0); // amount user receives after charges
 
   return (
     <div className="flex min-h-screen flex-col">
       <Toaster position="top-right" />
       <Header user={{ name: userProfile.name, avatar: userProfile.avatar }} onSignOut={handleSignOut} />
-      <main className="flex-1 container py-6 md:py-10 px-4 md:px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-6 flex justify-between items-center">
+      <main className="flex-1 container mx-auto max-w-5xl py-8 md:py-12 px-4 md:px-6">
+        <div>
+          <div className="mb-8 flex justify-between items-center">
             <Link
               href="/dashboard"
               className="text-sm text-muted-foreground hover:underline"
@@ -1850,17 +1898,17 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="flex justify-between">
-              <span>Bid Amount:</span>
-              <span>₹{bidAmountNumber.toFixed(2)}</span>
+            <div className="flex justify-between items-center py-3 bg-blue-50 rounded-lg px-3">
+              <span className="font-bold text-gray-800">Bid Amount:</span>
+              <span className="font-bold text-blue-600 text-lg">₹{bidAmountNumber.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between">
-              <span>Handling Charges (20%):</span>
-              <span>₹{handlingCharges.toFixed(2)}</span>
+            <div className="flex justify-between items-center py-3 bg-gray-50 rounded-lg px-3">
+              <span className="text-gray-700">Handling Charges (incl. GST):</span>
+              <span className="font-semibold text-red-600">₹{handlingCharges.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between font-bold">
-              <span>Total:</span>
-              <span>₹{totalAmount.toFixed(2)}</span>
+            <div className="flex justify-between items-center py-3 bg-green-50 rounded-lg px-3 border border-green-200">
+              <span className="font-bold text-gray-800">You Receive:</span>
+              <span className="font-bold text-green-600 text-lg">₹{totalAmount.toFixed(2)}</span>
             </div>
           </div>
           <DialogFooter>

@@ -287,7 +287,7 @@
 // }
 
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import { IndianRupee, Star } from "lucide-react";
 import { Button } from "./ui/button";
 import {
@@ -305,6 +305,7 @@ import axiosInstance from "../lib/axiosInstance";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./ui/dialog";
 
 interface Image {
   id: string;
@@ -326,6 +327,7 @@ interface Offer {
   amount: number;
   message: string;
   createdAt: string;
+  status?: string;
 }
 
 interface Task {
@@ -376,6 +378,28 @@ export function OffersSection({
   const [isAccepting, setIsAccepting] = useState<string | null>(null);
   const [error, setError] = useState("");
   const router = useRouter();
+  const [completeOpen, setCompleteOpen] = useState<boolean>(false);
+  const [activeOfferId, setActiveOfferId] = useState<string | null>(null);
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [reviewComment, setReviewComment] = useState<string>("");
+  const [completing, setCompleting] = useState<boolean>(false);
+  const [selectedFromSession, setSelectedFromSession] = useState<string | null>(null);
+
+  // Try to read accepted tasker from sessionStorage (when accept was done earlier in this browser)
+  // This is a graceful fallback when API doesn't return accepted status on bids
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("paymentData");
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (data && String(data.taskId) === String(task.id)) {
+          setSelectedFromSession(String(data.taskerId));
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+  }, [task.id]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -424,6 +448,37 @@ export function OffersSection({
     }
   };
 
+  const openCompleteModal = (offerId: string) => {
+    setActiveOfferId(offerId);
+    setCompleteOpen(true);
+  };
+
+  const handleCompleteWithReview = async () => {
+    if (!activeOfferId) return;
+    const offer = offers.find(o => o.id === activeOfferId);
+    if (!offer) return;
+    try {
+      setCompleting(true);
+      // Mark complete
+      await axiosInstance.put(`/mark-complete/${task.id}/`);
+      // Submit review
+      await axiosInstance.put("/submit-review/", {
+        job_ref_id: task.id,
+        reviewer_id: task.poster.id,
+        user_id: offer.tasker.id,
+        rating: reviewRating,
+        comment: reviewComment,
+      });
+      toast.success("Task marked complete and review submitted");
+      setCompleteOpen(false);
+      setReviewComment("");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || "Failed to complete task");
+    } finally {
+      setCompleting(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -447,21 +502,21 @@ export function OffersSection({
           </p>
         ) : (
           visibleOffers.map((offer) => (
-            <div key={offer.id} className="border rounded-lg p-4 space-y-3">
+            <div key={offer.id} className="rounded-2xl border-0 shadow-sm hover:shadow-md transition-all duration-200 p-4 md:p-5 bg-white">
               <div className="flex justify-between items-start">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <Link
                     href={`/profilepage/${offer.tasker.id}`}
-                    className="flex items-center gap-2 hover:underline"
+                    className="flex items-center gap-3 hover:underline"
                   >
-                    <Avatar className="h-8 w-8">
+                    <Avatar className="h-9 w-9">
                       <AvatarFallback>
                         {offer.tasker.name.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium">{offer.tasker.name}</p>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <p className="font-medium leading-none">{offer.tasker.name}</p>
+                      <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                         <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                         <span>
                           {offer.tasker.rating} • {offer.tasker.taskCount} tasks
@@ -473,7 +528,7 @@ export function OffersSection({
                 <div className="text-right">
                   {/* Show amount only for task poster or if it's the current user's offer */}
                   {(isTaskPoster || (currentUserId && offer.tasker.id === currentUserId)) && (
-                    <p className="font-bold">
+                    <p className="font-bold text-gray-900">
                       <IndianRupee className="w-4 h-4 inline" />{" "}
                       {offer.amount.toFixed(2)}
                     </p>
@@ -483,12 +538,22 @@ export function OffersSection({
                   </p>
                 </div>
               </div>
-              <p className="text-sm">{offer.message}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-700">{offer.message}</p>
+                {(offer.status === "accepted" || (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) || (selectedFromSession && selectedFromSession === offer.tasker.id)) && (
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-green-100 text-green-700 px-3 py-1 text-xs font-medium">Selected</span>
+                    <Button size="sm" onClick={() => openCompleteModal(offer.id)}>
+                      Mark as Complete
+                    </Button>
+                  </div>
+                )}
+              </div>
               {isTaskPoster && (
                 <div className="flex gap-2">
                   {!task.status && (
                     <Button
-                      className="w-full"
+                      className="w-full rounded-lg"
                       size="sm"
                       onClick={() => handleAcceptOffer(offer)}
                       disabled={isAccepting === offer.id}
@@ -511,6 +576,27 @@ export function OffersSection({
           ))
         )}
       </CardContent>
+      <Dialog open={completeOpen} onOpenChange={setCompleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark as Complete</DialogTitle>
+            <DialogDescription>Rate your tasker and add a short review.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              {[1,2,3,4,5].map(n => (
+                <button key={n} type="button" className={n <= reviewRating ? "text-yellow-400" : "text-gray-300"} onClick={() => setReviewRating(n)}>★</button>
+              ))}
+              <span className="text-sm text-muted-foreground">{reviewRating}/5</span>
+            </div>
+            <Textarea rows={4} placeholder="Write a short review..." value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCompleteOpen(false)} disabled={completing}>Cancel</Button>
+            <Button onClick={handleCompleteWithReview} disabled={completing}>{completing ? "Submitting..." : "Submit"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {!isTaskPoster && task.status && (
         <CardFooter>
           <p className="text-muted-foreground">

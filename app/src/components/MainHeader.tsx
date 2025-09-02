@@ -1,16 +1,42 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, User, Plus } from "lucide-react";
+import useStore from "@/lib/Zustand";
 
 const MainHeader: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { isAuthenticated, user, logout, checkAuth } = useStore();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
+
+  const handleLogout = () => {
+    logout();
+    setIsMobileMenuOpen(false);
+  };
+
+  // Hide header on key authenticated app pages to reduce clutter
+  const hideOnPrefixes = [
+    "/dashboard",
+    "/post-task",
+    "/tasks",
+    "/browse",
+    "/browse-tasks",
+    "/profile",
+  ];
+  if (isAuthenticated && pathname && hideOnPrefixes.some((p) => pathname.startsWith(p))) {
+    return null;
+  }
 
   return (
     <header className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
@@ -43,18 +69,43 @@ const MainHeader: React.FC = () => {
             </Link>
           </nav>
 
-          {/* Desktop Auth Buttons */}
+          {/* Desktop Auth Section */}
           <div className="hidden md:flex items-center space-x-4">
-            <Link href="/signin">
-              <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
-                Sign In
-              </Button>
-            </Link>
-            <Link href="/signup">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                Sign Up
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link href="/post-task">
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Post Task
+                  </Button>
+                </Link>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-600">Welcome, {user?.name}</span>
+                  <Link href="/dashboard">
+                    <Button variant="outline" className="border-gray-300 hover:bg-gray-50">
+                      <User className="h-4 w-4 mr-2" />
+                      Dashboard
+                    </Button>
+                  </Link>
+                  <Button variant="ghost" onClick={handleLogout} className="text-gray-600 hover:text-red-600">
+                    Logout
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <Link href="/signin">
+                  <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/signup">
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                    Sign Up
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -69,7 +120,7 @@ const MainHeader: React.FC = () => {
 
         {/* Mobile Navigation Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-100 py-4 animate-in slide-in-from-top-2 duration-200">
+          <div className="md:hidden border-t border-gray-100 py-4 transition-all duration-200 ease-in-out">
             <nav className="flex flex-col space-y-4">
               <Link 
                 href="/browse" 
@@ -107,18 +158,40 @@ const MainHeader: React.FC = () => {
                 Support
               </Link>
               
-              {/* Mobile Auth Buttons */}
+              {/* Mobile Auth Section */}
               <div className="flex flex-col space-y-3 px-4 pt-4 border-t border-gray-100">
-                <Link href="/signin" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button variant="outline" className="w-full border-blue-600 text-blue-600 hover:bg-blue-50">
-                    Sign In
-                  </Button>
-                </Link>
-                <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                    Sign Up
-                  </Button>
-                </Link>
+                {isAuthenticated ? (
+                  <>
+                    <Link href="/post-task" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        Post Task
+                      </Button>
+                    </Link>
+                    <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Button variant="outline" className="w-full border-gray-300 hover:bg-gray-50">
+                        <User className="h-4 w-4 mr-2" />
+                        Dashboard
+                      </Button>
+                    </Link>
+                    <Button variant="ghost" onClick={handleLogout} className="w-full text-gray-600 hover:text-red-600">
+                      Logout
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Link href="/signin" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Button variant="outline" className="w-full border-blue-600 text-blue-600 hover:bg-blue-50">
+                        Sign In
+                      </Button>
+                    </Link>
+                    <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                        Sign Up
+                      </Button>
+                    </Link>
+                  </>
+                )}
               </div>
             </nav>
           </div>
