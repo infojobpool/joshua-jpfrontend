@@ -1810,66 +1810,76 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const totalAmount = Math.max(bidAmountNumber - handlingCharges, 0); // amount user receives after charges
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
       <Toaster position="top-right" />
       <Header user={{ name: userProfile.name, avatar: userProfile.avatar }} onSignOut={handleSignOut} />
-      <main className="flex-1 container mx-auto max-w-5xl py-8 md:py-12 px-4 md:px-6">
-        <div>
-          <div className="mb-8 flex justify-between items-center">
-            <Link
-              href="/dashboard"
-              className="text-sm text-muted-foreground hover:underline"
-              onClick={() => console.log("Navigating to dashboard, userId:", userId, "isAuthenticated:", isAuthenticated)}
-            >
-              ← Back to Dashboard
-            </Link>
-          </div>
+      
+      {/* Premium Back Navigation */}
+      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 shadow-sm">
+        <div className="container mx-auto max-w-7xl px-4 md:px-6 py-4">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors duration-200 group"
+            onClick={() => console.log("Navigating to dashboard, userId:", userId, "isAuthenticated:", isAuthenticated)}
+          >
+            <div className="p-1 rounded-full bg-gray-100 group-hover:bg-blue-100 transition-colors duration-200">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </div>
+            Back to Dashboard
+          </Link>
+        </div>
+      </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
-            <div className="md:col-span-2 space-y-6">
-              <TaskInfo
-                task={task}
-                openImageGallery={openImageGallery}
-                handleMessageUser={handleMessageUser}
-                isTaskPoster={isTaskPoster}
-                isEditing={isEditing}
-                setIsEditing={setIsEditing}
-              />
-              <ReviewSection
-                isTaskPoster={isTaskPoster}
-                taskStatus={task.status}
-                handleSubmitReview={handleSubmitReview}
-                reviewRating={reviewRating}
-                setReviewRating={setReviewRating}
-                reviewComment={reviewComment}
-                setReviewComment={setReviewComment}
-                isSubmitting={isSubmitting}
-                taskerId={taskerId}
-                completionStatus={task.job_completion_status}
-              />
-              <OffersSection
-                task={task}
-                offers={offers}
-                isTaskPoster={isTaskPoster}
-                hasSubmittedOffer={hasSubmittedOffer}
-                handleSubmitOffer={handleSubmitOffer}
-                handleMessageUser={handleMessageUser}
-                offerAmount={offerAmount}
-                setOfferAmount={setOfferAmount}
-                offerMessage={offerMessage}
-                setOfferMessage={setOfferMessage}
-                isSubmitting={isSubmitting}
-                currentUserId={userId}
-              />
-            </div>
-            <div className="space-y-6">
-              <PosterInfo
-                poster={task.poster}
-                isTaskPoster={isTaskPoster}
-                handleMessageUser={handleMessageUser}
-              />
-              <SafetyTips />
-            </div>
+      <main className="container mx-auto max-w-6xl px-4 md:px-6 py-4 md:py-6">
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* Main Content - Left Column */}
+          <div className="lg:col-span-2 space-y-4">
+            <TaskInfo
+              task={task}
+              openImageGallery={openImageGallery}
+              handleMessageUser={handleMessageUser}
+              isTaskPoster={isTaskPoster}
+              isEditing={isEditing}
+              setIsEditing={setIsEditing}
+            />
+            <ReviewSection
+              isTaskPoster={isTaskPoster}
+              taskStatus={task.status}
+              handleSubmitReview={handleSubmitReview}
+              reviewRating={reviewRating}
+              setReviewRating={setReviewRating}
+              reviewComment={reviewComment}
+              setReviewComment={setReviewComment}
+              isSubmitting={isSubmitting}
+              taskerId={taskerId}
+              completionStatus={task.job_completion_status}
+            />
+            <OffersSection
+              task={task}
+              offers={offers}
+              isTaskPoster={isTaskPoster}
+              hasSubmittedOffer={hasSubmittedOffer}
+              handleSubmitOffer={handleSubmitOffer}
+              handleMessageUser={handleMessageUser}
+              offerAmount={offerAmount}
+              setOfferAmount={setOfferAmount}
+              offerMessage={offerMessage}
+              setOfferMessage={setOfferMessage}
+              isSubmitting={isSubmitting}
+              currentUserId={userId}
+            />
+          </div>
+          
+          {/* Sidebar - Right Column */}
+          <div className="space-y-6">
+            <PosterInfo
+              poster={task.poster}
+              isTaskPoster={isTaskPoster}
+              handleMessageUser={handleMessageUser}
+            />
+            <SafetyTips />
           </div>
         </div>
       </main>

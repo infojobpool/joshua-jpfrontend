@@ -130,34 +130,78 @@ const useStore = create<StoreState>((set) => ({
 
   checkAuth: () => {
     if (typeof window === "undefined") return;
+    
     const token = localStorage.getItem("token");
     const user = localStorage.getItem("user");
+    
     if (token && user) {
       try {
         const decoded = jwt.decode(token) as JwtPayload | null;
         const parsedUser = JSON.parse(user) as UserData;
+        
         if (decoded && decoded.userId !== undefined && parsedUser) {
-          set({
-            userId: decoded.userId,
-            exp: decoded.exp,
-            isAuthenticated: true,
-            user: {
-              id: parsedUser.id,
-              name: parsedUser.name,
-              email: parsedUser.email,
-              accountType: parsedUser.accountType,
-              isLoggedIn: parsedUser.isLoggedIn,
-              verification_status: parsedUser.verification_status,
-            },
-          });
+          // Get current state to avoid unnecessary updates
+          const currentState = useStore.getState();
+          
+          // Only update if the state is different
+          if (
+            currentState.userId !== decoded.userId ||
+            currentState.isAuthenticated !== true ||
+            currentState.user?.id !== parsedUser.id
+          ) {
+            set({
+              userId: decoded.userId,
+              exp: decoded.exp,
+              isAuthenticated: true,
+              user: {
+                id: parsedUser.id,
+                name: parsedUser.name,
+                email: parsedUser.email,
+                accountType: parsedUser.accountType,
+                isLoggedIn: parsedUser.isLoggedIn,
+                verification_status: parsedUser.verification_status,
+              },
+            });
+          }
         } else {
+          // Only clear if not already cleared
+          const currentState = useStore.getState();
+          if (currentState.isAuthenticated) {
+            set({
+              userId: null,
+              exp: null,
+              isAuthenticated: false,
+              user: null,
+            });
+          }
           localStorage.removeItem("token");
           localStorage.removeItem("user");
         }
       } catch (error) {
         console.error("Token or user data decode failed:", error);
+        // Only clear if not already cleared
+        const currentState = useStore.getState();
+        if (currentState.isAuthenticated) {
+          set({
+            userId: null,
+            exp: null,
+            isAuthenticated: false,
+            user: null,
+          });
+        }
         localStorage.removeItem("token");
         localStorage.removeItem("user");
+      }
+    } else {
+      // Only clear if not already cleared
+      const currentState = useStore.getState();
+      if (currentState.isAuthenticated) {
+        set({
+          userId: null,
+          exp: null,
+          isAuthenticated: false,
+          user: null,
+        });
       }
     }
   },

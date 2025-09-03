@@ -62,13 +62,53 @@ export default function NewMessagePage() {
         return;
       }
 
-      // Send the message
-      const response = await axiosInstance.post('/send-message/', {
-        chat_id: chatId,
-        sender_id: senderId,
-        receiver_id: receiverId,
-        description: message.trim(),
-      });
+      // Send the message - try different possible endpoints
+      let response;
+      try {
+        // First try the original endpoint
+        response = await axiosInstance.post('/send-message/', {
+          chat_id: chatId,
+          sender_id: senderId,
+          receiver_id: receiverId,
+          description: message.trim(),
+        });
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          console.log('🔄 /send-message/ not found, trying /create-message/...');
+          try {
+            response = await axiosInstance.post('/create-message/', {
+              chat_id: chatId,
+              sender_id: senderId,
+              receiver_id: receiverId,
+              description: message.trim(),
+            });
+          } catch (secondError: any) {
+            if (secondError.response?.status === 404) {
+              console.log('🔄 /create-message/ not found, trying /add-message/...');
+              try {
+                response = await axiosInstance.post('/add-message/', {
+                  chat_id: chatId,
+                  sender_id: senderId,
+                  receiver_id: receiverId,
+                  description: message.trim(),
+                });
+              } catch (thirdError: any) {
+                console.log('🔄 /add-message/ not found, trying /message/...');
+                response = await axiosInstance.post('/message/', {
+                  chat_id: chatId,
+                  sender_id: senderId,
+                  receiver_id: receiverId,
+                  description: message.trim(),
+                });
+              }
+            } else {
+              throw secondError;
+            }
+          }
+        } else {
+          throw error;
+        }
+      }
 
       if (response.data.status_code === 200) {
         toast.success('Message sent successfully!');
