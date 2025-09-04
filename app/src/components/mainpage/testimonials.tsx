@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ChevronLeft, ChevronRight, Star, Quote, Heart, Users, TrendingUp } from "lucide-react"
+import { ChevronLeft, ChevronRight, Star, Quote, Heart, Users, TrendingUp, Sparkles, CheckCircle } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
 import { Button } from "../../components/ui/button"
 
@@ -94,174 +94,123 @@ export function Testimonials() {
   }
 
   return (
-    <section className="py-24 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <section className="py-12 bg-white">
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
         {/* Header Section */}
         <motion.div
-          className="text-center mb-20"
+          className="text-center mb-12"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
         >
-          <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
-            <Heart className="h-4 w-4" />
-            Trusted by 10,000+ Users
-          </div>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
-            What Our Community Says
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            What People Say
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Real stories from customers and Taskers who have transformed their lives through JobPool
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Real stories from our community
           </p>
         </motion.div>
 
-        {/* Stats Section */}
+        {/* Simple Stats */}
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20"
-          initial={{ opacity: 0, y: 40 }}
+          className="flex justify-center gap-8 mb-12"
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
+          transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <div className="text-center p-6 bg-white rounded-2xl shadow-lg border border-blue-100">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users className="h-8 w-8 text-blue-600" />
-            </div>
-            <div className="text-3xl font-bold text-blue-600 mb-2">50K+</div>
-            <div className="text-gray-600 font-medium">Happy Customers</div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600">50K+</div>
+            <div className="text-sm text-gray-600">Happy Users</div>
           </div>
-          <div className="text-center p-6 bg-white rounded-2xl shadow-lg border border-green-100">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <TrendingUp className="h-8 w-8 text-green-600" />
-            </div>
-            <div className="text-3xl font-bold text-green-600 mb-2">₹2M+</div>
-            <div className="text-gray-600 font-medium">Earned by Taskers</div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600">4.9★</div>
+            <div className="text-sm text-gray-600">Rating</div>
           </div>
-          <div className="text-center p-6 bg-white rounded-2xl shadow-lg border border-purple-100">
-            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Star className="h-8 w-8 text-purple-600" />
-            </div>
-            <div className="text-3xl font-bold text-purple-600 mb-2">4.9★</div>
-            <div className="text-gray-600 font-medium">Average Rating</div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-purple-600">₹2M+</div>
+            <div className="text-sm text-gray-600">Earned</div>
           </div>
         </motion.div>
 
         {/* Testimonials Carousel */}
-        <div className="relative max-w-5xl mx-auto">
+        <div className="relative max-w-4xl mx-auto">
           <AnimatePresence mode="wait">
             <motion.div
               key={current}
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -20 }}
-              transition={{ 
-                type: "spring", 
-                stiffness: 100, 
-                damping: 20,
-                duration: 0.6 
-              }}
-              className="bg-white p-10 rounded-3xl shadow-2xl border border-gray-100 relative overflow-hidden"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5 }}
+              className="bg-gray-50 p-8 rounded-2xl border border-gray-200 relative"
             >
-              {/* Background Pattern */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full -translate-y-16 translate-x-16 opacity-60"></div>
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-green-100 to-blue-100 rounded-full translate-y-12 -translate-x-12 opacity-60"></div>
-              
-              {/* Quote Icon */}
-              <div className="absolute top-8 left-8 w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center opacity-80">
-                <Quote className="h-8 w-8 text-blue-600" />
+              {/* Simple Quote Icon */}
+              <div className="absolute top-6 left-6 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <Quote className="h-4 w-4 text-blue-600" />
               </div>
 
               <div className="relative z-10">
                 {/* Rating Stars */}
-                <div className="flex justify-center mb-6">
+                <div className="flex justify-center mb-4">
                   {[...Array(testimonials[current].rating)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, scale: 0 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: i * 0.1, duration: 0.3 }}
-                    >
-                      <Star className="h-6 w-6 fill-yellow-400 text-yellow-400 mx-1" />
-                    </motion.div>
+                    <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400 mx-1" />
                   ))}
                 </div>
 
                 {/* Testimonial Content */}
-                <motion.p 
-                  className="text-2xl text-gray-800 mb-8 italic text-center leading-relaxed max-w-4xl mx-auto"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2, duration: 0.5 }}
-                >
+                <p className="text-lg text-gray-700 mb-6 italic text-center leading-relaxed">
                   "{testimonials[current].content}"
-                </motion.p>
+                </p>
 
                 {/* Category Badge */}
-                <motion.div 
-                  className="flex justify-center mb-6"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3, duration: 0.5 }}
-                >
-                  <span className="bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-medium">
+                <div className="flex justify-center mb-6">
+                  <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
                     {testimonials[current].category}
                   </span>
-                </motion.div>
+                </div>
 
                 {/* User Info */}
-                <div className="flex flex-col items-center">
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.4, duration: 0.5 }}
-                  >
-                    <Avatar className="h-20 w-20 mb-4 border-4 border-blue-100">
-                      <AvatarImage
-                        src={testimonials[current].avatar || "/images/placeholder.svg"}
-                        alt={testimonials[current].name}
-                      />
-                      <AvatarFallback className="bg-blue-100 text-blue-700 text-xl font-bold">
-                        {testimonials[current].name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </motion.div>
+                <div className="flex items-center justify-center gap-4">
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage
+                      src={testimonials[current].avatar || "/images/placeholder.svg"}
+                      alt={testimonials[current].name}
+                    />
+                    <AvatarFallback className="bg-blue-100 text-blue-700 text-sm font-bold">
+                      {testimonials[current].name.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
                   
-                  <motion.div 
-                    className="text-center"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5, duration: 0.5 }}
-                  >
-                    <h4 className="font-bold text-xl text-gray-900 mb-1">{testimonials[current].name}</h4>
-                    <p className="text-blue-600 font-medium mb-1">{testimonials[current].role}</p>
-                    <p className="text-gray-500 text-sm">{testimonials[current].location}</p>
-                  </motion.div>
+                  <div className="text-left">
+                    <h4 className="font-semibold text-gray-900">{testimonials[current].name}</h4>
+                    <p className="text-sm text-gray-600">{testimonials[current].role}</p>
+                  </div>
                 </div>
               </div>
             </motion.div>
           </AnimatePresence>
 
-          {/* Navigation Controls */}
-          <div className="flex justify-center items-center mt-12 gap-6">
+          {/* Simple Navigation Controls */}
+          <div className="flex justify-center items-center mt-8 gap-6">
             <Button 
               variant="outline" 
               size="icon" 
               onClick={previous} 
-              className="rounded-full w-14 h-14 border-2 border-blue-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-300"
+              className="rounded-full w-10 h-10"
             >
-              <ChevronLeft className="h-6 w-6 text-blue-600" />
+              <ChevronLeft className="h-4 w-4" />
             </Button>
             
-            {/* Dots Indicator */}
-            <div className="flex gap-3">
+            {/* Simple Dots Indicator */}
+            <div className="flex gap-2">
               {testimonials.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrent(index)}
-                  className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
                     index === current 
-                      ? 'bg-blue-600 w-8' 
+                      ? 'bg-blue-600' 
                       : 'bg-gray-300 hover:bg-gray-400'
                   }`}
                 />
@@ -272,34 +221,34 @@ export function Testimonials() {
               variant="outline" 
               size="icon" 
               onClick={next} 
-              className="rounded-full w-14 h-14 border-2 border-blue-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-300"
+              className="rounded-full w-10 h-10"
             >
-              <ChevronRight className="h-6 w-6 text-blue-600" />
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
-        {/* Bottom CTA */}
+        {/* Simple Bottom CTA */}
         <motion.div
-          className="text-center mt-20"
-          initial={{ opacity: 0, y: 30 }}
+          className="text-center mt-12"
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8, duration: 0.8 }}
+          transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl p-12 text-white max-w-4xl mx-auto">
-            <h3 className="text-3xl md:text-4xl font-bold mb-4">
-              Ready to Join Our Community?
+          <div className="bg-blue-50 rounded-2xl p-8 max-w-3xl mx-auto">
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">
+              Ready to get started?
             </h3>
-            <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-              Whether you need help with tasks or want to earn money as a Tasker, JobPool is here for you.
+            <p className="text-gray-600 mb-6">
+              Join thousands of people who trust JobPool for their tasks.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg font-semibold rounded-xl">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3">
                 Post Your Task
               </Button>
-              <Button variant="outline" className="border-white text-white hover:bg-white hover:text-blue-600 px-8 py-4 text-lg font-semibold rounded-xl">
-                Become a Tasker
+              <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50 px-6 py-3">
+                Become a Helper
               </Button>
             </div>
           </div>

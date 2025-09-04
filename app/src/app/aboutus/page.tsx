@@ -4,8 +4,6 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "../../components/ui/button";
-import { Footer } from "@/components/mainpage/footer";
-import { Navbar } from "@/components/mainpage/navbar";
 
 export default function AboutUs() {
   const containerVariants = {
@@ -30,7 +28,6 @@ export default function AboutUs() {
 
   return (
     <div className="bg-slate-50 min-h-screen">
-        <Navbar />
       <section className="py-12 md:py-20">
         <div className="container px-4 md:px-6 max-w-7xl mx-auto">
           <motion.div
@@ -155,7 +152,6 @@ export default function AboutUs() {
           </motion.div>
         </div>
       </section>
-      <Footer />
     </div>
     
   );

@@ -33,7 +33,7 @@ export function Stats() {
   ]
 
   return (
-    <section className="py-16 bg-gradient-to-br from-gray-50 to-blue-50 relative overflow-hidden">
+    <section className="py-12 bg-gradient-to-br from-gray-50 to-blue-50 relative overflow-hidden">
       {/* Background decorative elements */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-10 left-10 w-32 h-32 bg-blue-200 rounded-full blur-3xl"></div>
@@ -50,10 +50,10 @@ export function Stats() {
           viewport={{ once: true }}
         >
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Trusted by Millions
+            Why Choose JobPool?
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Join our growing community of satisfied customers and skilled taskers
+            Join thousands of people who trust JobPool for their everyday tasks
           </p>
         </motion.div>
         

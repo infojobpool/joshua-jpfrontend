@@ -4,8 +4,6 @@ import { FAQSection } from "../../components/support/faq-section"
 import { ContactInfo } from "../../components/support/contact-info"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs"
 import { HeadphonesIcon, MessageSquare, HelpCircle } from "lucide-react"
-import { Navbar } from "@/components/mainpage/navbar"
-import { Footer } from "@/components/mainpage/footer"
 
 interface SupportFormData {
   name: string
@@ -32,8 +30,6 @@ export default function SupportPage() {
   }
 
   return (
-    <div>
-             <Navbar />
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
@@ -83,8 +79,6 @@ export default function SupportPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
-     <Footer />
     </div>
   )
 }

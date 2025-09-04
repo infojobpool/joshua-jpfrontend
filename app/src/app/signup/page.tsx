@@ -109,108 +109,160 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="container flex h-screen w-screen flex-col items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
       <Toaster />
-      <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-        <div className="flex flex-col space-y-2 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Create an account
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Enter your information below to create your account
-          </p>
+      
+      {/* Background Pattern */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
+      </div>
+
+      <div className="relative w-full max-w-md">
+        {/* Logo Section */}
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center gap-3 group">
+            <div className="relative">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
+                <span className="text-white font-bold text-xl">JP</span>
+              </div>
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">JobPool</span>
+              <span className="text-xs text-gray-500 -mt-1">Connect & Earn</span>
+            </div>
+          </Link>
         </div>
-        <Card className="p-6">
+
+        {/* Main Card */}
+        <Card className="backdrop-blur-sm bg-white/90 border-0 shadow-2xl">
           <form onSubmit={handleSubmit}>
-            <CardHeader className="mb-4">
-              <CardTitle>Sign Up</CardTitle>
-              <CardDescription>
-                Join JobPool to post or complete tasks.
+            <CardHeader className="text-center pb-6">
+              <CardTitle className="text-2xl font-bold text-gray-900">Join JobPool</CardTitle>
+              <CardDescription className="text-gray-600">
+                Create your account to start connecting and earning
               </CardDescription>
             </CardHeader>
-
-            <CardContent className="space-y-4 mb-4">
+            <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="user_fullname">Full Name</Label>
+                <Label htmlFor="user_fullname" className="text-sm font-medium text-gray-700">Full Name</Label>
                 <Input
                   id="user_fullname"
                   name="user_fullname"
-                  placeholder="John Doe"
+                  placeholder="Enter your full name"
                   value={formData.user_fullname}
                   onChange={handleChange}
                   required
+                  className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="user_email">Email</Label>
+                <Label htmlFor="user_email" className="text-sm font-medium text-gray-700">Email Address</Label>
                 <Input
                   id="user_email"
                   name="user_email"
                   type="email"
-                  placeholder="john@example.com"
+                  placeholder="Enter your email"
                   value={formData.user_email}
                   onChange={handleChange}
                   required
+                  className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
                     name="password"
                     type={showPassword ? "text" : "password"}
+                    placeholder="Create a strong password"
                     value={formData.password}
                     onChange={handleChange}
                     required
-                    className="pr-10"
+                    className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200 pr-12"
                   />
                   <button
                     type="button"
                     onClick={togglePasswordVisibility}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Password must contain at least 8 characters with a mix of uppercase, lowercase, numbers, and special characters
+                <p className="text-xs text-gray-500">
+                  Must be at least 8 characters with uppercase, lowercase, numbers, and special characters
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirm_password">Confirm Password</Label>
+                <Label htmlFor="confirm_password" className="text-sm font-medium text-gray-700">Confirm Password</Label>
                 <Input
                   id="confirm_password"
                   name="confirm_password"
                   type="password"
+                  placeholder="Confirm your password"
                   value={formData.confirm_password}
                   onChange={handleChange}
                   required
+                  className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200"
                 />
               </div>
-
-              {/* Optional radio group removed for clarity */}
             </CardContent>
-
-            <CardFooter className="flex flex-col space-y-4">
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating account..." : "Create account"}
+            <CardFooter className="flex flex-col space-y-4 pt-6">
+              <Button 
+                type="submit" 
+                className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200" 
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Creating account...
+                  </div>
+                ) : (
+                  "Create Account"
+                )}
               </Button>
-              <div className="text-center text-sm">
-                Already have an account?{" "}
-                <Link
-                  href="/signin"
-                  className="underline underline-offset-4 hover:text-primary"
-                >
-                  Sign in
-                </Link>
+              
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-white text-gray-500">Already have an account?</span>
+                </div>
               </div>
+              
+              <Link href="/signin" className="w-full">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full h-12 border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-medium transition-all duration-200"
+                >
+                  Sign In Instead
+                </Button>
+              </Link>
             </CardFooter>
           </form>
         </Card>
+
+        {/* Footer */}
+        <div className="text-center mt-8">
+          <p className="text-sm text-gray-500">
+            By creating an account, you agree to our{" "}
+            <Link href="/termsandconditions" className="text-blue-600 hover:text-blue-700 transition-colors">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy-policy" className="text-blue-600 hover:text-blue-700 transition-colors">
+              Privacy Policy
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

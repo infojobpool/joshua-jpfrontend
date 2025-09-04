@@ -116,30 +116,30 @@ export function Features() {
   const features = [
     {
       icon: <Shield className="h-10 w-10 text-blue-600" />,
-      title: "Secure Payments",
-      description: "Your payment is held securely until the task is completed to your satisfaction.",
+      title: "Safe & Secure",
+      description: "Your money is protected until the work is done to your satisfaction.",
     },
     {
       icon: <Clock className="h-10 w-10 text-blue-600" />,
-      title: "Save Time",
-      description: "Focus on what matters most to you and let our Taskers handle the rest.",
+      title: "Quick & Easy",
+      description: "Post a task in minutes and get it done by local helpers.",
     },
     {
       icon: <DollarSign className="h-10 w-10 text-blue-600" />,
-      title: "Competitive Pricing",
-      description: "Set your budget and get offers from skilled Taskers within your price range.",
+      title: "Fair Pricing",
+      description: "Set your budget and get offers from helpers in your price range.",
     },
     {
       icon: <Users className="h-10 w-10 text-blue-600" />,
-      title: "Verified Taskers",
-      description: "All Taskers go through a verification process to ensure quality and reliability.",
+      title: "Trusted Helpers",
+      description: "All helpers are verified and rated by previous customers.",
     },
   ]
 
   const imageX = useTransform(scrollYProgress, [0, 1], [100, -100])
 
   return (
-    <section className="py-20 bg-slate-50" ref={containerRef}>
+    <section className="py-12 bg-slate-50" ref={containerRef}>
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-8">
@@ -149,9 +149,9 @@ export function Features() {
               transition={{ duration: 0.5 }}
               viewport={{ once: true }}
             >
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">Why choose Jobpool?</h2>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">Why Choose JobPool?</h2>
               <p className="mt-4 text-gray-500 md:text-xl">
-                Our platform connects you with skilled professionals to get your tasks done efficiently.
+                Safe, reliable, and easy to use - everything you need to get tasks done.
               </p>
             </motion.div>
 

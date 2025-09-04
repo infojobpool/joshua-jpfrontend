@@ -195,7 +195,7 @@ export function Categories() {
           <span className="ml-2 text-gray-500">Loading categories...</span>
         </div>
       ) : (
-        <section id="categories" className="py-16 bg-slate-50">
+        <section id="categories" className="py-12 bg-slate-50">
           <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
             <motion.div
               className="text-center mb-12"

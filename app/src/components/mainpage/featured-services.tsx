@@ -147,7 +147,7 @@ export function FeaturedServices() {
   }, [currentIndex])
 
   return (
-    <section className="py-20 bg-white overflow-hidden">
+    <section className="py-12 bg-white overflow-hidden">
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
         <motion.div
           className="text-center mb-16"
@@ -157,10 +157,10 @@ export function FeaturedServices() {
           viewport={{ once: true }}
         >
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Featured Services
+            Popular Services
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Discover talented professionals across various categories ready to help with your tasks
+            Find help for the most common tasks people need
           </p>
         </motion.div>
 

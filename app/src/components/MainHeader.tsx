@@ -54,18 +54,21 @@ const MainHeader: React.FC = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-lg">N</span>
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="relative">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
+                <span className="text-white font-bold text-lg">JP</span>
+              </div>
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
             </div>
-            <span className="text-xl font-bold text-gray-900">JobPool</span>
+            <div className="flex flex-col">
+              <span className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">JobPool</span>
+              <span className="text-xs text-gray-500 -mt-1">Connect & Earn</span>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/browse" className="text-gray-600 hover:text-blue-600 transition-colors">
-              Browse Tasks
-            </Link>
             <Link href="/how-it-works" className="text-gray-600 hover:text-blue-600 transition-colors">
               How It Works
             </Link>
@@ -133,13 +136,6 @@ const MainHeader: React.FC = () => {
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-gray-100 py-4 transition-all duration-200 ease-in-out">
             <nav className="flex flex-col space-y-4">
-              <Link 
-                href="/browse" 
-                className="text-gray-600 hover:text-blue-600 transition-colors px-4 py-2 hover:bg-gray-50 rounded-md"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Browse Tasks
-              </Link>
               <Link 
                 href="/how-it-works" 
                 className="text-gray-600 hover:text-blue-600 transition-colors px-4 py-2 hover:bg-gray-50 rounded-md"
