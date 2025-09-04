@@ -1042,6 +1042,95 @@ export default function PayoutsPage() {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [usersById, setUsersById] = useState<Record<string, any>>({});
+  const [bankCache, setBankCache] = useState<Record<string, any>>({});
+
+  // Load user details once for bank_info lookups
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const res = await axiosInstance.get("all-user-details/");
+        const rows = res.data?.data || res.data || [];
+        const map: Record<string, any> = {};
+        rows.forEach((u: any) => {
+          if (u?.user_id != null) map[String(u.user_id)] = u;
+        });
+        setUsersById(map);
+      } catch (e) {
+        // non-blocking
+      }
+    };
+    loadUsers();
+  }, []);
+
+  // Helper to resolve a user's bank info using several fallbacks
+  const resolveBankInfo = (party: { id: any; name: string; email?: string }) => {
+    const cacheKey = String(party.id || party.email || party.name);
+    if (bankCache[cacheKey]) return bankCache[cacheKey];
+    const byId = usersById[String(party.id)];
+    if (byId?.bank_info) return byId.bank_info;
+    const list = Object.values(usersById) as any[];
+    const byEmail = list.find((u) => party.email && u.user_email === party.email);
+    if (byEmail?.bank_info) return byEmail.bank_info;
+    const byName = list.find((u) => u.user_fullname === party.name);
+    if (byName?.bank_info) return byName.bank_info;
+    return {} as any;
+  };
+
+  // Attempt network fetch for bank info when local match fails
+  const ensureBankInfo = async (party: { id: any; name: string; email?: string }) => {
+    const existing = resolveBankInfo(party);
+    const hasData = existing && (existing.account_number || existing.ifsc || existing.bank_name || existing.upi_id);
+    if (hasData) return;
+    try {
+      if (party.id != null) {
+        const res = await axiosInstance.get(`/profile?user_id=${party.id}`);
+        const b = res.data?.bank_info || res.data?.data?.bank_info || {};
+        const key = String(party.id || party.email || party.name);
+        setBankCache((prev) => ({ ...prev, [key]: b }));
+      }
+    } catch {}
+  };
+
+  // Export payouts (visible/filtered) to CSV
+  const exportToCSV = (rows: Payout[]) => {
+    try {
+      const headers = [
+        "Tasker",
+        "Poster",
+        "Amount",
+        "NetAmount",
+        "Status",
+        "Method",
+        "Date",
+      ];
+      const lines = rows.map((p) => [
+        p.tasker.name,
+        p.poster.name,
+        p.amount.toFixed(2),
+        (p.amount * 0.742).toFixed(2), // placeholder if net not provided
+        p.status,
+        p.method,
+        p.date,
+      ]);
+      const csv = [headers, ...lines]
+        .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const today = new Date();
+      const stamp = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
+        today.getDate()
+      ).padStart(2, "0")}`;
+      a.download = `payouts-${stamp}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("CSV export failed", e);
+    }
+  };
 
   const formatDate = (isoString: string): string => {
     const date = new Date(isoString);
@@ -1181,7 +1270,19 @@ export default function PayoutsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Payouts Management</h1>
-        <Button disabled={isLoading}>
+        <Button
+          disabled={isLoading}
+          onClick={() => {
+            // Apply current filters to export only visible rows
+            const filtered = payouts
+              .filter((p) =>
+                `${p.tasker.name} ${p.poster.name}`.toLowerCase().includes(searchTerm.toLowerCase())
+              )
+              .filter((p) => (statusFilter === "all" ? true : p.status.toLowerCase() === statusFilter))
+              .filter((p) => (methodFilter === "all" ? true : p.method.toLowerCase() === methodFilter));
+            exportToCSV(filtered);
+          }}
+        >
           <Download className="mr-2 h-4 w-4" />
           Export
         </Button>
@@ -1385,6 +1486,9 @@ export default function PayoutsPage() {
                               <DropdownMenuItem
                                 onClick={() => {
                                   setSelectedPayout(payout);
+                                  // try to hydrate bank details on demand
+                                  ensureBankInfo(payout.tasker);
+                                  ensureBankInfo(payout.poster);
                                   setIsDetailsDialogOpen(true);
                                 }}
                               >
@@ -1427,7 +1531,7 @@ export default function PayoutsPage() {
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                          <DialogContent className="sm:max-w-[425px]">
+                          <DialogContent className="sm:max-w-[800px]">
                             <DialogHeader>
                               <DialogTitle>Payout Details</DialogTitle>
                               <DialogDescription>
@@ -1519,6 +1623,36 @@ export default function PayoutsPage() {
                                           )
                                         : "N/A"}
                                     </div>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="rounded-lg border p-4">
+                                    <h4 className="font-semibold mb-2">Tasker Bank</h4>
+                                    {(() => {
+                                      const data = resolveBankInfo(selectedPayout.tasker) || {};
+                                      return (
+                                        <div className="text-sm space-y-1">
+                                          <div>Account: <span className="font-medium">{data.account_number || "—"}</span></div>
+                                          <div>IFSC: <span className="font-medium">{data.ifsc || "—"}</span></div>
+                                          <div>Bank: <span className="font-medium">{data.bank_name || "—"}</span></div>
+                                          <div>UPI: <span className="font-medium">{data.upi_id || "—"}</span></div>
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+                                  <div className="rounded-lg border p-4">
+                                    <h4 className="font-semibold mb-2">Poster Bank</h4>
+                                    {(() => {
+                                      const data = resolveBankInfo(selectedPayout.poster) || {};
+                                      return (
+                                        <div className="text-sm space-y-1">
+                                          <div>Account: <span className="font-medium">{data.account_number || "—"}</span></div>
+                                          <div>IFSC: <span className="font-medium">{data.ifsc || "—"}</span></div>
+                                          <div>Bank: <span className="font-medium">{data.bank_name || "—"}</span></div>
+                                          <div>UPI: <span className="font-medium">{data.upi_id || "—"}</span></div>
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                 </div>
                               </div>

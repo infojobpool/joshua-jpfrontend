@@ -52,6 +52,7 @@ export default function PaymentPage() {
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
+  const [hasTriedOnce, setHasTriedOnce] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -95,6 +96,10 @@ export default function PaymentPage() {
 
   const handlePayment = async () => {
     console.log("handlePayment called at", new Date().toISOString());
+    if (isSubmitting) {
+      console.log("Prevented double submit");
+      return;
+    }
     setIsSubmitting(true);
     setErrorMessage("");
     setPaymentStatus(null);
@@ -217,6 +222,14 @@ export default function PaymentPage() {
         stack: err.stack,
         response: err.response?.data,
       });
+      // One-time auto-retry for transient server errors
+      const status = err?.response?.status;
+      if (!hasTriedOnce && (status === 500 || status === 502 || status === 503 || status === 504)) {
+        console.warn("Auto-retrying create-order once due to server error", status);
+        setHasTriedOnce(true);
+        setTimeout(() => handlePayment(), 500);
+        return;
+      }
       setErrorMessage(err.message || "Failed to initiate payment");
       setShowPaymentFailed(true);
     } finally {
