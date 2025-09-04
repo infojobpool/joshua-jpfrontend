@@ -32,7 +32,7 @@ export function Header({
 }: HeaderProps) {
   const user = useStore((state) => state.user);
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-white/90 backdrop-blur-sm px-4 md:px-6 shadow-sm">
       <Sheet open={isMobileNavOpen} onOpenChange={setIsMobileNavOpen}>
         <SheetTrigger asChild>
           <Button variant="outline" size="icon" className="md:hidden">
@@ -63,8 +63,8 @@ export function Header({
           />
         </SheetContent>
       </Sheet>
-      <Link href="/admin" className="flex items-center gap-2 font-semibold">
-        <span className="text-lg">Jobpool Admin</span>
+      <Link href="/admin" className="flex items-center gap-2 font-extrabold tracking-tight">
+        <span className="text-lg bg-gradient-to-r from-gray-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent">JobPool Admin</span>
       </Link>
       <div className="ml-auto flex items-center gap-3">
         <div className="hidden md:flex items-center gap-3">

@@ -92,26 +92,22 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30 p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold">Jobpool Admin</h1>
-          <p className="text-muted-foreground">
-            Login to access the admin portal
-          </p>
+        <div className="text-center mb-6">
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-gray-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent">JobPool Admin</h1>
+          <p className="text-sm md:text-base text-gray-600 mt-1">Login to access the admin portal</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Admin Login</CardTitle>
-            <CardDescription>
-              Enter your credentials to access the admin dashboard
-            </CardDescription>
+        <Card className="border-0 shadow-xl rounded-2xl bg-white/90 backdrop-blur-sm">
+          <CardHeader className="border-b bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-t-2xl">
+            <CardTitle className="text-lg md:text-xl font-bold">Admin Login</CardTitle>
+            <CardDescription className="text-gray-600">Enter your credentials to access the admin dashboard</CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-6">
               <div className="space-y-2">
-                <Label htmlFor="user_email">Email</Label>
+                <Label htmlFor="user_email" className="text-sm font-semibold text-gray-800">Email</Label>
                 <Input
                   id="user_email"
                   type="user_email"
@@ -120,12 +116,13 @@ export default function AdminLoginPage() {
                   value={formData.user_email}
                   onChange={handleChange}
                   required
+                  className="border-2 border-gray-200 focus:border-blue-400 rounded-xl bg-white/80"
                 />
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password" className="text-sm font-semibold text-gray-800">Password</Label>
                   <Link
                     href="/forgotpassword"
                     className="text-xs text-primary hover:underline"
@@ -142,6 +139,7 @@ export default function AdminLoginPage() {
                     value={formData.password}
                     onChange={handleChange}
                     required
+                    className="pr-10 border-2 border-gray-200 focus:border-blue-400 rounded-xl bg-white/80"
                   />
                   <Button
                     type="button"
@@ -168,13 +166,13 @@ export default function AdminLoginPage() {
                   checked={rememberMe}
                   onCheckedChange={(checked) => setRememberMe(!!checked)}
                 />
-                <Label htmlFor="remember" className="text-sm font-normal">
+                <Label htmlFor="remember" className="text-sm font-normal text-gray-700">
                   Remember me for 30 days
                 </Label>
               </div>
             </CardContent>
-            <CardFooter>
-              <Button type="submit" className="w-full" disabled={isLoading}>
+            <CardFooter className="p-6 pt-0">
+              <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -188,7 +186,7 @@ export default function AdminLoginPage() {
           </form>
         </Card>
 
-        <div className="mt-6 text-center text-sm text-muted-foreground">
+        <div className="mt-6 text-center text-sm text-gray-600">
           <p>
             Need help?{" "}
             <Link href="/support" className="text-primary hover:underline">

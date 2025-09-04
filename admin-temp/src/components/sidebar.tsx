@@ -83,15 +83,15 @@ export function Sidebar({ pathname }: SidebarProps) {
   }, [])
 
   return (
-    <aside className="hidden w-64 border-r bg-muted/40 md:block">
+    <aside className="hidden w-64 border-r bg-white/90 backdrop-blur-sm md:block">
       <nav className="grid items-start px-4 py-4 text-sm font-medium">
         {sidebarNavItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary",
-              pathname === item.href ? "bg-muted text-primary" : "text-muted-foreground",
+              "flex items-center gap-3 rounded-xl px-3 py-2 transition-all hover:bg-blue-50 hover:text-blue-700",
+              pathname === item.href ? "bg-blue-50 text-blue-700" : "text-gray-600",
             )}
           >
             <item.icon className="h-4 w-4" />

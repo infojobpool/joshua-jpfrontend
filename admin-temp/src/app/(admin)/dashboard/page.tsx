@@ -106,11 +106,12 @@ export default function AdminDashboard() {
   return (
     <div className="flex flex-col gap-4">
       <Toaster />
+      {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl rounded-2xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <IndianRupee className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-semibold">Total Revenue</CardTitle>
+            <IndianRupee className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -118,15 +119,15 @@ export default function AdminDashboard() {
             ) : (
               <>
                 <div className="text-2xl font-bold">₹{totalRevenue.toLocaleString()}</div>
-                <p className="text-xs text-muted-foreground">+20.1% from last month</p>
+                <p className="text-xs text-gray-500">+20.1% from last month</p>
               </>
             )}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl rounded-2xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Tasks</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-semibold">Active Tasks</CardTitle>
+            <Activity className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -134,15 +135,15 @@ export default function AdminDashboard() {
             ) : (
               <>
                 <div className="text-2xl font-bold">{activeTasks}</div>
-                <p className="text-xs text-muted-foreground">+{Math.min(activeTasks, 201)} since last week</p>
+                <p className="text-xs text-gray-500">+{Math.min(activeTasks, 201)} since last week</p>
               </>
             )}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl rounded-2xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-semibold">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-indigo-600" />
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -150,42 +151,42 @@ export default function AdminDashboard() {
             ) : (
               <>
                 <div className="text-2xl font-bold">{totalUsers}</div>
-                <p className="text-xs text-muted-foreground">+10.1% from last month</p>
+                <p className="text-xs text-gray-500">+10.1% from last month</p>
               </>
             )}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl rounded-2xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Payouts</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-semibold">Pending Payouts</CardTitle>
+            <CreditCard className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">₹{pendingPayouts.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">{pendingPayoutsCount} payouts pending</p>
+            <p className="text-xs text-gray-500">{pendingPayoutsCount} payouts pending</p>
           </CardContent>
         </Card>
       </div>
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
+        <TabsList className="bg-white/80 border rounded-xl p-1">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="payouts">Payouts</TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-4">
+            <Card className="col-span-4 bg-white/90 backdrop-blur-sm border-0 shadow-xl rounded-2xl">
               <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
+                <CardTitle className="font-semibold">Recent Activity</CardTitle>
               </CardHeader>
               <CardContent className="pl-2">
                 <ActivityList users={users} jobs={jobs} isLoading={isLoading} />
               </CardContent>
             </Card>
-            <Card className="col-span-3">
+            <Card className="col-span-3 bg-white/90 backdrop-blur-sm border-0 shadow-xl rounded-2xl">
               <CardHeader>
-                <CardTitle>Task Status</CardTitle>
-                <CardDescription>Distribution of tasks by status</CardDescription>
+                <CardTitle className="font-semibold">Task Status</CardTitle>
+                <CardDescription className="text-gray-600">Distribution of tasks by status</CardDescription>
               </CardHeader>
               <CardContent>
                 <TaskStatusList jobs={jobs} isLoading={isLoading} />
@@ -194,10 +195,10 @@ export default function AdminDashboard() {
           </div>
         </TabsContent>
         <TabsContent value="tasks" className="space-y-4">
-          <Card>
+          <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl rounded-2xl">
             <CardHeader>
-              <CardTitle>Recent Tasks</CardTitle>
-              <CardDescription>Overview of recently created tasks</CardDescription>
+              <CardTitle className="font-semibold">Recent Tasks</CardTitle>
+              <CardDescription className="text-gray-600">Overview of recently created tasks</CardDescription>
             </CardHeader>
             <CardContent>
               <RecentTasksList jobs={jobs} isLoading={isLoading} />
@@ -205,10 +206,10 @@ export default function AdminDashboard() {
           </Card>
         </TabsContent>
         <TabsContent value="payouts" className="space-y-4">
-          <Card>
+          <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl rounded-2xl">
             <CardHeader>
-              <CardTitle>Recent Payouts</CardTitle>
-              <CardDescription>Overview of recent payouts to taskers</CardDescription>
+              <CardTitle className="font-semibold">Recent Payouts</CardTitle>
+              <CardDescription className="text-gray-600">Overview of recent payouts to taskers</CardDescription>
             </CardHeader>
             <CardContent>
               <RecentPayoutsList />
