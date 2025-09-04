@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "../../components/ui/button";
@@ -21,13 +21,26 @@ import useStore from "../../lib/Zustand";
 import axios, { AxiosError } from "axios";
 
 export default function SignInPage() {
-  const { login } = useStore();
+  const { login, isAuthenticated, checkAuth } = useStore();
   const router = useRouter();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Hydrate auth state and redirect away if already logged in
+  useEffect(() => {
+    checkAuth();
+    setHydrated(true);
+  }, [checkAuth]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace("/dashboard");
+    }
+  }, [isAuthenticated, router]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -84,6 +97,8 @@ export default function SignInPage() {
       setIsLoading(false);
     }
   };
+
+  if (hydrated && isAuthenticated) return null;
 
   return (
     <div className="container flex h-screen w-screen flex-col items-center justify-center">

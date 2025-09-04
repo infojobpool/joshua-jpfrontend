@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +33,12 @@ import {
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 
+interface Image {
+  id: string;
+  url: string;
+  alt: string;
+}
+
 interface Task {
   id: string;
   title: string;
@@ -49,6 +56,7 @@ interface Task {
   job_completion_status?: string;
   deletion_status: boolean;
   cancel_status: boolean;
+  images?: Image[];
 }
 
 interface Bid {
@@ -78,6 +86,7 @@ interface BidRequest {
   job_budget: number;
   job_category: string;
   category_name: string;
+  images?: Image[];
 }
 
 interface Category {
@@ -229,6 +238,13 @@ export default function Dashboard() {
               job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
               deletion_status: job.deletion_status || false,
               cancel_status: job.cancel_status ?? false,
+              images: job.job_images?.urls?.length
+                ? job.job_images.urls.map((url: string, index: number) => ({
+                    id: `img${index + 1}`,
+                    url,
+                    alt: `Job image ${index + 1}`,
+                  }))
+                : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
             };
           });
 
@@ -352,6 +368,13 @@ export default function Dashboard() {
                 job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
                 deletion_status: job.deletion_status || false,
                 cancel_status: job.cancel_status ?? false,
+                images: job.job_images?.urls?.length
+                  ? job.job_images.urls.map((url: string, index: number) => ({
+                      id: `img${index + 1}`,
+                      url,
+                      alt: `Job image ${index + 1}`,
+                    }))
+                  : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
               };
             });
 
@@ -438,6 +461,13 @@ export default function Dashboard() {
             category: job.job_category || "general",
             deletion_status: job.deletion_status || false,
             cancel_status: job.cancel_status ?? false,
+            images: job.job_images?.urls?.length
+              ? job.job_images.urls.map((url: string, index: number) => ({
+                  id: `img${index + 1}`,
+                  url,
+                  alt: `Job image ${index + 1}`,
+                }))
+              : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
           }));
           setAssignedTasks(tasks);
         } else {
@@ -480,6 +510,13 @@ export default function Dashboard() {
             job_budget: Number(bid.job_budget) || 0,
             job_category: bid.job_category || "general",
             category_name: bid.category_name || "Unknown",
+            images: bid.images?.length
+              ? bid.images.map((img: any, index: number) => ({
+                  id: `img${index + 1}`,
+                  url: typeof img === 'string' ? img : img.url,
+                  alt: `Job image ${index + 1}`,
+                }))
+              : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
           }));
           setRequestedTasks(bids);
         } else {
@@ -523,6 +560,13 @@ export default function Dashboard() {
             category: job.job_category || "general",
             deletion_status: job.deletion_status || false,
             cancel_status: job.cancel_status ?? false,
+            images: job.job_images?.urls?.length
+              ? job.job_images.urls.map((url: string, index: number) => ({
+                  id: `img${index + 1}`,
+                  url,
+                  alt: `Job image ${index + 1}`,
+                }))
+              : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
           }));
           setCompletedTasks(tasks);
         } else {
@@ -833,6 +877,18 @@ export default function Dashboard() {
                       </div>
                     )}
                     
+                    {/* Task Image */}
+                    <div className="p-3 pb-0">
+                      <div className="relative w-full h-24 rounded-lg overflow-hidden bg-gray-100">
+                        <Image
+                          src={task.images?.[0]?.url || "/images/placeholder.svg"}
+                          alt={task.images?.[0]?.alt || "Task image"}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        />
+                      </div>
+                    </div>
 
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
@@ -1085,6 +1141,18 @@ export default function Dashboard() {
                       
                       return (
                                                 <Card key={task.id} className="flex flex-col bg-gradient-to-br from-pink-50 via-rose-50 to-red-50 border-l-4 border-l-pink-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
+                          {/* Task Image */}
+                          <div className="p-3 pb-0">
+                            <div className="relative w-full h-24 rounded-lg overflow-hidden bg-gray-100">
+                              <Image
+                                src={task.images?.[0]?.url || "/images/placeholder.svg"}
+                                alt={task.images?.[0]?.alt || "Task image"}
+                                fill
+                                className="object-cover"
+                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                              />
+                            </div>
+                          </div>
                           <CardHeader className="pb-2">
                             <div className="flex justify-between items-start">
                               <CardTitle className="text-lg">{task.title}</CardTitle>
@@ -1152,6 +1220,18 @@ export default function Dashboard() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {assignedTasks.map((task) => (
                   <Card key={task.id} className="bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 border-l-4 border-l-amber-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
+                    {/* Task Image */}
+                    <div className="p-3 pb-0">
+                      <div className="relative w-full h-24 rounded-lg overflow-hidden bg-gray-100">
+                        <Image
+                          src={task.images?.[0]?.url || "/images/placeholder.svg"}
+                          alt={task.images?.[0]?.alt || "Task image"}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        />
+                      </div>
+                    </div>
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <CardTitle className="text-lg">{task.title}</CardTitle>
@@ -1222,6 +1302,18 @@ export default function Dashboard() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {completedTasks.map((task) => (
                   <Card key={task.id} className="bg-gradient-to-br from-emerald-50 via-green-50 to-lime-50 border-l-4 border-l-emerald-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
+                    {/* Task Image */}
+                    <div className="p-4 pb-0">
+                      <div className="relative w-full h-32 rounded-lg overflow-hidden bg-gray-100">
+                        <Image
+                          src={task.images?.[0]?.url || "/images/placeholder.svg"}
+                          alt={task.images?.[0]?.alt || "Task image"}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        />
+                      </div>
+                    </div>
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <CardTitle className="text-lg">{task.title}</CardTitle>
@@ -1283,6 +1375,18 @@ export default function Dashboard() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {requestedTasks.map((bid) => (
                   <Card key={bid.bid_id} className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
+                    {/* Task Image */}
+                    <div className="p-3 pb-0">
+                      <div className="relative w-full h-24 rounded-lg overflow-hidden bg-gray-100">
+                        <Image
+                          src={bid.images?.[0]?.url || "/images/placeholder.svg"}
+                          alt={bid.images?.[0]?.alt || "Task image"}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        />
+                      </div>
+                    </div>
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <CardTitle className="text-lg">

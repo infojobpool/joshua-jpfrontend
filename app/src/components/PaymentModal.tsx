@@ -171,9 +171,9 @@ export function PaymentModal({ show, task, handlePayment, closeModal, isSubmitti
   if (!show) return null
 
 
-  const commission = bidAmount * 0.05 // 5% commission
-  const gst = (bidAmount + commission) * 0.18 // 18% GST on bid amount + commission
-  const totalAmount = bidAmount + commission + gst
+  // Handling charges: single 23% on the bid amount
+  const handling = bidAmount * 0.23
+  const totalAmount = bidAmount + handling
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -189,12 +189,8 @@ export function PaymentModal({ show, task, handlePayment, closeModal, isSubmitti
               <span className="font-medium">₹{bidAmount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Commission (5%)</span>
-              <span className="font-medium">₹{commission.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">GST (18%)</span>
-              <span className="font-medium">₹{gst.toFixed(2)}</span>
+              <span className="text-muted-foreground">Handling Charges</span>
+              <span className="font-medium">₹{handling.toFixed(2)}</span>
             </div>
             <div className="border-t pt-3 mt-3 flex justify-between">
               <span className="font-semibold text-lg">Total Amount</span>

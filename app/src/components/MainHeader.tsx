@@ -10,10 +10,16 @@ import useStore from "@/lib/Zustand";
 const MainHeader: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { isAuthenticated, user, logout, checkAuth } = useStore();
+  const [isHydrated, setIsHydrated] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
-    checkAuth();
+    try {
+      checkAuth();
+    } finally {
+      // Mark after first client pass to avoid SSR/client mismatch flashes
+      setIsHydrated(true);
+    }
   }, [checkAuth]);
 
   const toggleMobileMenu = () => {
@@ -24,6 +30,11 @@ const MainHeader: React.FC = () => {
     logout();
     setIsMobileMenuOpen(false);
   };
+
+  // Hide header until hydrated to prevent flash of wrong auth state after refresh
+  if (!isHydrated) {
+    return null;
+  }
 
   // Hide header on key authenticated app pages to reduce clutter
   const hideOnPrefixes = [
