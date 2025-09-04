@@ -1,0 +1,29 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#F8FAFC"/>
+  <!-- Background -->
+  <rect x="0" y="200" width="400" height="100" fill="#E2E8F0"/>
+  
+  <!-- Table being assembled -->
+  <rect x="150" y="120" width="100" height="8" fill="#8B4513" rx="4"/>
+  <rect x="160" y="128" width="8" height="60" fill="#8B4513"/>
+  <rect x="232" y="128" width="8" height="60" fill="#8B4513"/>
+  <rect x="160" y="188" width="80" height="8" fill="#8B4513" rx="4"/>
+  
+  <!-- Tools -->
+  <rect x="100" y="140" width="20" height="4" fill="#374151" rx="2"/>
+  <circle cx="110" cy="142" r="3" fill="#6B7280"/>
+  <rect x="280" y="150" width="15" height="15" fill="#F59E0B" rx="2"/>
+  
+  <!-- Screws and parts -->
+  <circle cx="120" cy="160" r="2" fill="#6B7280"/>
+  <circle cx="130" cy="170" r="2" fill="#6B7280"/>
+  <circle cx="140" cy="165" r="2" fill="#6B7280"/>
+  
+  <!-- Person silhouette -->
+  <circle cx="200" cy="80" r="12" fill="#3B82F6"/>
+  <rect x="195" y="92" width="10" height="20" fill="#3B82F6" rx="5"/>
+  <rect x="190" y="112" width="8" height="15" fill="#3B82F6" rx="4"/>
+  <rect x="202" y="112" width="8" height="15" fill="#3B82F6" rx="4"/>
+  
+  <text x="200" y="250" text-anchor="middle" fill="#1F2937" font-family="Arial, sans-serif" font-size="16" font-weight="600">Furniture Assembly</text>
+</svg>

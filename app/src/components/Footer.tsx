@@ -8,11 +8,17 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Company Info */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-lg">N</span>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
+                  <span className="text-white font-bold text-lg">JP</span>
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-gray-900"></div>
               </div>
-              <span className="text-xl font-bold">JobPool</span>
+              <div className="flex flex-col">
+                <span className="text-xl font-bold">JobPool</span>
+                <span className="text-xs text-gray-400 -mt-1">Connect & Earn</span>
+              </div>
             </div>
             <p className="text-gray-300 text-sm">
               Connect with skilled professionals to get your tasks done quickly and efficiently.
@@ -40,7 +46,6 @@ const Footer: React.FC = () => {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Quick Links</h3>
             <ul className="space-y-2">
-              <li><Link href="/browse" className="text-gray-300 hover:text-white transition-colors">Browse Tasks</Link></li>
               <li><Link href="/post-task" className="text-gray-300 hover:text-white transition-colors">Post a Task</Link></li>
               <li><Link href="/how-it-works" className="text-gray-300 hover:text-white transition-colors">How It Works</Link></li>
               <li><Link href="/categories" className="text-gray-300 hover:text-white transition-colors">Categories</Link></li>

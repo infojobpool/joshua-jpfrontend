@@ -1,0 +1,9 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#F3F4F6"/>
+  <rect x="50" y="50" width="300" height="200" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="2" rx="8"/>
+  <rect x="80" y="80" width="80" height="60" fill="#3B82F6" rx="4"/>
+  <rect x="180" y="100" width="60" height="40" fill="#EF4444" rx="4"/>
+  <rect x="260" y="70" width="70" height="50" fill="#10B981" rx="4"/>
+  <line x1="200" y1="250" x2="200" y2="280" stroke="#6B7280" stroke-width="3"/>
+  <text x="200" y="250" text-anchor="middle" fill="#374151" font-family="Arial, sans-serif" font-size="18" font-weight="600">Mount Art & Shelves</text>
+</svg>

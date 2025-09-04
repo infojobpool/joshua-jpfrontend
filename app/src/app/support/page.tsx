@@ -4,13 +4,9 @@ import Link from "next/link"
 import { Button } from "../../components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { HeadphonesIcon, MessageSquare, HelpCircle, ArrowRight } from "lucide-react"
-import { Navbar } from "@/components/mainpage/navbar"
-import { Footer } from "@/components/mainpage/footer"
 
 export default function HomePage() {
   return (
-    <div>
-         <Navbar />
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
        
       <div className="container mx-auto px-4 py-16">
@@ -89,8 +85,6 @@ export default function HomePage() {
           </div>
         </div>
       </div>
-    </div>
-    <Footer />
     </div>
   )
 }

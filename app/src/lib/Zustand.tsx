@@ -19,7 +19,7 @@ interface JwtPayload {
 }
 
 interface AuthState {
-  userId: string | null;
+   userId: string | null;
   exp: number | null;
   isAuthenticated: boolean;
   user: UserData | null;

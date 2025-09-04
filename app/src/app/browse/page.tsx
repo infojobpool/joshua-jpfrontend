@@ -10,162 +10,202 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Clock, DollarSign, MapPin, Search, Filter, Star } from "lucide-react"
+import { Clock, DollarSign, MapPin, Search, Filter, Star, Loader2 } from "lucide-react"
+import axiosInstance from "@/lib/axiosInstance"
+import { toast } from "sonner"
 
 export default function BrowseTasksPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [user, setUser] = useState<{ name: string } | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [category, setCategory] = useState(searchParams.get("category") || "all")
   const [priceRange, setPriceRange] = useState([0, 500])
   const [location, setLocation] = useState("")
   const [showFilters, setShowFilters] = useState(false)
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false)
 
   // Define task interface for type safety
   interface Task {
     id: string;
+    user_ref_id?: string;
     title: string;
     description: string;
     budget: number;
     location: string;
-    status: string;
+    status: boolean;
+    deletion_status?: boolean;
     postedAt: string;
     category: string;
-    poster: {
-      name: string;
-      rating: number;
-    };
-    offers: number;
+    category_name: string;
+    posted_by: string;
+    dueDate?: string;
+    job_images?: { urls: string[] };
+    offers?: number;
   }
 
-  // Mock tasks data
-  const allTasks: Task[] = [
-    {
-      id: "task1",
-      title: "Help with moving furniture",
-      description: "Need help moving a couch and a few boxes from my apartment to my new place.",
-      budget: 50,
-      location: "Brooklyn, NY",
-      status: "open",
-      postedAt: "2 days ago",
-      category: "delivery",
-      poster: {
-        name: "Alex J.",
-        rating: 4.8,
-      },
-      offers: 3,
-    },
-    {
-      id: "task2",
-      title: "Fix leaky faucet",
-      description: "Kitchen faucet is leaking and needs to be fixed or replaced.",
-      budget: 75,
-      location: "Queens, NY",
-      status: "open",
-      postedAt: "1 week ago",
-      category: "handyman",
-      poster: {
-        name: "Sarah M.",
-        rating: 4.5,
-      },
-      offers: 5,
-    },
-    {
-      id: "task3",
-      title: "Website debugging",
-      description: "Need help fixing some bugs on my WordPress website.",
-      budget: 120,
-      location: "Remote",
-      status: "open",
-      postedAt: "3 hours ago",
-      category: "tech",
-      poster: {
-        name: "Mike T.",
-        rating: 4.9,
-      },
-      offers: 2,
-    },
-    {
-      id: "task4",
-      title: "Dog walking",
-      description: "Need someone to walk my dog for the next 3 days while I'm away.",
-      budget: 60,
-      location: "Manhattan, NY",
-      status: "open",
-      postedAt: "1 day ago",
-      category: "home",
-      poster: {
-        name: "Emma S.",
-        rating: 4.7,
-      },
-      offers: 4,
-    },
-    {
-      id: "task5",
-      title: "Grocery delivery",
-      description: "Need someone to pick up groceries from the store and deliver to my home.",
-      budget: 30,
-      location: "Bronx, NY",
-      status: "open",
-      postedAt: "5 hours ago",
-      category: "delivery",
-      poster: {
-        name: "Robert J.",
-        rating: 4.6,
-      },
-      offers: 1,
-    },
-    {
-      id: "task6",
-      title: "Lawn mowing",
-      description: "Need lawn mowed and edges trimmed.",
-      budget: 45,
-      location: "Staten Island, NY",
-      status: "open",
-      postedAt: "3 days ago",
-      category: "home",
-      poster: {
-        name: "Lisa K.",
-        rating: 4.8,
-      },
-      offers: 2,
-    },
-    {
-      id: "task7",
-      title: "Computer setup",
-      description: "Help setting up new computer and transferring files.",
-      budget: 80,
-      location: "Remote",
-      status: "open",
-      postedAt: "2 days ago",
-      category: "tech",
-      poster: {
-        name: "David W.",
-        rating: 4.9,
-      },
-      offers: 3,
-    },
-    {
-      id: "task8",
-      title: "House cleaning",
-      description: "Need a thorough cleaning of my 2-bedroom apartment.",
-      budget: 100,
-      location: "Brooklyn, NY",
-      status: "open",
-      postedAt: "1 day ago",
-      category: "cleaning",
-      poster: {
-        name: "Jennifer L.",
-        rating: 4.7,
-      },
-      offers: 6,
-    },
-  ]
+  interface Category {
+    category_id: string;
+    category_name: string;
+    job_count?: number;
+  }
+
+  // Format date helper
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return "Invalid date";
+    }
+  };
+
+  // Fetch tasks from API
+  const fetchTasks = async () => {
+    try {
+      setIsLoadingTasks(true);
+      const response = await axiosInstance.get("/get-all-jobs/");
+      if (response.data.status_code === 200) {
+        const mappedTasks = response.data.data.jobs.map((job: any) => ({
+          id: job.job_id,
+          user_ref_id: job.user_ref_id,
+          title: job.job_title,
+          description: job.job_description,
+          budget: job.job_budget,
+          location: job.job_location,
+          status: job.status,
+          deletion_status: job.deletion_status,
+          posted_by: job.posted_by,
+          dueDate: job.job_due_date,
+          category: job.job_category,
+          category_name: job.job_category_name,
+          job_images: job.job_images,
+          postedAt: job.created_at,
+          offers: 0, // Default value, can be updated if API provides this
+        }));
+        setTasks(mappedTasks);
+      } else {
+        toast.error(response.data.message || "Failed to fetch tasks");
+      }
+    } catch (error) {
+      console.log("API not available, using sample tasks");
+      // Fallback to sample tasks when API is not available
+      const sampleTasks: Task[] = [
+        {
+          id: "sample1",
+          title: "Help with moving furniture",
+          description: "Need help moving a couch and a few boxes from my apartment to my new place.",
+          budget: 50,
+          location: "Brooklyn, NY",
+          status: true,
+          postedAt: "2024-01-15T10:00:00Z",
+          category: "home",
+          category_name: "Home & Garden",
+          posted_by: "Alex J.",
+        },
+        {
+          id: "sample2",
+          title: "Fix leaky faucet",
+          description: "Kitchen faucet is leaking and needs to be fixed or replaced.",
+          budget: 75,
+          location: "Queens, NY",
+          status: true,
+          postedAt: "2024-01-14T14:30:00Z",
+          category: "plumbing",
+          category_name: "Plumbing",
+          posted_by: "Sarah M.",
+        },
+        {
+          id: "sample3",
+          title: "Website debugging",
+          description: "Need help fixing some bugs on my WordPress website.",
+          budget: 120,
+          location: "Remote",
+          status: true,
+          postedAt: "2024-01-13T09:15:00Z",
+          category: "tech",
+          category_name: "Technology",
+          posted_by: "Mike T.",
+        },
+        {
+          id: "sample4",
+          title: "Dog walking",
+          description: "Need someone to walk my dog twice a day for a week.",
+          budget: 200,
+          location: "Manhattan, NY",
+          status: true,
+          postedAt: "2024-01-12T16:45:00Z",
+          category: "pet",
+          category_name: "Pet Care",
+          posted_by: "Emma R.",
+        },
+        {
+          id: "sample5",
+          title: "Garden cleanup",
+          description: "Need help cleaning up my backyard garden and trimming bushes.",
+          budget: 80,
+          location: "Bronx, NY",
+          status: true,
+          postedAt: "2024-01-11T11:20:00Z",
+          category: "home",
+          category_name: "Home & Garden",
+          posted_by: "John D.",
+        },
+        {
+          id: "sample6",
+          title: "House cleaning",
+          description: "Need a thorough cleaning of my 2-bedroom apartment.",
+          budget: 100,
+          location: "Brooklyn, NY",
+          status: true,
+          postedAt: "2024-01-10T13:00:00Z",
+          category: "cleaning",
+          category_name: "Cleaning",
+          posted_by: "Jennifer L.",
+        },
+      ];
+      setTasks(sampleTasks);
+    } finally {
+      setIsLoadingTasks(false);
+    }
+  };
+
+  // Fetch categories from API
+  const fetchCategories = async () => {
+    try {
+      const response = await axiosInstance.get("get-all-categories/");
+      if (response.data.status_code === 200) {
+        setCategories(response.data.data);
+      } else {
+        toast.error(response.data.message || "Failed to fetch categories");
+      }
+    } catch (error) {
+      console.log("Categories API not available, using sample categories");
+      // Fallback to sample categories when API is not available
+      const sampleCategories: Category[] = [
+        { category_id: "home", category_name: "Home & Garden" },
+        { category_id: "plumbing", category_name: "Plumbing" },
+        { category_id: "tech", category_name: "Technology" },
+        { category_id: "pet", category_name: "Pet Care" },
+        { category_id: "cleaning", category_name: "Cleaning" },
+        { category_id: "delivery", category_name: "Delivery & Moving" },
+        { category_id: "handyman", category_name: "Handyman" },
+      ];
+      setCategories(sampleCategories);
+    }
+  };
 
   // Filter tasks based on search and filters
-  const filteredTasks = allTasks.filter((task) => {
+  const filteredTasks = tasks.filter((task) => {
+    // Only show active tasks that are not deleted
+    if (task.deletion_status || !task.status) return false;
+
     // Filter by search term
     const matchesSearch =
       searchTerm === "" ||
@@ -191,6 +231,10 @@ export default function BrowseTasksPage() {
       setUser(JSON.parse(storedUser))
     }
     setLoading(false)
+    
+    // Fetch tasks and categories
+    fetchTasks()
+    fetchCategories()
   }, [])
 
   // Fix the linting error by adding the proper type to the event parameter
@@ -200,51 +244,51 @@ export default function BrowseTasksPage() {
     console.log("Searching for:", searchTerm)
   }
 
-  if (loading) {
-    return <div className="flex h-screen items-center justify-center">Loading...</div>
-  }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b">
-        <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-            <span className="text-primary">JobPool</span>
-          </Link>
-          <nav className="hidden md:flex gap-6">
-            <Link href="/dashboard" className="text-sm font-medium hover:underline underline-offset-4">
-              Dashboard
+    <div className="min-h-screen">
+      {/* Simple Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center justify-between">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">JP</span>
+              </div>
+              <span className="text-xl font-bold text-gray-900">JobPool</span>
             </Link>
-            <Link href="/post-task" className="text-sm font-medium hover:underline underline-offset-4">
-              Post a Task
-            </Link>
-            {/* <Link href="/messages" className="text-sm font-medium hover:underline underline-offset-4">
-              Messages
-            </Link> */}
-          </nav>
-          <div className="flex items-center gap-4">
-            {user ? (
-              <Link href="/dashboard">
-                <Button variant="outline" size="sm">
-                  Dashboard
-                </Button>
+            <nav className="hidden md:flex items-center space-x-6">
+              <Link href="/browse" className="text-gray-600 hover:text-blue-600 transition-colors font-medium">
+                Browse Tasks
               </Link>
-            ) : (
-              <>
-                <Link href="/signin">
-                  <Button variant="outline" size="sm">
+              <Link href="/how-it-works" className="text-gray-600 hover:text-blue-600 transition-colors">
+                How It Works
+              </Link>
+              <Link href="/categories" className="text-gray-600 hover:text-blue-600 transition-colors">
+                Categories
+              </Link>
+            </nav>
+            <div className="flex items-center gap-4">
+              {user ? (
+                <Link href="/dashboard" className="text-blue-600 hover:text-blue-700 font-medium">
+                  Dashboard
+                </Link>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Link href="/signin" className="text-gray-600 hover:text-blue-600 transition-colors">
                     Sign In
-                  </Button>
-                </Link>
-                <Link href="/signup">
-                  <Button size="sm">Sign Up</Button>
-                </Link>
-              </>
-            )}
+                  </Link>
+                  <Link href="/signup">
+                    <Button size="sm">Sign Up</Button>
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
-      <main className="flex-1 container py-6 md:py-10 px-4 md:px-6">
+
+      <main className="container py-6 md:py-10 px-4 md:px-6 max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight">Browse Tasks</h1>
           <p className="text-muted-foreground">Find tasks that match your skills and availability</p>
@@ -266,11 +310,11 @@ export default function BrowseTasksPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Categories</SelectItem>
-                      <SelectItem value="home">Home & Garden</SelectItem>
-                      <SelectItem value="delivery">Delivery & Moving</SelectItem>
-                      <SelectItem value="handyman">Handyman</SelectItem>
-                      <SelectItem value="tech">Tech & IT</SelectItem>
-                      <SelectItem value="cleaning">Cleaning</SelectItem>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.category_id} value={cat.category_id}>
+                          {cat.category_name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -333,11 +377,11 @@ export default function BrowseTasksPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Categories</SelectItem>
-                        <SelectItem value="home">Home & Garden</SelectItem>
-                        <SelectItem value="delivery">Delivery & Moving</SelectItem>
-                        <SelectItem value="handyman">Handyman</SelectItem>
-                        <SelectItem value="tech">Tech & IT</SelectItem>
-                        <SelectItem value="cleaning">Cleaning</SelectItem>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.category_id} value={cat.category_id}>
+                            {cat.category_name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -396,6 +440,11 @@ export default function BrowseTasksPage() {
                   </Button>
                 </CardContent>
               </Card>
+            ) : isLoadingTasks ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                <span className="ml-2 text-gray-500">Loading tasks...</span>
+              </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredTasks.map((task) => (
@@ -407,7 +456,7 @@ export default function BrowseTasksPage() {
                       </div>
                       <CardDescription className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        <span>{task.postedAt}</span>
+                        <span>{formatDate(task.postedAt)}</span>
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="flex-1">
@@ -423,12 +472,12 @@ export default function BrowseTasksPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Avatar className="h-4 w-4">
-                            <AvatarFallback>{task.poster.name.charAt(0)}</AvatarFallback>
+                            <AvatarFallback>{task.posted_by.charAt(0).toUpperCase()}</AvatarFallback>
                           </Avatar>
-                          <span>{task.poster.name}</span>
+                          <span>{task.posted_by}</span>
                           <div className="flex items-center">
                             <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                            <span className="text-xs ml-0.5">{task.poster.rating}</span>
+                            <span className="text-xs ml-0.5">4.5</span>
                           </div>
                         </div>
                       </div>

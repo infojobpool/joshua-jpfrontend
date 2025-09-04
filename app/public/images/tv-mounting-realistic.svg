@@ -1,0 +1,33 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#F8FAFC"/>
+  
+  <!-- Wall -->
+  <rect x="0" y="0" width="400" height="300" fill="#F1F5F9"/>
+  
+  <!-- TV -->
+  <rect x="120" y="60" width="160" height="100" fill="#1F2937" rx="8"/>
+  <rect x="130" y="70" width="140" height="80" fill="#0F172A" rx="4"/>
+  <rect x="150" y="90" width="100" height="40" fill="#3B82F6" rx="2"/>
+  <rect x="180" y="100" width="40" height="20" fill="#1F2937" rx="1"/>
+  
+  <!-- Mounting bracket -->
+  <rect x="190" y="160" width="20" height="8" fill="#6B7280" rx="2"/>
+  <rect x="195" y="168" width="10" height="20" fill="#6B7280" rx="2"/>
+  
+  <!-- Wall screws -->
+  <circle cx="200" cy="164" r="2" fill="#374151"/>
+  <circle cx="200" cy="180" r="2" fill="#374151"/>
+  <circle cx="200" cy="196" r="2" fill="#374151"/>
+  
+  <!-- Person with tools -->
+  <circle cx="280" cy="100" r="10" fill="#3B82F6"/>
+  <rect x="275" y="110" width="10" height="15" fill="#3B82F6" rx="5"/>
+  <rect x="270" y="125" width="8" height="12" fill="#3B82F6" rx="4"/>
+  <rect x="282" y="125" width="8" height="12" fill="#3B82F6" rx="4"/>
+  
+  <!-- Drill -->
+  <rect x="290" y="95" width="15" height="6" fill="#374151" rx="3"/>
+  <circle cx="305" cy="98" r="3" fill="#6B7280"/>
+  
+  <text x="200" y="250" text-anchor="middle" fill="#1F2937" font-family="Arial, sans-serif" font-size="16" font-weight="600">Mount a TV</text>
+</svg>

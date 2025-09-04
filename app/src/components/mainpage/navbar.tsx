@@ -149,11 +149,14 @@ export function Navbar() {
       <div className="w-full max-w-none flex h-16 items-center justify-between px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
         <Link href="/" className="flex items-center gap-2">
           <motion.div
-            className="text-blue-600 font-bold text-2xl"
+            className="flex items-center gap-2"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            JobPool
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">JP</span>
+            </div>
+            <span className="text-blue-600 font-bold text-2xl">JobPool</span>
           </motion.div>
         </Link>
 

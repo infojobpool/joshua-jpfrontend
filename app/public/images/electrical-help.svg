@@ -1,0 +1,9 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#F3F4F6"/>
+  <rect x="100" y="80" width="200" height="140" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="2" rx="8"/>
+  <circle cx="200" cy="120" r="30" fill="#F59E0B" stroke="#D97706" stroke-width="3"/>
+  <path d="M 185 105 L 215 135 M 215 105 L 185 135" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  <rect x="180" y="160" width="40" height="20" fill="#6B7280" rx="2"/>
+  <rect x="190" y="180" width="20" height="30" fill="#3B82F6" rx="2"/>
+  <text x="200" y="250" text-anchor="middle" fill="#374151" font-family="Arial, sans-serif" font-size="18" font-weight="600">Electrical Help</text>
+</svg>
