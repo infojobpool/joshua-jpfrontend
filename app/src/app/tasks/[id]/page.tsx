@@ -1246,7 +1246,28 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [showConfirmBid, setShowConfirmBid] = useState<boolean>(false);
+  const [taskOrders, setTaskOrders] = useState<any[]>([]);
   const taskerId = offers.length > 0 ? offers[0].tasker.id : null;
+
+  // Fetch task orders to check payment status
+  const fetchTaskOrders = async () => {
+    try {
+      const response = await axiosInstance.get("/get-all-task-orders/");
+      if (response.data.status_code === 200 && response.data.data?.task_orders) {
+        setTaskOrders(response.data.data.task_orders);
+        console.log("📋 Task orders fetched for individual task:", response.data.data.task_orders);
+        console.log("📋 All order statuses for individual task:", response.data.data.task_orders.map(order => ({
+          order_id: order.order_id,
+          job_id: order.job_id,
+          status: order.status,
+          tasker_id: order.tasker_id,
+          poster_id: order.taskmanager_id
+        })));
+      }
+    } catch (error) {
+      console.error("Failed to fetch task orders:", error);
+    }
+  };
 
   // Load user, profile, and sync bids
   useEffect(() => {
@@ -1331,6 +1352,9 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   useEffect(() => {
     const loadTaskData = async () => {
       try {
+        // Fetch task orders first
+        await fetchTaskOrders();
+        
         const response = await axiosInstance.get(`/get-job/${id}/`);
         const data: ApiJobResponse = response.data;
 
@@ -1349,39 +1373,34 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           job.worker_id ||
           null;
 
-        // Use the same status determination logic as dashboard
+        // Use same status determination logic as dashboard
         let jobStatus = "open";
-        let progressLabel: string | undefined = undefined;
         
-        // Robust acceptance/payment detection across possible API shapes
-        const isPaid =
-          job.payment_status === "paid" ||
-          job.payment_status === "completed" ||
-          job.payment_status === "success" ||
-          job.payment_status === true ||
-          job.payment_made === true ||
-          job.payment_completed === true;
+        // Check if this task has a paid order
+        const hasPaidOrder = taskOrders.some(order => {
+          const orderTaskId = order.job_id || order.postId || order.post_id || order.task_id;
+          // Status 1 = Completed/Paid, Status 0 = Processing
+          // TEMPORARY FIX: Treat status 0 as paid since backend isn't updating to status 1
+          const isPaid = order.status === 1 || order.status === "1" || order.status === 0;
+          const isMatching = orderTaskId === job.job_id.toString();
+          return isMatching && isPaid;
+        });
         
-        const isAccepted =
-          job.bid_accepted === true ||
-          job.bid_accepted === "true" ||
-          job.offer_accepted === true ||
-          job.offer_accepted === "true" ||
-          job.status === "assigned" ||
-          job.status === "working" ||
-          job.status === "active" ||
-          job.status === "in_progress";
+        const matchingOrders = taskOrders.filter(order => {
+          const orderTaskId = order.job_id || order.postId || order.post_id || order.task_id;
+          return orderTaskId === job.job_id.toString();
+        });
         
-        console.log(`🔍 Task Details - Task ${job.job_id} status debug:`, {
-          job_completion_status: job.job_completion_status,
-          deletion_status: job.deletion_status,
-          cancel_status: job.cancel_status,
-          status: job.status,
-          payment_status: job.payment_status,
-          bid_accepted: job.bid_accepted,
-          isPaid,
-          isAccepted,
-          allKeys: Object.keys(job)
+        console.log(`🔍 Individual task ${job.job_id} payment check:`, {
+          hasPaidOrder,
+          matchingOrders: matchingOrders.map(order => ({
+            orderId: order.order_id || order.id,
+            status: order.status,
+            payment_status: order.payment_status,
+            order_status: order.order_status,
+            allFields: Object.keys(order)
+          })),
+          finalStatus: hasPaidOrder ? "in_progress" : "open"
         });
         
         if (job.job_completion_status === 1) {
@@ -1390,17 +1409,22 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           jobStatus = "deleted";
         } else if (job.cancel_status) {
           jobStatus = "canceled";
-        } else if (isPaid || isAccepted) {
+        } else if (job.status === "in_progress" || job.status === "working" || job.status === "assigned" || 
+                  job.status === "accepted" || job.status === "paid" || job.status === "active" ||
+                  job.bid_accepted === true || job.bid_accepted === "true" || 
+                  job.offer_accepted === true || job.offer_accepted === "true" ||
+                  job.payment_status === "paid" || job.payment_status === "completed" ||
+                  job.payment_status === "success" || job.payment_status === true ||
+                  job.payment_status === "PAID" || job.payment_status === "COMPLETED" ||
+                  job.payment_status === "SUCCESS" || job.payment_status === 1 ||
+                  job.payment_status === "1" || job.payment_status === "confirmed" ||
+                  job.payment_status === "CONFIRMED" || job.payment_status === "processed" ||
+                  job.payment_status === "PROCESSED" || job.payment_status === "settled" ||
+                  job.payment_status === "SETTLED" || hasPaidOrder) {
           jobStatus = "in_progress";
-          // Provide a clear reason label for highlighting
-          if (isPaid) {
-            progressLabel = "In Progress — Payment Made";
-          } else if (isAccepted) {
-            progressLabel = "In Progress — Bid Accepted";
-          } else {
-            progressLabel = "In Progress";
-          }
         }
+        // All other tasks remain "open" for bidding
+        
 
         const mappedTask: Task = {
           id: job.job_id,
@@ -1449,7 +1473,6 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           },
           offers: [],
           assignedTasker: assignedId ? { id: String(assignedId) } as any : undefined,
-          progressLabel,
         };
         setTask(mappedTask);
         console.log("Mapped Task:", mappedTask);
@@ -1465,7 +1488,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     };
 
     loadTaskData();
-  }, [id]);
+  }, [id, taskOrders]);
 
   // Load bids/offers
   useEffect(() => {
@@ -1527,7 +1550,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         console.log("Mapped offers:", newOffers); // Debug log
       } catch (error: any) {
         console.error("Error loading bids:", error);
-        toast.error(error.response?.data?.message || "Failed to load bids");
+        // Removed annoying toast notification for failed bid loading
       }
     }
 

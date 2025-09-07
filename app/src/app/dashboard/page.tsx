@@ -29,7 +29,8 @@ import {
   User,
   Settings,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  Bell
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
@@ -58,7 +59,6 @@ interface Task {
   deletion_status: boolean;
   cancel_status: boolean;
   images?: Image[];
-  progressLabel?: string;
 }
 
 interface Bid {
@@ -116,6 +116,30 @@ export default function Dashboard() {
   const [requestedTasks, setRequestedTasks] = useState<BidRequest[]>([]);
   // Local filter for My Tasks summary chips
   const [myTasksFilter, setMyTasksFilter] = useState<"all" | "in_progress" | "open" | "completed">("all");
+  // Store task orders to check payment status
+  const [taskOrders, setTaskOrders] = useState<any[]>([]);
+  
+  // Fetch task orders to check payment status
+  const fetchTaskOrders = async () => {
+    try {
+      const response = await axiosInstance.get("/get-all-task-orders/");
+      if (response.data.status_code === 200 && response.data.data?.task_orders) {
+        setTaskOrders(response.data.data.task_orders);
+        console.log("📋 Task orders fetched:", response.data.data.task_orders);
+        console.log("📋 Total orders:", response.data.data.task_orders.length);
+        console.log("📋 Sample order structure:", response.data.data.task_orders[0]);
+        console.log("📋 All order statuses:", response.data.data.task_orders.map(order => ({
+          order_id: order.order_id,
+          job_id: order.job_id,
+          status: order.status,
+          tasker_id: order.tasker_id,
+          poster_id: order.taskmanager_id
+        })));
+      }
+    } catch (error) {
+      console.error("Failed to fetch task orders:", error);
+    }
+  };
   
   // Summary counts for "My Tasks"
   const myTasksSummary = (() => {
@@ -126,6 +150,7 @@ export default function Dashboard() {
       (t) => t.status === "open" && !t.deletion_status && !t.cancel_status
     ).length;
     const completedCount = postedTasks.filter((t) => t.status === "completed").length;
+    
     return { inProgress, open, completed: completedCount };
   })();
   
@@ -144,28 +169,6 @@ export default function Dashboard() {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
-  // Override effect to ensure "wanted gardener" shows as in_progress
-  useEffect(() => {
-    if (postedTasks.length > 0) {
-      console.log('🔧 OVERRIDE EFFECT: Checking postedTasks:', postedTasks.map(t => ({ title: t.title, status: t.status, offers: t.offers })));
-      
-      const hasGardenerTask = postedTasks.some(task => 
-        task.title.toLowerCase().includes("gardener") && task.status !== "in_progress"
-      );
-      
-      if (hasGardenerTask) {
-        console.log('🔧 OVERRIDE EFFECT: Found gardener task, applying in_progress status');
-        const updatedTasks = postedTasks.map(task => {
-          if (task.title.toLowerCase().includes("gardener")) {
-            console.log(`🔧 OVERRIDE EFFECT: Marking "${task.title}" as in_progress`);
-            return { ...task, status: "in_progress" };
-          }
-          return task;
-        });
-        setPostedTasks(updatedTasks);
-      }
-    }
-  }, [postedTasks]);
 
   // Close profile dropdown when clicking outside
   useEffect(() => {
@@ -185,6 +188,7 @@ export default function Dashboard() {
         return;
       }
     setLoading(false);
+    fetchTaskOrders(); // Fetch task orders when user is authenticated
   }, [isAuthenticated, user, userId, router]);
 
   // Fetch categories
@@ -215,36 +219,56 @@ export default function Dashboard() {
         const response = await axiosInstance.get<APIResponse<{ jobs: any[] }>>(`/get-user-jobs/${userId}/`);
         const result = response.data;
 
+
         if (result.status_code === 200 && result.data?.jobs) {
           // First, get the basic task data
           const tasks: Task[] = result.data.jobs.map((job) => {
             let jobStatus = "open";
-            let progressLabel: string | undefined = undefined;
-            // Robust acceptance/payment detection across possible API shapes
-            const isPaid =
-              job.payment_status === "paid" ||
-              job.payment === "paid" ||
-              job.is_paid === 1 ||
-              job.payment_done === 1 ||
-              job.payment_success === true ||
-              job.status === "paid";
-            const isAccepted =
-              job.bid_status === "accepted" ||
-              job.accepted === 1 ||
-              job.is_accepted === 1 ||
-              Boolean(job.accepted_bid_id) ||
-              Boolean(job.assigned_tasker_id) ||
-              job.status === "accepted" ||
-              job.status === "assigned" ||
-              job.status === "working" ||
-              job.status === "active" ||
-              job.status === "in_progress";
-            console.log(`🔍 Task ${job.job_id} status debug:`, {
-              job_completion_status: job.job_completion_status,
-              deletion_status: job.deletion_status,
-              cancel_status: job.cancel_status,
-              status: job.status,
-              allKeys: Object.keys(job)
+            
+            // Check if this task has a paid order - use correct field name
+            const hasPaidOrder = taskOrders.some(order => {
+              const orderTaskId = order.job_id || order.postId || order.post_id || order.task_id;
+              // Status 1 = Completed/Paid, Status 0 = Processing
+              // TEMPORARY FIX: Treat status 0 as paid since backend isn't updating to status 1
+              const isPaid = order.status === 1 || order.status === "1" || order.status === 0;
+              const isMatching = orderTaskId === job.job_id.toString();
+              
+              // Only log if there's a match for debugging
+              if (isMatching) {
+                console.log(`🔍 Order ${order.order_id} matches task ${job.job_id}:`, {
+                  orderStatus: order.status,
+                  isPaid,
+                  willMatch: isMatching && isPaid,
+                  orderDetails: {
+                    order_id: order.order_id,
+                    job_id: order.job_id,
+                    status: order.status,
+                    tasker_id: order.tasker_id,
+                    poster_id: order.taskmanager_id
+                  }
+                });
+              }
+              
+              return isMatching && isPaid;
+            });
+            
+            const matchingOrders = taskOrders.filter(order => {
+              const orderTaskId = order.job_id || order.postId || order.post_id || order.task_id;
+              return orderTaskId === job.job_id.toString();
+            });
+            
+            console.log(`🔍 Task ${job.job_id} payment check:`, {
+              taskId: job.job_id,
+              hasPaidOrder,
+              matchingOrders: matchingOrders.map(order => ({
+                orderId: order.order_id || order.id,
+                job_id: order.job_id,
+                status: order.status,
+                payment_status: order.payment_status,
+                order_status: order.order_status,
+                fullOrder: order // Show the complete order object
+              })),
+              finalStatus: hasPaidOrder ? "in_progress" : "open"
             });
             
             if (job.job_completion_status === 1) {
@@ -253,17 +277,26 @@ export default function Dashboard() {
               jobStatus = "deleted";
             } else if (job.cancel_status) {
               jobStatus = "canceled";
-            } else if (isPaid || isAccepted) {
+            } else if (job.status === "in_progress" || job.status === "working" || job.status === "assigned" || 
+                      job.status === "accepted" || job.status === "paid" || job.status === "active") {
               jobStatus = "in_progress";
-              // Provide a clear reason label for highlighting
-              if (isPaid) {
-                progressLabel = "In Progress — Payment Made";
-              } else if (isAccepted) {
-                progressLabel = "In Progress — Bid Accepted";
-              } else {
-                progressLabel = "In Progress";
-              }
+            } else if (job.bid_accepted === true || job.bid_accepted === "true" || 
+                      job.offer_accepted === true || job.offer_accepted === "true" ||
+                      job.payment_status === "paid" || job.payment_status === "completed" ||
+                      job.payment_status === "success" || job.payment_status === true ||
+                      job.payment_status === "PAID" || job.payment_status === "COMPLETED" ||
+                      job.payment_status === "SUCCESS" || job.payment_status === 1 ||
+                      job.payment_status === "1" || job.payment_status === "confirmed" ||
+                      job.payment_status === "CONFIRMED" || job.payment_status === "processed" ||
+                      job.payment_status === "PROCESSED" || job.payment_status === "settled" ||
+                      job.payment_status === "SETTLED" || hasPaidOrder) {
+              jobStatus = "in_progress";
+              console.log(`Task ${job.job_id} marked as in_progress due to payment/acceptance`);
             }
+            
+            
+            // All other tasks remain "open"
+            
 
             return {
               id: job.job_id.toString(),
@@ -288,44 +321,10 @@ export default function Dashboard() {
                     alt: `Job image ${index + 1}`,
                   }))
                 : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
-              progressLabel,
             };
           });
 
-          // SIMPLIFIED APPROACH: Direct override for tasks with offers
-          console.log('🔍 Applying direct status logic for tasks with offers...');
-          const tasksWithBidStatus = tasks.map(task => {
-            // Direct override for "wanted gardener" task
-            if (task.title.toLowerCase().includes("gardener") && task.offers > 0) {
-              console.log(`🔧 DIRECT OVERRIDE: Marking "wanted gardener" as in_progress (offers: ${task.offers})`);
-              return { ...task, status: "in_progress" };
-            }
-            
-            // For other tasks, check if they have offers and mark as in_progress
-            if (task.offers > 0 && task.status !== "completed" && !task.deletion_status && !task.cancel_status) {
-              console.log(`🔧 TASK WITH OFFERS: Marking "${task.title}" as in_progress (offers: ${task.offers})`);
-              return { ...task, status: "in_progress" };
-            }
-            
-            return task;
-          });
-          
-          const finalTasks = tasksWithBidStatus;
-
-          console.log('📊 Tasks with bid counts:', finalTasks.map(t => ({ id: t.id, title: t.title, offers: t.offers, status: t.status })));
-          
-          // FINAL OVERRIDE: Force "wanted gardener" to be in_progress
-          const finalTasksWithOverride = finalTasks.map(task => {
-            console.log(`🔍 Checking task: "${task.title}" - offers: ${task.offers}, status: ${task.status}`);
-            if (task.title.toLowerCase().includes("gardener")) {
-              console.log(`🔧 FINAL OVERRIDE: Forcing "wanted gardener" to in_progress status (offers: ${task.offers})`);
-              return { ...task, status: "in_progress" };
-            }
-            return task;
-          });
-          
-          console.log('📊 Final tasks with override:', finalTasksWithOverride.map(t => ({ id: t.id, title: t.title, offers: t.offers, status: t.status })));
-          setPostedTasks(finalTasksWithOverride);
+          setPostedTasks(tasks);
         } else {
           console.warn("No jobs found or API error:", result.message);
         }
@@ -338,7 +337,7 @@ export default function Dashboard() {
     };
 
     fetchUserTasks();
-  }, [user, userId]);
+  }, [user, userId, taskOrders]);
 
   // Fetch all available tasks
   useEffect(() => {
@@ -347,11 +346,6 @@ export default function Dashboard() {
     const fetchAllTasks = async () => {
       setLoading(true);
       try {
-        console.log('🔍 fetchAllTasks - Debug Info:', {
-          userId,
-          user: user?.id,
-          isAuthenticated
-        });
         
         const response = await axiosInstance.get<APIResponse<{ jobs: any[] }>>("/get-all-jobs");
         const result = response.data;
@@ -360,34 +354,21 @@ export default function Dashboard() {
           const tasks: Task[] = result.data.jobs
             .filter((job) => {
               // Debug: Log the full job object to see what fields are available
-              console.log(`🔍 Full job object for ${job.job_id}:`, {
-                job_id: job.job_id,
-                posted_by: job.posted_by,
-                posted_by_id: job.posted_by_id,
-                user_id: job.user_id,
-                user_ref_id: job.user_ref_id,
-                posted_by_user_id: job.posted_by_user_id,
-                // Log all keys to see what's available
-                allKeys: Object.keys(job)
-              });
               
               // Try to find the actual user ID field - check multiple possible properties
               const jobPostedById = job.posted_by_id || job.user_id || job.user_ref_id || job.posted_by_user_id || job.posted_by;
               const currentUserId = userId?.toString();
               const userFromStore = user?.id?.toString();
               
-              console.log(`Filtering job ${job.job_id}:`, {
-                jobPostedById,
-                currentUserId,
-                userFromStore,
-                shouldExclude: jobPostedById === currentUserId || jobPostedById === userFromStore
-              });
               
               // Check against both userId from store and user.id from user object
               return jobPostedById !== currentUserId && jobPostedById !== userFromStore;
             })
             .map((job) => {
               let jobStatus = "open";
+              
+              // For available tasks, we only care about basic status
+              // All available tasks should be "open" for bidding
               if (job.job_completion_status === 1) {
                 jobStatus = "completed";
               } else if (job.deletion_status) {
@@ -395,6 +376,8 @@ export default function Dashboard() {
               } else if (job.cancel_status) {
                 jobStatus = "canceled";
               }
+              // All other tasks remain "open" for bidding
+              
 
               return {
                 id: job.job_id.toString(),
@@ -423,10 +406,8 @@ export default function Dashboard() {
             });
 
           // Skip bid count fetching for now to avoid API errors
-          console.log('🔍 Using original offers count from API response for available tasks...');
           const availableTasksWithBidCounts = tasks;
 
-          console.log('📊 Available tasks with bid counts:', availableTasksWithBidCounts.map(t => ({ id: t.id, title: t.title, offers: t.offers })));
           setAvailableTasks(availableTasksWithBidCounts);
         } else {
           console.warn("No jobs found or API error:", result.message);
@@ -468,6 +449,7 @@ export default function Dashboard() {
           setBids(userBids);
         } else {
           console.warn("No bids found or API error:", result.message);
+          // Removed annoying toast notification for no bids found
         }
       } catch (err) {
         console.error("Failed to fetch bids:", err);
@@ -651,6 +633,30 @@ export default function Dashboard() {
     }
   };
 
+  // Handle marking My Tasks as complete
+  const handleMyTaskComplete = async (jobId: string) => {
+    try {
+      const response = await axiosInstance.put<APIResponse<any>>(`/mark-complete/${jobId}/`);
+
+      if (response.data.status_code === 200) {
+        toast.success("Task marked as complete!");
+        // Update the posted task status
+        setPostedTasks((prev) =>
+          prev.map((task) =>
+            task.id === jobId
+              ? { ...task, status: "completed", completedDate: new Date().toLocaleDateString("en-GB") }
+              : task
+          )
+        );
+      } else {
+        toast.error(response.data.message || "Failed to mark task as complete");
+      }
+    } catch (error) {
+      console.error("Error marking task as complete:", error);
+      toast.error("An error occurred while marking the task as complete");
+    }
+  };
+
   const handleDeleteClick = (jobId: string) => {
     setSelectedJobId(jobId);
     setConfirmOpen(true);
@@ -747,16 +753,10 @@ export default function Dashboard() {
     const matchesLocation =
       location === "" ||
       task.location.toLowerCase().includes(location.toLowerCase());
-    const isNotCanceled = !task.cancel_status;
     
-    // Only show tasks that are actually available for bidding (open status)
-    // Exclude tasks that are in progress, completed, deleted, or canceled
-    const isAvailableForBidding = 
-      task.status === "open" && 
-      !task.deletion_status && 
-      !task.cancel_status;
+    const isNotCanceled = !task.cancel_status;
 
-    return matchesSearch && matchesCategory && matchesPrice && matchesLocation && isNotCanceled && isAvailableForBidding;
+    return matchesSearch && matchesCategory && matchesPrice && matchesLocation && isNotCanceled;
   });
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
@@ -770,15 +770,56 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-gray-100">
+        <style jsx>{`
+          @keyframes gentle-pulse {
+            0%, 100% { 
+              opacity: 0.6;
+              transform: scale(1);
+            }
+            50% { 
+              opacity: 1;
+              transform: scale(1.05);
+            }
+          }
+          @keyframes smooth-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+          @keyframes fade-in-out {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+          }
+          .animate-gentle-pulse {
+            animation: gentle-pulse 2s ease-in-out infinite;
+          }
+          .animate-smooth-spin {
+            animation: smooth-spin 3s linear infinite;
+          }
+          .animate-fade-in-out {
+            animation: fade-in-out 2s ease-in-out infinite;
+          }
+        `}</style>
         <div className="text-center">
-          <div className="relative">
-            <div className="animate-spin rounded-full h-32 w-32 border-4 border-blue-200 mx-auto"></div>
-            <div className="animate-spin rounded-full h-32 w-32 border-4 border-transparent border-t-blue-600 mx-auto absolute top-0 left-0"></div>
-            <div className="animate-ping rounded-full h-8 w-8 bg-blue-600 mx-auto absolute top-12 left-12"></div>
+          {/* Simple elegant loading animation */}
+          <div className="relative mb-8">
+            <div className="w-16 h-16 mx-auto">
+              <div className="w-full h-full border-3 border-gray-200 rounded-full"></div>
+              <div className="absolute top-0 left-0 w-full h-full border-3 border-transparent border-t-blue-500 rounded-full animate-smooth-spin"></div>
           </div>
-          <p className="mt-6 text-xl font-semibold text-gray-700">Loading your dashboard...</p>
-          <p className="mt-2 text-sm text-gray-500">Please wait while we fetch your data</p>
+          </div>
+          
+          {/* Clean loading text */}
+          <div className="space-y-3">
+            <h2 className="text-xl font-medium text-gray-700 animate-gentle-pulse">
+              Loading Dashboard
+            </h2>
+            <div className="flex items-center justify-center space-x-1">
+              <div className="w-1 h-1 bg-gray-400 rounded-full animate-fade-in-out"></div>
+              <div className="w-1 h-1 bg-gray-400 rounded-full animate-fade-in-out" style={{animationDelay: '0.3s'}}></div>
+              <div className="w-1 h-1 bg-gray-400 rounded-full animate-fade-in-out" style={{animationDelay: '0.6s'}}></div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -791,48 +832,122 @@ export default function Dashboard() {
   const NotificationBar = dynamic(() => import("@/components/NotificationBar"), { ssr: false });
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-50 to-gray-100 overflow-x-hidden">
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes slideInRight {
+          from {
+            opacity: 0;
+            transform: translateX(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        @keyframes pulse {
+          0%, 100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.05);
+          }
+        }
+        @keyframes shimmer {
+          0% {
+            background-position: -200px 0;
+          }
+          100% {
+            background-position: calc(200px + 100%) 0;
+          }
+        }
+        .animate-fade-in-up {
+          animation: fadeInUp 0.6s ease-out;
+        }
+        .animate-slide-in-right {
+          animation: slideInRight 0.5s ease-out;
+        }
+        .animate-pulse-slow {
+          animation: pulse 2s ease-in-out infinite;
+        }
+        .animate-shimmer {
+          background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+          background-size: 200px 100%;
+          animation: shimmer 1.5s infinite;
+        }
+        .tab-content-enter {
+          opacity: 0;
+          transform: translateX(20px);
+        }
+        .tab-content-enter-active {
+          opacity: 1;
+          transform: translateX(0);
+          transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .tab-content-exit {
+          opacity: 1;
+          transform: translateX(0);
+        }
+        .tab-content-exit-active {
+          opacity: 0;
+          transform: translateX(-20px);
+          transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+      `}</style>
+      
       <main className="flex-1 max-w-7xl mx-auto py-6 md:py-10 px-4 md:px-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 animate-fade-in-up">
+          <div className="animate-slide-in-right">
+            <h1 className="text-5xl font-bold tracking-tight text-gray-900">
               Dashboard
             </h1>
-            <p className="text-lg text-muted-foreground mt-2">Manage your tasks and bids efficiently</p>
+            <p className="text-xl text-gray-600 mt-3 font-medium">Manage your tasks and bids efficiently</p>
           </div>
-          <div className="flex items-center gap-4">
-            {/* Notifications */}
-            <NotificationBar />
-            {/* Profile Dropdown - Now in top right edge */}
+          <div className="flex items-center gap-6 animate-slide-in-right">
+            {/* Enhanced Notifications with proper clickable functionality */}
+            <div className="relative">
+              <NotificationBar />
+            </div>
+            
+            {/* Premium Profile Dropdown */}
             <div className="relative">
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 border-2 border-blue-200 text-blue-700 hover:text-blue-800 font-semibold px-4 py-3 rounded-full shadow-md transition-all duration-300 hover:scale-105"
+                className="flex items-center gap-3 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 font-medium px-6 py-4 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
               >
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-bold">
+                <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center text-white font-semibold text-lg">
                   {user?.name?.charAt(0) || "U"}
                 </div>
-                <span>{user?.name || "User"}</span>
-                <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
+                <span className="text-lg">{user?.name || "User"}</span>
+                <ChevronDown className={`h-5 w-5 transition-transform duration-300 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
               
               {profileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
-                  <Link href="/profile" className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition-colors duration-200">
-                    <User className="h-4 w-4 text-blue-600" />
+                <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-gray-200 py-2 z-50 animate-fade-in-up">
+                  <Link href="/profile" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
+                    <User className="h-4 w-4 text-gray-600" />
                     <span className="text-gray-700 font-medium">My Profile</span>
                   </Link>
-                  <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition-colors duration-200">
+                  <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
                     <Settings className="h-4 w-4 text-gray-600" />
                     <span className="text-gray-700 font-medium">Settings</span>
                   </Link>
                   <div className="border-t border-gray-100 my-1"></div>
                 <button
                 onClick={handleSignOut}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-red-50 transition-colors duration-200 w-full text-left"
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200 w-full text-left"
                   >
-                    <LogOut className="h-4 w-4 text-red-600" />
-                    <span className="text-red-600 font-medium">Sign Out</span>
+                    <LogOut className="h-4 w-4 text-gray-600" />
+                    <span className="text-gray-700 font-medium">Sign Out</span>
                   </button>
                 </div>
               )}
@@ -840,83 +955,106 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Post Task Button - Now below the header */}
-        <div className="flex justify-start mb-6">
+        {/* Premium Post Task Button */}
+        <div className="flex justify-start mb-8 animate-fade-in-up">
           <Link href="/post-task" passHref>
-            <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5">
-              + Post a Task
+            <Button className="group bg-gray-900 hover:bg-gray-800 text-white font-semibold px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 text-lg">
+              <span className="flex items-center gap-3">
+                <span className="text-xl group-hover:rotate-90 transition-transform duration-300">+</span>
+                Post a Task
+              </span>
             </Button>
           </Link>
         </div>
 
         <Tabs defaultValue="available" className="w-full">
-          <TabsList className="flex w-full bg-gray-100 p-1 rounded-full shadow-inner">
+          <TabsList className="flex w-full bg-gray-100 p-1 rounded-2xl border border-gray-200">
             <TabsTrigger 
               value="my-tasks" 
-              className="flex-1 rounded-full transition-all duration-300 hover:bg-white/50 data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:border-b-2 data-[state=active]:border-blue-500"
+              className="flex-1 rounded-xl transition-all duration-300 hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-gray-200 font-medium py-3"
             >
+              <span className="flex items-center gap-2">
+                <span className="text-sm">📋</span>
               My Tasks
+              </span>
             </TabsTrigger>
             <TabsTrigger 
               value="available" 
-              className="flex-1 rounded-full transition-all duration-300 hover:bg-white/50 data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:border-b-2 data-[state=active]:border-blue-500"
+              className="flex-1 rounded-xl transition-all duration-300 hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-gray-200 font-medium py-3"
             >
+              <span className="flex items-center gap-2">
+                <span className="text-sm">🔍</span>
               Available Tasks
+              </span>
             </TabsTrigger>
             <TabsTrigger 
               value="assigned" 
-              className="flex-1 rounded-full transition-all duration-300 hover:bg-white/50 data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:border-b-2 data-[state=active]:border-blue-500"
+              className="flex-1 rounded-xl transition-all duration-300 hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-gray-200 font-medium py-3"
             >
+              <span className="flex items-center gap-2">
+                <span className="text-sm">👤</span>
               Assigned to Me
+              </span>
             </TabsTrigger>
             <TabsTrigger 
               value="completed" 
-              className="flex-1 rounded-full transition-all duration-300 hover:bg-white/50 data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:border-b-2 data-[state=active]:border-blue-500"
+              className="flex-1 rounded-xl transition-all duration-300 hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-gray-200 font-medium py-3"
             >
+              <span className="flex items-center gap-2">
+                <span className="text-sm">✅</span>
               Completed
+              </span>
             </TabsTrigger>
             <TabsTrigger 
               value="my-bids" 
-              className="flex-1 rounded-full transition-all duration-300 hover:bg-white/50 data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:border-b-2 data-[state=active]:border-blue-500"
+              className="flex-1 rounded-xl transition-all duration-300 hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-gray-200 font-medium py-3"
             >
+              <span className="flex items-center gap-2">
+                <span className="text-sm">📝</span>
               My Bids
+              </span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="my-tasks" className="space-y-6 mt-8">
-            <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-blue-200 pb-2">Tasks You've Posted</h2>
-            {/* Summary strip */}
-            <div className="grid grid-cols-3 gap-3">
+          <TabsContent value="my-tasks" className="space-y-6 mt-8 animate-fade-in-up">
+            <h2 className="text-2xl font-bold text-gray-900 border-b border-gray-200 pb-3">Tasks You've Posted</h2>
+            {/* Premium Summary strip */}
+            <div className="grid grid-cols-3 gap-4">
               <button
                 onClick={() => setMyTasksFilter("in_progress")}
-                className={`rounded-xl p-4 bg-gradient-to-br from-emerald-50 to-green-50 border text-center transition-all ${
-                  myTasksFilter === "in_progress" ? "border-emerald-500 ring-2 ring-emerald-200" : "border-emerald-200/60"
+                className={`rounded-lg p-4 bg-white border text-center transition-all duration-200 hover:shadow-md ${
+                  myTasksFilter === "in_progress" ? "border-gray-400 bg-gray-50 shadow-sm" : "border-gray-200 hover:border-gray-300"
                 }`}
               >
-                <div className="text-sm font-medium">In Progress</div>
-                <div className="text-2xl font-extrabold">{myTasksSummary.inProgress}</div>
+                <div className="text-sm font-medium text-gray-600 mb-1">In Progress</div>
+                <div className="text-2xl font-bold text-gray-900">{myTasksSummary.inProgress}</div>
               </button>
               <button
                 onClick={() => setMyTasksFilter("open")}
-                className={`rounded-xl p-4 bg-gradient-to-br from-cyan-50 to-sky-50 border text-center transition-all ${
-                  myTasksFilter === "open" ? "border-cyan-500 ring-2 ring-cyan-200" : "border-cyan-200/60"
+                className={`rounded-lg p-4 bg-white border text-center transition-all duration-200 hover:shadow-md ${
+                  myTasksFilter === "open" ? "border-gray-400 bg-gray-50 shadow-sm" : "border-gray-200 hover:border-gray-300"
                 }`}
               >
-                <div className="text-sm font-medium">Open</div>
-                <div className="text-2xl font-extrabold">{myTasksSummary.open}</div>
+                <div className="text-sm font-medium text-gray-600 mb-1">Open</div>
+                <div className="text-2xl font-bold text-gray-900">{myTasksSummary.open}</div>
               </button>
               <button
                 onClick={() => setMyTasksFilter("completed")}
-                className={`rounded-xl p-4 bg-gradient-to-br from-gray-50 to-slate-50 border text-center transition-all ${
-                  myTasksFilter === "completed" ? "border-gray-500 ring-2 ring-gray-200" : "border-gray-200"
+                className={`rounded-lg p-4 bg-white border text-center transition-all duration-200 hover:shadow-md ${
+                  myTasksFilter === "completed" ? "border-gray-400 bg-gray-50 shadow-sm" : "border-gray-200 hover:border-gray-300"
                 }`}
               >
-                <div className="text-sm font-medium">Completed</div>
-                <div className="text-2xl font-extrabold">{myTasksSummary.completed}</div>
+                <div className="text-sm font-medium text-gray-600 mb-1">Completed</div>
+                <div className="text-2xl font-bold text-gray-900">{myTasksSummary.completed}</div>
               </button>
             </div>
             <div className="text-right -mt-2">
-              <button onClick={() => setMyTasksFilter("all")} className="text-xs text-blue-600 hover:underline">Clear filter</button>
+              <button 
+                onClick={() => setMyTasksFilter("all")} 
+                className="text-xs text-gray-500 hover:text-gray-700 transition-colors duration-200"
+              >
+                Clear filter
+              </button>
             </div>
             {postedTasks.length === 0 ? (
               <Card>
@@ -955,18 +1093,20 @@ export default function Dashboard() {
                   .map((task) => (
                                     <Card
                     key={task.id}
-                    className={`relative transition-all duration-300 hover:shadow-xl hover:-translate-y-1 rounded-xl overflow-hidden ${
+                    className={`relative transition-all duration-300 hover:shadow-lg hover:-translate-y-1 rounded-xl overflow-hidden group border ${
                       task.deletion_status || task.cancel_status
-                        ? "opacity-50 bg-gray-100 border-gray-300 cursor-not-allowed"
+                        ? "opacity-50 bg-gray-50 border-gray-200 cursor-not-allowed"
                         : task.status === "in_progress"
-                        ? "shadow-xl hover:shadow-2xl border-0 bg-gradient-to-br from-emerald-100 via-green-100 to-teal-100 border-l-4 border-l-emerald-600 ring-2 ring-emerald-200"
-                        : "shadow-lg hover:shadow-2xl border-0 bg-gradient-to-br from-cyan-50 via-teal-50 to-blue-50 border-l-4 border-l-cyan-500"
+                        ? "shadow-md border-gray-200 bg-white hover:border-gray-300"
+                        : task.status === "completed"
+                        ? "shadow-sm border-gray-200 bg-gray-50"
+                        : "shadow-sm border-gray-200 bg-white hover:border-gray-300"
                     }`}
                   >
                     {/* In Progress Task Banner */}
                     {task.status === "in_progress" && (
-                      <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-emerald-600 to-green-600 text-white text-center py-2 px-4 rounded-t-xl font-bold text-sm shadow-lg z-10">
-                        🚀 {task.progressLabel || "In Progress — Bid Accepted"}
+                      <div className="absolute top-0 left-0 right-0 bg-gray-800 text-white text-center py-2 px-4 rounded-t-xl font-semibold text-sm z-10">
+                        🚀 In Progress — Bid Accepted
                       </div>
                     )}
                     
@@ -1011,31 +1151,28 @@ export default function Dashboard() {
                       </div>
                       <div className="mt-2">
                         <Badge
-                          variant={
+                          variant="outline"
+                          className={`font-medium text-sm px-3 py-1 ${
                             task.cancel_status
-                              ? "destructive"
+                              ? "border-red-200 text-red-600 bg-red-50"
                               : task.deletion_status
-                              ? "destructive"
+                              ? "border-red-200 text-red-600 bg-red-50"
                               : task.status === "in_progress"
-                              ? "default"
-                              : task.status === "open"
-                              ? "outline"
-                              : "secondary"
-                          }
-                          className={
-                            task.status === "in_progress"
-                              ? "bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-bold text-sm px-4 py-2 shadow-lg animate-pulse"
-                              : "border-cyan-500 text-cyan-600 font-medium"
-                          }
+                              ? "border-gray-300 text-gray-700 bg-gray-100"
+                              : task.status === "completed"
+                              ? "border-gray-300 text-gray-600 bg-gray-50"
+                              : "border-gray-300 text-gray-600 bg-gray-50"
+                          }`}
                         >
                           {task.cancel_status
-                            ? "Canceled"
+                            ? "❌ Canceled"
                             : task.deletion_status
-                            ? "Deleted"
+                            ? "🗑️ Deleted"
                             : task.status === "in_progress"
                             ? "🚀 In Progress"
-                            : task.status.charAt(0).toUpperCase() +
-                              task.status.slice(1)}
+                            : task.status === "completed"
+                            ? "✅ Completed"
+                            : "📋 Open"}
                         </Badge>
                       </div>
                       <CardDescription className="flex items-center gap-1">
@@ -1048,9 +1185,9 @@ export default function Dashboard() {
                         {task.description}
                       </p>
                       <div className="flex flex-col gap-3 text-sm">
-                        <div className="flex items-center gap-2 bg-cyan-100 px-3 py-2 rounded-lg">
-                          <IndianRupee className="h-5 w-5 text-cyan-700 font-bold" />
-                          <span className="text-lg font-bold text-cyan-800">₹{task.budget}</span>
+                        <div className="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg">
+                          <IndianRupee className="h-4 w-4 text-gray-600" />
+                          <span className="text-lg font-semibold text-gray-800">₹{task.budget}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -1058,7 +1195,7 @@ export default function Dashboard() {
                         </div>
                       </div>
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="flex flex-col gap-2">
                       {task.deletion_status || task.cancel_status ? (
                         <Button
                           variant="outline"
@@ -1067,6 +1204,20 @@ export default function Dashboard() {
                         >
                           Request Access
                         </Button>
+                      ) : task.status === "in_progress" ? (
+                        <>
+                          <Button
+                            onClick={() => handleMyTaskComplete(task.id)}
+                            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold"
+                          >
+                            ✅ Mark as Complete
+                          </Button>
+                          <Link href={`/tasks/${task.id}`} className="w-full">
+                            <Button variant="outline" className="w-full">
+                              View Details
+                            </Button>
+                          </Link>
+                        </>
                       ) : (
                         <Link href={`/tasks/${task.id}`} className="w-full">
                           <Button variant="outline" className="w-full">
@@ -1081,61 +1232,64 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="available" className="space-y-6 mt-8">
-            <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-green-200 pb-2">Available Tasks</h2>
+          <TabsContent value="available" className="space-y-6 mt-8 animate-fade-in-up">
+            <h2 className="text-2xl font-bold text-gray-900 border-b border-gray-200 pb-3">Available Tasks</h2>
             <div className="grid gap-6 md:grid-cols-4">
               <div className="md:col-span-1 space-y-6">
-                <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl shadow-blue-500/5 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-300 rounded-2xl overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b border-gray-100/50 p-6">
-                    <CardTitle className="text-xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent flex items-center gap-2">
-                      <div className="p-1.5 rounded-lg bg-blue-100">
-                        <Filter className="w-4 h-4 text-blue-600" />
+                <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
+                  <CardHeader className="bg-gray-50 border-b border-gray-200 p-6">
+                    <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-gray-800 shadow-sm">
+                        <Filter className="w-4 h-4 text-white" />
                       </div>
                       Filters
                     </CardTitle>
                     <CardDescription className="text-gray-600 font-medium">Refine your search</CardDescription>
                   </CardHeader>
                   <CardContent className="p-6">
-                    <div className="rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-slate-50 shadow-sm p-5 space-y-6">
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                          <div className="p-1 rounded bg-purple-100">
-                            <svg className="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                            </svg>
-                          </div>
-                          Category
-                        </label>
-                        <div className="bg-white border border-gray-200 rounded-xl p-2">
-                          <Select value={category} onValueChange={setCategory}>
-                            <SelectTrigger className="border-0 focus:ring-0">
-                              <SelectValue placeholder="Select a category" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-2 border-gray-200 shadow-xl">
-                              <SelectItem value="all" className="rounded-lg">All Categories</SelectItem>
-                              {categories.length > 0 ? (
-                                categories.map((cat) => (
-                                  <SelectItem key={cat.id} value={cat.id} className="rounded-lg">
-                                    {cat.name}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="loading" disabled className="rounded-lg">
-                                  Loading categories...
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
+                    <div className="space-y-8">
+                      {/* Category Filter */}
+                      <div className="group">
+                        <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+                          <div className="p-1.5 rounded-lg bg-gray-100">
+                            <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                          </svg>
                         </div>
+                        Category
+                      </label>
+                        <div className="bg-white border border-gray-200 rounded-lg p-2 hover:border-gray-300 transition-all duration-200">
+                      <Select value={category} onValueChange={setCategory}>
+                            <SelectTrigger className="border-0 focus:ring-0 text-gray-700">
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                            <SelectContent className="rounded-lg border border-gray-200 shadow-lg">
+                              <SelectItem value="all" className="rounded-md">All Categories</SelectItem>
+                          {categories.length > 0 ? (
+                            categories.map((cat) => (
+                                  <SelectItem key={cat.id} value={cat.id} className="rounded-md">
+                                {cat.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                                <SelectItem value="loading" disabled className="rounded-md">
+                              Loading categories...
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                          <div className="p-1 rounded bg-emerald-100">
-                            <IndianRupee className="w-3 h-3 text-emerald-600" />
-                          </div>
-                          Price Range
-                        </label>
-                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+
+                      {/* Price Range Filter */}
+                      <div className="group">
+                        <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+                          <div className="p-1.5 rounded-lg bg-gray-100">
+                            <IndianRupee className="w-3 h-3 text-gray-600" />
+                        </div>
+                        Price Range
+                      </label>
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-all duration-200">
                           <Slider
                             defaultValue={[0, 50000]}
                             max={50000}
@@ -1144,27 +1298,49 @@ export default function Dashboard() {
                             onValueChange={setPriceRange}
                             className="mb-3"
                           />
-                          <div className="flex justify-between text-sm font-semibold">
-                            <span className="text-emerald-700 bg-white px-2 py-1 rounded-lg border border-emerald-200">₹{priceRange[0]}</span>
-                            <span className="text-emerald-700 bg-white px-2 py-1 rounded-lg border border-emerald-200">₹{priceRange[1]}</span>
+                          <div className="flex justify-between">
+                            <div className="bg-white px-3 py-1.5 rounded-md border border-gray-200">
+                              <span className="text-gray-700 font-medium text-sm">₹{priceRange[0].toLocaleString()}</span>
                           </div>
+                            <div className="bg-white px-3 py-1.5 rounded-md border border-gray-200">
+                              <span className="text-gray-700 font-medium text-sm">₹{priceRange[1].toLocaleString()}</span>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                          <div className="p-1 rounded bg-blue-100">
-                            <MapPin className="w-3 h-3 text-blue-600" />
-                          </div>
-                          Location
-                        </label>
-                        <div className="bg-white border border-gray-200 rounded-xl p-2">
-                          <Input
-                            placeholder="Any location"
-                            value={location}
-                            onChange={(e) => setLocation(e.target.value)}
-                            className="border-0 focus:ring-0"
+                    </div>
+                      </div>
+
+                      {/* Location Filter */}
+                      <div className="group">
+                        <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+                          <div className="p-1.5 rounded-lg bg-gray-100">
+                            <MapPin className="w-3 h-3 text-gray-600" />
+                        </div>
+                        Location
+                      </label>
+                        <div className="bg-white border border-gray-200 rounded-lg p-2 hover:border-gray-300 transition-all duration-200">
+                      <Input
+                            placeholder="Enter location (e.g., Mumbai, Delhi)"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                            className="border-0 focus:ring-0 text-gray-700 placeholder:text-gray-400"
                           />
                         </div>
+                      </div>
+
+                      {/* Clear Filters Button */}
+                      <div className="pt-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setSearchTerm("");
+                            setCategory("all");
+                            setPriceRange([0, 50000]);
+                            setLocation("");
+                          }}
+                          className="w-full bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-medium py-2 rounded-lg transition-all duration-200"
+                        >
+                          Clear All Filters
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -1173,22 +1349,27 @@ export default function Dashboard() {
 
               <div className="md:col-span-3 space-y-6">
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <form onSubmit={handleSearch} className="flex-1 flex gap-2">
+                  <form onSubmit={handleSearch} className="flex-1 flex gap-3">
                     <div className="relative flex-1">
-                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
                         type="search"
-                        placeholder="Search tasks..."
-                        className="pl-8"
+                        placeholder="Search tasks by title or description..."
+                        className="pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:border-gray-400 focus:ring-0 text-gray-700 placeholder:text-gray-400 transition-all duration-200"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                       />
                     </div>
-                    <Button type="submit">Search</Button>
+                    <Button 
+                      type="submit" 
+                      className="bg-gray-900 hover:bg-gray-800 text-white font-medium px-6 py-2.5 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                    >
+                      Search
+                    </Button>
                   </form>
                   <Button
                     variant="outline"
-                    className="sm:hidden"
+                    className="sm:hidden bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 font-medium px-4 py-2.5 rounded-lg transition-all duration-200"
                     onClick={() => setShowFilters(!showFilters)}
                   >
                     <Filter className="mr-2 h-4 w-4" />
@@ -1303,7 +1484,7 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
-          <TabsContent value="assigned" className="space-y-6 mt-8">
+          <TabsContent value="assigned" className="space-y-6 mt-8 animate-fade-in-up">
             <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-orange-200 pb-2">Tasks Assigned to You</h2>
             {assignedTasks.length === 0 ? (
               <Card>
@@ -1385,7 +1566,7 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="completed" className="space-y-6 mt-8">
+          <TabsContent value="completed" className="space-y-6 mt-8 animate-fade-in-up">
             <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-green-200 pb-2">Completed Tasks</h2>
             {completedTasks.length === 0 ? (
               <Card>
@@ -1455,7 +1636,7 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="my-bids" className="space-y-6 mt-8">
+          <TabsContent value="my-bids" className="space-y-6 mt-8 animate-fade-in-up">
             <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-purple-200 pb-2">My Bids</h2>
             {requestedTasks.length === 0 ? (
               <Card>
@@ -1490,24 +1671,10 @@ export default function Dashboard() {
                           {bid.task_title}
                         </CardTitle>
                         <Badge
-                          variant={
-                            bid.status === "pending"
-                              ? "outline"
-                              : bid.status === "accepted"
-                              ? "default"
-                              : "destructive"
-                          }
-                          className={
-                            bid.status === "accepted"
-                              ? "bg-green-600 hover:bg-green-700 text-white font-semibold"
-                              : bid.status === "pending"
-                              ? "border-blue-500 text-blue-600"
-                              : ""
-                          }
+                          variant="outline"
+                          className="border-purple-500 text-purple-600 bg-purple-50"
                         >
-                          {bid.status === "accepted" ? "✅ Accepted" : 
-                           bid.status === "pending" ? "⏳ Pending" :
-                           bid.status.charAt(0).toUpperCase() + bid.status.slice(1)}
+                          📝 Requested
                         </Badge>
                       </div>
                       <CardDescription className="flex items-center gap-1">

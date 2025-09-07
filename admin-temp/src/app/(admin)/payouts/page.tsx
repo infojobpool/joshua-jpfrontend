@@ -1080,7 +1080,7 @@ export default function PayoutsPage() {
   // Attempt network fetch for bank info when local match fails
   const ensureBankInfo = async (party: { id: any; name: string; email?: string }) => {
     const existing = resolveBankInfo(party);
-    const hasData = existing && (existing.account_number || existing.ifsc || existing.bank_name || existing.upi_id);
+    const hasData = existing && (existing.bank_account_number || existing.account_number || existing.ifsc_code || existing.ifsc || existing.bank_name || existing.upi_id);
     if (hasData) return;
     try {
       if (party.id != null) {
@@ -1630,10 +1630,11 @@ export default function PayoutsPage() {
                                     <h4 className="font-semibold mb-2">Tasker Bank</h4>
                                     {(() => {
                                       const data = resolveBankInfo(selectedPayout.tasker) || {};
+                                      console.log('Tasker bank data:', data, 'for user:', selectedPayout.tasker);
                                       return (
                                         <div className="text-sm space-y-1">
-                                          <div>Account: <span className="font-medium">{data.account_number || "—"}</span></div>
-                                          <div>IFSC: <span className="font-medium">{data.ifsc || "—"}</span></div>
+                                          <div>Account: <span className="font-medium">{data.bank_account_number || data.account_number || "—"}</span></div>
+                                          <div>IFSC: <span className="font-medium">{data.ifsc_code || data.ifsc || "—"}</span></div>
                                           <div>Bank: <span className="font-medium">{data.bank_name || "—"}</span></div>
                                           <div>UPI: <span className="font-medium">{data.upi_id || "—"}</span></div>
                                         </div>
@@ -1644,10 +1645,11 @@ export default function PayoutsPage() {
                                     <h4 className="font-semibold mb-2">Poster Bank</h4>
                                     {(() => {
                                       const data = resolveBankInfo(selectedPayout.poster) || {};
+                                      console.log('Poster bank data:', data, 'for user:', selectedPayout.poster);
                                       return (
                                         <div className="text-sm space-y-1">
-                                          <div>Account: <span className="font-medium">{data.account_number || "—"}</span></div>
-                                          <div>IFSC: <span className="font-medium">{data.ifsc || "—"}</span></div>
+                                          <div>Account: <span className="font-medium">{data.bank_account_number || data.account_number || "—"}</span></div>
+                                          <div>IFSC: <span className="font-medium">{data.ifsc_code || data.ifsc || "—"}</span></div>
                                           <div>Bank: <span className="font-medium">{data.bank_name || "—"}</span></div>
                                           <div>UPI: <span className="font-medium">{data.upi_id || "—"}</span></div>
                                         </div>

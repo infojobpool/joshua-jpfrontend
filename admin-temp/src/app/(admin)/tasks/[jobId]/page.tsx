@@ -74,36 +74,6 @@ export default function TaskOffersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
 
-  const acceptBid = async (bid: Bid) => {
-    try {
-      setLoading(true);
-      const userId = bid.bidder_id;
-      const res = await axiosInstance.put(`/accept-bid/${jobId}/${userId}/`);
-      if (res.data?.status_code === 200) {
-        fetchBids();
-      }
-    } catch (e: any) {
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const rejectBid = async (bid: Bid) => {
-    try {
-      setLoading(true);
-      const res = await axiosInstance.put(`/reject-bid/${bid.bid_id}/`);
-      if (res.data?.status_code === 200) {
-        toast.success("Bid rejected");
-        fetchBids();
-      } else {
-        toast.error(res.data?.message || "Failed to reject bid");
-      }
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || "Failed to reject bid");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -132,7 +102,6 @@ export default function TaskOffersPage() {
                   <TableHead>Message</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -148,10 +117,6 @@ export default function TaskOffersPage() {
                       <Badge variant={bid.status === "accepted" ? "secondary" : bid.status === "rejected" ? "destructive" : "outline"}>
                         {bid.status || "pending"}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button size="sm" disabled={loading} onClick={() => acceptBid(bid)}>Accept</Button>
-                      <Button size="sm" variant="outline" disabled={loading} onClick={() => rejectBid(bid)}>Reject</Button>
                     </TableCell>
                   </TableRow>
                 ))}

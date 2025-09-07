@@ -157,7 +157,7 @@ interface Task {
   description: string;
   budget: number;
   location: string;
-  status: boolean;
+  status: string;
   postedAt: string;
   dueDate: string;
   category: string;
@@ -323,14 +323,28 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
                 <span className="text-sm font-medium">Posted {task.postedAt}</span>
               </div>
               <Badge 
-                variant={task.status ? "default" : "outline"}
+                variant={task.status === "in_progress" ? "default" : "outline"}
                 className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                  task.status 
-                    ? "bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md" 
+                  task.status === "in_progress"
+                    ? "bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md"
+                    : task.status === "completed"
+                    ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md"
+                    : task.status === "deleted"
+                    ? "bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md"
+                    : task.status === "canceled"
+                    ? "bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-md"
                     : "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border-blue-200"
                 }`}
               >
-                {task.status ? "🚀 In Progress" : "📋 Open"}
+                {task.status === "in_progress" 
+                  ? "🚀 In Progress" 
+                  : task.status === "completed"
+                  ? "✅ Completed"
+                  : task.status === "deleted"
+                  ? "🗑️ Deleted"
+                  : task.status === "canceled"
+                  ? "❌ Canceled"
+                  : "📋 Open"}
               </Badge>
             </div>
           </div>

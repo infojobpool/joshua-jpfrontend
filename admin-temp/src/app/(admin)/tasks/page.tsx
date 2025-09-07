@@ -6,7 +6,6 @@ import {
   MoreHorizontal,
   Calendar,
   MapPin,
-  DollarSign,
   CheckCircle,
   Clock,
   AlertCircle,
@@ -549,7 +548,6 @@ export default function TasksPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">₹{task.budget}</span>
                     </div>
                   </TableCell>

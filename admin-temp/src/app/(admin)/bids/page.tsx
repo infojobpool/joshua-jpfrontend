@@ -6,7 +6,6 @@ import {
   MoreHorizontal,
   Calendar,
   MapPin,
-  DollarSign,
   CheckCircle,
   Clock,
   AlertCircle,
@@ -409,7 +408,6 @@ export default function BidsPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">₹{bid.bid_amount}</span>
                     </div>
                     <div className="text-xs text-muted-foreground">

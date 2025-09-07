@@ -716,11 +716,7 @@ export default function ProfilePage() {
                                 Account Number
                               </p>
                               <p>
-                                {maskString(
-                                  profileuser.bank_info.bank_account_number,
-                                  0,
-                                  4
-                                )}
+                                {profileuser.bank_info.bank_account_number}
                               </p>
                             </div>
                             <div>
@@ -728,11 +724,7 @@ export default function ProfilePage() {
                                 IFSC Code
                               </p>
                               <p>
-                                {maskString(
-                                  profileuser.bank_info.ifsc_code,
-                                  0,
-                                  4
-                                )}
+                                {profileuser.bank_info.ifsc_code}
                                 </p>
                             </div>
                             {/* <div>

@@ -375,7 +375,6 @@ export function OffersSection({
   isSubmitting,
   currentUserId,
 }: OffersSectionProps) {
-  const [isAccepting, setIsAccepting] = useState<string | null>(null);
   const [error, setError] = useState("");
   const router = useRouter();
   const [completeOpen, setCompleteOpen] = useState<boolean>(false);
@@ -417,36 +416,6 @@ export function OffersSection({
   // Show all offers to all users
   const visibleOffers = offers;
 
-  const handleAcceptOffer = async (offer: Offer) => {
-    setIsAccepting(offer.id);
-    try {
-      const response = await axiosInstance.put(
-        `/accept-bid/${task.id}/${offer.tasker.id}/`
-      );
-
-      if (response.data.status_code === 200) {
-        toast.success(response.data.message || "Bid accepted successfully");
-        // Store tasker_id and taskposter_id in sessionStorage
-        sessionStorage.setItem("paymentData", JSON.stringify({
-          taskId: task.id,
-          taskerId: offer.tasker.id,
-          taskPosterId: task.poster.id,
-          amount: offer.amount,
-        }));
-        router.push("/payments");
-      } else {
-        toast.error(response.data.message || "Failed to accept bid");
-      }
-    } catch (error: any) {
-      console.error("Error accepting bid:", error);
-      toast.error(
-        error.response?.data?.message ||
-          "An error occurred while accepting the bid"
-      );
-    } finally {
-      setIsAccepting(null);
-    }
-  };
 
   const openCompleteModal = (offerId: string) => {
     setActiveOfferId(offerId);
@@ -551,18 +520,6 @@ export function OffersSection({
               </div>
               {isTaskPoster && (
                 <div className="flex gap-2">
-                  {!task.status && (
-                    <Button
-                      className="w-full rounded-lg"
-                      size="sm"
-                      onClick={() => handleAcceptOffer(offer)}
-                      disabled={isAccepting === offer.id}
-                    >
-                      {isAccepting === offer.id
-                        ? "Accepting..."
-                        : "Accept Offer"}
-                    </Button>
-                  )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -597,14 +554,14 @@ export function OffersSection({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {!isTaskPoster && task.status && (
+      {!isTaskPoster && (task.status === "completed" || task.status === "in_progress") && (
         <CardFooter>
           <p className="text-muted-foreground">
             This task is no longer accepting offers.
           </p>
         </CardFooter>
       )}
-      {!isTaskPoster && !task.status && !hasSubmittedOffer && (
+      {!isTaskPoster && task.status !== "completed" && task.status !== "in_progress" && !hasSubmittedOffer && (
         <CardFooter>
           <form onSubmit={handleSubmitOffer} className="w-full space-y-4">
             <div className="space-y-2">
@@ -643,7 +600,7 @@ export function OffersSection({
           </form>
         </CardFooter>
       )}
-      {!isTaskPoster && !task.status && hasSubmittedOffer && (
+      {!isTaskPoster && task.status !== "completed" && task.status !== "in_progress" && hasSubmittedOffer && (
         <CardFooter>
           <p className="text-muted-foreground">
             You have already submitted an offer for this task.

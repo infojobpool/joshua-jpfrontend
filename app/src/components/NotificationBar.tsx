@@ -43,7 +43,7 @@ function NotificationBar() {
   const prevUnreadRef = useRef<number>(0);
   const [wiggle, setWiggle] = useState(false);
 
-  const topFive = useMemo(() => items.slice(0, 5), [items]);
+  const topSeven = useMemo(() => items.slice(0, 7), [items]);
 
   useEffect(() => {
     if (!userId) return;
@@ -52,7 +52,7 @@ function NotificationBar() {
 
     // pause polling while dropdown open to avoid UI flicker
     if (!open) {
-      interval = setInterval(fetchLatest, 20000);
+      interval = setInterval(fetchLatest, 15000); // Reduced from 20s to 15s for faster updates
       // prime immediately when closed
       fetchLatest();
     }
@@ -64,6 +64,7 @@ function NotificationBar() {
           `/get-user-requested-bids/${userId}/`
         );
         const bids = bidsRes.data?.data?.bids || [];
+        console.log("🔔 Fetched bids for notifications:", bids);
 
         // Fetch recent messages via chat APIs
         let messages: any[] = [];
@@ -82,6 +83,7 @@ function NotificationBar() {
               msgRes.data?.data?.messages ||
               msgRes.data?.messages ||
               (Array.isArray(msgRes.data) ? msgRes.data : []);
+            console.log("🔔 Fetched messages for notifications:", messages);
           }
         } catch (_) {}
 
@@ -145,6 +147,7 @@ function NotificationBar() {
 
         // Only update the store if we actually have new items to avoid re-render flicker
         if (newItems.length > 0) {
+          console.log("🔔 New notifications found:", newItems);
           addNotifications(newItems);
           // advance the last timestamp using any new items
           const maxTs = Math.max(
@@ -152,6 +155,8 @@ function NotificationBar() {
             ...newItems.map((n) => Date.parse(n.createdAt)).filter((n) => !Number.isNaN(n))
           );
           if (Number.isFinite(maxTs)) lastTimestampRef.current = maxTs;
+        } else {
+          console.log("🔔 No new notifications found");
         }
       } catch (err) {
         // Fail silently; the UI should still work with existing items
@@ -193,55 +198,74 @@ function NotificationBar() {
       `}</style>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="relative inline-flex items-center justify-center rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 text-blue-700 px-3 py-2 shadow-sm hover:shadow-md transition-all"
+        className="relative group"
         aria-label="Notifications"
       >
-        <Bell className={`h-5 w-5 ${wiggle ? 'motion-safe:[animation:jp-wiggle_1.2s_ease]' : ''}`} />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 text-[10px] flex items-center justify-center rounded-full bg-red-500 text-white font-bold transition-transform duration-200 will-change-transform">
-            {unreadCount}
-          </span>
-        )}
+        {/* Modern notification button with glass effect */}
+        <div className="relative p-3 rounded-2xl bg-white/80 backdrop-blur-sm border border-gray-200/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 hover:bg-white/90">
+          {/* Notification icon with modern design */}
+          <div className="relative">
+            <div className={`w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center transition-all duration-300 ${wiggle ? 'motion-safe:[animation:jp-wiggle_1.2s_ease]' : ''}`}>
+              <Bell className="h-4 w-4 text-white" />
+            </div>
+            
+            {/* Notification count badge */}
+            {unreadCount > 0 && (
+              <div className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1.5 text-xs flex items-center justify-center rounded-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold shadow-lg animate-pulse">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </div>
+            )}
+            
+            {/* Hover effect ring */}
+            <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-emerald-400/20 to-teal-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          </div>
+        </div>
+        
+        {/* Subtle glow effect */}
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-emerald-400/10 to-teal-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm"></div>
       </button>
 
       <div
-        className={`absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden transition-all duration-200 ease-out ${open ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-1 pointer-events-none'}`}
+        className={`absolute right-0 mt-3 w-80 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-200/50 z-50 overflow-hidden transition-all duration-300 ease-out ${open ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-2 pointer-events-none'}`}
         aria-hidden={!open}
       >
-          <div className="flex items-center justify-between px-4 py-3 border-b">
-            <span className="font-semibold text-gray-800">Notifications</span>
-            <button onClick={markAllRead} className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-700">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100/50 bg-gradient-to-r from-emerald-50/50 to-teal-50/50">
+            <span className="font-bold text-gray-800 text-lg">Notifications</span>
+            <button onClick={markAllRead} className="text-xs flex items-center gap-2 text-emerald-600 hover:text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-3 py-1.5 rounded-full transition-all duration-200">
               <Check className="h-3 w-3" /> Mark all read
             </button>
           </div>
           <ul className="max-h-96 overflow-auto divide-y">
-            {topFive.length === 0 ? (
+            {topSeven.length === 0 ? (
               <li className="px-4 py-6 text-sm text-gray-500">No notifications yet</li>
             ) : (
-              topFive.map((n) => (
-                <li key={n.id} className={`px-4 py-3 ${n.read ? "bg-white" : "bg-blue-50/50"}`}>
-                  <Link href={n.link || "#"} className="flex items-start gap-3">
-                    <span className="mt-0.5">
+              topSeven.map((n) => (
+                <li key={n.id} className={`px-5 py-4 transition-all duration-200 hover:bg-gray-50/50 ${n.read ? "bg-white" : "bg-emerald-50/30"}`}>
+                  <Link href={n.link || "#"} className="flex items-start gap-4 group">
+                    <div className={`p-2 rounded-lg ${n.type === "bid" ? "bg-amber-100" : "bg-blue-100"} group-hover:scale-110 transition-transform duration-200`}>
                       {n.type === "bid" ? (
                         <Gavel className="h-4 w-4 text-amber-600" />
                       ) : (
                         <MessageSquare className="h-4 w-4 text-blue-600" />
                       )}
-                    </span>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-800 line-clamp-2">{n.title}</p>
-                      {n.description && (
-                        <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{n.description}</p>
-                      )}
-                      <p className="text-[10px] text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString()}</p>
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 line-clamp-2 group-hover:text-emerald-700 transition-colors duration-200">{n.title}</p>
+                      {n.description && (
+                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">{n.description}</p>
+                      )}
+                      <p className="text-[10px] text-gray-400 mt-2">{new Date(n.createdAt).toLocaleString()}</p>
+                    </div>
+                    {!n.read && (
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2 animate-pulse"></div>
+                    )}
                   </Link>
                 </li>
               ))
             )}
           </ul>
-          <div className="px-4 py-2 text-center text-sm">
-            <Link href="/notifications" className="text-blue-600 hover:text-blue-700 font-medium">View all</Link>
+          <div className="px-5 py-3 text-center bg-gradient-to-r from-emerald-50/50 to-teal-50/50 border-t border-gray-100/50">
+            <Link href="/notifications" className="text-emerald-600 hover:text-emerald-700 font-semibold text-sm transition-colors duration-200">View all notifications</Link>
           </div>
       </div>
     </div>
