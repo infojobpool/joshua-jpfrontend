@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { 
   Clock, 
@@ -57,6 +58,7 @@ interface Task {
   deletion_status: boolean;
   cancel_status: boolean;
   images?: Image[];
+  progressLabel?: string;
 }
 
 interface Bid {
@@ -112,6 +114,20 @@ export default function Dashboard() {
   const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
   const [bids, setBids] = useState<Bid[]>([]);
   const [requestedTasks, setRequestedTasks] = useState<BidRequest[]>([]);
+  // Local filter for My Tasks summary chips
+  const [myTasksFilter, setMyTasksFilter] = useState<"all" | "in_progress" | "open" | "completed">("all");
+  
+  // Summary counts for "My Tasks"
+  const myTasksSummary = (() => {
+    const inProgress = postedTasks.filter(
+      (t) => t.status === "in_progress" && !t.deletion_status && !t.cancel_status
+    ).length;
+    const open = postedTasks.filter(
+      (t) => t.status === "open" && !t.deletion_status && !t.cancel_status
+    ).length;
+    const completedCount = postedTasks.filter((t) => t.status === "completed").length;
+    return { inProgress, open, completed: completedCount };
+  })();
   
   // Filter states
   const [categories, setCategories] = useState<Category[]>([]);
@@ -203,6 +219,26 @@ export default function Dashboard() {
           // First, get the basic task data
           const tasks: Task[] = result.data.jobs.map((job) => {
             let jobStatus = "open";
+            let progressLabel: string | undefined = undefined;
+            // Robust acceptance/payment detection across possible API shapes
+            const isPaid =
+              job.payment_status === "paid" ||
+              job.payment === "paid" ||
+              job.is_paid === 1 ||
+              job.payment_done === 1 ||
+              job.payment_success === true ||
+              job.status === "paid";
+            const isAccepted =
+              job.bid_status === "accepted" ||
+              job.accepted === 1 ||
+              job.is_accepted === 1 ||
+              Boolean(job.accepted_bid_id) ||
+              Boolean(job.assigned_tasker_id) ||
+              job.status === "accepted" ||
+              job.status === "assigned" ||
+              job.status === "working" ||
+              job.status === "active" ||
+              job.status === "in_progress";
             console.log(`🔍 Task ${job.job_id} status debug:`, {
               job_completion_status: job.job_completion_status,
               deletion_status: job.deletion_status,
@@ -217,9 +253,16 @@ export default function Dashboard() {
               jobStatus = "deleted";
             } else if (job.cancel_status) {
               jobStatus = "canceled";
-            } else if (job.status === "in_progress" || job.status === "working" || job.status === "assigned" || 
-                      job.status === "accepted" || job.status === "paid" || job.status === "active") {
+            } else if (isPaid || isAccepted) {
               jobStatus = "in_progress";
+              // Provide a clear reason label for highlighting
+              if (isPaid) {
+                progressLabel = "In Progress — Payment Made";
+              } else if (isAccepted) {
+                progressLabel = "In Progress — Bid Accepted";
+              } else {
+                progressLabel = "In Progress";
+              }
             }
 
             return {
@@ -245,6 +288,7 @@ export default function Dashboard() {
                     alt: `Job image ${index + 1}`,
                   }))
                 : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+              progressLabel,
             };
           });
 
@@ -704,8 +748,15 @@ export default function Dashboard() {
       location === "" ||
       task.location.toLowerCase().includes(location.toLowerCase());
     const isNotCanceled = !task.cancel_status;
+    
+    // Only show tasks that are actually available for bidding (open status)
+    // Exclude tasks that are in progress, completed, deleted, or canceled
+    const isAvailableForBidding = 
+      task.status === "open" && 
+      !task.deletion_status && 
+      !task.cancel_status;
 
-    return matchesSearch && matchesCategory && matchesPrice && matchesLocation && isNotCanceled;
+    return matchesSearch && matchesCategory && matchesPrice && matchesLocation && isNotCanceled && isAvailableForBidding;
   });
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
@@ -737,6 +788,8 @@ export default function Dashboard() {
     return null;
   }
 
+  const NotificationBar = dynamic(() => import("@/components/NotificationBar"), { ssr: false });
+
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-1 max-w-7xl mx-auto py-6 md:py-10 px-4 md:px-6">
@@ -748,6 +801,8 @@ export default function Dashboard() {
             <p className="text-lg text-muted-foreground mt-2">Manage your tasks and bids efficiently</p>
           </div>
           <div className="flex items-center gap-4">
+            {/* Notifications */}
+            <NotificationBar />
             {/* Profile Dropdown - Now in top right edge */}
             <div className="relative">
               <button
@@ -830,6 +885,39 @@ export default function Dashboard() {
 
           <TabsContent value="my-tasks" className="space-y-6 mt-8">
             <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-blue-200 pb-2">Tasks You've Posted</h2>
+            {/* Summary strip */}
+            <div className="grid grid-cols-3 gap-3">
+              <button
+                onClick={() => setMyTasksFilter("in_progress")}
+                className={`rounded-xl p-4 bg-gradient-to-br from-emerald-50 to-green-50 border text-center transition-all ${
+                  myTasksFilter === "in_progress" ? "border-emerald-500 ring-2 ring-emerald-200" : "border-emerald-200/60"
+                }`}
+              >
+                <div className="text-sm font-medium">In Progress</div>
+                <div className="text-2xl font-extrabold">{myTasksSummary.inProgress}</div>
+              </button>
+              <button
+                onClick={() => setMyTasksFilter("open")}
+                className={`rounded-xl p-4 bg-gradient-to-br from-cyan-50 to-sky-50 border text-center transition-all ${
+                  myTasksFilter === "open" ? "border-cyan-500 ring-2 ring-cyan-200" : "border-cyan-200/60"
+                }`}
+              >
+                <div className="text-sm font-medium">Open</div>
+                <div className="text-2xl font-extrabold">{myTasksSummary.open}</div>
+              </button>
+              <button
+                onClick={() => setMyTasksFilter("completed")}
+                className={`rounded-xl p-4 bg-gradient-to-br from-gray-50 to-slate-50 border text-center transition-all ${
+                  myTasksFilter === "completed" ? "border-gray-500 ring-2 ring-gray-200" : "border-gray-200"
+                }`}
+              >
+                <div className="text-sm font-medium">Completed</div>
+                <div className="text-2xl font-extrabold">{myTasksSummary.completed}</div>
+              </button>
+            </div>
+            <div className="text-right -mt-2">
+              <button onClick={() => setMyTasksFilter("all")} className="text-xs text-blue-600 hover:underline">Clear filter</button>
+            </div>
             {postedTasks.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-10">
@@ -844,19 +932,24 @@ export default function Dashboard() {
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {postedTasks
+                  .filter((t) => {
+                    if (myTasksFilter === "all") return true;
+                    if (myTasksFilter === "in_progress") return t.status === "in_progress" && !t.deletion_status && !t.cancel_status;
+                    if (myTasksFilter === "open") return t.status === "open" && !t.deletion_status && !t.cancel_status;
+                    if (myTasksFilter === "completed") return t.status === "completed";
+                    return true;
+                  })
                   .sort((a, b) => {
-                    // Sort "Working" (accepted bids + paid) tasks to the top
-                    if (a.status === "in_progress" && b.status !== "in_progress") return -1;
-                    if (b.status === "in_progress" && a.status !== "in_progress") return 1;
-                    
-                    // Sort "Deleted" tasks to the bottom
+                    // Prioritize actively in-progress (accepted/paid) tasks to the top
+                    const aTop = a.status === "in_progress" && !a.deletion_status && !a.cancel_status;
+                    const bTop = b.status === "in_progress" && !b.deletion_status && !b.cancel_status;
+                    if (aTop && !bTop) return -1;
+                    if (bTop && !aTop) return 1;
+                    // Push deleted/canceled to bottom
                     if (a.deletion_status && !b.deletion_status) return 1;
                     if (!a.deletion_status && b.deletion_status) return -1;
-                    
-                    // Sort "Canceled" tasks to the bottom
                     if (a.cancel_status && !b.cancel_status) return 1;
                     if (!a.cancel_status && b.cancel_status) return -1;
-                    
                     return 0;
                   })
                   .map((task) => (
@@ -873,7 +966,7 @@ export default function Dashboard() {
                     {/* In Progress Task Banner */}
                     {task.status === "in_progress" && (
                       <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-emerald-600 to-green-600 text-white text-center py-2 px-4 rounded-t-xl font-bold text-sm shadow-lg z-10">
-                        🚀 TASK IN PROGRESS - BID ACCEPTED
+                        🚀 {task.progressLabel || "In Progress — Bid Accepted"}
                       </div>
                     )}
                     
@@ -1002,73 +1095,77 @@ export default function Dashboard() {
                     </CardTitle>
                     <CardDescription className="text-gray-600 font-medium">Refine your search</CardDescription>
                   </CardHeader>
-                  <CardContent className="p-6 space-y-6">
-                    <div className="space-y-3">
-                      <label className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                        <div className="p-1 rounded bg-purple-100">
-                          <svg className="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                          </svg>
+                  <CardContent className="p-6">
+                    <div className="rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-slate-50 shadow-sm p-5 space-y-6">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                          <div className="p-1 rounded bg-purple-100">
+                            <svg className="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                          </div>
+                          Category
+                        </label>
+                        <div className="bg-white border border-gray-200 rounded-xl p-2">
+                          <Select value={category} onValueChange={setCategory}>
+                            <SelectTrigger className="border-0 focus:ring-0">
+                              <SelectValue placeholder="Select a category" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-2 border-gray-200 shadow-xl">
+                              <SelectItem value="all" className="rounded-lg">All Categories</SelectItem>
+                              {categories.length > 0 ? (
+                                categories.map((cat) => (
+                                  <SelectItem key={cat.id} value={cat.id} className="rounded-lg">
+                                    {cat.name}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="loading" disabled className="rounded-lg">
+                                  Loading categories...
+                                </SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
                         </div>
-                        Category
-                      </label>
-                      <Select value={category} onValueChange={setCategory}>
-                        <SelectTrigger className="border-2 border-gray-200 focus:border-blue-400 rounded-xl bg-white/80 hover:bg-white transition-all duration-200">
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl border-2 border-gray-200 shadow-xl">
-                          <SelectItem value="all" className="rounded-lg">All Categories</SelectItem>
-                          {categories.length > 0 ? (
-                            categories.map((cat) => (
-                              <SelectItem key={cat.id} value={cat.id} className="rounded-lg">
-                                {cat.name}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="loading" disabled className="rounded-lg">
-                              Loading categories...
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-3">
-                      <label className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                        <div className="p-1 rounded bg-emerald-100">
-                          <IndianRupee className="w-3 h-3 text-emerald-600" />
-                        </div>
-                        Price Range
-                      </label>
-                      <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl p-4 border border-emerald-200/50">
-                        <div className="pt-2">
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                          <div className="p-1 rounded bg-emerald-100">
+                            <IndianRupee className="w-3 h-3 text-emerald-600" />
+                          </div>
+                          Price Range
+                        </label>
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
                           <Slider
                             defaultValue={[0, 50000]}
                             max={50000}
                             step={10}
                             value={priceRange}
                             onValueChange={setPriceRange}
-                            className="mb-4"
+                            className="mb-3"
                           />
                           <div className="flex justify-between text-sm font-semibold">
-                            <span className="text-emerald-700 bg-emerald-100 px-2 py-1 rounded-lg">₹{priceRange[0]}</span>
-                            <span className="text-emerald-700 bg-emerald-100 px-2 py-1 rounded-lg">₹{priceRange[1]}</span>
+                            <span className="text-emerald-700 bg-white px-2 py-1 rounded-lg border border-emerald-200">₹{priceRange[0]}</span>
+                            <span className="text-emerald-700 bg-white px-2 py-1 rounded-lg border border-emerald-200">₹{priceRange[1]}</span>
                           </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="space-y-3">
-                      <label className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                        <div className="p-1 rounded bg-blue-100">
-                          <MapPin className="w-3 h-3 text-blue-600" />
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                          <div className="p-1 rounded bg-blue-100">
+                            <MapPin className="w-3 h-3 text-blue-600" />
+                          </div>
+                          Location
+                        </label>
+                        <div className="bg-white border border-gray-200 rounded-xl p-2">
+                          <Input
+                            placeholder="Any location"
+                            value={location}
+                            onChange={(e) => setLocation(e.target.value)}
+                            className="border-0 focus:ring-0"
+                          />
                         </div>
-                        Location
-                      </label>
-                      <Input
-                        placeholder="Any location"
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                        className="border-2 border-gray-200 focus:border-blue-400 rounded-xl bg-white/80 hover:bg-white transition-all duration-200"
-                      />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

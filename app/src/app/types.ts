@@ -30,7 +30,7 @@ export interface Image {
     description: string;
     budget: number;
     location: string;
-    status: boolean;
+    status: string;
     job_completion_status: number;
     postedAt: string;
     dueDate: string;
@@ -39,6 +39,7 @@ export interface Image {
     poster: User;
     offers: Offer[];
     assignedTasker?: User;
+    progressLabel?: string;
   }
   
   export interface Bid {

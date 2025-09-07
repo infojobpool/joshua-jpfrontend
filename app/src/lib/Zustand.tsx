@@ -38,8 +38,23 @@ interface FormState {
   resetFormData: () => void;
 }
 
+interface NotificationItem {
+  id: string;
+  type: "message" | "bid" | "system";
+  title: string;
+  description?: string;
+  createdAt: string; // ISO date string
+  read: boolean;
+  link?: string;
+}
+
 interface NotificationState {
-  notifications: number;
+  notifications: number; // backward compatibility for existing badge usage
+  unreadCount: number;
+  items: NotificationItem[];
+  setNotifications: (items: NotificationItem[]) => void;
+  addNotifications: (items: NotificationItem[]) => void;
+  markAllRead: () => void;
   incrementNotifications: () => void;
   resetNotifications: () => void;
 }
@@ -248,9 +263,41 @@ const useStore = create<StoreState>((set) => ({
 
   // 🔸 Notifications
   notifications: 0,
+  unreadCount: 0,
+  items: [],
+  setNotifications: (items: NotificationItem[]) =>
+    set(() => {
+      const sorted = [...items].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+      const top5 = sorted.slice(0, 5);
+      const unread = top5.filter((n) => !n.read).length;
+      return {
+        items: top5,
+        unreadCount: unread,
+        notifications: unread,
+      };
+    }),
+  addNotifications: (items: NotificationItem[]) =>
+    set((state) => {
+      const byId: Record<string, NotificationItem> = {};
+      [...items, ...state.items].forEach((n) => {
+        byId[n.id] = n;
+      });
+      const merged = Object.values(byId).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)).slice(0, 5);
+      const unread = merged.filter((n) => !n.read).length;
+      return {
+        items: merged,
+        unreadCount: unread,
+        notifications: unread,
+      };
+    }),
+  markAllRead: () =>
+    set((state) => ({
+      items: state.items.map((n) => ({ ...n, read: true })),
+      unreadCount: 0,
+    })),
   incrementNotifications: () =>
-    set((state) => ({ notifications: state.notifications + 1 })),
-  resetNotifications: () => set(() => ({ notifications: 0 })),
+    set((state) => ({ notifications: state.notifications + 1, unreadCount: state.unreadCount + 1 })),
+  resetNotifications: () => set(() => ({ notifications: 0, unreadCount: 0 })),
 
   // 🔸 Validation
   validateName: (name: string) => {

@@ -1349,13 +1349,66 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           job.worker_id ||
           null;
 
+        // Use the same status determination logic as dashboard
+        let jobStatus = "open";
+        let progressLabel: string | undefined = undefined;
+        
+        // Robust acceptance/payment detection across possible API shapes
+        const isPaid =
+          job.payment_status === "paid" ||
+          job.payment_status === "completed" ||
+          job.payment_status === "success" ||
+          job.payment_status === true ||
+          job.payment_made === true ||
+          job.payment_completed === true;
+        
+        const isAccepted =
+          job.bid_accepted === true ||
+          job.bid_accepted === "true" ||
+          job.offer_accepted === true ||
+          job.offer_accepted === "true" ||
+          job.status === "assigned" ||
+          job.status === "working" ||
+          job.status === "active" ||
+          job.status === "in_progress";
+        
+        console.log(`🔍 Task Details - Task ${job.job_id} status debug:`, {
+          job_completion_status: job.job_completion_status,
+          deletion_status: job.deletion_status,
+          cancel_status: job.cancel_status,
+          status: job.status,
+          payment_status: job.payment_status,
+          bid_accepted: job.bid_accepted,
+          isPaid,
+          isAccepted,
+          allKeys: Object.keys(job)
+        });
+        
+        if (job.job_completion_status === 1) {
+          jobStatus = "completed";
+        } else if (job.deletion_status) {
+          jobStatus = "deleted";
+        } else if (job.cancel_status) {
+          jobStatus = "canceled";
+        } else if (isPaid || isAccepted) {
+          jobStatus = "in_progress";
+          // Provide a clear reason label for highlighting
+          if (isPaid) {
+            progressLabel = "In Progress — Payment Made";
+          } else if (isAccepted) {
+            progressLabel = "In Progress — Bid Accepted";
+          } else {
+            progressLabel = "In Progress";
+          }
+        }
+
         const mappedTask: Task = {
           id: job.job_id,
           title: job.job_title,
           description: job.job_description,
           budget: job.job_budget,
           location: job.job_location,
-          status: job.status,
+          status: jobStatus,
           job_completion_status: job.job_completion_status,
           postedAt: job.timestamp
             ? (() => {
@@ -1396,6 +1449,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           },
           offers: [],
           assignedTasker: assignedId ? { id: String(assignedId) } as any : undefined,
+          progressLabel,
         };
         setTask(mappedTask);
         console.log("Mapped Task:", mappedTask);

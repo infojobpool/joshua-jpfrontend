@@ -76,7 +76,25 @@ export default function MessagesPage() {
         setLoading(true);
         
         // Get chat IDs from localStorage
-        const storedChats = localStorage.getItem("userChats");
+        let storedChats = localStorage.getItem("userChats");
+        // Fallback: seed from notification items if empty
+        if (!storedChats) {
+          try {
+            // read notifications from Zustand store without subscribing
+            const notif = (useStore as any).getState?.()?.items || [];
+            const chatIdsFromNotif: string[] = [];
+            notif.forEach((n: any) => {
+              if (n.type === "message" && typeof n.link === "string") {
+                const match = n.link.match(/\/messages\/(.+)$/);
+                if (match && match[1]) chatIdsFromNotif.push(match[1]);
+              }
+            });
+            if (chatIdsFromNotif.length > 0) {
+              localStorage.setItem("userChats", JSON.stringify(chatIdsFromNotif));
+              storedChats = JSON.stringify(chatIdsFromNotif);
+            }
+          } catch {}
+        }
         if (!storedChats) {
           setChats([]);
           setLoading(false);
