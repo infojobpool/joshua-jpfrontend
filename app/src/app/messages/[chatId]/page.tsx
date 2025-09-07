@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useRouter, useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -45,6 +45,7 @@ interface ChatInfo {
 export default function ChatPage() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const { userId, user, logout } = useStore()
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
@@ -57,6 +58,18 @@ export default function ChatPage() {
 
 
   const chatId = params.chatId as string
+
+  // Ensure this chat appears in the Messages list page
+  const persistChatId = (id: string) => {
+    try {
+      const raw = localStorage.getItem("userChats")
+      const arr: string[] = raw ? JSON.parse(raw) : []
+      if (!arr.includes(id)) {
+        arr.push(id)
+        localStorage.setItem("userChats", JSON.stringify(arr))
+      }
+    } catch {}
+  }
 
   useEffect(() => {
     if (!userId) {
@@ -87,6 +100,8 @@ export default function ChatPage() {
     // Skip the problematic get-chat-id call for now
     console.log('🔍 Chat ID:', chatId);
     fetchMessages();
+    // Persist immediately so the list can show this convo even before messages load
+    if (chatId) persistChatId(chatId)
   }, [chatId, userId, router]);
 
   useEffect(() => {
@@ -278,6 +293,8 @@ export default function ChatPage() {
             name: otherUserName,
           }
         });
+        // Persist chat id for list page
+        persistChatId(chatId)
         
         console.log('✅ Final other user info:', {
           id: otherUserId,
@@ -311,6 +328,8 @@ export default function ChatPage() {
                 }
               });
               console.log('✅ Got user name from chat ID analysis:', fetchedName);
+              // Persist chat id for list page
+              persistChatId(chatId)
               return;
             }
           }
@@ -337,6 +356,8 @@ export default function ChatPage() {
               }
             });
             console.log('✅ Got user name from direct chat ID:', fetchedName);
+            // Persist chat id for list page
+            persistChatId(chatId)
             return;
           }
         }
@@ -542,6 +563,10 @@ export default function ChatPage() {
     );
   }
 
+  // optional context from URL
+  const taskTitle = searchParams?.get('task_title') || chatInfo?.task?.title || ''
+  const taskId = searchParams?.get('task_id') || chatInfo?.task?.id || ''
+
   return (
     <div className="flex h-screen flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 overflow-hidden fixed inset-0 z-50">
       <Toaster position="top-right" />
@@ -572,6 +597,14 @@ export default function ChatPage() {
               <h2 className="font-bold text-gray-900 text-2xl tracking-tight truncate">
                 {otherUserName || chatInfo?.otherUser?.name || "Unknown User"}
               </h2>
+              {taskTitle && (
+                <div className="mt-1 text-sm text-gray-600 flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-medium">Task</span>
+                  <Link href={taskId ? `/tasks/${taskId}` : '#'} className="hover:text-blue-700 truncate max-w-md">
+                    {taskTitle}
+                  </Link>
+                </div>
+              )}
               <p className="text-sm text-emerald-600 flex items-center gap-2 font-semibold">
                 <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></div>
                 Active now
@@ -579,6 +612,8 @@ export default function ChatPage() {
             </div>
           </div>
           <div className="flex items-center gap-4 flex-shrink-0">
+            <Link href="/dashboard" className="text-sm font-semibold text-blue-700 hover:text-blue-800">Dashboard</Link>
+            <Link href="/profile" className="text-sm font-semibold text-gray-700 hover:text-gray-900">Profile</Link>
             <Button variant="ghost" size="sm" className="p-4 hover:bg-blue-50 rounded-full transition-all duration-200 group">
               <svg className="h-6 w-6 text-gray-600 group-hover:text-blue-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
