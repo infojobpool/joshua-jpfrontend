@@ -107,6 +107,20 @@ interface APIResponse<T> {
 export default function Dashboard() {
   const router = useRouter();
   const { user, userId, isAuthenticated, logout } = useStore();
+  
+  // Debug authentication state
+  console.log("🔍 Dashboard render - Auth state:", {
+    isAuthenticated,
+    user: user ? { id: user.id, name: user.name } : null,
+    userId,
+    userType: typeof user,
+    userIdType: typeof userId
+  });
+  
+  // Debug useEffect dependencies
+  console.log("🔍 useEffect dependencies - user:", !!user, "userId:", !!userId);
+  console.log("🔍 User object details:", user);
+  console.log("🔍 UserId details:", userId);
   const [loading, setLoading] = useState(true);
   
   // Task states
@@ -130,7 +144,7 @@ export default function Dashboard() {
         console.log("📋 Task orders fetched:", response.data.data.task_orders);
         console.log("📋 Total orders:", response.data.data.task_orders.length);
         console.log("📋 Sample order structure:", response.data.data.task_orders[0]);
-        console.log("📋 All order statuses:", response.data.data.task_orders.map(order => ({
+        console.log("📋 All order statuses:", response.data.data.task_orders.map((order: any) => ({
           order_id: order.order_id,
           job_id: order.job_id,
           status: order.status,
@@ -242,10 +256,14 @@ export default function Dashboard() {
   }, [requestedTasks.length]);
 
   useEffect(() => {
+    console.log("🔍 Auth check useEffect - isAuthenticated:", isAuthenticated, "user:", !!user, "userId:", !!userId);
+    
     if (!isAuthenticated || !user || !userId) {
+        console.log("🔍 Redirecting to signin - missing auth data");
         router.push("/signin");
         return;
       }
+    console.log("🔍 Auth check passed, setting loading false and fetching task orders");
     setLoading(false);
     fetchTaskOrders(); // Fetch task orders when user is authenticated
   }, [isAuthenticated, user, userId, router]);
@@ -254,7 +272,7 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await axiosInstance.get<APIResponse<{ categories: Category[] }>>("/get-all-categories");
+        const response = await axiosInstance.get<APIResponse<{ categories: Category[] }>>("/get-all-categories/");
         const result = response.data;
         
         if (result.status_code === 200 && result.data?.categories) {
@@ -398,29 +416,85 @@ export default function Dashboard() {
     fetchUserTasks();
   }, [user, userId, taskOrders]);
 
-  // Fetch all available tasks
+  // Test useEffect
   useEffect(() => {
-    if (!user || !userId) return;
+    console.log("🔍 TEST useEffect - This should always run");
+  }, []);
+
+  // Fetch all available tasks
+  console.log("🔍 About to register fetchAllTasks useEffect");
+  useEffect(() => {
+    console.log("🔍 ===== FETCH ALL TASKS useEffect TRIGGERED =====");
+    console.log("🔍 useEffect triggered - user:", user, "userId:", userId);
+    console.log("🔍 User type:", typeof user, "UserId type:", typeof userId);
+    console.log("🔍 User keys:", user ? Object.keys(user) : "No user");
+    console.log("🔍 User ID from user object:", user?.id);
+    console.log("🔍 User ID from store:", userId);
+    
+    if (!user || !userId) {
+      console.log("🔍 User or userId missing, returning early");
+      console.log("🔍 user exists:", !!user, "userId exists:", !!userId);
+      console.log("🔍 user.id exists:", !!user?.id);
+      return;
+    }
 
     const fetchAllTasks = async () => {
       try {
-        
-        const response = await axiosInstance.get<APIResponse<{ jobs: any[] }>>("/get-all-jobs");
+        console.log("🔍 Starting fetchAllTasks...");
+        const response = await axiosInstance.get<APIResponse<{ jobs: any[] }>>("/get-all-jobs/");
         const result = response.data;
 
         if (result.status_code === 200 && result.data?.jobs) {
+          console.log("🔍 Total jobs from API:", result.data.jobs.length);
+          console.log("🔍 Current user ID:", userId);
+          console.log("🔍 User from store:", user?.id);
+          
           const tasks: Task[] = result.data.jobs
             .filter((job) => {
               // Debug: Log the full job object to see what fields are available
               
-              // Try to find the actual user ID field - check multiple possible properties
-              const jobPostedById = job.posted_by_id || job.user_id || job.user_ref_id || job.posted_by_user_id || job.posted_by;
+              // The API uses user_ref_id as the user identifier
+              const jobPostedById = job.user_ref_id;
               const currentUserId = userId?.toString();
-              const userFromStore = user?.id?.toString();
               
+              // Use userId from store as the primary identifier
+              const isNotPostedByUser = jobPostedById !== currentUserId;
               
-              // Check against both userId from store and user.id from user object
-              return jobPostedById !== currentUserId && jobPostedById !== userFromStore;
+              // Only show open tasks (not completed, deleted, or cancelled)
+              const isOpen = job.job_completion_status !== 1 && 
+                           !job.deletion_status && 
+                           !job.cancel_status;
+              
+              // Debug logging for all jobs
+              console.log(`🔍 Job ${job.job_id}:`, {
+                jobPostedById,
+                currentUserId,
+                isNotPostedByUser,
+                isOpen,
+                job_completion_status: job.job_completion_status,
+                deletion_status: job.deletion_status,
+                cancel_status: job.cancel_status,
+                posted_by: job.posted_by
+              });
+              
+              // Additional debug for filtering
+              if (job.job_id === "task_31" || job.job_id === "task_32") {
+                console.log(`🔍 DETAILED DEBUG for ${job.job_id}:`, {
+                  'job.user_ref_id': job.user_ref_id,
+                  'job.posted_by_id': job.posted_by_id,
+                  'job.user_id': job.user_id,
+                  'userId': userId,
+                  'user.id': user?.id,
+                  'typeof jobPostedById': typeof jobPostedById,
+                  'typeof currentUserId': typeof currentUserId,
+                  'jobPostedById === currentUserId': jobPostedById === currentUserId,
+                  'isNotPostedByUser': isNotPostedByUser,
+                  'isOpen': isOpen,
+                  'FINAL RESULT': isNotPostedByUser && isOpen
+                });
+              }
+              
+              return isNotPostedByUser && isOpen;
             })
             .map((job) => {
               let jobStatus = "open";
@@ -465,15 +539,32 @@ export default function Dashboard() {
 
           // Skip bid count fetching for now to avoid API errors
           const availableTasksWithBidCounts = tasks;
+          
+          console.log("🔍 FINAL FILTERED AVAILABLE TASKS:", availableTasksWithBidCounts.length);
+          console.log("🔍 Available tasks details:", availableTasksWithBidCounts);
 
+          console.log("🔍 Available tasks after filtering:", availableTasksWithBidCounts.length);
           setAvailableTasks(availableTasksWithBidCounts);
+          console.log("🔍 setAvailableTasks called with", availableTasksWithBidCounts.length, "tasks");
         } else {
           console.warn("No jobs found or API error:", result.message);
         }
       } catch (err) {
-        console.error("Failed to fetch all tasks:", err);
-        toast.error("An error occurred while fetching available tasks.");
+        console.error("❌ Failed to fetch all tasks:", err);
+        console.error("❌ Error details:", {
+          name: (err as any)?.name,
+          message: (err as any)?.message,
+          stack: (err as any)?.stack,
+          response: (err as any)?.response?.status,
+          data: (err as any)?.response?.data
+        });
+        
+        // Set empty arrays to prevent UI errors
+        setAvailableTasks([]);
+        
+        toast.error("Unable to load tasks. Please try again.");
       } finally {
+        console.log("🔍 fetchAllTasks completed");
         // avoid global loader flicker
       }
     };

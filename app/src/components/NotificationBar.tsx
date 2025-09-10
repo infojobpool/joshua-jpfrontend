@@ -65,8 +65,9 @@ function NotificationBar() {
     // pause polling while dropdown open to avoid UI flicker
     if (!open) {
       if (interval) clearInterval(interval);
-      interval = setInterval(fetchLatest, baseIntervalMs);
-      fetchLatest(); // prime immediately
+      // Temporarily disabled to fix available tasks issue
+      // interval = setInterval(fetchLatest, baseIntervalMs);
+      // fetchLatest(); // prime immediately
     }
 
     async function fetchLatest() {
@@ -251,7 +252,8 @@ function NotificationBar() {
   // When opening the dropdown, fetch immediately to show latest (no auto mark-read)
   useEffect(() => {
     if (open) {
-      try { fetchRef.current(); } catch {}
+      // Temporarily disabled to fix available tasks issue
+      // try { fetchRef.current(); } catch {}
     }
   }, [open]);
 

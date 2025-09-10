@@ -1343,6 +1343,15 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
         const job = data.data;
         console.log("API Response Data (Job):", job);
+        console.log("🔍 Job status fields:", {
+          status: job.status,
+          job_completion_status: job.job_completion_status,
+          bid_accepted: job.bid_accepted,
+          offer_accepted: job.offer_accepted,
+          assigned_tasker_id: job.assigned_tasker_id,
+          accepted_bidder_id: job.accepted_bidder_id,
+          worker_id: job.worker_id
+        });
 
         const assignedId =
           job.assigned_tasker_id ||
@@ -1395,6 +1404,18 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         ) {
           jobStatus = "in_progress";
         }
+
+        console.log("🔍 Status determination result:", {
+          assignedId,
+          jobStatus,
+          statusChecks: {
+            explicitStatus: job.status,
+            hasAssignedId: !!assignedId,
+            bidAccepted: job.bid_accepted,
+            offerAccepted: job.offer_accepted,
+            paymentStatus: job.payment_status
+          }
+        });
 
         // Fallback: if this browser previously accepted and paid, mark as in_progress from session
         try {
