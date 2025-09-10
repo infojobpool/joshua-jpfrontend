@@ -89,6 +89,8 @@ interface BidRequest {
   job_category: string;
   category_name: string;
   images?: Image[];
+  task_cancelled?: boolean;
+  task_deleted?: boolean;
 }
 
 interface Category {
@@ -168,6 +170,9 @@ export default function Dashboard() {
   const [requestUndeleteOpen, setRequestUndeleteOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  // Assigned-to-me cancel dialog
+  const [assignedCancelOpen, setAssignedCancelOpen] = useState(false);
+  const [selectedAssignedId, setSelectedAssignedId] = useState<string | null>(null);
 
 
   // Close profile dropdown when clicking outside
@@ -181,6 +186,60 @@ export default function Dashboard() {
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, [profileDropdownOpen]);
+
+  useEffect(() => {
+    // Hydrate from session to reduce flicker on tab switches
+    try {
+      const a = sessionStorage.getItem("assignedTasks");
+      if (a) setAssignedTasks(JSON.parse(a));
+    } catch {}
+    try {
+      const p = sessionStorage.getItem("postedTasks");
+      if (p) setPostedTasks(JSON.parse(p));
+    } catch {}
+    try {
+      const r = sessionStorage.getItem("requestedTasks");
+      if (r) setRequestedTasks(JSON.parse(r));
+    } catch {}
+  }, []);
+
+  // Ensure flags for session-hydrated bids (runs once post-hydration)
+  useEffect(() => {
+    const needsEnrichment = requestedTasks.some(
+      (b) => b.task_cancelled === undefined || b.task_deleted === undefined
+    );
+    if (!needsEnrichment || requestedTasks.length === 0) return;
+    const enrich = async () => {
+      try {
+        const results = await Promise.allSettled(
+          requestedTasks.map(async (b) => {
+            const r = await axiosInstance.get(`/get-job/${b.task_id}/`);
+            const job = r.data?.data?.job || r.data?.job || {};
+            const isCancelled = job?.status === true || job?.cancel_status === true || job?.status === "Cancelled" || job?.status === "cancelled";
+            const isDeleted = job?.deletion_status === true || job?.deletion_status === 1 || job?.status === "Deleted" || job?.status === "deleted";
+            return { task_id: b.task_id, cancelled: !!isCancelled, deleted: !!isDeleted };
+          })
+        );
+        const cancelMap: Record<string, boolean> = {};
+        const deleteMap: Record<string, boolean> = {};
+        for (const res of results) {
+          if (res.status === "fulfilled") {
+            cancelMap[res.value.task_id] = res.value.cancelled;
+            deleteMap[res.value.task_id] = res.value.deleted;
+          }
+        }
+        const updated = requestedTasks.map((b) => ({
+          ...b,
+          task_cancelled: cancelMap[b.task_id] ?? b.task_cancelled ?? false,
+          task_deleted: deleteMap[b.task_id] ?? b.task_deleted ?? false,
+        }));
+        setRequestedTasks(updated);
+        try { sessionStorage.setItem("requestedTasks", JSON.stringify(updated)); } catch {}
+      } catch {}
+    };
+    enrich();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedTasks.length]);
 
   useEffect(() => {
     if (!isAuthenticated || !user || !userId) {
@@ -324,6 +383,7 @@ export default function Dashboard() {
           });
 
           setPostedTasks(tasks);
+          try { sessionStorage.setItem("postedTasks", JSON.stringify(tasks)); } catch {}
         } else {
           console.warn("No jobs found or API error:", result.message);
         }
@@ -396,7 +456,7 @@ export default function Dashboard() {
                 images: job.job_images?.urls?.length
                   ? job.job_images.urls.map((url: string, index: number) => ({
                       id: `img${index + 1}`,
-                      url,
+                      url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
                       alt: `Job image ${index + 1}`,
                     }))
                   : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
@@ -473,10 +533,16 @@ export default function Dashboard() {
             description: job.job_description || "No description provided.",
             budget: Number(job.job_budget) || 0,
             location: job.job_location || "Unknown",
-            status: job.status ? "assigned" : "open",
-            postedAt: job.created_at
-              ? new Date(job.created_at).toLocaleDateString("en-GB")
-              : "Unknown",
+            // Treat assigned jobs as in_progress in UI
+            status: job.status ? "in_progress" : "open",
+            postedAt: (() => {
+              const raw = job.created_at || job.timestamp || job.job_due_date || job.updated_at;
+              try {
+                return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
+              } catch {
+                return typeof raw === "string" && raw ? raw : "Unknown";
+              }
+            })(),
             dueDate: job.job_due_date
               ? new Date(job.job_due_date).toLocaleDateString("en-GB")
               : "Unknown",
@@ -488,12 +554,13 @@ export default function Dashboard() {
             images: job.job_images?.urls?.length
               ? job.job_images.urls.map((url: string, index: number) => ({
                   id: `img${index + 1}`,
-                  url,
+                  url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
                   alt: `Job image ${index + 1}`,
                 }))
               : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
           }));
           setAssignedTasks(tasks);
+          try { sessionStorage.setItem("assignedTasks", JSON.stringify(tasks)); } catch {}
         } else {
           console.warn("No assigned tasks found or API error:", result.message);
         }
@@ -541,8 +608,36 @@ export default function Dashboard() {
                   alt: `Job image ${index + 1}`,
                 }))
               : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+            task_cancelled: false,
           }));
-          setRequestedTasks(bids);
+          // Enrich each bid with task cancel status and filter out cancelled tasks
+          try {
+            const results = await Promise.allSettled(
+              bids.map(async (b) => {
+                const r = await axiosInstance.get(`/get-job/${b.task_id}/`);
+                const job = r.data?.data?.job || r.data?.job || {};
+                const isCancelled = job?.status === true || job?.cancel_status === true || job?.status === "Cancelled" || job?.status === "cancelled";
+                const isDeleted = job?.deletion_status === true || job?.deletion_status === 1 || job?.status === "Deleted" || job?.status === "deleted";
+                return { id: b.bid_id, task_id: b.task_id, cancelled: !!isCancelled, deleted: !!isDeleted };
+              })
+            );
+            const cancelledMap: Record<string, boolean> = {};
+            const deletedMap: Record<string, boolean> = {};
+            for (const res of results) {
+              if (res.status === 'fulfilled') {
+                cancelledMap[res.value.task_id] = res.value.cancelled;
+                deletedMap[res.value.task_id] = res.value.deleted;
+              }
+            }
+            const enriched = bids
+              .map((b) => ({ ...b, task_cancelled: cancelledMap[b.task_id] ?? false, task_deleted: deletedMap[b.task_id] ?? false }));
+            setRequestedTasks(enriched);
+            try { sessionStorage.setItem("requestedTasks", JSON.stringify(enriched)); } catch {}
+          } catch {
+            // If enrichment fails, fallback to original list
+            setRequestedTasks(bids);
+            try { sessionStorage.setItem("requestedTasks", JSON.stringify(bids)); } catch {}
+          }
         } else {
           console.warn("No requested bids found or API error:", result.message);
         }
@@ -571,12 +666,14 @@ export default function Dashboard() {
             budget: Number(job.job_budget) || 0,
             location: job.job_location || "Unknown",
             status: "completed",
-            postedAt: job.job_due_date
-              ? new Date(job.job_due_date).toLocaleDateString("en-GB")
-              : "Unknown",
-            completedDate: job.completed_date
-              ? new Date(job.completed_date).toLocaleDateString("en-GB")
-              : "Unknown",
+            postedAt: (() => {
+              const raw = job.job_due_date || job.created_at || job.timestamp;
+              try { return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown"; } catch { return typeof raw === "string" && raw ? raw : "Unknown"; }
+            })(),
+            completedDate: (() => {
+              const raw = job.completed_date || job.completed_at || job.completion_date || job.job_completion_date || job.updated_at || job.timestamp;
+              try { return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown"; } catch { return typeof raw === "string" && raw ? raw : "Unknown"; }
+            })(),
             rating: job.rating || 0,
             offers: job.offers || 0,
             posted_by: job.posted_by || "Unknown",
@@ -734,6 +831,35 @@ export default function Dashboard() {
       toast.error("An error occurred while canceling the task");
     } finally {
       setSelectedJobId(null);
+    }
+  };
+
+  // Cancel for assigned-to-me tasks
+  const handleAssignedCancelClick = (jobId: string) => {
+    setSelectedAssignedId(jobId);
+    setAssignedCancelOpen(true);
+  };
+
+  const handleAssignedConfirmCancel = async () => {
+    if (!selectedAssignedId) return;
+    setAssignedCancelOpen(false);
+    try {
+      let response;
+      try {
+        response = await axiosInstance.post(`/request-cancel-job/${selectedAssignedId}/`, { reason: "" });
+      } catch (err) {
+        response = await axiosInstance.put(`/cancel-job/${selectedAssignedId}/`);
+      }
+      if (response.data.status_code === 200) {
+        toast.success("Cancel request sent");
+        setAssignedTasks((prev) => prev.filter((t) => t.id !== selectedAssignedId));
+      } else {
+        toast.error(response.data.message || "Failed to cancel task");
+      }
+    } catch (error) {
+      toast.error("An error occurred while canceling the task");
+    } finally {
+      setSelectedAssignedId(null);
     }
   };
 
@@ -1013,7 +1139,7 @@ export default function Dashboard() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="my-tasks" className="space-y-6 mt-8 animate-fade-in-up">
+          <TabsContent value="my-tasks" forceMount className="space-y-6 mt-8 animate-fade-in-up">
             <h2 className="text-2xl font-bold text-gray-900 border-b border-gray-200 pb-3">Tasks You've Posted</h2>
             {/* Premium Summary strip */}
             <div className="grid grid-cols-3 gap-4">
@@ -1100,48 +1226,41 @@ export default function Dashboard() {
                         : "shadow-sm border-gray-200 bg-white hover:border-gray-300"
                     }`}
                   >
-                    {/* In Progress Task Banner */}
+                    {/* In Progress Task Banner (non-overlapping) */}
                     {task.status === "in_progress" && (
-                      <div className="absolute top-0 left-0 right-0 bg-gray-800 text-white text-center py-2 px-4 rounded-t-xl font-semibold text-sm z-10">
+                      <div className="w-full bg-gray-800 text-white text-center py-1.5 px-3 font-semibold text-xs rounded-t-xl">
                         🚀 In Progress — Bid Accepted
                       </div>
                     )}
                     
-                    {/* Task Image */}
-                    <div className="p-3 pb-0">
-                      <div className="relative w-full h-24 min-h-24 rounded-lg overflow-hidden bg-gray-100">
-                        <Image
-                          src={task.images?.[0]?.url || "/images/placeholder.svg"}
-                          alt={task.images?.[0]?.alt || "Task image"}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        />
-                      </div>
-                    </div>
+                    {/* Image removed for performance */}
 
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <CardTitle className="text-lg">{task.title}</CardTitle>
                         <div className="flex gap-2">
-                          {!task.deletion_status && !task.cancel_status && task.status === "open" && (
+                          {!task.deletion_status && !task.cancel_status && (
                             <>
-                              <button
-                                onClick={() => handleCancelClick(task.id)}
-                                className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-full shadow-lg transition-all duration-200 hover:scale-110 font-medium text-sm"
-                                aria-label="Cancel task"
-                                title="Cancel task"
-                              >
-                                ❌ Cancel
-                              </button>
-                              <button
-                                onClick={() => handleDeleteClick(task.id)}
-                                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full shadow-lg transition-all duration-200 hover:scale-110 font-medium text-sm"
-                                aria-label="Delete task"
-                                title="Delete task"
-                              >
-                                🗑️ Delete
-                </button>
+                              {(task.status === "open" || task.status === "in_progress") && (
+                                <button
+                                  onClick={() => handleCancelClick(task.id)}
+                                  className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-full shadow-lg transition-all duration-200 hover:scale-110 font-medium text-sm"
+                                  aria-label="Cancel task"
+                                  title="Cancel task"
+                                >
+                                  ❌ Cancel
+                                </button>
+                              )}
+                              {task.status === "open" && (
+                                <button
+                                  onClick={() => handleDeleteClick(task.id)}
+                                  className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full shadow-lg transition-all duration-200 hover:scale-110 font-medium text-sm"
+                                  aria-label="Delete task"
+                                  title="Delete task"
+                                >
+                                  🗑️ Delete
+                                </button>
+                              )}
                             </>
                           )}
                         </div>
@@ -1229,7 +1348,7 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="available" className="space-y-6 mt-8 animate-fade-in-up">
+          <TabsContent value="available" forceMount className="space-y-6 mt-8 animate-fade-in-up">
             <h2 className="text-2xl font-bold text-gray-900 border-b border-gray-200 pb-3">Available Tasks</h2>
             <div className="grid gap-6 md:grid-cols-4">
               <div className="md:col-span-1 space-y-6">
@@ -1416,18 +1535,7 @@ export default function Dashboard() {
                       
                       return (
                                                 <Card key={task.id} className="flex flex-col bg-gradient-to-br from-pink-50 via-rose-50 to-red-50 border-l-4 border-l-pink-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
-                          {/* Task Image */}
-                          <div className="p-3 pb-0">
-                            <div className="relative w-full h-24 min-h-24 rounded-lg overflow-hidden bg-gray-100">
-                              <Image
-                                src={task.images?.[0]?.url || "/images/placeholder.svg"}
-                                alt={task.images?.[0]?.alt || "Task image"}
-                                fill
-                                className="object-cover"
-                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                              />
-                            </div>
-                          </div>
+                          {/* Image removed for performance */}
                           <CardHeader className="pb-2">
                             <div className="flex justify-between items-start">
                               <CardTitle className="text-lg">{task.title}</CardTitle>
@@ -1481,7 +1589,7 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
-          <TabsContent value="assigned" className="space-y-6 mt-8 animate-fade-in-up">
+          <TabsContent value="assigned" forceMount className="space-y-6 mt-8 animate-fade-in-up">
             <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-orange-200 pb-2">Tasks Assigned to You</h2>
             {assignedTasks.length === 0 ? (
               <Card>
@@ -1495,22 +1603,11 @@ export default function Dashboard() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {assignedTasks.map((task) => (
                   <Card key={task.id} className="bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 border-l-4 border-l-amber-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
-                    {/* Task Image */}
-                    <div className="p-3 pb-0">
-                      <div className="relative w-full h-24 rounded-lg overflow-hidden bg-gray-100">
-                        <Image
-                          src={task.images?.[0]?.url || "/images/placeholder.svg"}
-                          alt={task.images?.[0]?.alt || "Task image"}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        />
-                      </div>
-                    </div>
+                    {/* Image removed for performance */}
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <CardTitle className="text-lg">{task.title}</CardTitle>
-                        <Badge className="bg-orange-600 hover:bg-orange-700 text-white font-semibold">
+                        <Badge className="bg-orange-600 hover:bg-orange-700 text-white font-semibold whitespace-nowrap">
                           🚀 In Progress
                         </Badge>
                       </div>
@@ -1544,7 +1641,7 @@ export default function Dashboard() {
                     </CardContent>
                     <CardFooter>
                       <div className="flex gap-2 w-full">
-                        <Link href={`/tasks/${task.id}`} className="flex-1">
+                        <Link href={`/tasks/${task.id}`} className="flex-1" onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); } catch {} }}>
                           <Button variant="outline" className="w-full">
                             View Details
                           </Button>
@@ -1555,6 +1652,13 @@ export default function Dashboard() {
                         >
                           Complete
                         </Button>
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => handleAssignedCancelClick(task.id)}
+                        >
+                          Cancel
+                        </Button>
                       </div>
                     </CardFooter>
                   </Card>
@@ -1563,7 +1667,7 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="completed" className="space-y-6 mt-8 animate-fade-in-up">
+          <TabsContent value="completed" forceMount className="space-y-6 mt-8 animate-fade-in-up">
             <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-green-200 pb-2">Completed Tasks</h2>
             {completedTasks.length === 0 ? (
               <Card>
@@ -1577,18 +1681,7 @@ export default function Dashboard() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {completedTasks.map((task) => (
                   <Card key={task.id} className="bg-gradient-to-br from-emerald-50 via-green-50 to-lime-50 border-l-4 border-l-emerald-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
-                    {/* Task Image */}
-                    <div className="p-4 pb-0">
-                      <div className="relative w-full h-32 rounded-lg overflow-hidden bg-gray-100">
-                        <Image
-                          src={task.images?.[0]?.url || "/images/placeholder.svg"}
-                          alt={task.images?.[0]?.alt || "Task image"}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        />
-                      </div>
-                    </div>
+                    {/* Image removed for performance */}
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <CardTitle className="text-lg">{task.title}</CardTitle>
@@ -1633,7 +1726,7 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="my-bids" className="space-y-6 mt-8 animate-fade-in-up">
+          <TabsContent value="my-bids" forceMount className="space-y-6 mt-8 animate-fade-in-up">
             <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-purple-200 pb-2">My Bids</h2>
             {requestedTasks.length === 0 ? (
               <Card>
@@ -1650,29 +1743,28 @@ export default function Dashboard() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {requestedTasks.map((bid) => (
                   <Card key={bid.bid_id} className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
-                    {/* Task Image */}
-                    <div className="p-3 pb-0">
-                      <div className="relative w-full h-24 rounded-lg overflow-hidden bg-gray-100">
-                        <Image
-                          src={bid.images?.[0]?.url || "/images/placeholder.svg"}
-                          alt={bid.images?.[0]?.alt || "Task image"}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        />
-                      </div>
-                    </div>
+                    {/* Image removed for performance */}
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <CardTitle className="text-lg">
                           {bid.task_title}
                         </CardTitle>
-                        <Badge
-                          variant="outline"
-                          className="border-purple-500 text-purple-600 bg-purple-50"
-                        >
-                          📝 Requested
-                        </Badge>
+                        <div className="flex gap-2">
+                          {bid.task_deleted && (
+                            <Badge className="bg-gray-600 text-white whitespace-nowrap">🗑️ Deleted</Badge>
+                          )}
+                          {bid.task_cancelled && (
+                            <Badge className="bg-red-600 text-white whitespace-nowrap">❌ Cancelled</Badge>
+                          )}
+                          {!bid.task_deleted && !bid.task_cancelled && (
+                            <Badge
+                              variant="outline"
+                              className="border-purple-500 text-purple-600 bg-purple-50"
+                            >
+                              📝 Requested
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       <CardDescription className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
@@ -1740,6 +1832,15 @@ export default function Dashboard() {
           onConfirm={handleConfirmCancel}
           title="Cancel Task"
           description="Canceling this task will incur an 8% cancellation fee. Are you sure you want to proceed?"
+          confirmText="Yes, Cancel"
+          cancelText="No"
+        />
+        <ConfirmDialog
+          open={assignedCancelOpen}
+          onOpenChange={setAssignedCancelOpen}
+          onConfirm={handleAssignedConfirmCancel}
+          title="Cancel Assigned Task"
+          description="Are you sure you want to cancel this assigned task? The admin will be notified."
           confirmText="Yes, Cancel"
           cancelText="No"
         />

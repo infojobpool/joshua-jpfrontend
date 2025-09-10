@@ -123,8 +123,15 @@ export default function TasksPage() {
 
   // Function to determine task status based on job data
   const getTaskStatus = (job: Job): Task["status"] => {
+    // Treat explicit completion first
     if (job.job_completion_status === 1) {
       return "Completed";
+    }
+    // Backend exposes boolean `status` as cancelled in our API shape
+    // Fallback: if other cancel flags ever exist, check them too
+    // @ts-ignore - tolerate optional fields from API variants
+    if (job.status === true || job["cancel_status"] === true) {
+      return "Cancelled";
     }
     if (job.tasker_id) {
       return "Assigned";
@@ -168,7 +175,30 @@ export default function TasksPage() {
           cancellationReason: undefined,
           deletion_status: job.deletion_status || false,
         }));
-        setTasks(mappedTasks);
+        // Exclude cancelled tasks from the main Tasks list (shown in separate page)
+        const visibleTasks = mappedTasks.filter((t) => t.status !== "Cancelled");
+        setTasks(visibleTasks);
+        // Fetch bid counts for each task (non-blocking for initial render)
+        try {
+          const results = await Promise.allSettled(
+            visibleTasks.map(async (t) => {
+              const r = await axiosInstance.get(`/get-bids/${t.id}/`);
+              const data = r.data;
+              let rows: any[] = [];
+              if (Array.isArray(data?.data?.bids)) rows = data.data.bids;
+              else if (Array.isArray(data?.data)) rows = data.data;
+              else if (Array.isArray(data)) rows = data;
+              return { id: t.id, count: rows.length };
+            })
+          );
+          const idToCount: Record<string, number> = {};
+          for (const res of results) {
+            if (res.status === "fulfilled") {
+              idToCount[res.value.id] = res.value.count;
+            }
+          }
+          setTasks((prev) => prev.map((t) => ({ ...t, offers: idToCount[t.id] ?? t.offers })));
+        } catch {}
       } else {
         toast.error(response.data.message || "Failed to fetch tasks");
       }
@@ -245,10 +275,9 @@ export default function TasksPage() {
 
   // Calculate statistics
   const openTasks = tasks.filter((t) => t.status === "Open").length;
-  const inProgressTasks = tasks.filter(
-    (t) => t.status === "In Progress"
-  ).length;
+  const inProgressTasks = tasks.filter((t) => t.status === "In Progress").length;
   const completedTasks = tasks.filter((t) => t.status === "Completed").length;
+  const cancelledTasks = tasks.filter((t) => t.status === "Cancelled").length;
   const totalBudget = tasks.reduce((sum, t) => sum + t.budget, 0);
 
   const handleUpdateTaskStatus = async (
@@ -318,6 +347,36 @@ export default function TasksPage() {
       setIsLoading(false);
       setIsResetDialogOpen(false);
       setTaskToReset(null);
+    }
+  };
+
+  // Permanently delete a task
+  const handleHardDelete = async (taskId: string) => {
+    try {
+      setIsLoading(true);
+      // Backend expects PUT for delete-job; use that first, fallback to DELETE if needed
+      let response;
+      try {
+        response = await axiosInstance.put(`/delete-job/${taskId}/`, { hard_delete: true });
+      } catch (err: any) {
+        // If server rejects PUT with 405, try DELETE
+        if (err?.response?.status === 405) {
+          response = await axiosInstance.delete(`/delete-job/${taskId}/`);
+        } else {
+          throw err;
+        }
+      }
+      if (response.data.status_code === 200) {
+        toast.success("Task deleted permanently");
+        setTasks((prev) => prev.filter((t) => t.id !== taskId));
+        setIsDetailsDialogOpen(false);
+      } else {
+        toast.error(response.data.message || "Failed to delete task");
+      }
+    } catch {
+      toast.error("An error occurred while deleting the task");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -497,6 +556,14 @@ export default function TasksPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Cancelled</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{cancelledTasks}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">In Progress</CardTitle>
           </CardHeader>
           <CardContent>
@@ -583,6 +650,7 @@ export default function TasksPage() {
               <TableHead className="hidden md:table-cell">Taskmaster</TableHead>
               <TableHead className="hidden md:table-cell">Tasker</TableHead>
               <TableHead className="hidden md:table-cell">Due Date</TableHead>
+              <TableHead className="hidden md:table-cell">Offers</TableHead>
               <TableHead>Budget</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -664,6 +732,9 @@ export default function TasksPage() {
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <span>{formatDate(task.dueDate)}</span>
                     </div>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    <Badge variant="outline">{task.offers}</Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
@@ -764,6 +835,13 @@ export default function TasksPage() {
                                 Cancel Task
                               </DropdownMenuItem>
                             )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleHardDelete(task.id)}
+                          >
+                            Delete Permanently
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                       <DialogContent className="max-w-3xl">
