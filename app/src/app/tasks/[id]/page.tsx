@@ -1246,6 +1246,9 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [showConfirmBid, setShowConfirmBid] = useState<boolean>(false);
+  const [showCancelDialog, setShowCancelDialog] = useState<boolean>(false);
+  const [cancelReason, setCancelReason] = useState<string>("");
+  const [isCancelling, setIsCancelling] = useState<boolean>(false);
   const taskerId = offers.length > 0 ? offers[0].tasker.id : null;
 
   // Load user, profile, and sync bids
@@ -1349,19 +1352,67 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           job.worker_id ||
           null;
 
-        // Simplified status determination for individual task page
+        // Status determination for individual task page – treat accepted/assigned/paid as in_progress
         let jobStatus = "open";
-        
+
         if (job.job_completion_status === 1) {
           jobStatus = "completed";
         } else if (job.deletion_status) {
           jobStatus = "deleted";
         } else if (job.cancel_status) {
           jobStatus = "canceled";
-        } else if (job.status === "in_progress" || job.status === "working" || job.status === "assigned" || 
-                  job.status === "accepted" || job.status === "paid" || job.status === "active") {
+        } else if (
+          // explicit backend states
+          job.status === "in_progress" ||
+          job.status === "working" ||
+          job.status === "assigned" ||
+          job.status === "accepted" ||
+          job.status === "paid" ||
+          job.status === "active" ||
+          // assignment inferred
+          !!assignedId ||
+          // acceptance flags
+          job.bid_accepted === true ||
+          job.bid_accepted === "true" ||
+          job.offer_accepted === true ||
+          job.offer_accepted === "true" ||
+          // payment flags
+          job.payment_status === "paid" ||
+          job.payment_status === "completed" ||
+          job.payment_status === "success" ||
+          job.payment_status === true ||
+          job.payment_status === "PAID" ||
+          job.payment_status === "COMPLETED" ||
+          job.payment_status === "SUCCESS" ||
+          job.payment_status === 1 ||
+          job.payment_status === "1" ||
+          job.payment_status === "confirmed" ||
+          job.payment_status === "CONFIRMED" ||
+          job.payment_status === "processed" ||
+          job.payment_status === "PROCESSED" ||
+          job.payment_status === "settled" ||
+          job.payment_status === "SETTLED"
+        ) {
           jobStatus = "in_progress";
         }
+
+        // Fallback: if this browser previously accepted and paid, mark as in_progress from session
+        try {
+          const rawPayment = sessionStorage.getItem("paymentData");
+          if (rawPayment) {
+            const pd = JSON.parse(rawPayment);
+            if (String(pd.taskId) === String(job.job_id)) {
+              jobStatus = "in_progress";
+            }
+          }
+        } catch {}
+        // If you navigated from Assigned to Me, align to in_progress immediately to avoid showing "Open" first
+        try {
+          const navHint = sessionStorage.getItem("nav_from_assigned");
+          if (navHint === "1") {
+            jobStatus = "in_progress";
+          }
+        } catch {}
         // All other tasks remain "open" for bidding
         
 
@@ -1471,21 +1522,29 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           },
           amount: bid.bid_amount,
           message: bid.bid_description || "",
-          createdAt: bid.created_at
-            ? new Date(bid.created_at).toLocaleString("en-GB", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                timeZone: "UTC",
-              })
-            : "Just now",
+          // Keep raw timestamp; format in component to avoid stale "Just now" labels
+          createdAt: bid.created_at || new Date().toISOString(),
           status: bid.status || "pending",
         }));
 
         setOffers(newOffers);
         setBids(taskBids);
+        // If any bid is accepted/assigned, force task status to in_progress for UI consistency
+        try {
+          const hasAccepted = taskBids.some((b) => {
+            const s = String(b.status || "").toLowerCase();
+            return [
+              "accepted",
+              "assigned",
+              "in_progress",
+              "working",
+              "active",
+            ].includes(s);
+          });
+          if (hasAccepted) {
+            setTask((prev) => (prev ? { ...prev, status: "in_progress" } : prev));
+          }
+        } catch {}
         console.log("Mapped offers:", newOffers); // Debug log
       } catch (error: any) {
         console.error("Error loading bids:", error);
@@ -1872,6 +1931,14 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               taskerId={taskerId}
               completionStatus={task.job_completion_status}
             />
+            {/* Allow tasker to request cancellation */}
+            {(!isTaskPoster && (task.status === "in_progress" || !!task.assignedTasker)) && (
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowCancelDialog(true)}>
+                  Cancel Task
+                </Button>
+              </div>
+            )}
             <OffersSection
               task={task}
               offers={offers}
@@ -1885,6 +1952,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               setOfferMessage={setOfferMessage}
               isSubmitting={isSubmitting}
               currentUserId={userId}
+              blockSubmitInitial={!isTaskPoster && (task.status === "in_progress" || !!task.assignedTasker)}
             />
           </div>
           
@@ -1915,6 +1983,67 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         nextImage={nextImage}
         prevImage={prevImage}
       />
+      {/* Cancel Task Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel this task?</DialogTitle>
+            <DialogDescription>
+              Tell the admin why you want to cancel. They will be notified.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-sm text-gray-700">Reason</label>
+            <textarea
+              rows={4}
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              className="w-full rounded-md border border-gray-300 p-2 text-sm"
+              placeholder="e.g., Unable to complete due to schedule conflict"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)} disabled={isCancelling}>
+              Keep Task
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700"
+              onClick={async () => {
+                try {
+                  setIsCancelling(true);
+                  // Try preferred endpoint first; fallback to existing cancel-job
+                  let resp;
+                  try {
+                    resp = await axiosInstance.post(`/request-cancel-job/${id}/`, {
+                      reason: cancelReason || "",
+                      requester_id: userId,
+                    });
+                  } catch (err) {
+                    resp = await axiosInstance.put(`/cancel-job/${id}/`, {
+                      reason: cancelReason || "",
+                    });
+                  }
+                  if (resp.data?.status_code === 200) {
+                    toast.success("Cancel request sent to admin");
+                    setShowCancelDialog(false);
+                    setCancelReason("");
+                    setTask((prev) => (prev ? { ...prev, status: "canceled" } : prev));
+                  } else {
+                    toast.error(resp.data?.message || "Failed to send cancel request");
+                  }
+                } catch (e: any) {
+                  toast.error(e?.response?.data?.message || "Failed to send cancel request");
+                } finally {
+                  setIsCancelling(false);
+                }
+              }}
+              disabled={isCancelling}
+            >
+              {isCancelling ? "Sending..." : "Send Cancel Request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={showConfirmBid} onOpenChange={setShowConfirmBid}>
         <DialogContent>
           <DialogHeader>

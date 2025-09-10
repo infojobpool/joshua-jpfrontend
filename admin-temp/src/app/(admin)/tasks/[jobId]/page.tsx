@@ -32,6 +32,7 @@ export default function TaskOffersPage() {
 
   const [loading, setLoading] = useState<boolean>(false);
   const [bids, setBids] = useState<Bid[]>([]);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchBids = async () => {
     if (!jobId) return;
@@ -74,6 +75,37 @@ export default function TaskOffersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
 
+  const handleDeleteBid = async (bidId: number) => {
+    if (!bidId) return;
+    try {
+      setDeletingId(bidId);
+      let res;
+      try {
+        // Try standard DELETE first
+        res = await axiosInstance.delete(`/delete-bid/${bidId}/`);
+      } catch (err: any) {
+        // Fallback: some backends use PUT with { hard_delete: true }
+        if (err?.response?.status === 405 || err?.response?.status === 404) {
+          res = await axiosInstance.put(`/delete-bid/${bidId}/`, { hard_delete: true });
+        } else {
+          throw err;
+        }
+      }
+      if (res?.data?.status_code === 200) {
+        setBids((prev) => prev.filter((b) => b.bid_id !== bidId));
+        toast.success(res.data.message || "Bid deleted successfully");
+      } else {
+        toast.error(res?.data?.message || "Failed to delete bid");
+      }
+    } catch (e: any) {
+      // eslint-disable-next-line no-console
+      console.error("[admin] delete bid error", e);
+      toast.error(e?.response?.data?.message || "An error occurred while deleting the bid");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -102,6 +134,7 @@ export default function TaskOffersPage() {
                   <TableHead>Message</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -117,6 +150,16 @@ export default function TaskOffersPage() {
                       <Badge variant={bid.status === "accepted" ? "secondary" : bid.status === "rejected" ? "destructive" : "outline"}>
                         {bid.status || "pending"}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteBid(bid.bid_id)}
+                        disabled={deletingId === bid.bid_id}
+                      >
+                        {deletingId === bid.bid_id ? "Deleting…" : "Delete"}
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

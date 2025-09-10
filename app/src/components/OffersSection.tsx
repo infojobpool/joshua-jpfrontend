@@ -359,6 +359,7 @@ interface OffersSectionProps {
   setOfferMessage: (value: string) => void;
   isSubmitting: boolean;
   currentUserId?: string;
+  blockSubmitInitial?: boolean; // hint from parent to suppress form immediately
 }
 
 export function OffersSection({
@@ -374,6 +375,7 @@ export function OffersSection({
   setOfferMessage,
   isSubmitting,
   currentUserId,
+  blockSubmitInitial = false,
 }: OffersSectionProps) {
   const [error, setError] = useState("");
   const router = useRouter();
@@ -416,6 +418,16 @@ export function OffersSection({
 
   // Show all offers to all users
   const visibleOffers = offers;
+
+  // Prevent brief flicker of the submit form on assigned/in-progress tasks
+  const isAssignedToMe = !!(currentUserId && task.assignedTasker && task.assignedTasker.id === currentUserId);
+  const hasLocalAccepted = selectedFromSession && currentUserId && selectedFromSession === String(currentUserId);
+  const shouldBlockSubmit =
+    task.status === "completed" ||
+    task.status === "in_progress" ||
+    isAssignedToMe ||
+    !!hasLocalAccepted ||
+    blockSubmitInitial;
 
 
   const handleAcceptOffer = async (offer: Offer) => {
@@ -535,7 +547,19 @@ export function OffersSection({
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    {offer.createdAt}
+                    {(() => {
+                      try {
+                        return new Date(offer.createdAt).toLocaleString("en-GB", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        });
+                      } catch {
+                        return "Just now";
+                      }
+                    })()}
                   </p>
                 </div>
               </div>
@@ -551,22 +575,21 @@ export function OffersSection({
                 )}
               </div>
               {isTaskPoster && (
-                <div className="flex gap-2">
+                <div className="w-full flex flex-col sm:flex-row gap-2 mt-3">
                   {task.status !== "completed" && task.status !== "in_progress" && (
                     <Button
-                      className="w-full"
+                      className="w-full sm:flex-1"
                       size="sm"
                       onClick={() => handleAcceptOffer(offer)}
                       disabled={isAccepting === offer.id}
                     >
-                      {isAccepting === offer.id
-                        ? "Accepting..."
-                        : "Accept Offer"}
+                      {isAccepting === offer.id ? "Accepting..." : "Accept Offer"}
                     </Button>
                   )}
                   <Button
                     variant="outline"
                     size="sm"
+                    className="w-full sm:w-auto"
                     onClick={() => handleMessageUser(offer.tasker.id)}
                   >
                     Message
@@ -598,14 +621,14 @@ export function OffersSection({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {!isTaskPoster && (task.status === "completed" || task.status === "in_progress") && (
+      {!isTaskPoster && shouldBlockSubmit && (
         <CardFooter>
           <p className="text-muted-foreground">
             This task is no longer accepting offers.
           </p>
         </CardFooter>
       )}
-      {!isTaskPoster && task.status !== "completed" && task.status !== "in_progress" && !hasSubmittedOffer && (
+      {!isTaskPoster && !shouldBlockSubmit && !hasSubmittedOffer && (
         <CardFooter>
           <form onSubmit={handleSubmitOffer} className="w-full space-y-4">
             <div className="space-y-2">
