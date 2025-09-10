@@ -214,7 +214,6 @@ export default function Dashboard() {
     if (!user || !userId) return;
 
     const fetchUserTasks = async () => {
-      setLoading(true);
       try {
         const response = await axiosInstance.get<APIResponse<{ jobs: any[] }>>(`/get-user-jobs/${userId}/`);
         const result = response.data;
@@ -317,7 +316,7 @@ export default function Dashboard() {
               images: job.job_images?.urls?.length
                 ? job.job_images.urls.map((url: string, index: number) => ({
                     id: `img${index + 1}`,
-                    url,
+                    url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
                     alt: `Job image ${index + 1}`,
                   }))
                 : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
@@ -332,7 +331,7 @@ export default function Dashboard() {
         console.error("Failed to fetch user tasks:", err);
         toast.error("An error occurred while fetching your tasks.");
       } finally {
-        setLoading(false);
+        // keep page rendered; avoid toggling global loader to prevent layout jumps
       }
     };
 
@@ -344,7 +343,6 @@ export default function Dashboard() {
     if (!user || !userId) return;
 
     const fetchAllTasks = async () => {
-      setLoading(true);
       try {
         
         const response = await axiosInstance.get<APIResponse<{ jobs: any[] }>>("/get-all-jobs");
@@ -416,7 +414,7 @@ export default function Dashboard() {
         console.error("Failed to fetch all tasks:", err);
         toast.error("An error occurred while fetching available tasks.");
       } finally {
-        setLoading(false);
+        // avoid global loader flicker
       }
     };
 
@@ -561,7 +559,6 @@ export default function Dashboard() {
     if (!user || !userId) return;
 
     const fetchCompletedTasks = async () => {
-      setLoading(true);
       try {
         const response = await axiosInstance.get<APIResponse<{ jobs: any[] }>>(`/fetch-completed-tasks/${userId}/`);
         const result = response.data;
@@ -601,7 +598,7 @@ export default function Dashboard() {
       } catch (err) {
         console.error("Failed to fetch completed tasks:", err);
       } finally {
-        setLoading(false);
+        // keep existing content stable
       }
     };
 
@@ -1112,7 +1109,7 @@ export default function Dashboard() {
                     
                     {/* Task Image */}
                     <div className="p-3 pb-0">
-                      <div className="relative w-full h-24 rounded-lg overflow-hidden bg-gray-100">
+                      <div className="relative w-full h-24 min-h-24 rounded-lg overflow-hidden bg-gray-100">
                         <Image
                           src={task.images?.[0]?.url || "/images/placeholder.svg"}
                           alt={task.images?.[0]?.alt || "Task image"}
@@ -1421,7 +1418,7 @@ export default function Dashboard() {
                                                 <Card key={task.id} className="flex flex-col bg-gradient-to-br from-pink-50 via-rose-50 to-red-50 border-l-4 border-l-pink-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
                           {/* Task Image */}
                           <div className="p-3 pb-0">
-                            <div className="relative w-full h-24 rounded-lg overflow-hidden bg-gray-100">
+                            <div className="relative w-full h-24 min-h-24 rounded-lg overflow-hidden bg-gray-100">
                               <Image
                                 src={task.images?.[0]?.url || "/images/placeholder.svg"}
                                 alt={task.images?.[0]?.alt || "Task image"}

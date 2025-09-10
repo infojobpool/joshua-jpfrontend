@@ -1246,28 +1246,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [showConfirmBid, setShowConfirmBid] = useState<boolean>(false);
-  const [taskOrders, setTaskOrders] = useState<any[]>([]);
   const taskerId = offers.length > 0 ? offers[0].tasker.id : null;
-
-  // Fetch task orders to check payment status
-  const fetchTaskOrders = async () => {
-    try {
-      const response = await axiosInstance.get("/get-all-task-orders/");
-      if (response.data.status_code === 200 && response.data.data?.task_orders) {
-        setTaskOrders(response.data.data.task_orders);
-        console.log("📋 Task orders fetched for individual task:", response.data.data.task_orders);
-        console.log("📋 All order statuses for individual task:", response.data.data.task_orders.map(order => ({
-          order_id: order.order_id,
-          job_id: order.job_id,
-          status: order.status,
-          tasker_id: order.tasker_id,
-          poster_id: order.taskmanager_id
-        })));
-      }
-    } catch (error) {
-      console.error("Failed to fetch task orders:", error);
-    }
-  };
 
   // Load user, profile, and sync bids
   useEffect(() => {
@@ -1352,9 +1331,6 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   useEffect(() => {
     const loadTaskData = async () => {
       try {
-        // Fetch task orders first
-        await fetchTaskOrders();
-        
         const response = await axiosInstance.get(`/get-job/${id}/`);
         const data: ApiJobResponse = response.data;
 
@@ -1373,35 +1349,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           job.worker_id ||
           null;
 
-        // Use same status determination logic as dashboard
+        // Simplified status determination for individual task page
         let jobStatus = "open";
-        
-        // Check if this task has a paid order
-        const hasPaidOrder = taskOrders.some(order => {
-          const orderTaskId = order.job_id || order.postId || order.post_id || order.task_id;
-          // Status 1 = Completed/Paid, Status 0 = Processing
-          // TEMPORARY FIX: Treat status 0 as paid since backend isn't updating to status 1
-          const isPaid = order.status === 1 || order.status === "1" || order.status === 0;
-          const isMatching = orderTaskId === job.job_id.toString();
-          return isMatching && isPaid;
-        });
-        
-        const matchingOrders = taskOrders.filter(order => {
-          const orderTaskId = order.job_id || order.postId || order.post_id || order.task_id;
-          return orderTaskId === job.job_id.toString();
-        });
-        
-        console.log(`🔍 Individual task ${job.job_id} payment check:`, {
-          hasPaidOrder,
-          matchingOrders: matchingOrders.map(order => ({
-            orderId: order.order_id || order.id,
-            status: order.status,
-            payment_status: order.payment_status,
-            order_status: order.order_status,
-            allFields: Object.keys(order)
-          })),
-          finalStatus: hasPaidOrder ? "in_progress" : "open"
-        });
         
         if (job.job_completion_status === 1) {
           jobStatus = "completed";
@@ -1410,17 +1359,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         } else if (job.cancel_status) {
           jobStatus = "canceled";
         } else if (job.status === "in_progress" || job.status === "working" || job.status === "assigned" || 
-                  job.status === "accepted" || job.status === "paid" || job.status === "active" ||
-                  job.bid_accepted === true || job.bid_accepted === "true" || 
-                  job.offer_accepted === true || job.offer_accepted === "true" ||
-                  job.payment_status === "paid" || job.payment_status === "completed" ||
-                  job.payment_status === "success" || job.payment_status === true ||
-                  job.payment_status === "PAID" || job.payment_status === "COMPLETED" ||
-                  job.payment_status === "SUCCESS" || job.payment_status === 1 ||
-                  job.payment_status === "1" || job.payment_status === "confirmed" ||
-                  job.payment_status === "CONFIRMED" || job.payment_status === "processed" ||
-                  job.payment_status === "PROCESSED" || job.payment_status === "settled" ||
-                  job.payment_status === "SETTLED" || hasPaidOrder) {
+                  job.status === "accepted" || job.status === "paid" || job.status === "active") {
           jobStatus = "in_progress";
         }
         // All other tasks remain "open" for bidding
@@ -1459,7 +1398,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           images: job.job_images?.urls?.length
             ? job.job_images.urls.map((url: string, index: number) => ({
                 id: `img${index + 1}`,
-                url,
+                url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
                 alt: `Job image ${index + 1}`,
               }))
             : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
@@ -1488,7 +1427,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     };
 
     loadTaskData();
-  }, [id, taskOrders]);
+  }, [id]);
 
   // Load bids/offers
   useEffect(() => {
@@ -1883,7 +1822,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const isTaskPoster: boolean = task.poster.id === userId;
   const hasSubmittedOffer = offers.some((offer) => offer.tasker.id === userId);
   const bidAmountNumber = parseFloat(offerAmount) || 0;
-  const handlingCharges = bidAmountNumber * 0.23; // 23% handling charges incl. GST
+  const handlingCharges = bidAmountNumber * 0.20; // 20% handling charges (excluding GST)
   const totalAmount = Math.max(bidAmountNumber - handlingCharges, 0); // amount user receives after charges
 
   return (
@@ -1990,7 +1929,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               <span className="font-bold text-blue-600 text-lg">₹{bidAmountNumber.toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-center py-3 bg-gray-50 rounded-lg px-3">
-              <span className="text-gray-700">Handling Charges (incl. GST):</span>
+              <span className="text-gray-700">Handling Charges (Excluding GST):</span>
               <span className="font-semibold text-red-600">₹{handlingCharges.toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-center py-3 bg-green-50 rounded-lg px-3 border border-green-200">
