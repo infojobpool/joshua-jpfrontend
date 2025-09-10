@@ -355,7 +355,8 @@ export default function Dashboard() {
             } else if (job.cancel_status) {
               jobStatus = "canceled";
             } else if (job.status === "in_progress" || job.status === "working" || job.status === "assigned" || 
-                      job.status === "accepted" || job.status === "paid" || job.status === "active") {
+                      job.status === "accepted" || job.status === "paid" || job.status === "active" ||
+                      job.status === true) {
               jobStatus = "in_progress";
             } else if (job.bid_accepted === true || job.bid_accepted === "true" || 
                       job.offer_accepted === true || job.offer_accepted === "true" ||
