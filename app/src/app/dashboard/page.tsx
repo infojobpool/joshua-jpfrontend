@@ -300,6 +300,7 @@ export default function Dashboard() {
           // First, get the basic task data
           const tasks: Task[] = result.data.jobs.map((job) => {
             let jobStatus = "open";
+            console.log(`🔍 MY TASKS - Processing task ${job.job_id} for user ${userId}`);
             
             // Check if this task has a paid order - use correct field name
             const hasPaidOrder = taskOrders.some(order => {
@@ -518,6 +519,7 @@ export default function Dashboard() {
             })
             .map((job) => {
               let jobStatus = "open";
+              console.log(`🔍 AVAILABLE TASKS - Processing task ${job.job_id} for available tasks`);
               
               // For available tasks, we only care about basic status
               // All available tasks should be "open" for bidding
