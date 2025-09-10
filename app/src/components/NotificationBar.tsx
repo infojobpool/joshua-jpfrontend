@@ -71,14 +71,14 @@ function NotificationBar() {
 
     async function fetchLatest() {
       try {
-        // Fetch bids RECEIVED on tasks posted by this user
+        // Only fetch bids RECEIVED on tasks posted by this user (incoming bids only)
         const jobsRes = await axiosInstance.get<ApiListResponse<{ jobs: any[] }>>(
           `/get-user-jobs/${userId}/`
         );
         const jobs = jobsRes.data?.data?.jobs || [];
         const recentJobs = [...jobs]
           .sort((a, b) => Date.parse(b.timestamp || b.job_due_date || '') - Date.parse(a.timestamp || a.job_due_date || ''))
-          .slice(0, 5);
+          .slice(0, 3); // Reduced from 5 to 3 for better performance
 
         const bidsArrays = await Promise.all(
           recentJobs.map(async (job) => {
@@ -93,24 +93,14 @@ function NotificationBar() {
         );
         const allBids = bidsArrays.flat();
 
-        // only show bids NOT by me
+        // Only show bids NOT by me (incoming bids only)
         const bidsReceived = allBids.filter((b: any) => String(b.tasker_id || b.user_id || b.bidder_id) !== String(userId));
-
-        // Fetch bids SENT by this user (your offers on others' tasks)
-        let bidsSent: any[] = [];
-        try {
-          const sentRes = await axiosInstance.get<ApiListResponse<{ bids: BidRequestItem[] }>>(
-            `/get-user-requested-bids/${userId}/`
-          );
-          bidsSent = sentRes.data?.data?.bids || [];
-        } catch {}
-        const messages: any[] = [];
 
         if (!mounted) return;
 
         const newItems = [] as {
           id: string;
-          type: "message" | "bid" | "system";
+          type: "bid";
           title: string;
           description?: string;
           createdAt: string;
@@ -118,6 +108,7 @@ function NotificationBar() {
           link?: string;
         }[];
 
+        // Only process incoming bids (no sent bids, no messages)
         for (const b of bidsReceived) {
           const id = `bid:${b.bid_id}`;
           const createdTs = Date.parse(b.created_at);
@@ -134,47 +125,6 @@ function NotificationBar() {
               createdAt: b.created_at,
               read: false,
               link: `/tasks/${b.task_id || b.job?.job_id}`,
-              direction: "received",
-            });
-          }
-        }
-
-        // Add sent bids (labelled)
-        for (const b of bidsSent) {
-          const id = `bid-sent:${b.bid_id}`;
-          const createdTs = Date.parse(b.created_at);
-          if (!Number.isNaN(createdTs) && createdTs <= lastTimestampRef.current) {
-          } else if (!fetchedIdsRef.current.has(id)) {
-            fetchedIdsRef.current.add(id);
-            newItems.push({
-              id,
-              type: "bid",
-              title: `Your bid on ${b.task_title || "a task"}`,
-              description: `${b.bid_amount ? `Offer: ₹${b.bid_amount}` : ""}`,
-              createdAt: b.created_at,
-              read: false,
-              link: `/tasks/${b.task_id}`,
-              direction: "sent",
-            });
-          }
-        }
-
-        for (const m of messages) {
-          const mid = m.id || m.message_id || m.msg_id || m._id || Math.random().toString(36).slice(2);
-          const id = `msg:${mid}`;
-          const createdTs = Date.parse(m.created_at);
-          if (!Number.isNaN(createdTs) && createdTs <= lastTimestampRef.current) {
-            // older or same, skip
-          } else if (!fetchedIdsRef.current.has(id)) {
-            fetchedIdsRef.current.add(id);
-            newItems.push({
-              id,
-              type: "message",
-              title: m.task_title ? `New message on ${m.task_title}` : "New message",
-              description: m.content || m.text || m.message,
-              createdAt: m.created_at || m.timestamp || new Date().toISOString(),
-              read: false,
-              link: lastChatIdRef.current ? `/messages/${lastChatIdRef.current}` : "/messages",
             });
           }
         }
@@ -299,22 +249,20 @@ function NotificationBar() {
               <li className="px-4 py-6 text-sm text-gray-500">No notifications yet</li>
             ) : (
               topSeven.map((n) => {
-                const inferredDirection = n.direction ?? (n.title?.toLowerCase().startsWith('your bid') ? 'sent' : 'received');
                 const isBid = n.type === 'bid';
-                const isReceived = inferredDirection === 'received';
                 const dateMs = Date.parse(n.createdAt);
                 const hasValidDate = !Number.isNaN(dateMs);
                 return (
                 <li
                   key={n.id}
                   className={`px-4 py-3 ${n.read ? 'bg-white' : 'bg-gray-50'} ` +
-                    (isBid ? (isReceived ? 'border-l-4 border-emerald-400' : 'border-l-4 border-slate-300') : '')}
+                    (isBid ? 'border-l-4 border-emerald-400' : '')}
                 >
                   <Link href={n.link || '#'} className="flex items-start gap-3">
                     <div className={`p-1.5 rounded-md border border-gray-100 ` +
-                      (isBid ? (isReceived ? 'bg-emerald-50' : 'bg-slate-50') : 'bg-blue-50')}>
+                      (isBid ? 'bg-emerald-50' : 'bg-blue-50')}>
                       {isBid ? (
-                        <Gavel className={`h-4 w-4 ${isReceived ? 'text-emerald-600' : 'text-slate-600'}`} />
+                        <Gavel className="h-4 w-4 text-emerald-600" />
                       ) : (
                         <MessageSquare className="h-4 w-4 text-blue-600" />
                       )}
@@ -322,11 +270,6 @@ function NotificationBar() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-medium text-gray-800 line-clamp-2 flex-1">{n.title}</p>
-                        {isBid && (
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${isReceived ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
-                            {isReceived ? 'Received' : 'Sent'}
-                          </span>
-                        )}
                       </div>
                       {n.description && (
                         <p className="text-xs text-gray-600 mt-1 line-clamp-2">{n.description}</p>

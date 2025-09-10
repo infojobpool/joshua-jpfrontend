@@ -3,12 +3,14 @@
 import axios from 'axios';
 
 const axiosInstance = axios.create({
-  baseURL: `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1`,
+  baseURL: `https://api.jobpool.in/api/v1`,
   headers: {
     'Content-Type': 'application/json',
     'Cache-Control': 'no-cache',
   },
   withCredentials: true,
+  timeout: 15000,
+  maxRedirects: 0, // Prevent redirects that cause CORS issues
 });
 
 // Add a request interceptor to include JWT in headers
@@ -31,7 +33,7 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response.status === 401) {
+    if (error.response && error.response.status === 401) {
       // Unauthorized
       // Handle token refresh logic here
       // This might involve calling a refresh endpoint and updating the token

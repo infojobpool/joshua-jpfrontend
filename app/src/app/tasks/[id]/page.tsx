@@ -1343,6 +1343,18 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
         const job = data.data;
         console.log("API Response Data (Job):", job);
+        console.log("🔍 Job status fields:", {
+          status: job.status,
+          job_completion_status: job.job_completion_status,
+          bid_accepted: job.bid_accepted,
+          offer_accepted: job.offer_accepted,
+          assigned_tasker_id: job.assigned_tasker_id,
+          accepted_bidder_id: job.accepted_bidder_id,
+          worker_id: job.worker_id,
+          payment_status: job.payment_status,
+          assigned_user_id: job.assigned_user_id,
+          assigned_to: job.assigned_to
+        });
 
         const assignedId =
           job.assigned_tasker_id ||
@@ -1352,7 +1364,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           job.worker_id ||
           null;
 
-        // Status determination for individual task page – treat accepted/assigned/paid as in_progress
+        // Status determination for individual task page – use same logic as dashboard
         let jobStatus = "open";
 
         if (job.job_completion_status === 1) {
@@ -1361,40 +1373,34 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           jobStatus = "deleted";
         } else if (job.cancel_status) {
           jobStatus = "canceled";
-        } else if (
-          // explicit backend states
-          job.status === "in_progress" ||
-          job.status === "working" ||
-          job.status === "assigned" ||
-          job.status === "accepted" ||
-          job.status === "paid" ||
-          job.status === "active" ||
-          // assignment inferred
-          !!assignedId ||
-          // acceptance flags
-          job.bid_accepted === true ||
-          job.bid_accepted === "true" ||
-          job.offer_accepted === true ||
-          job.offer_accepted === "true" ||
-          // payment flags
-          job.payment_status === "paid" ||
-          job.payment_status === "completed" ||
-          job.payment_status === "success" ||
-          job.payment_status === true ||
-          job.payment_status === "PAID" ||
-          job.payment_status === "COMPLETED" ||
-          job.payment_status === "SUCCESS" ||
-          job.payment_status === 1 ||
-          job.payment_status === "1" ||
-          job.payment_status === "confirmed" ||
-          job.payment_status === "CONFIRMED" ||
-          job.payment_status === "processed" ||
-          job.payment_status === "PROCESSED" ||
-          job.payment_status === "settled" ||
-          job.payment_status === "SETTLED"
-        ) {
+        } else if (job.status === "in_progress" || job.status === "working" || job.status === "assigned" || 
+                  job.status === "accepted" || job.status === "paid" || job.status === "active") {
           jobStatus = "in_progress";
+        } else if (job.bid_accepted === true || job.bid_accepted === "true" || 
+                  job.offer_accepted === true || job.offer_accepted === "true" ||
+                  job.payment_status === "paid" || job.payment_status === "completed" ||
+                  job.payment_status === "success" || job.payment_status === true ||
+                  job.payment_status === "PAID" || job.payment_status === "COMPLETED" ||
+                  job.payment_status === "SUCCESS" || job.payment_status === 1 ||
+                  job.payment_status === "1" || job.payment_status === "confirmed" ||
+                  job.payment_status === "CONFIRMED" || job.payment_status === "processed" ||
+                  job.payment_status === "PROCESSED" || job.payment_status === "settled" ||
+                  job.payment_status === "SETTLED" || !!assignedId) {
+          jobStatus = "in_progress";
+          console.log(`Task ${job.job_id} marked as in_progress due to payment/acceptance/assignment`);
         }
+
+        console.log("🔍 Status determination result:", {
+          assignedId,
+          jobStatus,
+          statusChecks: {
+            explicitStatus: job.status,
+            hasAssignedId: !!assignedId,
+            bidAccepted: job.bid_accepted,
+            offerAccepted: job.offer_accepted,
+            paymentStatus: job.payment_status
+          }
+        });
 
         // Fallback: if this browser previously accepted and paid, mark as in_progress from session
         try {
