@@ -368,8 +368,28 @@ export default function Dashboard() {
                       job.payment_status === "SETTLED" || hasPaidOrder) {
               jobStatus = "in_progress";
               console.log(`Task ${job.job_id} marked as in_progress due to payment/acceptance`);
+              console.log(`🔍 Task ${job.job_id} status details:`, {
+                bid_accepted: job.bid_accepted,
+                offer_accepted: job.offer_accepted,
+                payment_status: job.payment_status,
+                hasPaidOrder: hasPaidOrder,
+                assigned_tasker_id: job.assigned_tasker_id,
+                accepted_bidder_id: job.accepted_bidder_id
+              });
             }
             
+            // Debug logging for tasks that remain "open"
+            if (jobStatus === "open" && (job.bid_accepted || job.offer_accepted || job.assigned_tasker_id || job.accepted_bidder_id)) {
+              console.log(`⚠️ Task ${job.job_id} showing as "open" but has acceptance/assignment indicators:`, {
+                bid_accepted: job.bid_accepted,
+                offer_accepted: job.offer_accepted,
+                assigned_tasker_id: job.assigned_tasker_id,
+                accepted_bidder_id: job.accepted_bidder_id,
+                payment_status: job.payment_status,
+                status: job.status,
+                hasPaidOrder: hasPaidOrder
+              });
+            }
             
             // All other tasks remain "open"
             
