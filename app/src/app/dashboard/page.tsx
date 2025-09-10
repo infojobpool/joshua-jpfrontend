@@ -358,6 +358,7 @@ export default function Dashboard() {
                       job.status === "accepted" || job.status === "paid" || job.status === "active" ||
                       job.status === true) {
               jobStatus = "in_progress";
+              console.log(`✅ Task ${job.job_id} marked as in_progress due to status: ${job.status} (type: ${typeof job.status})`);
             } else if (job.bid_accepted === true || job.bid_accepted === "true" || 
                       job.offer_accepted === true || job.offer_accepted === "true" ||
                       job.payment_status === "paid" || job.payment_status === "completed" ||
