@@ -46,17 +46,20 @@ interface NotificationItem {
   createdAt: string; // ISO date string
   read: boolean;
   link?: string;
+  direction?: "received" | "sent"; // for bid differentiation
 }
 
 interface NotificationState {
   notifications: number; // backward compatibility for existing badge usage
   unreadCount: number;
   items: NotificationItem[];
+  notificationOpen: boolean;
   setNotifications: (items: NotificationItem[]) => void;
   addNotifications: (items: NotificationItem[]) => void;
   markAllRead: () => void;
   incrementNotifications: () => void;
   resetNotifications: () => void;
+  setNotificationOpen: (open: boolean) => void;
 }
 
 interface ThemeColors {
@@ -265,6 +268,7 @@ const useStore = create<StoreState>((set) => ({
   notifications: 0,
   unreadCount: 0,
   items: [],
+  notificationOpen: false,
   setNotifications: (items: NotificationItem[]) =>
     set(() => {
       const sorted = [...items].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
@@ -298,6 +302,7 @@ const useStore = create<StoreState>((set) => ({
   incrementNotifications: () =>
     set((state) => ({ notifications: state.notifications + 1, unreadCount: state.unreadCount + 1 })),
   resetNotifications: () => set(() => ({ notifications: 0, unreadCount: 0 })),
+  setNotificationOpen: (open: boolean) => set(() => ({ notificationOpen: open })),
 
   // 🔸 Validation
   validateName: (name: string) => {

@@ -17,6 +17,17 @@ axiosInstance.interceptors.request.use(
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
+    // Cache-bust GET requests so admin list reflects latest edits immediately
+    if ((config.method || 'get').toLowerCase() === 'get') {
+      config.params = { ...(config.params || {}), _t: Date.now() };
+    }
+    try {
+      const fullUrl = `${config.baseURL || ''}${config.url || ''}`;
+      // Lightweight console trace to verify admin requests
+      // Example: [admin][http] PUT http://api/update-job/task_17/
+      // eslint-disable-next-line no-console
+      console.log('[admin][http]', (config.method || 'GET').toUpperCase(), fullUrl, config.params || '');
+    } catch {}
     return config;
   },
   (error) => {
@@ -28,6 +39,12 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
+    try {
+      const cfg = error?.config || {};
+      const fullUrl = `${cfg.baseURL || ''}${cfg.url || ''}`;
+      // eslint-disable-next-line no-console
+      console.warn('[admin][http][error]', (cfg.method || 'GET').toUpperCase(), fullUrl, error?.response?.status);
+    } catch {}
     if (error.response.status === 401) {
       // Unauthorized
       // Handle token refresh logic here

@@ -180,7 +180,47 @@ export default function TasksPage() {
   };
 
   useEffect(() => {
-    fetchTasks();
+    const run = async () => {
+      await fetchTasks();
+      // After initial fetch, if we recently saved a job, fetch its fresh copy and merge
+      try {
+        const lastId = sessionStorage.getItem("adminLastUpdatedJobId");
+        if (lastId) {
+          const fresh = await axiosInstance.get(`/get-job/${lastId}/`);
+          const job: any = fresh.data?.data?.job || fresh.data?.job || null;
+          if (job) {
+            const updatedTask: Task = {
+              id: job.job_id,
+              title: job.job_title,
+              description: job.job_description,
+              category: job.job_category_name || job.job_category,
+              status: getTaskStatus(job),
+              location: job.job_location,
+              dueDate: job.job_due_date,
+              budget: Number(job.job_budget ?? 0),
+              remote: false,
+              createdAt: new Date().toISOString(),
+              taskmaster: {
+                id: job.user_ref_id,
+                name: job.posted_by,
+                avatar: undefined,
+              },
+              tasker: job.tasker_id
+                ? { id: job.tasker_id, name: job.tasker_name || "Unknown", avatar: undefined }
+                : null,
+              offers: 0,
+              completedAt: job.job_completion_status === 1 ? new Date().toISOString() : undefined,
+              cancelledAt: job.status ? new Date().toISOString() : undefined,
+              cancellationReason: undefined,
+              deletion_status: job.deletion_status || false,
+            };
+            setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
+          }
+          sessionStorage.removeItem("adminLastUpdatedJobId");
+        }
+      } catch {}
+    };
+    run();
   }, []);
 
   // Get unique categories for filter
@@ -217,9 +257,11 @@ export default function TasksPage() {
   ) => {
     try {
       setIsLoading(true);
-      const response = await axiosInstance.put(`update-job/${taskId}/`, {
-        status: newStatus === "Cancelled" ? true : false,
-      });
+      // Use dedicated API for cancellation; avoid mis-mapping boolean status
+      const response =
+        newStatus === "Cancelled"
+          ? await axiosInstance.put(`/cancel-job/${taskId}/`)
+          : await axiosInstance.put(`/update-job/${taskId}/`, {});
 
       if (response.data.status_code === 200) {
         toast.success(`Task status updated to ${newStatus}`);
@@ -283,19 +325,56 @@ export default function TasksPage() {
     if (!editTask) return;
 
     try {
+      console.log("[admin] handleSaveTask start", editTask);
+      toast.message("Saving task...", { description: `Updating ${editTask.title}` });
       setIsLoading(true);
-      const response = await axiosInstance.put(`update-job/${editTask.id}/`, {
-        job_title: editTask.title,
-        job_description: editTask.description,
-        job_category_name: editTask.category,
-        job_budget: editTask.budget,
-        job_location: editTask.location,
-        job_due_date: editTask.dueDate,
-        status: editTask.status === "Cancelled" ? true : false,
-      });
+      // Use the same payload format as the user app (proven to persist on backend)
+      // Preserve DD/MM/YYYY if entered that way (list shows DD/MM/YYYY);
+      // only pass-through if already in another format
+      const normalizeDate = (d: string) => {
+        if (!d) return d;
+        // If user enters DD/MM/YYYY keep it as-is
+        if (d.includes("/")) return d;
+        return d; // fallback: leave untouched (e.g., YYYY-MM-DD)
+      };
+      const normalizedDate = normalizeDate(editTask.dueDate);
+      // Build multipart form-data with ALL canonical job_* fields
+      const fd = new FormData();
+      fd.append("job_id", editTask.id);
+      fd.append("job_title", editTask.title);
+      fd.append("job_description", editTask.description);
+      // Send both name and generic key to satisfy backend variants
+      fd.append("job_category_name", editTask.category);
+      fd.append("job_category", editTask.category);
+      fd.append("job_budget", String(editTask.budget));
+      fd.append("job_location", editTask.location);
+      fd.append("job_due_date", normalizedDate);
+      // Legacy duplicate keys for compatibility with alternate serializers
+      fd.append("title", editTask.title);
+      fd.append("description", editTask.description);
+      fd.append("category_name", editTask.category);
+      fd.append("budget", String(editTask.budget));
+      fd.append("location", editTask.location);
+      fd.append("due_date", normalizedDate);
+      // Debug: log payload keys/values so we can verify what was sent
+      try {
+        const debugEntries: Record<string, string> = {};
+        // @ts-ignore
+        for (const [k, v] of fd.entries()) {
+          debugEntries[k] = typeof v === 'string' ? v : '[binary]';
+        }
+        console.log('[admin] PUT /update-job payload', debugEntries);
+      } catch {}
+      const response = await axiosInstance.put(
+        `/update-job/${editTask.id}/`,
+        fd,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
 
       if (response.data.status_code === 200) {
+        console.log('[admin] PUT /update-job response', response.data);
         toast.success("Task updated successfully");
+        // Optimistic local update
         setTasks(
           tasks.map((task) =>
             task.id === editTask.id
@@ -313,8 +392,48 @@ export default function TasksPage() {
               : task
           )
         );
+        // Fetch the single updated job and merge (works even if bulk list is stale)
+        try {
+          const fresh = await axiosInstance.get(`/get-job/${editTask.id}/`);
+          const job: any = fresh.data?.data?.job || fresh.data?.job || null;
+          if (job) {
+            const updatedTask: Task = {
+              id: job.job_id,
+              title: job.job_title,
+              description: job.job_description,
+              category: job.job_category_name || job.job_category || editTask.category,
+              status: getTaskStatus(job),
+              location: job.job_location,
+              dueDate: job.job_due_date || editTask.dueDate,
+              budget: Number(job.job_budget ?? editTask.budget),
+              remote: false,
+              createdAt: new Date().toISOString(),
+              taskmaster: {
+                id: job.user_ref_id,
+                name: job.posted_by,
+                avatar: undefined,
+              },
+              tasker: job.tasker_id
+                ? {
+                    id: job.tasker_id,
+                    name: job.tasker_name || "Unknown",
+                    avatar: undefined,
+                  }
+                : null,
+              offers: 0,
+              completedAt: job.job_completion_status === 1 ? new Date().toISOString() : undefined,
+              cancelledAt: job.status ? new Date().toISOString() : undefined,
+              cancellationReason: undefined,
+              deletion_status: job.deletion_status || false,
+            };
+            setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
+          }
+        } catch {
+          // ignore; optimistic state already applied
+        }
         setIsEditDialogOpen(false);
         setEditTask(null);
+        try { sessionStorage.setItem("adminLastUpdatedJobId", editTask.id); } catch {}
       } else {
         toast.error(response.data.message || "Failed to update task");
       }

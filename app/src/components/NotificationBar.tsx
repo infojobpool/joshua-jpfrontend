@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Bell, Check, MessageSquare, Gavel } from "lucide-react";
 import useStore from "@/lib/Zustand";
 import { shallow } from "zustand/shallow";
@@ -36,14 +37,25 @@ function NotificationBar() {
   const items = useStore((s) => s.items);
   const addNotifications = useStore((s) => s.addNotifications);
   const markAllRead = useStore((s) => s.markAllRead);
-  const [open, setOpen] = useState(false);
+  const open = useStore((s) => s.notificationOpen);
+  const setOpen = useStore((s) => s.setNotificationOpen);
+  const errorCountRef = useRef<number>(0);
+  const baseIntervalMs = 15000;
+  const maxIntervalMs = 120000;
   const fetchedIdsRef = useRef<Set<string>>(new Set());
   const lastTimestampRef = useRef<number>(0);
   const lastChatIdRef = useRef<string | null>(null);
   const prevUnreadRef = useRef<number>(0);
   const [wiggle, setWiggle] = useState(false);
+  const startTimeRef = useRef<number>(Date.now());
+  const fetchRef = useRef<() => void>(() => {});
+  const btnRef = useRef<HTMLButtonElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const [panelPos, setPanelPos] = useState<{ top: number; left: number }>({ top: 80, left: 16 });
 
   const topSeven = useMemo(() => items.slice(0, 7), [items]);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (!userId) return;
@@ -52,40 +64,47 @@ function NotificationBar() {
 
     // pause polling while dropdown open to avoid UI flicker
     if (!open) {
-      interval = setInterval(fetchLatest, 15000); // Reduced from 20s to 15s for faster updates
-      // prime immediately when closed
-      fetchLatest();
+      if (interval) clearInterval(interval);
+      interval = setInterval(fetchLatest, baseIntervalMs);
+      fetchLatest(); // prime immediately
     }
 
     async function fetchLatest() {
       try {
-        // Fetch recent bid requests to the current user (as poster)
-        const bidsRes = await axiosInstance.get<ApiListResponse<{ bids: BidRequestItem[] }>>(
-          `/get-user-requested-bids/${userId}/`
+        // Fetch bids RECEIVED on tasks posted by this user
+        const jobsRes = await axiosInstance.get<ApiListResponse<{ jobs: any[] }>>(
+          `/get-user-jobs/${userId}/`
         );
-        const bids = bidsRes.data?.data?.bids || [];
-        console.log("🔔 Fetched bids for notifications:", bids);
+        const jobs = jobsRes.data?.data?.jobs || [];
+        const recentJobs = [...jobs]
+          .sort((a, b) => Date.parse(b.timestamp || b.job_due_date || '') - Date.parse(a.timestamp || a.job_due_date || ''))
+          .slice(0, 5);
 
-        // Fetch recent messages via chat APIs
-        let messages: any[] = [];
+        const bidsArrays = await Promise.all(
+          recentJobs.map(async (job) => {
+            try {
+              const r = await axiosInstance.get<ApiListResponse<any[]>>(`/get-bids/${job.job_id}/`);
+              const data = Array.isArray(r.data?.data) ? r.data.data : [];
+              return data.map((b: any) => ({ ...b, job }));
+            } catch {
+              return [] as any[];
+            }
+          })
+        );
+        const allBids = bidsArrays.flat();
+
+        // only show bids NOT by me
+        const bidsReceived = allBids.filter((b: any) => String(b.tasker_id || b.user_id || b.bidder_id) !== String(userId));
+
+        // Fetch bids SENT by this user (your offers on others' tasks)
+        let bidsSent: any[] = [];
         try {
-          const chatRes = await axiosInstance.get<any>(`/api/v1/get-chat-id/`);
-          const chatId =
-            chatRes.data?.data?.chat_id ||
-            chatRes.data?.chat_id ||
-            chatRes.data?.id || null;
-          if (chatId) {
-            lastChatIdRef.current = String(chatId);
-            const msgRes = await axiosInstance.get<any>(
-              `/api/v1/get-messages/${chatId}`
-            );
-            messages =
-              msgRes.data?.data?.messages ||
-              msgRes.data?.messages ||
-              (Array.isArray(msgRes.data) ? msgRes.data : []);
-            console.log("🔔 Fetched messages for notifications:", messages);
-          }
-        } catch (_) {}
+          const sentRes = await axiosInstance.get<ApiListResponse<{ bids: BidRequestItem[] }>>(
+            `/get-user-requested-bids/${userId}/`
+          );
+          bidsSent = sentRes.data?.data?.bids || [];
+        } catch {}
+        const messages: any[] = [];
 
         if (!mounted) return;
 
@@ -99,28 +118,43 @@ function NotificationBar() {
           link?: string;
         }[];
 
-        for (const b of bids) {
+        for (const b of bidsReceived) {
           const id = `bid:${b.bid_id}`;
           const createdTs = Date.parse(b.created_at);
           if (!Number.isNaN(createdTs) && createdTs <= lastTimestampRef.current) {
             // older or same, skip
           } else if (!fetchedIdsRef.current.has(id)) {
             fetchedIdsRef.current.add(id);
-            // Try to derive bidder (tasker) and taskmaster (poster) names if present in API
             const bidderName = (b as any).bidder_name || (b as any).tasker_name || (b as any).user_name || (b as any).user || (b as any).bidder || (b as any).offered_by;
-            const posterName = (b as any).posted_by_name || (b as any).poster_name || (b as any).taskmaster_name || (b as any).owner_name || (b as any).posted_by;
-            const who = [
-              bidderName ? `By ${bidderName}` : null,
-              posterName ? `To ${posterName}` : null,
-            ].filter(Boolean).join(" • ");
             newItems.push({
               id,
               type: "bid",
-              title: `New bid on ${b.task_title || "your task"}`,
-              description: `${b.bid_amount ? `Offer: ₹${b.bid_amount}` : ""}${who ? (b.bid_amount ? " • " : "") + who : ""}`,
+              title: `New bid on ${b.task_title || b.job?.job_title || "your task"}`,
+              description: `${b.bid_amount ? `Offer: ₹${b.bid_amount}` : ""}${bidderName ? (b.bid_amount ? " • " : "") + `By ${bidderName}` : ""}`,
+              createdAt: b.created_at,
+              read: false,
+              link: `/tasks/${b.task_id || b.job?.job_id}`,
+              direction: "received",
+            });
+          }
+        }
+
+        // Add sent bids (labelled)
+        for (const b of bidsSent) {
+          const id = `bid-sent:${b.bid_id}`;
+          const createdTs = Date.parse(b.created_at);
+          if (!Number.isNaN(createdTs) && createdTs <= lastTimestampRef.current) {
+          } else if (!fetchedIdsRef.current.has(id)) {
+            fetchedIdsRef.current.add(id);
+            newItems.push({
+              id,
+              type: "bid",
+              title: `Your bid on ${b.task_title || "a task"}`,
+              description: `${b.bid_amount ? `Offer: ₹${b.bid_amount}` : ""}`,
               createdAt: b.created_at,
               read: false,
               link: `/tasks/${b.task_id}`,
+              direction: "sent",
             });
           }
         }
@@ -145,9 +179,12 @@ function NotificationBar() {
           }
         }
 
+        // If dropdown is open, avoid updating store to prevent blinking/flicker
+        if (open) {
+          return;
+        }
         // Only update the store if we actually have new items to avoid re-render flicker
         if (newItems.length > 0) {
-          console.log("🔔 New notifications found:", newItems);
           addNotifications(newItems);
           // advance the last timestamp using any new items
           const maxTs = Math.max(
@@ -155,28 +192,71 @@ function NotificationBar() {
             ...newItems.map((n) => Date.parse(n.createdAt)).filter((n) => !Number.isNaN(n))
           );
           if (Number.isFinite(maxTs)) lastTimestampRef.current = maxTs;
-        } else {
-          console.log("🔔 No new notifications found");
         }
+        // success -> reset backoff
+        errorCountRef.current = 0;
       } catch (err) {
-        // Fail silently; the UI should still work with existing items
+        // Backoff on errors to avoid console spam and server load
+        errorCountRef.current = Math.min(errorCountRef.current + 1, 6);
+        const backoff = Math.min(baseIntervalMs * Math.pow(2, errorCountRef.current), maxIntervalMs);
+        if (interval) {
+          clearInterval(interval);
+          interval = setInterval(fetchLatest, backoff);
+        }
       }
     }
+
+    // expose fetch to other effects (e.g., when opening the dropdown)
+    fetchRef.current = fetchLatest;
+
+    const onFocus = () => fetchLatest();
+    window.addEventListener('focus', onFocus);
 
     return () => {
       mounted = false;
       if (interval) clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
     };
   }, [userId, addNotifications, open]);
 
-  // Trigger a subtle bell wiggle only when unread increases
+  // Reposition panel on open/resize so it stays under the bell
   useEffect(() => {
-    if (unreadCount > prevUnreadRef.current) {
-      setWiggle(true);
-      const t = setTimeout(() => setWiggle(false), 700);
-      prevUnreadRef.current = unreadCount;
-      return () => clearTimeout(t);
+    function compute() {
+      const btn = btnRef.current;
+      if (!btn) return;
+      const rect = btn.getBoundingClientRect();
+      const gap = 8;
+      let left = Math.max(8, Math.min(window.innerWidth - 328, rect.right - 320));
+      const top = rect.bottom + gap;
+      setPanelPos({ top, left });
     }
+    if (open) {
+      compute();
+      window.addEventListener('resize', compute, { passive: true });
+    }
+    return () => {
+      window.removeEventListener('resize', compute as any);
+    };
+  }, [open]);
+
+  // Close on Escape key (keeps open otherwise to avoid accidental closes)
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    if (open) document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  // When opening the dropdown, fetch immediately to show latest (no auto mark-read)
+  useEffect(() => {
+    if (open) {
+      try { fetchRef.current(); } catch {}
+    }
+  }, [open]);
+
+  // Reduce visual motion to avoid perceived layout jumps: disable wiggle
+  useEffect(() => {
     prevUnreadRef.current = unreadCount;
   }, [unreadCount]);
 
@@ -184,90 +264,88 @@ function NotificationBar() {
 
   return (
     <div className="relative">
-      {/* scoped keyframes for wiggle */}
-      <style jsx>{`
-        @keyframes jp-wiggle { 
-          0% { transform: rotate(0deg); }
-          15% { transform: rotate(-6deg); }
-          30% { transform: rotate(5deg); }
-          45% { transform: rotate(-4deg); }
-          60% { transform: rotate(3deg); }
-          75% { transform: rotate(-2deg); }
-          100% { transform: rotate(0deg); }
-        }
-      `}</style>
       <button
-        onClick={() => setOpen((v) => !v)}
-        className="relative group"
+        ref={btnRef}
+        onClick={() => setOpen(!open)}
+        className="relative"
         aria-label="Notifications"
+        aria-haspopup="true"
+        aria-expanded={open}
       >
-        {/* Modern notification button with glass effect */}
-        <div className="relative p-3 rounded-2xl bg-white/80 backdrop-blur-sm border border-gray-200/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 hover:bg-white/90">
-          {/* Notification icon with modern design */}
+        <div className="p-2 rounded-full border border-gray-200 bg-white hover:bg-gray-50">
           <div className="relative">
-            <div className={`w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center transition-all duration-300 ${wiggle ? 'motion-safe:[animation:jp-wiggle_1.2s_ease]' : ''}`}>
-              <Bell className="h-4 w-4 text-white" />
+            <Bell className="h-5 w-5 text-gray-700" />
+            <div className="absolute -top-1.5 -right-1.5 min-w-[18px] h-4 px-1 text-[10px] flex items-center justify-center rounded-full bg-red-500 text-white font-semibold"
+                 style={{ visibility: unreadCount > 0 ? 'visible' : 'hidden' }}>
+              {unreadCount > 99 ? '99+' : unreadCount}
             </div>
-            
-            {/* Notification count badge */}
-            {unreadCount > 0 && (
-              <div className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1.5 text-xs flex items-center justify-center rounded-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold shadow-lg animate-pulse">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </div>
-            )}
-            
-            {/* Hover effect ring */}
-            <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-emerald-400/20 to-teal-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           </div>
         </div>
-        
-        {/* Subtle glow effect */}
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-emerald-400/10 to-teal-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm"></div>
       </button>
 
-      <div
-        className={`absolute right-0 mt-3 w-80 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-200/50 z-50 overflow-hidden transition-all duration-300 ease-out ${open ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-2 pointer-events-none'}`}
-        aria-hidden={!open}
-      >
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100/50 bg-gradient-to-r from-emerald-50/50 to-teal-50/50">
-            <span className="font-bold text-gray-800 text-lg">Notifications</span>
-            <button onClick={markAllRead} className="text-xs flex items-center gap-2 text-emerald-600 hover:text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-3 py-1.5 rounded-full transition-all duration-200">
-              <Check className="h-3 w-3" /> Mark all read
-            </button>
+      {mounted && createPortal(
+        <div
+          ref={panelRef}
+          style={{ position: 'fixed', top: panelPos.top, left: panelPos.left, width: 320 }}
+          className={`bg-white rounded-xl shadow-lg border border-gray-200 z-[2147483647] overflow-hidden transition-[opacity,transform] duration-150 ${open ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-1 pointer-events-none'}`}
+          aria-hidden={!open}
+        >
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <span className="font-semibold text-gray-800">Notifications</span>
+            <button onClick={markAllRead} className="text-xs text-gray-600 hover:text-gray-800">Mark all read</button>
           </div>
-          <ul className="max-h-96 overflow-auto divide-y">
+          <ul className="max-h-96 overflow-auto divide-y divide-gray-100">
             {topSeven.length === 0 ? (
               <li className="px-4 py-6 text-sm text-gray-500">No notifications yet</li>
             ) : (
-              topSeven.map((n) => (
-                <li key={n.id} className={`px-5 py-4 transition-all duration-200 hover:bg-gray-50/50 ${n.read ? "bg-white" : "bg-emerald-50/30"}`}>
-                  <Link href={n.link || "#"} className="flex items-start gap-4 group">
-                    <div className={`p-2 rounded-lg ${n.type === "bid" ? "bg-amber-100" : "bg-blue-100"} group-hover:scale-110 transition-transform duration-200`}>
-                      {n.type === "bid" ? (
-                        <Gavel className="h-4 w-4 text-amber-600" />
+              topSeven.map((n) => {
+                const inferredDirection = n.direction ?? (n.title?.toLowerCase().startsWith('your bid') ? 'sent' : 'received');
+                const isBid = n.type === 'bid';
+                const isReceived = inferredDirection === 'received';
+                const dateMs = Date.parse(n.createdAt);
+                const hasValidDate = !Number.isNaN(dateMs);
+                return (
+                <li
+                  key={n.id}
+                  className={`px-4 py-3 ${n.read ? 'bg-white' : 'bg-gray-50'} ` +
+                    (isBid ? (isReceived ? 'border-l-4 border-emerald-400' : 'border-l-4 border-slate-300') : '')}
+                >
+                  <Link href={n.link || '#'} className="flex items-start gap-3">
+                    <div className={`p-1.5 rounded-md border border-gray-100 ` +
+                      (isBid ? (isReceived ? 'bg-emerald-50' : 'bg-slate-50') : 'bg-blue-50')}>
+                      {isBid ? (
+                        <Gavel className={`h-4 w-4 ${isReceived ? 'text-emerald-600' : 'text-slate-600'}`} />
                       ) : (
                         <MessageSquare className="h-4 w-4 text-blue-600" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 line-clamp-2 group-hover:text-emerald-700 transition-colors duration-200">{n.title}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-800 line-clamp-2 flex-1">{n.title}</p>
+                        {isBid && (
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${isReceived ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                            {isReceived ? 'Received' : 'Sent'}
+                          </span>
+                        )}
+                      </div>
                       {n.description && (
                         <p className="text-xs text-gray-600 mt-1 line-clamp-2">{n.description}</p>
                       )}
-                      <p className="text-[10px] text-gray-400 mt-2">{new Date(n.createdAt).toLocaleString()}</p>
+                      {hasValidDate && (
+                        <p className="text-[10px] text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString()}</p>
+                      )}
                     </div>
-                    {!n.read && (
-                      <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2 animate-pulse"></div>
-                    )}
                   </Link>
                 </li>
-              ))
+              );})
             )}
           </ul>
-          <div className="px-5 py-3 text-center bg-gradient-to-r from-emerald-50/50 to-teal-50/50 border-t border-gray-100/50">
-            <Link href="/notifications" className="text-emerald-600 hover:text-emerald-700 font-semibold text-sm transition-colors duration-200">View all notifications</Link>
+          <div className="px-4 py-2 text-center border-t border-gray-100">
+            <Link href="/notifications" className="text-gray-700 hover:text-gray-900 text-sm font-medium">View all</Link>
           </div>
-      </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

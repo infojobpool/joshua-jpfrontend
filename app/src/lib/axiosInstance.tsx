@@ -6,6 +6,7 @@ const axiosInstance = axios.create({
   baseURL: `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1`,
   headers: {
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache',
   },
   withCredentials: true,
 });
@@ -17,6 +18,8 @@ axiosInstance.interceptors.request.use(
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
+    // add cache-busting param to avoid stale results after admin updates
+    config.params = { ...(config.params || {}), _ts: Date.now() };
     return config;
   },
   (error) => {
