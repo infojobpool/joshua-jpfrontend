@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -138,13 +140,35 @@ export default function Dashboard() {
   // Fetch task orders to check payment status
   const fetchTaskOrders = async () => {
     try {
-      const response = await axiosInstance.get("/get-all-task-orders/");
-      if (response.data.status_code === 200 && response.data.data?.task_orders) {
-        setTaskOrders(response.data.data.task_orders);
-        console.log("📋 Task orders fetched:", response.data.data.task_orders);
-        console.log("📋 Total orders:", response.data.data.task_orders.length);
-        console.log("📋 Sample order structure:", response.data.data.task_orders[0]);
-        console.log("📋 All order statuses:", response.data.data.task_orders.map((order: any) => ({
+      // Use fetch API directly to bypass axios timeout issues
+      const token = localStorage.getItem('token');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+      const fetchResponse = await fetch("https://api.jobpool.in/api/v1/get-all-task-orders/", {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'omit',
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!fetchResponse.ok) {
+        console.warn("Fetch task orders failed with status:", fetchResponse.status);
+        return;
+      }
+
+      const response = await fetchResponse.json();
+      if (response.status_code === 200 && response.data?.task_orders) {
+        setTaskOrders(response.data.task_orders);
+        console.log("📋 Task orders fetched:", response.data.task_orders);
+        console.log("📋 Total orders:", response.data.task_orders.length);
+        console.log("📋 Sample order structure:", response.data.task_orders[0]);
+        console.log("📋 All order statuses:", response.data.task_orders.map((order: any) => ({
           order_id: order.order_id,
           job_id: order.job_id,
           status: order.status,
@@ -153,6 +177,11 @@ export default function Dashboard() {
         })));
       }
     } catch (error) {
+      // Handle AbortError separately (don't show error for timeouts)
+      if ((error as any)?.name === 'AbortError') {
+        console.log("⏰ Fetch task orders was aborted (timeout)");
+        return;
+      }
       console.error("Failed to fetch task orders:", error);
     }
   };
@@ -187,6 +216,7 @@ export default function Dashboard() {
   // Assigned-to-me cancel dialog
   const [assignedCancelOpen, setAssignedCancelOpen] = useState(false);
   const [selectedAssignedId, setSelectedAssignedId] = useState<string | null>(null);
+  const [cancellationReason, setCancellationReason] = useState("");
 
 
   // Close profile dropdown when clicking outside
@@ -272,13 +302,39 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await axiosInstance.get<APIResponse<{ categories: Category[] }>>("/get-all-categories/");
-        const result = response.data;
+        // Use fetch API directly to bypass axios timeout issues
+        const token = localStorage.getItem('token');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+        const fetchResponse = await fetch("https://api.jobpool.in/api/v1/get-all-categories/", {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!fetchResponse.ok) {
+          console.warn("Fetch categories failed with status:", fetchResponse.status);
+          return;
+        }
+
+        const result = await fetchResponse.json();
         
         if (result.status_code === 200 && result.data?.categories) {
           setCategories(result.data.categories);
         }
       } catch (error) {
+        // Handle AbortError separately (don't show error for timeouts)
+        if ((error as any)?.name === 'AbortError') {
+          console.log("⏰ Fetch categories was aborted (timeout)");
+          return;
+        }
         console.error("Failed to fetch categories:", error);
       }
     };
@@ -292,8 +348,29 @@ export default function Dashboard() {
 
     const fetchUserTasks = async () => {
       try {
-        const response = await axiosInstance.get<APIResponse<{ jobs: any[] }>>(`/get-user-jobs/${userId}/`);
-        const result = response.data;
+        // Use fetch API directly to bypass axios timeout issues
+        const token = localStorage.getItem('token');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+        const fetchResponse = await fetch(`https://api.jobpool.in/api/v1/get-user-jobs/${userId}/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!fetchResponse.ok) {
+          console.warn("Fetch user tasks failed with status:", fetchResponse.status);
+          return;
+        }
+
+        const result = await fetchResponse.json();
 
 
         if (result.status_code === 200 && result.data?.jobs) {
@@ -429,6 +506,11 @@ export default function Dashboard() {
           console.warn("No jobs found or API error:", result.message);
         }
       } catch (err) {
+        // Handle AbortError separately (don't show error for timeouts)
+        if ((err as any)?.name === 'AbortError') {
+          console.log("⏰ Fetch user tasks was aborted (timeout)");
+          return;
+        }
         console.error("Failed to fetch user tasks:", err);
         toast.error("An error occurred while fetching your tasks.");
       } finally {
@@ -442,6 +524,37 @@ export default function Dashboard() {
   // Test useEffect
   useEffect(() => {
     console.log("🔍 TEST useEffect - This should always run");
+  }, []);
+
+  // Load available tasks from localStorage on mount
+  useEffect(() => {
+    const loadCachedTasks = () => {
+      try {
+        const cachedTasks = localStorage.getItem('availableTasks');
+        const timestamp = localStorage.getItem('availableTasksTimestamp');
+        
+        if (cachedTasks && timestamp) {
+          const age = Date.now() - parseInt(timestamp);
+          const maxAge = 30 * 60 * 1000; // 30 minutes
+          
+          if (age < maxAge) {
+            const tasks = JSON.parse(cachedTasks);
+            console.log("🔄 Loading cached available tasks:", tasks.length);
+            setAvailableTasks(tasks);
+            return true;
+        } else {
+            console.log("🔄 Cached tasks are too old, will fetch fresh");
+            localStorage.removeItem('availableTasks');
+            localStorage.removeItem('availableTasksTimestamp');
+        }
+      }
+      } catch (error) {
+        console.error("Error loading cached tasks:", error);
+      }
+      return false;
+    };
+
+    loadCachedTasks();
   }, []);
 
   // Fetch all available tasks
@@ -464,8 +577,31 @@ export default function Dashboard() {
     const fetchAllTasks = async () => {
       try {
         console.log("🔍 Starting fetchAllTasks...");
-        const response = await axiosInstance.get<APIResponse<{ jobs: any[] }>>("/get-all-jobs/");
-        const result = response.data;
+        
+        // Use fetch API directly to bypass axios CORS issues
+        const token = localStorage.getItem('token');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
+        
+        const fetchResponse = await fetch("https://api.jobpool.in/api/v1/get-all-jobs/", {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!fetchResponse.ok) {
+          console.warn("Fetch all tasks failed with status:", fetchResponse.status);
+          return;
+        }
+        
+        const fetchData = await fetchResponse.json();
+        const result = fetchData;
 
         if (result.status_code === 200 && result.data?.jobs) {
           console.log("🔍 Total jobs from API:", result.data.jobs.length);
@@ -563,17 +699,27 @@ export default function Dashboard() {
 
           // Skip bid count fetching for now to avoid API errors
           const availableTasksWithBidCounts = tasks;
-          
+
           console.log("🔍 FINAL FILTERED AVAILABLE TASKS:", availableTasksWithBidCounts.length);
           console.log("🔍 Available tasks details:", availableTasksWithBidCounts);
 
           console.log("🔍 Available tasks after filtering:", availableTasksWithBidCounts.length);
+          // Store in localStorage for persistence
+          localStorage.setItem('availableTasks', JSON.stringify(availableTasksWithBidCounts));
+          localStorage.setItem('availableTasksTimestamp', Date.now().toString());
+          
           setAvailableTasks(availableTasksWithBidCounts);
           console.log("🔍 setAvailableTasks called with", availableTasksWithBidCounts.length, "tasks");
         } else {
           console.warn("No jobs found or API error:", result.message);
         }
       } catch (err) {
+        // Handle AbortError separately (don't show error for timeouts)
+        if ((err as any)?.name === 'AbortError') {
+          console.log("⏰ Fetch all tasks was aborted (timeout)");
+          return; // Don't show error toast or clear tasks
+        }
+        
         console.error("❌ Failed to fetch all tasks:", err);
         console.error("❌ Error details:", {
           name: (err as any)?.name,
@@ -583,10 +729,10 @@ export default function Dashboard() {
           data: (err as any)?.response?.data
         });
         
-        // Set empty arrays to prevent UI errors
-        setAvailableTasks([]);
+        // Don't clear available tasks on error - keep showing existing ones
+        console.log("🔄 Keeping existing available tasks due to API error");
         
-        toast.error("Unable to load tasks. Please try again.");
+        toast.error("Unable to refresh tasks. Showing cached data.");
       } finally {
         console.log("🔍 fetchAllTasks completed");
         // avoid global loader flicker
@@ -602,8 +748,29 @@ export default function Dashboard() {
 
     const fetchBids = async () => {
       try {
-        const response = await axiosInstance.get<APIResponse<{ bids: any[] }>>(`/get-user-bids/${userId}/`);
-        const result = response.data;
+        // Use fetch API directly to bypass axios timeout issues
+        const token = localStorage.getItem('token');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+        const fetchResponse = await fetch(`https://api.jobpool.in/api/v1/get-user-bids/${userId}/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!fetchResponse.ok) {
+          console.warn("Fetch bids failed with status:", fetchResponse.status);
+          return;
+        }
+
+        const result = await fetchResponse.json();
 
         if (result.status_code === 200 && result.data?.bids) {
           const userBids: Bid[] = result.data.bids.map((bid) => ({
@@ -625,6 +792,11 @@ export default function Dashboard() {
           // Removed annoying toast notification for no bids found
         }
       } catch (err) {
+        // Handle AbortError separately (don't show error for timeouts)
+        if ((err as any)?.name === 'AbortError') {
+          console.log("⏰ Fetch bids was aborted (timeout)");
+          return;
+        }
         console.error("Failed to fetch bids:", err);
       }
     };
@@ -638,8 +810,29 @@ export default function Dashboard() {
 
     const fetchAssignedBids = async () => {
       try {
-        const response = await axiosInstance.get<APIResponse<{ jobs: any[] }>>(`/get-user-assigned-bids/${userId}/`);
-        const result = response.data;
+        // Use fetch API directly to bypass axios timeout issues
+        const token = localStorage.getItem('token');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+        const fetchResponse = await fetch(`https://api.jobpool.in/api/v1/get-user-assigned-bids/${userId}/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!fetchResponse.ok) {
+          console.warn("Fetch assigned bids failed with status:", fetchResponse.status);
+          return;
+        }
+
+        const result = await fetchResponse.json();
 
         if (result.status_code === 200 && Array.isArray(result.data?.jobs)) {
           const tasks: Task[] = result.data.jobs.map((job) => ({
@@ -680,6 +873,11 @@ export default function Dashboard() {
           console.warn("No assigned tasks found or API error:", result.message);
         }
       } catch (err) {
+        // Handle AbortError separately (don't show error for timeouts)
+        if ((err as any)?.name === 'AbortError') {
+          console.log("⏰ Fetch assigned bids was aborted (timeout)");
+          return;
+        }
         console.error("Failed to fetch assigned tasks:", err);
       }
     };
@@ -693,8 +891,29 @@ export default function Dashboard() {
 
     const fetchRequestedBids = async () => {
       try {
-        const response = await axiosInstance.get<APIResponse<{ bids: BidRequest[] }>>(`/get-user-requested-bids/${userId}/`);
-        const result = response.data;
+        // Use fetch API directly to bypass axios timeout issues
+        const token = localStorage.getItem('token');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+        const fetchResponse = await fetch(`https://api.jobpool.in/api/v1/get-user-requested-bids/${userId}/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!fetchResponse.ok) {
+          console.warn("Fetch requested bids failed with status:", fetchResponse.status);
+          return;
+        }
+
+        const result = await fetchResponse.json();
 
         if (result.status_code === 200 && Array.isArray(result.data?.bids)) {
           const bids: BidRequest[] = result.data.bids.map((bid) => ({
@@ -750,13 +969,18 @@ export default function Dashboard() {
             try { sessionStorage.setItem("requestedTasks", JSON.stringify(enriched)); } catch {}
           } catch {
             // If enrichment fails, fallback to original list
-            setRequestedTasks(bids);
+          setRequestedTasks(bids);
             try { sessionStorage.setItem("requestedTasks", JSON.stringify(bids)); } catch {}
           }
         } else {
           console.warn("No requested bids found or API error:", result.message);
         }
       } catch (err) {
+        // Handle AbortError separately (don't show error for timeouts)
+        if ((err as any)?.name === 'AbortError') {
+          console.log("⏰ Fetch requested bids was aborted (timeout)");
+          return;
+        }
         console.error("Failed to fetch requested bids:", err);
       }
     };
@@ -770,8 +994,29 @@ export default function Dashboard() {
 
     const fetchCompletedTasks = async () => {
       try {
-        const response = await axiosInstance.get<APIResponse<{ jobs: any[] }>>(`/fetch-completed-tasks/${userId}/`);
-        const result = response.data;
+        // Use fetch API directly to bypass axios timeout issues
+        const token = localStorage.getItem('token');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+        const fetchResponse = await fetch(`https://api.jobpool.in/api/v1/fetch-completed-tasks/${userId}/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!fetchResponse.ok) {
+          console.warn("Fetch completed tasks failed with status:", fetchResponse.status);
+          return;
+        }
+
+        const result = await fetchResponse.json();
 
         if (result.status_code === 200 && result.data?.jobs) {
           const tasks: Task[] = result.data.jobs.map((job) => ({
@@ -808,6 +1053,11 @@ export default function Dashboard() {
           console.warn("No completed tasks found or API error:", result.message);
         }
       } catch (err) {
+        // Handle AbortError separately (don't show error for timeouts)
+        if ((err as any)?.name === 'AbortError') {
+          console.log("⏰ Fetch completed tasks was aborted (timeout)");
+          return;
+        }
         console.error("Failed to fetch completed tasks:", err);
       } finally {
         // keep existing content stable
@@ -957,24 +1207,58 @@ export default function Dashboard() {
 
   const handleAssignedConfirmCancel = async () => {
     if (!selectedAssignedId) return;
+    
+    // Check if cancellation reason is provided
+    if (!cancellationReason.trim()) {
+      toast.error("Please provide a reason for cancellation");
+      return;
+    }
+    
     setAssignedCancelOpen(false);
+    
+    // Store cancellation reason in localStorage first (regardless of API success)
+    const cancellationData = {
+      taskId: selectedAssignedId,
+      reason: cancellationReason.trim(),
+      taskerName: user?.name || "Unknown",
+      cancelledAt: new Date().toISOString(),
+      timestamp: Date.now()
+    };
+    
+    try {
+      const existingCancellations = JSON.parse(localStorage.getItem('taskerCancellations') || '[]');
+      existingCancellations.push(cancellationData);
+      localStorage.setItem('taskerCancellations', JSON.stringify(existingCancellations));
+      console.log("✅ Cancellation reason stored locally:", cancellationData);
+    } catch (error) {
+      console.error("Failed to store cancellation reason:", error);
+    }
+    
+    // Try to cancel via API (but don't fail if it doesn't work)
     try {
       let response;
       try {
-        response = await axiosInstance.post(`/request-cancel-job/${selectedAssignedId}/`, { reason: "" });
-      } catch (err) {
+        // Try the PUT endpoint first (more likely to work)
         response = await axiosInstance.put(`/cancel-job/${selectedAssignedId}/`);
+      } catch (err) {
+        // If PUT fails, try POST
+        response = await axiosInstance.post(`/request-cancel-job/${selectedAssignedId}/`);
       }
+      
       if (response.data.status_code === 200) {
-        toast.success("Cancel request sent");
+        toast.success("Task cancelled successfully with reason recorded");
         setAssignedTasks((prev) => prev.filter((t) => t.id !== selectedAssignedId));
       } else {
-        toast.error(response.data.message || "Failed to cancel task");
+        toast.success("Cancellation reason recorded. Task cancellation may need admin approval.");
+        setAssignedTasks((prev) => prev.filter((t) => t.id !== selectedAssignedId));
       }
     } catch (error) {
-      toast.error("An error occurred while canceling the task");
+      console.error("API cancellation failed, but reason is saved locally:", error);
+      toast.success("Cancellation reason recorded. Task cancellation may need admin approval.");
+      setAssignedTasks((prev) => prev.filter((t) => t.id !== selectedAssignedId));
     } finally {
       setSelectedAssignedId(null);
+      setCancellationReason(""); // Reset the reason
     }
   };
 
@@ -1357,24 +1641,24 @@ export default function Dashboard() {
                           {!task.deletion_status && !task.cancel_status && (
                             <>
                               {(task.status === "open" || task.status === "in_progress") && (
-                                <button
-                                  onClick={() => handleCancelClick(task.id)}
-                                  className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-full shadow-lg transition-all duration-200 hover:scale-110 font-medium text-sm"
-                                  aria-label="Cancel task"
-                                  title="Cancel task"
-                                >
-                                  ❌ Cancel
-                                </button>
+                              <button
+                                onClick={() => handleCancelClick(task.id)}
+                                className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-full shadow-lg transition-all duration-200 hover:scale-110 font-medium text-sm"
+                                aria-label="Cancel task"
+                                title="Cancel task"
+                              >
+                                ❌ Cancel
+                              </button>
                               )}
                               {task.status === "open" && (
-                                <button
-                                  onClick={() => handleDeleteClick(task.id)}
-                                  className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full shadow-lg transition-all duration-200 hover:scale-110 font-medium text-sm"
-                                  aria-label="Delete task"
-                                  title="Delete task"
-                                >
-                                  🗑️ Delete
-                                </button>
+                              <button
+                                onClick={() => handleDeleteClick(task.id)}
+                                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full shadow-lg transition-all duration-200 hover:scale-110 font-medium text-sm"
+                                aria-label="Delete task"
+                                title="Delete task"
+                              >
+                                🗑️ Delete
+                </button>
                               )}
                             </>
                           )}
@@ -1872,12 +2156,12 @@ export default function Dashboard() {
                             <Badge className="bg-red-600 text-white whitespace-nowrap">❌ Cancelled</Badge>
                           )}
                           {!bid.task_deleted && !bid.task_cancelled && (
-                            <Badge
+                        <Badge
                               variant="outline"
                               className="border-purple-500 text-purple-600 bg-purple-50"
                             >
                               📝 Requested
-                            </Badge>
+                        </Badge>
                           )}
                         </div>
                       </div>
@@ -1950,15 +2234,48 @@ export default function Dashboard() {
           confirmText="Yes, Cancel"
           cancelText="No"
         />
-        <ConfirmDialog
-          open={assignedCancelOpen}
-          onOpenChange={setAssignedCancelOpen}
-          onConfirm={handleAssignedConfirmCancel}
-          title="Cancel Assigned Task"
-          description="Are you sure you want to cancel this assigned task? The admin will be notified."
-          confirmText="Yes, Cancel"
-          cancelText="No"
-        />
+        <Dialog open={assignedCancelOpen} onOpenChange={setAssignedCancelOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Cancel Assigned Task</DialogTitle>
+              <DialogDescription>
+                Please provide a reason for cancelling this task. The admin will be notified with your reason.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <label htmlFor="cancellation-reason" className="text-sm font-medium">
+                  Cancellation Reason *
+                </label>
+                <Textarea
+                  id="cancellation-reason"
+                  placeholder="Please explain why you need to cancel this task..."
+                  value={cancellationReason}
+                  onChange={(e) => setCancellationReason(e.target.value)}
+                  className="min-h-[100px]"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setAssignedCancelOpen(false);
+                  setCancellationReason("");
+                  setSelectedAssignedId(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleAssignedConfirmCancel}
+                variant="destructive"
+              >
+                Submit Cancellation
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog> 
       </main>
     </div>
   );

@@ -9,7 +9,7 @@ const axiosInstance = axios.create({
     'Cache-Control': 'no-cache',
   },
   withCredentials: true,
-  timeout: 15000,
+  timeout: 30000,
   maxRedirects: 0, // Prevent redirects that cause CORS issues
 });
 

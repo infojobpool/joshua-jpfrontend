@@ -3,11 +3,13 @@
 import axios from 'axios';
 
 const axiosInstance = axios.create({
-  baseURL: `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1`,
+  baseURL: `https://api.jobpool.in/api/v1`,
   headers: {
     'Content-Type': 'application/json',
   },
   withCredentials: true,
+  timeout: 30000,
+  maxRedirects: 0,
 });
 
 // Add a request interceptor to include JWT in headers
