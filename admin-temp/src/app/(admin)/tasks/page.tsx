@@ -179,16 +179,23 @@ export default function TasksPage() {
         const visibleTasks = mappedTasks.filter((t) => t.status !== "Cancelled");
         setTasks(visibleTasks);
         // Fetch bid counts for each task (non-blocking for initial render)
+        // Limit to first 20 tasks to reduce API load
         try {
+          const limitedTasks = visibleTasks.slice(0, 20);
           const results = await Promise.allSettled(
-            visibleTasks.map(async (t) => {
-              const r = await axiosInstance.get(`/get-bids/${t.id}/`);
-              const data = r.data;
-              let rows: any[] = [];
-              if (Array.isArray(data?.data?.bids)) rows = data.data.bids;
-              else if (Array.isArray(data?.data)) rows = data.data;
-              else if (Array.isArray(data)) rows = data;
-              return { id: t.id, count: rows.length };
+            limitedTasks.map(async (t) => {
+              try {
+                const r = await axiosInstance.get(`/get-bids/${t.id}/`);
+                const data = r.data;
+                let rows: any[] = [];
+                if (Array.isArray(data?.data?.bids)) rows = data.data.bids;
+                else if (Array.isArray(data?.data)) rows = data.data;
+                else if (Array.isArray(data)) rows = data;
+                return { id: t.id, count: rows.length };
+              } catch (error: any) {
+                console.warn(`Failed to fetch bids for task ${t.id}:`, error.message);
+                return { id: t.id, count: 0 };
+              }
             })
           );
           const idToCount: Record<string, number> = {};

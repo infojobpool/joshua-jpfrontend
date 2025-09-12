@@ -130,6 +130,7 @@ export default function Dashboard() {
   const [availableTasks, setAvailableTasks] = useState<Task[]>([]);
   const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
   const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
+  const [completedTasksLoading, setCompletedTasksLoading] = useState<boolean>(false);
   const [bids, setBids] = useState<Bid[]>([]);
   const [requestedTasks, setRequestedTasks] = useState<BidRequest[]>([]);
   // Local filter for My Tasks summary chips
@@ -217,6 +218,7 @@ export default function Dashboard() {
   const [assignedCancelOpen, setAssignedCancelOpen] = useState(false);
   const [selectedAssignedId, setSelectedAssignedId] = useState<string | null>(null);
   const [cancellationReason, setCancellationReason] = useState("");
+  const [activeTab, setActiveTab] = useState<string>("available");
 
 
   // Close profile dropdown when clicking outside
@@ -305,7 +307,7 @@ export default function Dashboard() {
         // Use fetch API directly to bypass axios timeout issues
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
         const fetchResponse = await fetch("https://api.jobpool.in/api/v1/get-all-categories/", {
           method: 'GET',
@@ -345,13 +347,27 @@ export default function Dashboard() {
   // Fetch user's posted tasks
   useEffect(() => {
     if (!user || !userId) return;
+    
 
     const fetchUserTasks = async () => {
       try {
-        // Use fetch API directly to bypass axios timeout issues
+        // Check cache first
+        const cacheKey = `user_tasks_${userId}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const cachedData = JSON.parse(cached);
+          const cacheAge = Date.now() - cachedData.timestamp;
+          if (cacheAge < 60000) { // 1 minute cache
+            console.log("Using cached user tasks");
+            setPostedTasks(cachedData.tasks);
+            return;
+          }
+        }
+        
+        // Use the faster get-all-jobs-admin API with better filtering
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
         const fetchResponse = await fetch(`https://api.jobpool.in/api/v1/get-user-jobs/${userId}/`, {
           method: 'GET',
@@ -374,8 +390,16 @@ export default function Dashboard() {
 
 
         if (result.status_code === 200 && result.data?.jobs) {
+          // Filter for tasks that belong to the current user
+          const userJobs = result.data.jobs.filter((job: any) => {
+            const jobUserId = job.user_ref_id || job.posted_by_id || job.user_id;
+            return jobUserId === userId?.toString() || jobUserId === userId;
+          });
+          
+          console.log(`🔍 Found ${userJobs.length} tasks for user ${userId} out of ${result.data.jobs.length} total jobs`);
+          
           // First, get the basic task data
-          const tasks: Task[] = result.data.jobs.map((job) => {
+          const tasks: Task[] = userJobs.map((job: any) => {
             let jobStatus = "open";
             console.log(`🔍 MY TASKS - Processing task ${job.job_id} for user ${userId}`);
             
@@ -502,6 +526,12 @@ export default function Dashboard() {
 
           setPostedTasks(tasks);
           try { sessionStorage.setItem("postedTasks", JSON.stringify(tasks)); } catch {}
+          
+          // Cache the user tasks
+          localStorage.setItem(cacheKey, JSON.stringify({
+            tasks: tasks,
+            timestamp: Date.now()
+          }));
         } else {
           console.warn("No jobs found or API error:", result.message);
         }
@@ -509,12 +539,24 @@ export default function Dashboard() {
         // Handle AbortError separately (don't show error for timeouts)
         if ((err as any)?.name === 'AbortError') {
           console.log("⏰ Fetch user tasks was aborted (timeout)");
+          
+          // Try to load from cache as fallback
+          try {
+            const cachedTasks = localStorage.getItem('postedTasks');
+            if (cachedTasks) {
+              const tasks = JSON.parse(cachedTasks);
+              setPostedTasks(tasks);
+              console.log("Loaded user tasks from cache after timeout");
+            }
+          } catch (cacheError) {
+            console.error("Failed to load cached tasks:", cacheError);
+          }
           return;
         }
         console.error("Failed to fetch user tasks:", err);
         toast.error("An error occurred while fetching your tasks.");
       } finally {
-        // keep page rendered; avoid toggling global loader to prevent layout jumps
+        // Clean up
       }
     };
 
@@ -541,6 +583,12 @@ export default function Dashboard() {
             const tasks = JSON.parse(cachedTasks);
             console.log("🔄 Loading cached available tasks:", tasks.length);
             setAvailableTasks(tasks);
+            
+            // Also store in shared cache for other tabs
+            const cachedData = localStorage.getItem('all_jobs_data');
+            if (cachedData) {
+              localStorage.setItem(`all_jobs_data_${userId}`, cachedData);
+            }
             return true;
         } else {
             console.log("🔄 Cached tasks are too old, will fetch fresh");
@@ -597,11 +645,24 @@ export default function Dashboard() {
         
         if (!fetchResponse.ok) {
           console.warn("Fetch all tasks failed with status:", fetchResponse.status);
+          
+          // Try to load from cache as fallback
+          try {
+            const cachedTasks = localStorage.getItem('availableTasks');
+            if (cachedTasks) {
+              const tasks = JSON.parse(cachedTasks);
+              setAvailableTasks(tasks);
+              console.log("Loaded available tasks from cache after API failure");
+            }
+          } catch (cacheError) {
+            console.error("Failed to load cached available tasks:", cacheError);
+          }
           return;
         }
         
         const fetchData = await fetchResponse.json();
         const result = fetchData;
+
 
         if (result.status_code === 200 && result.data?.jobs) {
           console.log("🔍 Total jobs from API:", result.data.jobs.length);
@@ -609,7 +670,7 @@ export default function Dashboard() {
           console.log("🔍 User from store:", user?.id);
           
           const tasks: Task[] = result.data.jobs
-            .filter((job) => {
+            .filter((job: any) => {
               // Debug: Log the full job object to see what fields are available
               
               // The API uses user_ref_id as the user identifier
@@ -655,7 +716,7 @@ export default function Dashboard() {
               
               return isNotPostedByUser && isOpen;
             })
-            .map((job) => {
+            .map((job: any) => {
               let jobStatus = "open";
               console.log(`🔍 AVAILABLE TASKS - Processing task ${job.job_id} for available tasks`);
               
@@ -710,6 +771,12 @@ export default function Dashboard() {
           
           setAvailableTasks(availableTasksWithBidCounts);
           console.log("🔍 setAvailableTasks called with", availableTasksWithBidCounts.length, "tasks");
+          
+          // Store shared cache for other tabs to use
+          localStorage.setItem(`all_jobs_data_${userId}`, JSON.stringify({
+            jobs: result.data.jobs,
+            timestamp: Date.now()
+          }));
         } else {
           console.warn("No jobs found or API error:", result.message);
         }
@@ -751,7 +818,7 @@ export default function Dashboard() {
         // Use fetch API directly to bypass axios timeout issues
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
         const fetchResponse = await fetch(`https://api.jobpool.in/api/v1/get-user-bids/${userId}/`, {
           method: 'GET',
@@ -773,7 +840,7 @@ export default function Dashboard() {
         const result = await fetchResponse.json();
 
         if (result.status_code === 200 && result.data?.bids) {
-          const userBids: Bid[] = result.data.bids.map((bid) => ({
+          const userBids: Bid[] = result.data.bids.map((bid: any) => ({
             id: bid.bid_id.toString(),
             task_id: bid.task_id.toString(),
             task_title: bid.task_title || "Untitled",
@@ -813,7 +880,7 @@ export default function Dashboard() {
         // Use fetch API directly to bypass axios timeout issues
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
         const fetchResponse = await fetch(`https://api.jobpool.in/api/v1/get-user-assigned-bids/${userId}/`, {
           method: 'GET',
@@ -835,7 +902,7 @@ export default function Dashboard() {
         const result = await fetchResponse.json();
 
         if (result.status_code === 200 && Array.isArray(result.data?.jobs)) {
-          const tasks: Task[] = result.data.jobs.map((job) => ({
+          const tasks: Task[] = result.data.jobs.map((job: any) => ({
             id: job.job_id.toString(),
             title: job.job_title || "Untitled",
             description: job.job_description || "No description provided.",
@@ -894,7 +961,7 @@ export default function Dashboard() {
         // Use fetch API directly to bypass axios timeout issues
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
         const fetchResponse = await fetch(`https://api.jobpool.in/api/v1/get-user-requested-bids/${userId}/`, {
           method: 'GET',
@@ -916,7 +983,7 @@ export default function Dashboard() {
         const result = await fetchResponse.json();
 
         if (result.status_code === 200 && Array.isArray(result.data?.bids)) {
-          const bids: BidRequest[] = result.data.bids.map((bid) => ({
+          const bids: BidRequest[] = result.data.bids.map((bid: any) => ({
             bid_id: bid.bid_id,
             task_id: bid.task_id.toString(),
             task_title: bid.task_title || "Untitled",
@@ -988,18 +1055,37 @@ export default function Dashboard() {
     fetchRequestedBids();
   }, [user, userId]);
 
-  // Fetch completed tasks
+  // Fetch completed tasks with deduplication
   useEffect(() => {
     if (!user || !userId) return;
 
+
     const fetchCompletedTasks = async () => {
       try {
-        // Use fetch API directly to bypass axios timeout issues
+        setCompletedTasksLoading(true);
+        
+        
+        // Check cache first with longer TTL for better performance (completed tasks don't change often)
+        const cacheKey = `completed_tasks_${userId}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const cachedData = JSON.parse(cached);
+          const cacheAge = Date.now() - cachedData.timestamp;
+          if (cacheAge < 300000) { // 5 minutes cache (completed tasks change less frequently)
+            console.log("Using cached completed tasks");
+            setCompletedTasks(cachedData.tasks);
+            setCompletedTasksLoading(false);
+            return;
+          }
+        }
+
+        // Use the same fast endpoint as available tasks for consistency
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-        const fetchResponse = await fetch(`https://api.jobpool.in/api/v1/fetch-completed-tasks/${userId}/`, {
+        console.log("Fetching completed tasks from get-user-jobs...");
+        const fetchResponse = await fetch(`https://api.jobpool.in/api/v1/get-user-jobs/${userId}/`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -1012,132 +1098,196 @@ export default function Dashboard() {
         clearTimeout(timeoutId);
 
         if (!fetchResponse.ok) {
-          console.warn("Fetch completed tasks failed with status:", fetchResponse.status);
+          console.warn("Get user jobs failed with status:", fetchResponse.status);
+          // Show fallback message for database connection issues
+          if (fetchResponse.status >= 500) {
+            toast.error("Server is experiencing high load. Please try again in a moment.");
+          }
           return;
         }
 
         const result = await fetchResponse.json();
 
-        if (result.status_code === 200 && Array.isArray(result.data?.jobs) && result.data.jobs.length > 0) {
-          const tasks: Task[] = result.data.jobs.map((job) => ({
-            id: job.job_id.toString(),
-            title: job.job_title || "Untitled",
-            description: job.job_description || "No description provided.",
-            budget: Number(job.job_budget) || 0,
-            location: job.job_location || "Unknown",
-            status: "completed",
-            postedAt: (() => {
-              const raw = job.job_due_date || job.created_at || job.timestamp;
-              try { return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown"; } catch { return typeof raw === "string" && raw ? raw : "Unknown"; }
-            })(),
-            completedDate: (() => {
-              const raw = job.completed_date || job.completed_at || job.completion_date || job.job_completion_date || job.updated_at || job.timestamp;
-              try { return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown"; } catch { return typeof raw === "string" && raw ? raw : "Unknown"; }
-            })(),
-            rating: job.rating || 0,
-            offers: job.offers || 0,
-            posted_by: job.posted_by || "Unknown",
-            category: job.job_category || "general",
-            deletion_status: job.deletion_status || false,
-            cancel_status: job.cancel_status ?? false,
-            images: job.job_images?.urls?.length
-              ? job.job_images.urls.map((url: string, index: number) => ({
-                  id: `img${index + 1}`,
-                  url,
-                  alt: `Job image ${index + 1}`,
-                }))
-              : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
-          }));
-          setCompletedTasks(tasks);
-        } else {
-          console.warn("No completed tasks from fetch-completed-tasks; falling back to get-user-jobs");
-          // Fallback: fetch all user jobs and filter completed
-          try {
-            const controller2 = new AbortController();
-            const timeout2 = setTimeout(() => controller2.abort(), 30000);
-            const res2 = await fetch(`https://api.jobpool.in/api/v1/get-user-jobs/${userId}/`, {
-              headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-              credentials: 'omit',
-              signal: controller2.signal,
+        if (result.status_code === 200 && result.data?.jobs) {
+          // First, get the basic task data
+          const tasks: Task[] = result.data.jobs.map((job: any) => {
+            let jobStatus = "open";
+            
+            // Check if this task has a paid order - use correct field name
+            const hasPaidOrder = taskOrders.some(order => {
+              const orderTaskId = order.job_id || order.postId || order.post_id || order.task_id;
+              // Status 1 = Completed/Paid, Status 0 = Processing
+              // TEMPORARY FIX: Treat status 0 as paid since backend isn't updating to status 1
+              const isPaid = order.status === 1 || order.status === "1" || order.status === 0;
+              const isMatching = orderTaskId === job.job_id.toString();
+              
+              return isMatching && isPaid;
             });
-            clearTimeout(timeout2);
-            if (res2.ok) {
-              const json2 = await res2.json();
-              const allJobs: any[] = json2?.data?.jobs || [];
-              const completed = allJobs.filter((job: any) => {
-                const s = (job.status || job.job_status || '').toString().toLowerCase();
-                const jc = job.job_completion_status === 1 || job.job_completion_status === '1';
-                return s === 'completed' || jc;
-              });
-              const tasks: Task[] = completed.map((job: any) => ({
-                id: String(job.job_id || job.id),
-                title: job.job_title || "Untitled",
-                description: job.job_description || "No description provided.",
-                budget: Number(job.job_budget) || 0,
-                location: job.job_location || "Unknown",
-                status: "completed",
-                postedAt: (() => { const raw = job.job_due_date || job.created_at || job.timestamp; try { return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown"; } catch { return typeof raw === "string" && raw ? raw : "Unknown"; } })(),
-                completedDate: (() => { const raw = job.completed_date || job.completed_at || job.completion_date || job.job_completion_date || job.updated_at || job.timestamp; try { return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown"; } catch { return typeof raw === "string" && raw ? raw : "Unknown"; } })(),
-                rating: job.rating || 0,
-                offers: job.offers || 0,
-                posted_by: job.posted_by || "Unknown",
-                category: job.job_category || "general",
-                deletion_status: job.deletion_status || false,
-                cancel_status: job.cancel_status ?? false,
-                images: job.job_images?.urls?.length ? job.job_images.urls.map((url: string, index: number) => ({ id: `img${index + 1}`, url, alt: `Job image ${index + 1}` })) : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
-              }));
-              setCompletedTasks(tasks);
+            
+            // Determine job status based on completion and payment
+            if (job.job_completion_status === 1) {
+              jobStatus = "completed";
+            } else if (hasPaidOrder) {
+              jobStatus = "in_progress";
+            } else if (job.deletion_status || job.cancel_status) {
+              jobStatus = "cancelled";
             }
-          } catch (e) {
-            console.warn('Completed tasks fallback failed', e);
+            
+            return {
+              id: job.job_id.toString(),
+              title: job.job_title || "Untitled",
+              description: job.job_description || "No description provided.",
+              budget: Number(job.job_budget) || 0,
+              location: job.job_location || "Unknown",
+              status: jobStatus,
+              postedAt: (() => {
+                const raw = job.job_due_date || job.created_at;
+                return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
+              })(),
+              completedDate: jobStatus === "completed" ? (() => {
+                const raw = job.updated_at || job.completed_at;
+                return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
+              })() : undefined,
+              images: job.images && Array.isArray(job.images) && job.images.length > 0
+                ? job.images.map((url: string, index: number) => ({
+                    id: `img${index + 1}`,
+                    url,
+                    alt: `Job image ${index + 1}`,
+                  }))
+                : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+            };
+          });
+
+          // Filter for completed tasks only
+          const completedTasks = tasks.filter(task => task.status === "completed");
+          
+          if (completedTasks.length > 0) {
+            console.log(`Found ${completedTasks.length} completed tasks for user ${userId}`);
+            
+            setCompletedTasks(completedTasks);
+            
+            // Cache the completed tasks
+            localStorage.setItem(cacheKey, JSON.stringify({
+              tasks: completedTasks,
+              timestamp: Date.now()
+            }));
+          } else {
+            console.log("No completed tasks found");
           }
+        } else {
+          console.log("No jobs found in API response");
         }
       } catch (err) {
         // Handle AbortError separately (don't show error for timeouts)
         if ((err as any)?.name === 'AbortError') {
           console.log("⏰ Fetch completed tasks was aborted (timeout)");
+          
+          // Try to load from cache as fallback
+          try {
+            const fallbackCacheKey = `completed_tasks_${userId}`;
+            const cachedTasks = localStorage.getItem(fallbackCacheKey);
+            if (cachedTasks) {
+              const cachedData = JSON.parse(cachedTasks);
+              setCompletedTasks(cachedData.tasks);
+              console.log("Loaded completed tasks from cache after timeout");
+            }
+          } catch (cacheError) {
+            console.error("Failed to load cached completed tasks:", cacheError);
+          }
           return;
         }
         console.error("Failed to fetch completed tasks:", err);
       } finally {
-        // keep existing content stable
+        setCompletedTasksLoading(false);
       }
     };
 
     fetchCompletedTasks();
   }, [user, userId]);
 
-  const handleComplete = async (jobId: string) => {
-    try {
-      const response = await axiosInstance.put<APIResponse<any>>(`/mark-complete/${jobId}/`);
+  const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
 
-      if (response.data.status_code === 200) {
+  const handleComplete = async (jobId: string) => {
+    if (completingTaskId) return; // Prevent multiple clicks
+    
+    try {
+      setCompletingTaskId(jobId);
+      console.log("Attempting to complete task:", jobId);
+      
+      // Show immediate feedback
+      toast.loading("Marking task as complete...", { id: `complete-${jobId}` });
+      
+      // Optimized API call with shorter timeout
+      const token = localStorage.getItem('token');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // Reduced to 15s
+      
+      const response = await fetch(`https://api.jobpool.in/api/v1/mark-complete/${jobId}/`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'omit',
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      const result = await response.json();
+      console.log("Complete task response:", result);
+
+      if (result.status_code === 200) {
+        toast.dismiss(`complete-${jobId}`);
         toast.success("Task marked as complete!");
+        
+        // Optimistic UI update
+        const completedTask = assignedTasks.find((task) => task.id === jobId);
+        if (completedTask) {
         setAssignedTasks((prev) => prev.filter((task) => task.id !== jobId));
         setCompletedTasks((prev) => [
           ...prev,
           {
-            ...assignedTasks.find((task) => task.id === jobId)!,
+              ...completedTask,
             status: "completed",
             completedDate: new Date().toLocaleDateString("en-GB"),
           },
         ]);
+        }
 
+        // Navigate to completion page
+        setTimeout(() => {
         router.push(`/tasks/${jobId}/complete`);
+        }, 500);
       } else {
-        console.error("Error marking task as complete:", response.data.message);
+        toast.dismiss(`complete-${jobId}`);
+        console.error("Error marking task as complete:", result);
+        toast.error(`Failed to complete task: ${result.message || 'Unknown error'}`);
       }
     } catch (error) {
+      toast.dismiss(`complete-${jobId}`);
       console.error("Error marking task as complete:", error);
+      if ((error as any)?.name === 'AbortError') {
+        toast.error("Request timed out. Please try again.");
+      } else {
+        toast.error("Failed to complete task. Please try again.");
+      }
+    } finally {
+      setCompletingTaskId(null);
     }
   };
 
   // Handle marking My Tasks as complete
   const handleMyTaskComplete = async (jobId: string) => {
+    if (completingTaskId) return; // Prevent multiple clicks
+    
     try {
+      setCompletingTaskId(jobId);
+      toast.loading("Marking task as complete...", { id: `my-complete-${jobId}` });
+      
       const response = await axiosInstance.put<APIResponse<any>>(`/mark-complete/${jobId}/`);
 
       if (response.data.status_code === 200) {
+        toast.dismiss(`my-complete-${jobId}`);
         toast.success("Task marked as complete!");
         // Update the posted task status
         setPostedTasks((prev) =>
@@ -1148,11 +1298,15 @@ export default function Dashboard() {
           )
         );
       } else {
+        toast.dismiss(`my-complete-${jobId}`);
         toast.error(response.data.message || "Failed to mark task as complete");
       }
     } catch (error) {
+      toast.dismiss(`my-complete-${jobId}`);
       console.error("Error marking task as complete:", error);
       toast.error("An error occurred while marking the task as complete");
+    } finally {
+      setCompletingTaskId(null);
     }
   };
 
@@ -1466,7 +1620,7 @@ export default function Dashboard() {
         }
       `}</style>
       
-      <main className="flex-1 max-w-7xl mx-auto py-6 md:py-10 px-4 md:px-6">
+      <main className="flex-1 w-full max-w-none mx-auto py-6 md:py-10 px-6 md:px-8 lg:px-12">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 animate-fade-in-up">
           <div className="animate-slide-in-right">
             <h1 className="text-5xl font-bold tracking-tight text-gray-900">
@@ -1529,7 +1683,7 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        <Tabs defaultValue="available" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="flex w-full bg-gray-100 p-1 rounded-2xl border border-gray-200">
             <TabsTrigger 
               value="my-tasks" 
@@ -1578,7 +1732,7 @@ export default function Dashboard() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="my-tasks" forceMount className="space-y-6 mt-8 animate-fade-in-up">
+          <TabsContent value="my-tasks" forceMount className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
             <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight border-b border-gray-200 pb-4">Tasks You've Posted</h2>
             {/* Premium Summary strip */}
             <div className="grid grid-cols-3 gap-4">
@@ -1662,7 +1816,7 @@ export default function Dashboard() {
                     return 0;
                   })
                   .map((task) => (
-                    <Card
+                                    <Card
                     key={task.id}
                     className={`relative transition-all duration-300 hover:shadow-lg hover:-translate-y-1 rounded-2xl overflow-hidden group border ${
                       task.deletion_status || task.cancel_status
@@ -1772,20 +1926,37 @@ export default function Dashboard() {
                         <>
                           <Button
                             onClick={() => handleMyTaskComplete(task.id)}
-                            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold"
+                            disabled={completingTaskId === task.id}
+                            className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                           >
-                            ✅ Mark as Complete
+                            {completingTaskId === task.id ? (
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                Completing...
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">✅</span>
+                                Mark as Complete
+                              </div>
+                            )}
                           </Button>
-                          <Link href={`/tasks/${task.id}`} className="w-full">
-                            <Button variant="outline" className="w-full">
-                              View Details
+                        <Link href={`/tasks/${task.id}`} className="w-full">
+                            <Button variant="outline" className="w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02]">
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">👁️</span>
+                            View Details
+                              </div>
                             </Button>
                           </Link>
                         </>
                       ) : (
                         <Link href={`/tasks/${task.id}`} className="w-full">
-                          <Button variant="outline" className="w-full">
-                            View Details
+                          <Button variant="outline" className="w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02]">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">👁️</span>
+                              View Details
+                            </div>
                           </Button>
                         </Link>
                       )}
@@ -1796,7 +1967,7 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="available" forceMount className="space-y-6 mt-8 animate-fade-in-up">
+          <TabsContent value="available" forceMount className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
             <h2 className="text-2xl font-bold text-gray-900 border-b border-gray-200 pb-3">Available Tasks</h2>
             <div className="grid gap-6 md:grid-cols-4">
               <div className="md:col-span-1 space-y-6">
@@ -1959,10 +2130,15 @@ export default function Dashboard() {
                 </div>
 
                 {filteredTasks.length === 0 ? (
-                  <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-10">
-                      <p className="text-muted-foreground mb-4">
-                        No tasks found matching your criteria
+                  <div className="min-h-[400px] flex items-center justify-center">
+                    <Card className="w-full max-w-2xl mx-auto shadow-lg border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
+                      <CardContent className="flex flex-col items-center justify-center py-20 px-12 text-center">
+                        <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-6">
+                          <span className="text-4xl">📝</span>
+                        </div>
+                        <h3 className="text-xl font-semibold text-gray-800 mb-2">No Tasks Found</h3>
+                        <p className="text-gray-600 mb-6 leading-relaxed">
+                          No tasks match your current filter criteria. Try adjusting your filters or clear them to see all tasks.
                       </p>
                       <Button
                         onClick={() => {
@@ -1971,11 +2147,13 @@ export default function Dashboard() {
                           setPriceRange([0, 50000]);
                           setLocation("");
                         }}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
                       >
-                        Clear Filters
+                          Clear All Filters
                       </Button>
                     </CardContent>
                   </Card>
+                  </div>
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {filteredTasks.map((task) => {
@@ -2037,16 +2215,37 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
-          <TabsContent value="assigned" forceMount className="space-y-6 mt-8 animate-fade-in-up">
+          <TabsContent value="assigned" forceMount className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
             <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-orange-200 pb-2">Tasks Assigned to You</h2>
             {assignedTasks.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-10">
-                  <p className="text-muted-foreground">
-                    You don't have any assigned tasks
-                  </p>
+              <div className="min-h-[400px] flex items-center justify-center">
+                <Card className="w-full max-w-2xl mx-auto shadow-lg border-0 bg-gradient-to-br from-orange-50 to-amber-50">
+                  <CardContent className="flex flex-col items-center justify-center py-20 px-12 text-center">
+                    <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mb-6">
+                      <span className="text-4xl">📋</span>
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">No Assigned Tasks</h3>
+                    <p className="text-gray-600 mb-6 leading-relaxed">
+                      You don't have any tasks assigned to you yet. Check back later or browse available tasks to submit bids.
+                    </p>
+                    <div className="flex gap-3">
+                      <Button 
+                        onClick={() => setActiveTab("available")} 
+                        className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                      >
+                        Browse Available Tasks
+                      </Button>
+                      <Button 
+                        onClick={() => setActiveTab("my-tasks")} 
+                        variant="outline" 
+                        className="border-orange-200 text-orange-700 hover:bg-orange-50 px-6 py-2 rounded-lg font-medium transition-colors"
+                      >
+                        View My Tasks
+                      </Button>
+                    </div>
                 </CardContent>
               </Card>
+              </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {assignedTasks.map((task) => (
@@ -2090,22 +2289,39 @@ export default function Dashboard() {
                     <CardFooter>
                       <div className="flex gap-2 w-full">
                         <Link href={`/tasks/${task.id}`} className="flex-1" onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); } catch {} }}>
-                          <Button variant="outline" className="w-full">
+                          <Button variant="outline" className="w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02]">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">👁️</span>
                             View Details
+                            </div>
                           </Button>
                         </Link>
                         <Button
-                          className="flex-1"
+                          className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                           onClick={() => handleComplete(task.id)}
+                          disabled={completingTaskId === task.id}
                         >
+                          {completingTaskId === task.id ? (
+                            <div className="flex items-center gap-2">
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              Completing...
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">✅</span>
                           Complete
+                            </div>
+                          )}
                         </Button>
                         <Button
                           variant="outline"
-                          className="flex-1"
+                          className="flex-1 border-2 border-red-300 hover:border-red-400 text-red-600 hover:text-red-700 font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02]"
                           onClick={() => handleAssignedCancelClick(task.id)}
                         >
-                          Cancel
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">❌</span>
+                            Cancel
+                          </div>
                         </Button>
                       </div>
                     </CardFooter>
@@ -2115,16 +2331,35 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="completed" forceMount className="space-y-6 mt-8 animate-fade-in-up">
+          <TabsContent value="completed" forceMount className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
             <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-green-200 pb-2">Completed Tasks</h2>
-            {completedTasks.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-10">
-                  <p className="text-muted-foreground">
-                    You don't have any completed tasks
-                  </p>
+            {completedTasksLoading ? (
+              <div className="min-h-[400px] flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-16 h-16 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-gray-600 font-medium">Loading completed tasks...</p>
+                </div>
+              </div>
+            ) : completedTasks.length === 0 ? (
+              <div className="min-h-[400px] flex items-center justify-center">
+                <Card className="w-full max-w-2xl mx-auto shadow-lg border-0 bg-gradient-to-br from-green-50 to-emerald-50">
+                  <CardContent className="flex flex-col items-center justify-center py-20 px-12 text-center">
+                    <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
+                      <span className="text-4xl">✅</span>
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">No Completed Tasks</h3>
+                    <p className="text-gray-600 mb-6 leading-relaxed">
+                      You haven't completed any tasks yet. Complete your assigned tasks to see them here.
+                    </p>
+                    <Button 
+                      onClick={() => setActiveTab("assigned")} 
+                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                    >
+                      View Assigned Tasks
+                    </Button>
                 </CardContent>
               </Card>
+              </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {completedTasks.map((task) => (
@@ -2139,7 +2374,7 @@ export default function Dashboard() {
                       </div>
                       <CardDescription className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        <span>Completed: {task.completedDate}</span>
+                        <span>Task completed successfully</span>
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -2174,19 +2409,28 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="my-bids" forceMount className="space-y-6 mt-8 animate-fade-in-up">
+          <TabsContent value="my-bids" forceMount className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
             <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-purple-200 pb-2">My Bids</h2>
             {requestedTasks.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-10">
-                  <p className="text-muted-foreground mb-4">
-                    You haven't placed any bids yet
-                  </p>
-                  <Link href="/browse">
-                    <Button>Browse Available Tasks</Button>
-                  </Link>
+              <div className="min-h-[400px] flex items-center justify-center">
+                <Card className="w-full max-w-2xl mx-auto shadow-lg border-0 bg-gradient-to-br from-purple-50 to-violet-50">
+                  <CardContent className="flex flex-col items-center justify-center py-20 px-12 text-center">
+                    <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mb-6">
+                      <span className="text-4xl">📝</span>
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">No Bids Placed</h3>
+                    <p className="text-gray-600 mb-6 leading-relaxed">
+                      You haven't placed any bids yet. Browse available tasks and submit your first bid to get started.
+                    </p>
+                    <Button
+                      onClick={() => setActiveTab("available")}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Browse Available Tasks
+                    </Button>
                 </CardContent>
               </Card>
+              </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {requestedTasks.map((bid) => (

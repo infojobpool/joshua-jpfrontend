@@ -308,7 +308,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { toast } from "sonner"
-import { CheckCircle, Upload, AlertCircle } from "lucide-react"
+import { CheckCircle, Upload, AlertCircle, Star } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 import useStore from "@/lib/Zustand"
 import Header from "@/components/Header"
@@ -334,6 +334,7 @@ interface CompletionDetailsType {
   notes: string
   status: string
   images: ImageType[]
+  rating: number
 }
 
 export default function CompleteTaskPage({ params }: TaskDetailPageProps) {
@@ -347,6 +348,7 @@ export default function CompleteTaskPage({ params }: TaskDetailPageProps) {
     notes: "",
     status: "completed",
     images: [],
+    rating: 0,
   })
 
   useEffect(() => {
@@ -368,6 +370,10 @@ export default function CompleteTaskPage({ params }: TaskDetailPageProps) {
 
   const handleRadioChange = (value: string) => {
     setCompletionDetails((prev) => ({ ...prev, status: value }))
+  }
+
+  const handleRatingChange = (rating: number) => {
+    setCompletionDetails((prev) => ({ ...prev, rating }))
   }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -412,6 +418,7 @@ export default function CompleteTaskPage({ params }: TaskDetailPageProps) {
       formData.append("bidder_ref_id", userId)
       formData.append("task_status", completionDetails.status)
       formData.append("completion_notes", completionDetails.notes)
+      formData.append("rating", completionDetails.rating.toString())
 
       // Append images
       completionDetails.images.forEach((image) => {
@@ -505,6 +512,31 @@ export default function CompleteTaskPage({ params }: TaskDetailPageProps) {
                       </Label>
                     </div>
                   </RadioGroup>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Rate the Task (Optional)</Label>
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => handleRatingChange(star)}
+                        className="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                      >
+                        <Star
+                          className={`h-8 w-8 transition-colors ${
+                            star <= completionDetails.rating
+                              ? "text-yellow-400 fill-yellow-400"
+                              : "text-gray-300 hover:text-yellow-200"
+                          }`}
+                        />
+                      </button>
+                    ))}
+                    <span className="ml-2 text-sm text-gray-600">
+                      {completionDetails.rating > 0 ? `${completionDetails.rating} star${completionDetails.rating !== 1 ? 's' : ''}` : 'No rating'}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="space-y-2">

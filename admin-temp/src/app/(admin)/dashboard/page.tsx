@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Activity, CreditCard, DollarSign, Users, CheckCircle2, Clock, AlertCircle, IndianRupee } from "lucide-react";
@@ -69,24 +69,57 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
+      
+      // Check cache first
+      const cacheKey = "admin_dashboard_data";
+      const cachedData = localStorage.getItem(cacheKey);
+      const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
+      
+      // Use cache if less than 2 minutes old
+      if (cachedData && cacheTimestamp) {
+        const age = Date.now() - parseInt(cacheTimestamp);
+        if (age < 120000) { // 2 minutes
+          console.log("Dashboard: Using cached data");
+          const data = JSON.parse(cachedData);
+          setUsers(data.users || []);
+          setJobs(data.jobs || []);
+          setIsLoading(false);
+          return;
+        }
+      }
+      
+      console.log("Dashboard: Fetching fresh data...");
+      
+      // Add timeouts to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+      
       const [usersResponse, jobsResponse] = await Promise.all([
-        axiosInstance.get("all-user-details/"),
-        axiosInstance.get("get-all-jobs/"),
+        axiosInstance.get("all-user-details/", { signal: controller.signal }),
+        axiosInstance.get("get-all-jobs-admin/", { signal: controller.signal }),
       ]);
+      
+      clearTimeout(timeoutId);
 
-      if (usersResponse.data) {
-        setUsers(usersResponse.data);
-      } else {
-        toast.error("Failed to fetch users");
-      }
+      const users = usersResponse.data?.data || usersResponse.data || [];
+      const jobs = jobsResponse.data?.data?.jobs || [];
 
-      if (jobsResponse.data.status_code === 200) {
-        setJobs(jobsResponse.data.data.jobs);
+      setUsers(users);
+      setJobs(jobs);
+      
+      // Cache the data
+      localStorage.setItem(cacheKey, JSON.stringify({ users, jobs }));
+      localStorage.setItem(`${cacheKey}_timestamp`, Date.now().toString());
+      
+      console.log(`Dashboard: Loaded ${users.length} users and ${jobs.length} jobs`);
+      
+    } catch (error: any) {
+      console.error("Dashboard fetch error:", error);
+      if (error.name === 'AbortError') {
+        toast.error("Request timed out. Please try again.");
       } else {
-        toast.error(jobsResponse.data.message || "Failed to fetch jobs");
+        toast.error("An error occurred while fetching data");
       }
-    } catch {
-      toast.error("An error occurred while fetching data");
     } finally {
       setIsLoading(false);
     }
@@ -96,12 +129,24 @@ export default function AdminDashboard() {
     fetchData();
   }, []);
 
-  // Calculate statistics
-  const totalRevenue = jobs.reduce((sum, job) => sum + job.job_budget, 0);
-  const activeTasks = jobs.filter((job) => !job.status).length; // status: false = Open/Active
-  const totalUsers = users.length;
-  const pendingPayouts = 6354.12; // Dummy data
-  const pendingPayoutsCount = 24; // Dummy data
+  // Calculate statistics with memoization for better performance
+  const statistics = useMemo(() => {
+    const totalRevenue = jobs.reduce((sum, job) => sum + (job.job_budget || 0), 0);
+    const activeTasks = jobs.filter((job) => !job.status).length; // status: false = Open/Active
+    const totalUsers = users.length;
+    const pendingPayouts = 6354.12; // Dummy data
+    const pendingPayoutsCount = 24; // Dummy data
+    
+    return {
+      totalRevenue,
+      activeTasks,
+      totalUsers,
+      pendingPayouts,
+      pendingPayoutsCount
+    };
+  }, [jobs, users]);
+  
+  const { totalRevenue, activeTasks, totalUsers, pendingPayouts, pendingPayoutsCount } = statistics;
 
   return (
     <div className="flex flex-col gap-4">
@@ -263,9 +308,12 @@ function ActivityList({ users, jobs, isLoading }: { users: User[]; jobs: Job[]; 
 }
 
 function TaskStatusList({ jobs, isLoading }: { jobs: Job[]; isLoading: boolean }) {
-  const openCount = jobs.filter((job) => !job.status).length;
-  const totalCount = jobs.length || 1; // Avoid division by zero
-  const statuses: TaskStatus[] = [
+  const statuses: TaskStatus[] = useMemo(() => {
+    const openCount = jobs.filter((job) => !job.status).length;
+    const cancelledCount = jobs.filter((job) => job.status).length;
+    const totalCount = jobs.length || 1; // Avoid division by zero
+    
+    return [
     {
       id: 1,
       name: "Completed",
@@ -293,12 +341,13 @@ function TaskStatusList({ jobs, isLoading }: { jobs: Job[]; isLoading: boolean }
     {
       id: 4,
       name: "Cancelled",
-      count: jobs.filter((job) => job.status).length,
-      percentage: Math.round((jobs.filter((job) => job.status).length / totalCount) * 100),
+      count: cancelledCount,
+      percentage: Math.round((cancelledCount / totalCount) * 100),
       icon: AlertCircle,
       color: "text-red-500",
     },
   ];
+  }, [jobs]);
 
   return (
     <div className="space-y-4">
@@ -328,15 +377,19 @@ function TaskStatusList({ jobs, isLoading }: { jobs: Job[]; isLoading: boolean }
 }
 
 function RecentTasksList({ jobs, isLoading }: { jobs: Job[]; isLoading: boolean }) {
-  const tasks: RecentTask[] = jobs.map((job) => ({
-    id: job.job_id,
-    title: job.job_title,
-    category: job.job_category_name,
-    taskmaster: job.posted_by,
-    tasker: "Unassigned", // No tasker data in API
-    status: job.status ? "Cancelled" : "Open",
-    amount: `₹${job.job_budget.toLocaleString()}`,
-  })).slice(0, 5); // Limit to 5 tasks
+  const tasks: RecentTask[] = useMemo(() => {
+    // Only process first 20 jobs to reduce computation
+    const limitedJobs = jobs.slice(0, 20);
+    return limitedJobs.map((job) => ({
+      id: job.job_id,
+      title: job.job_title || "Untitled",
+      category: job.job_category_name || "General",
+      taskmaster: job.posted_by || "Unknown",
+      tasker: "Unassigned", // No tasker data in API
+      status: job.status ? "Cancelled" : "Open",
+      amount: `₹${(job.job_budget || 0).toLocaleString()}`,
+    })).slice(0, 5); // Limit to 5 tasks
+  }, [jobs]);
 
   return (
     <div className="space-y-4">

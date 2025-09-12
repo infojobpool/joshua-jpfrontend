@@ -66,24 +66,52 @@ export function Sidebar({ pathname }: SidebarProps) {
 
     const poll = async () => {
       try {
+        // Use the same cache key as useBidsNotifier to avoid duplicate work
+        const cacheKey = "admin_seen_bid_ids"
+        const loadSeen = (): Set<string> => {
+          try { return new Set(JSON.parse(localStorage.getItem(cacheKey) || "[]")) } catch { return new Set() }
+        }
+        const saveSeen = (s: Set<string>) => localStorage.setItem(cacheKey, JSON.stringify(Array.from(s)))
+        
+        // Check if we already have recent data from useBidsNotifier
+        const lastPollTime = localStorage.getItem("admin_last_poll_time")
+        const now = Date.now()
+        if (lastPollTime && (now - parseInt(lastPollTime)) < 60000) { // Less than 1 minute ago
+          console.log("Sidebar: Skipping poll, recent data available")
+          return
+        }
+        
         const res = await axiosInstance.get("/get-all-jobs-admin/")
         const jobs = res.data?.data?.jobs || []
         const open = jobs.filter((j: any) => !j.status)
+        
+        // Limit to first 5 jobs to reduce API load
+        const limitedJobs = open.slice(0, 5)
+        
         const seen = loadSeen()
         let added = 0
-        for (const job of open) {
-          const bidsRes = await axiosInstance.get(`/get-bids/${job.job_id}/`)
-          const rows: any[] = bidsRes.data?.data?.bids || bidsRes.data?.data || []
-          for (const r of rows) {
-            const id = String(r.bid_id ?? r.id ?? `${job.job_id}-${r.user_id ?? r.tasker_id ?? r.bidder_id ?? "?"}`)
-            if (!seen.has(id)) { seen.add(id); added++ }
+        for (const job of limitedJobs) {
+          try {
+            const bidsRes = await axiosInstance.get(`/get-bids/${job.job_id}/`)
+            const rows: any[] = bidsRes.data?.data?.bids || bidsRes.data?.data || []
+            for (const r of rows) {
+              const id = String(r.bid_id ?? r.id ?? `${job.job_id}-${r.user_id ?? r.tasker_id ?? r.bidder_id ?? "?"}`)
+              if (!seen.has(id)) { seen.add(id); added++ }
+            }
+          } catch (error: any) {
+            console.warn(`Sidebar: Failed to fetch bids for job ${job.job_id}:`, error.message)
           }
         }
         if (added > 0) { saveSeen(seen); setNewBids((c) => c + added) }
-      } catch {}
+        
+        // Update last poll time
+        localStorage.setItem("admin_last_poll_time", now.toString())
+      } catch (error: any) {
+        console.warn("Sidebar: Polling failed:", error.message)
+      }
     }
     poll()
-    timer = setInterval(poll, 45000)
+    timer = setInterval(poll, 600000) // Reduced to 10 minutes to prevent DB overload
     return () => clearInterval(timer)
   }, [])
 

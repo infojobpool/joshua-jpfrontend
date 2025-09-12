@@ -122,36 +122,44 @@ export default function BidsPage() {
       const openJobs = jobs; // include all; filter by status if needed
 
       const all: Bid[] = [];
-      for (const job of openJobs) {
+      // Limit to first 15 jobs to reduce API load
+      const limitedJobs = openJobs.slice(0, 15);
+      
+      for (const job of limitedJobs) {
         const jId = job.job_id ?? job.id;
         if (!jId) continue;
-        const bidsRes = await axiosInstance.get(`/get-bids/${jId}/`);
-        const rows: any[] = bidsRes.data?.data?.bids || bidsRes.data?.data || [];
-        rows.forEach((r: any) =>
-          all.push({
-            bid_id: r.bid_id ?? r.id ?? 0,
-            job_id: jId,
-            job_title: job.job_title || r.task_title || "",
-            job_description: job.job_description || "",
-            job_category: job.job_category_name || job.job_category || "",
-            job_budget: Number(job.job_budget ?? 0),
-            job_location: job.job_location || "",
-            job_due_date: job.job_due_date || new Date().toISOString(),
-            bidder_id: r.user_id ?? r.tasker_id ?? r.bidder_id ?? "",
-            bidder_name: r.user_name ?? r.tasker_name ?? r.bidder_name ?? "",
-            bidder_email: r.user_email ?? "",
-            bid_amount: Number(r.bid_amount ?? r.amount ?? 0),
-            bid_description: r.bid_description ?? r.message ?? "",
-            bid_timestamp: r.created_at ?? r.createdAt ?? new Date().toISOString(),
-            job_status: (r.status ?? "pending") as Bid["job_status"],
-            job_completion_status: job.job_completion_status ?? 0,
-            is_completed: job.job_completion_status === 1,
-            is_cancelled: job.deletion_status === true,
-            posted_by: job.posted_by ?? "",
-            posted_by_id: job.user_ref_id ?? "",
-            is_confirmed: r.is_confirmed ?? false,
-          })
-        );
+        
+        try {
+          const bidsRes = await axiosInstance.get(`/get-bids/${jId}/`);
+          const rows: any[] = bidsRes.data?.data?.bids || bidsRes.data?.data || [];
+          rows.forEach((r: any) =>
+            all.push({
+              bid_id: r.bid_id ?? r.id ?? 0,
+              job_id: jId,
+              job_title: job.job_title || r.task_title || "",
+              job_description: job.job_description || "",
+              job_category: job.job_category_name || job.job_category || "",
+              job_budget: Number(job.job_budget ?? 0),
+              job_location: job.job_location || "",
+              job_due_date: job.job_due_date || new Date().toISOString(),
+              bidder_id: r.user_id ?? r.tasker_id ?? r.bidder_id ?? "",
+              bidder_name: r.user_name ?? r.tasker_name ?? r.bidder_name ?? "",
+              bidder_email: r.user_email ?? "",
+              bid_amount: Number(r.bid_amount ?? r.amount ?? 0),
+              bid_description: r.bid_description ?? r.message ?? "",
+              bid_timestamp: r.created_at ?? r.createdAt ?? new Date().toISOString(),
+              job_status: (r.status ?? "pending") as Bid["job_status"],
+              job_completion_status: job.job_completion_status ?? 0,
+              is_completed: job.job_completion_status === 1,
+              is_cancelled: job.deletion_status === true,
+              posted_by: job.posted_by ?? "",
+              posted_by_id: job.user_ref_id ?? "",
+              is_confirmed: r.is_confirmed ?? false,
+            })
+          );
+        } catch (error: any) {
+          console.warn(`Failed to fetch bids for job ${jId}:`, error.message);
+        }
       }
       setBids(all);
       // Simple statistics

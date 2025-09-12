@@ -1245,6 +1245,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [showImageGallery, setShowImageGallery] = useState<boolean>(false);
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [bidsLoading, setBidsLoading] = useState<boolean>(false);
   const [showConfirmBid, setShowConfirmBid] = useState<boolean>(false);
   const [showCancelDialog, setShowCancelDialog] = useState<boolean>(false);
   const [cancelReason, setCancelReason] = useState<string>("");
@@ -1334,8 +1335,42 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   useEffect(() => {
     const loadTaskData = async () => {
       try {
-        const response = await axiosInstance.get(`/get-job/${id}/`);
-        const data: ApiJobResponse = response.data;
+        // Check cache first
+        const cacheKey = `task_${id}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const cachedData = JSON.parse(cached);
+          const cacheAge = Date.now() - cachedData.timestamp;
+          if (cacheAge < 300000) { // 5 minutes cache
+            console.log("Using cached task data");
+            setTask(cachedData.task);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Use fetch API for better performance
+        const token = localStorage.getItem('token');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+        const response = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data: ApiJobResponse = await response.json();
 
         if (data.status_code !== 200) {
           throw new Error(data.message);
@@ -1473,11 +1508,21 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         };
         setTask(mappedTask);
         console.log("Mapped Task:", mappedTask);
+        
+        // Cache the task data
+        localStorage.setItem(cacheKey, JSON.stringify({
+          task: mappedTask,
+          timestamp: Date.now()
+        }));
       } catch (error: any) {
         console.error("Error loading task data:", error);
-        toast.error(
-          error.response?.data?.detail || "Failed to load task details"
-        );
+        if ((error as any)?.name === 'AbortError') {
+          toast.error("Request timed out. Please try again.");
+        } else {
+          toast.error(
+            error.response?.data?.detail || "Failed to load task details"
+          );
+        }
         setTask(null);
       } finally {
         setLoading(false);
@@ -1493,9 +1538,29 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
     async function loadBids() {
       try {
-        // Fetch all bids for the task from the API
-        const response = await axiosInstance.get(`/get-bids/${id}/`);
-        const data: ApiBidResponse = response.data;
+        setBidsLoading(true);
+        // Use fetch API for better performance
+        const token = localStorage.getItem('token');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+
+        const response = await fetch(`https://api.jobpool.in/api/v1/get-bids/${id}/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data: ApiBidResponse = await response.json();
         console.log("Raw API response for bids:", data); // Debug log
 
         if (data.status_code !== 200) {
@@ -1555,7 +1620,12 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         console.log("Mapped offers:", newOffers); // Debug log
       } catch (error: any) {
         console.error("Error loading bids:", error);
+        if ((error as any)?.name === 'AbortError') {
+          console.log("Bids request timed out");
+        }
         // Removed annoying toast notification for failed bid loading
+      } finally {
+        setBidsLoading(false);
       }
     }
 

@@ -40,8 +40,8 @@ function NotificationBar() {
   const open = useStore((s) => s.notificationOpen);
   const setOpen = useStore((s) => s.setNotificationOpen);
   const errorCountRef = useRef<number>(0);
-  const baseIntervalMs = 15000;
-  const maxIntervalMs = 120000;
+  const baseIntervalMs = 300000; // Reduced from 15s to 5 minutes to prevent DB overload
+  const maxIntervalMs = 600000; // Max 10 minutes
   const fetchedIdsRef = useRef<Set<string>>(new Set());
   const lastTimestampRef = useRef<number>(0);
   const lastChatIdRef = useRef<string | null>(null);
@@ -71,6 +71,21 @@ function NotificationBar() {
 
     async function fetchLatest() {
       try {
+        // Check cache first to prevent excessive API calls
+        const cacheKey = `notifications_${userId}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const cachedData = JSON.parse(cached);
+          const cacheAge = Date.now() - cachedData.timestamp;
+          if (cacheAge < 120000) { // 2 minutes cache
+            console.log("Using cached notifications data");
+            if (cachedData.notifications) {
+              addNotifications(cachedData.notifications);
+            }
+            return;
+          }
+        }
+        
         // Only fetch bids RECEIVED on tasks posted by this user (incoming bids only)
         const jobsRes = await axiosInstance.get<ApiListResponse<{ jobs: any[] }>>(
           `/get-user-jobs/${userId}/`
@@ -78,12 +93,20 @@ function NotificationBar() {
         const jobs = jobsRes.data?.data?.jobs || [];
         const recentJobs = [...jobs]
           .sort((a, b) => Date.parse(b.timestamp || b.job_due_date || '') - Date.parse(a.timestamp || a.job_due_date || ''))
-          .slice(0, 50); // scan many posted tasks to catch bids on older tasks
+          .slice(0, 5); // Reduced from 50 to 5 to prevent DB overload
 
         const bidsArrays = await Promise.all(
           recentJobs.map(async (job) => {
             try {
-              const r = await axiosInstance.get<ApiListResponse<any[]>>(`/get-bids/${job.job_id}/`);
+              // Add timeout to prevent hanging requests
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+              
+              const r = await axiosInstance.get<ApiListResponse<any[]>>(`/get-bids/${job.job_id}/`, {
+                signal: controller.signal
+              });
+              clearTimeout(timeoutId);
+              
               const data = Array.isArray(r.data?.data) ? r.data.data : [];
               return data
                 // Ignore bids that are deleted/withdrawn/canceled if backend tags them
@@ -93,7 +116,13 @@ function NotificationBar() {
                   return !deleted && status !== 'deleted' && status !== 'withdrawn' && status !== 'canceled';
                 })
                 .map((b: any) => ({ ...b, job }));
-            } catch {
+            } catch (e: any) {
+              // Handle timeout and other errors gracefully
+              if (e.name === 'AbortError') {
+                console.log("Bid request timed out for job", job.job_id);
+              } else {
+                console.warn("Failed to fetch bids for job", job.job_id, e.message);
+              }
               return [] as any[];
             }
           })
@@ -160,6 +189,12 @@ function NotificationBar() {
         // Only update the store if we actually have new items to avoid re-render flicker
         if (newItems.length > 0) {
           addNotifications(newItems);
+          
+          // Cache the notifications to prevent repeated API calls
+          localStorage.setItem(cacheKey, JSON.stringify({
+            notifications: newItems,
+            timestamp: Date.now()
+          }));
           // advance the last timestamp using any new items
           const maxTs = Math.max(
             lastTimestampRef.current,
