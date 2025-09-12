@@ -78,14 +78,21 @@ function NotificationBar() {
         const jobs = jobsRes.data?.data?.jobs || [];
         const recentJobs = [...jobs]
           .sort((a, b) => Date.parse(b.timestamp || b.job_due_date || '') - Date.parse(a.timestamp || a.job_due_date || ''))
-          .slice(0, 3); // Reduced from 5 to 3 for better performance
+          .slice(0, 50); // scan many posted tasks to catch bids on older tasks
 
         const bidsArrays = await Promise.all(
           recentJobs.map(async (job) => {
             try {
               const r = await axiosInstance.get<ApiListResponse<any[]>>(`/get-bids/${job.job_id}/`);
               const data = Array.isArray(r.data?.data) ? r.data.data : [];
-              return data.map((b: any) => ({ ...b, job }));
+              return data
+                // Ignore bids that are deleted/withdrawn/canceled if backend tags them
+                .filter((b: any) => {
+                  const status = (b.status || b.bid_status || '').toString().toLowerCase();
+                  const deleted = Boolean(b.deleted || b.is_deleted);
+                  return !deleted && status !== 'deleted' && status !== 'withdrawn' && status !== 'canceled';
+                })
+                .map((b: any) => ({ ...b, job }));
             } catch {
               return [] as any[];
             }
@@ -94,7 +101,11 @@ function NotificationBar() {
         const allBids = bidsArrays.flat();
 
         // Only show bids NOT by me (incoming bids only)
-        const bidsReceived = allBids.filter((b: any) => String(b.tasker_id || b.user_id || b.bidder_id) !== String(userId));
+        // Treat as received if the bidder is NOT me. Backend may use different keys.
+        const bidsReceived = allBids.filter((b: any) => {
+          const bidder = String(b.tasker_id || b.user_id || b.bidder_id || b.bidder || b.offered_by || "");
+          return bidder !== String(userId);
+        });
 
         if (!mounted) return;
 
@@ -106,12 +117,20 @@ function NotificationBar() {
           createdAt: string;
           read: boolean;
           link?: string;
+          // enrich to cooperate with store filters
+          direction: "received";
+          taskId?: string;
+          bidId?: string;
+          status?: string;
+          deleted?: boolean;
         }[];
 
         // Only process incoming bids (no sent bids, no messages)
         for (const b of bidsReceived) {
-          const id = `bid:${b.bid_id}`;
-          const createdTs = Date.parse(b.created_at);
+          const bidId = String(b.bid_id || b.id || `${b.job?.job_id || b.task_id}-unknown`);
+          const id = `bid:${bidId}`;
+          const createdStr = b.created_at || b.createdAt || b.bid_time || b.timestamp || b.updated_at || b.updatedAt;
+          const createdTs = Date.parse(createdStr || "");
           if (!Number.isNaN(createdTs) && createdTs <= lastTimestampRef.current) {
             // older or same, skip
           } else if (!fetchedIdsRef.current.has(id)) {
@@ -120,11 +139,16 @@ function NotificationBar() {
             newItems.push({
               id,
               type: "bid",
-              title: `New bid on ${b.task_title || b.job?.job_title || "your task"}`,
-              description: `${b.bid_amount ? `Offer: ₹${b.bid_amount}` : ""}${bidderName ? (b.bid_amount ? " • " : "") + `By ${bidderName}` : ""}`,
-              createdAt: b.created_at,
+              title: `New bid on ${b.task_title || b.job?.job_title || b.title || "your task"}`,
+              description: `${(b.bid_amount || b.amount || b.offer_amount) ? `Offer: ₹${b.bid_amount || b.amount || b.offer_amount}` : ""}${bidderName ? ((b.bid_amount || b.amount || b.offer_amount) ? " • " : "") + `By ${bidderName}` : ""}`,
+              createdAt: createdStr || new Date().toISOString(),
               read: false,
-              link: `/tasks/${b.task_id || b.job?.job_id}`,
+              link: `/tasks/${b.task_id || b.job?.job_id || b.job_id || b.task?.id || ""}`,
+              direction: "received",
+              taskId: String(b.task_id || b.job?.job_id || b.job_id || b.task?.id || ""),
+              bidId: bidId,
+              status: (b.status || b.bid_status || b.state || "active").toString().toLowerCase(),
+              deleted: Boolean(b.deleted || b.is_deleted || b.removed || false),
             });
           }
         }
@@ -201,7 +225,12 @@ function NotificationBar() {
   // When opening the dropdown, fetch immediately to show latest (no auto mark-read)
   useEffect(() => {
     if (open) {
-      try { fetchRef.current(); } catch {}
+      try {
+        // Reset seen markers so existing recent bids can surface again
+        fetchedIdsRef.current.clear();
+        lastTimestampRef.current = 0;
+        fetchRef.current();
+      } catch {}
     }
   }, [open]);
 
@@ -217,16 +246,18 @@ function NotificationBar() {
       <button
         ref={btnRef}
         onClick={() => setOpen(!open)}
-        className="relative"
+        className={`relative transition-transform ${open ? 'scale-95' : 'hover:scale-105'}`}
         aria-label="Notifications"
         aria-haspopup="true"
         aria-expanded={open}
       >
-        <div className="p-2 rounded-full border border-gray-200 bg-white hover:bg-gray-50">
+        <div className="p-2.5 rounded-full border border-gray-200 bg-white shadow-sm hover:shadow-md">
           <div className="relative">
-            <Bell className="h-5 w-5 text-gray-700" />
-            <div className="absolute -top-1.5 -right-1.5 min-w-[18px] h-4 px-1 text-[10px] flex items-center justify-center rounded-full bg-red-500 text-white font-semibold"
-                 style={{ visibility: unreadCount > 0 ? 'visible' : 'hidden' }}>
+            <Bell className="h-5 w-5 text-gray-800" />
+            <div
+              className="absolute -top-1.5 -right-1.5 min-w-[18px] h-4 px-1 text-[10px] flex items-center justify-center rounded-full bg-emerald-600 text-white font-semibold ring-2 ring-white"
+              style={{ visibility: unreadCount > 0 ? 'visible' : 'hidden' }}
+            >
               {unreadCount > 99 ? '99+' : unreadCount}
             </div>
           </div>
@@ -236,17 +267,20 @@ function NotificationBar() {
       {mounted && createPortal(
         <div
           ref={panelRef}
-          style={{ position: 'fixed', top: panelPos.top, left: panelPos.left, width: 320 }}
-          className={`bg-white rounded-xl shadow-lg border border-gray-200 z-[2147483647] overflow-hidden transition-[opacity,transform] duration-150 ${open ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-1 pointer-events-none'}`}
+          style={{ position: 'fixed', top: panelPos.top, left: panelPos.left, width: 360 }}
+          className={`bg-white rounded-2xl shadow-xl border border-gray-200 z-[2147483647] overflow-hidden transition-[opacity,transform] duration-150 ${open ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-1 pointer-events-none'}`}
           aria-hidden={!open}
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <span className="font-semibold text-gray-800">Notifications</span>
-            <button onClick={markAllRead} className="text-xs text-gray-600 hover:text-gray-800">Mark all read</button>
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 bg-gradient-to-r from-emerald-50 to-white">
+            <div className="flex flex-col">
+              <span className="font-semibold text-gray-900">Notifications</span>
+              <span className="text-[11px] text-gray-500">Latest received bids</span>
+            </div>
+            <button onClick={markAllRead} className="text-xs text-gray-600 hover:text-gray-900">Mark all read</button>
           </div>
-          <ul className="max-h-96 overflow-auto divide-y divide-gray-100">
+          <ul className="max-h-96 overflow-auto">
             {topSeven.length === 0 ? (
-              <li className="px-4 py-6 text-sm text-gray-500">No notifications yet</li>
+              <li className="px-5 py-8 text-sm text-gray-500 text-center">No notifications yet</li>
             ) : (
               topSeven.map((n) => {
                 const isBid = n.type === 'bid';
@@ -255,36 +289,33 @@ function NotificationBar() {
                 return (
                 <li
                   key={n.id}
-                  className={`px-4 py-3 ${n.read ? 'bg-white' : 'bg-gray-50'} ` +
-                    (isBid ? 'border-l-4 border-emerald-400' : '')}
+                  className={`px-5 py-3.5 transition-colors ${n.read ? 'bg-white' : 'bg-emerald-50/40'} hover:bg-emerald-50`}
                 >
                   <Link href={n.link || '#'} className="flex items-start gap-3">
-                    <div className={`p-1.5 rounded-md border border-gray-100 ` +
-                      (isBid ? 'bg-emerald-50' : 'bg-blue-50')}>
-                      {isBid ? (
-                        <Gavel className="h-4 w-4 text-emerald-600" />
-                      ) : (
-                        <MessageSquare className="h-4 w-4 text-blue-600" />
-                      )}
+                    <div className={`p-2 rounded-lg border border-emerald-200 bg-emerald-50`}>
+                      <Gavel className="h-4 w-4 text-emerald-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-gray-800 line-clamp-2 flex-1">{n.title}</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-gray-900 line-clamp-2 flex-1">{n.title}</p>
+                        {hasValidDate && (
+                          <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2">{new Date(n.createdAt).toLocaleString()}</span>
+                        )}
                       </div>
                       {n.description && (
                         <p className="text-xs text-gray-600 mt-1 line-clamp-2">{n.description}</p>
                       )}
-                      {hasValidDate && (
-                        <p className="text-[10px] text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString()}</p>
-                      )}
+                      <div className="mt-2">
+                        <span className="inline-flex items-center text-[11px] font-medium text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">Received bid</span>
+                      </div>
                     </div>
                   </Link>
                 </li>
               );})
             )}
           </ul>
-          <div className="px-4 py-2 text-center border-t border-gray-100">
-            <Link href="/notifications" className="text-gray-700 hover:text-gray-900 text-sm font-medium">View all</Link>
+          <div className="px-5 py-2.5 text-center border-t border-gray-100 bg-white/60">
+            <Link href="/notifications" className="text-gray-800 hover:text-gray-900 text-sm font-medium">View all</Link>
           </div>
         </div>,
         document.body

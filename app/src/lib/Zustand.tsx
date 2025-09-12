@@ -47,6 +47,11 @@ interface NotificationItem {
   read: boolean;
   link?: string;
   direction?: "received" | "sent"; // for bid differentiation
+  // Optional bid metadata to enable filtering/deduplication
+  taskId?: string;
+  bidId?: string;
+  status?: string; // e.g., active | withdrawn | deleted | canceled
+  deleted?: boolean;
 }
 
 interface NotificationState {
@@ -271,25 +276,45 @@ const useStore = create<StoreState>((set) => ({
   notificationOpen: false,
   setNotifications: (items: NotificationItem[]) =>
     set(() => {
-      const sorted = [...items].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
-      const top5 = sorted.slice(0, 5);
-      const unread = top5.filter((n) => !n.read).length;
+      // Keep only active, received bid notifications; ignore deleted/withdrawn
+      const filtered = items.filter((n) => {
+        const isBid = n.type === "bid";
+        const isReceived = n.direction === "received";
+        const notDeleted = !n.deleted && n.status !== "deleted" && n.status !== "withdrawn" && n.status !== "canceled";
+        return isBid && isReceived && notDeleted;
+      });
+      // Sort strictly by newest and keep only the latest few
+      const compact = [...filtered]
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+        .slice(0, 6);
+      const unread = compact.filter((n) => !n.read).length;
       return {
-        items: top5,
+        items: compact,
         unreadCount: unread,
         notifications: unread,
       };
     }),
   addNotifications: (items: NotificationItem[]) =>
     set((state) => {
+      // Merge by id first
       const byId: Record<string, NotificationItem> = {};
       [...items, ...state.items].forEach((n) => {
         byId[n.id] = n;
       });
-      const merged = Object.values(byId).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)).slice(0, 5);
-      const unread = merged.filter((n) => !n.read).length;
+      // Filter to active, received bid notifications
+      const merged = Object.values(byId).filter((n) => {
+        const isBid = n.type === "bid";
+        const isReceived = n.direction === "received";
+        const notDeleted = !n.deleted && n.status !== "deleted" && n.status !== "withdrawn" && n.status !== "canceled";
+        return isBid && isReceived && notDeleted;
+      });
+      // Sort strictly by newest and keep only the latest few
+      const compact = merged
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+        .slice(0, 6);
+      const unread = compact.filter((n) => !n.read).length;
       return {
-        items: merged,
+        items: compact,
         unreadCount: unread,
         notifications: unread,
       };

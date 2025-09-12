@@ -1018,7 +1018,7 @@ export default function Dashboard() {
 
         const result = await fetchResponse.json();
 
-        if (result.status_code === 200 && result.data?.jobs) {
+        if (result.status_code === 200 && Array.isArray(result.data?.jobs) && result.data.jobs.length > 0) {
           const tasks: Task[] = result.data.jobs.map((job) => ({
             id: job.job_id.toString(),
             title: job.job_title || "Untitled",
@@ -1050,7 +1050,47 @@ export default function Dashboard() {
           }));
           setCompletedTasks(tasks);
         } else {
-          console.warn("No completed tasks found or API error:", result.message);
+          console.warn("No completed tasks from fetch-completed-tasks; falling back to get-user-jobs");
+          // Fallback: fetch all user jobs and filter completed
+          try {
+            const controller2 = new AbortController();
+            const timeout2 = setTimeout(() => controller2.abort(), 30000);
+            const res2 = await fetch(`https://api.jobpool.in/api/v1/get-user-jobs/${userId}/`, {
+              headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+              credentials: 'omit',
+              signal: controller2.signal,
+            });
+            clearTimeout(timeout2);
+            if (res2.ok) {
+              const json2 = await res2.json();
+              const allJobs: any[] = json2?.data?.jobs || [];
+              const completed = allJobs.filter((job: any) => {
+                const s = (job.status || job.job_status || '').toString().toLowerCase();
+                const jc = job.job_completion_status === 1 || job.job_completion_status === '1';
+                return s === 'completed' || jc;
+              });
+              const tasks: Task[] = completed.map((job: any) => ({
+                id: String(job.job_id || job.id),
+                title: job.job_title || "Untitled",
+                description: job.job_description || "No description provided.",
+                budget: Number(job.job_budget) || 0,
+                location: job.job_location || "Unknown",
+                status: "completed",
+                postedAt: (() => { const raw = job.job_due_date || job.created_at || job.timestamp; try { return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown"; } catch { return typeof raw === "string" && raw ? raw : "Unknown"; } })(),
+                completedDate: (() => { const raw = job.completed_date || job.completed_at || job.completion_date || job.job_completion_date || job.updated_at || job.timestamp; try { return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown"; } catch { return typeof raw === "string" && raw ? raw : "Unknown"; } })(),
+                rating: job.rating || 0,
+                offers: job.offers || 0,
+                posted_by: job.posted_by || "Unknown",
+                category: job.job_category || "general",
+                deletion_status: job.deletion_status || false,
+                cancel_status: job.cancel_status ?? false,
+                images: job.job_images?.urls?.length ? job.job_images.urls.map((url: string, index: number) => ({ id: `img${index + 1}`, url, alt: `Job image ${index + 1}` })) : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+              }));
+              setCompletedTasks(tasks);
+            }
+          } catch (e) {
+            console.warn('Completed tasks fallback failed', e);
+          }
         }
       } catch (err) {
         // Handle AbortError separately (don't show error for timeouts)
@@ -1539,35 +1579,44 @@ export default function Dashboard() {
           </TabsList>
 
           <TabsContent value="my-tasks" forceMount className="space-y-6 mt-8 animate-fade-in-up">
-            <h2 className="text-2xl font-bold text-gray-900 border-b border-gray-200 pb-3">Tasks You've Posted</h2>
+            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight border-b border-gray-200 pb-4">Tasks You've Posted</h2>
             {/* Premium Summary strip */}
             <div className="grid grid-cols-3 gap-4">
               <button
                 onClick={() => setMyTasksFilter("in_progress")}
-                className={`rounded-lg p-4 bg-white border text-center transition-all duration-200 hover:shadow-md ${
-                  myTasksFilter === "in_progress" ? "border-gray-400 bg-gray-50 shadow-sm" : "border-gray-200 hover:border-gray-300"
+                className={`rounded-xl p-4 text-center transition-all duration-200 hover:shadow-md border bg-gradient-to-br from-emerald-50 to-white ${
+                  myTasksFilter === "in_progress" ? "border-emerald-300 shadow" : "border-gray-200 hover:border-emerald-200"
                 }`}
               >
-                <div className="text-sm font-medium text-gray-600 mb-1">In Progress</div>
-                <div className="text-2xl font-bold text-gray-900">{myTasksSummary.inProgress}</div>
+                <div className="text-sm font-semibold text-emerald-700 mb-1 flex items-center justify-center gap-2">
+                  <span>🚀</span>
+                  In Progress
+                </div>
+                <div className="text-3xl font-extrabold text-gray-900">{myTasksSummary.inProgress}</div>
               </button>
               <button
                 onClick={() => setMyTasksFilter("open")}
-                className={`rounded-lg p-4 bg-white border text-center transition-all duration-200 hover:shadow-md ${
-                  myTasksFilter === "open" ? "border-gray-400 bg-gray-50 shadow-sm" : "border-gray-200 hover:border-gray-300"
+                className={`rounded-xl p-4 text-center transition-all duration-200 hover:shadow-md border bg-gradient-to-br from-sky-50 to-white ${
+                  myTasksFilter === "open" ? "border-sky-300 shadow" : "border-gray-200 hover:border-sky-200"
                 }`}
               >
-                <div className="text-sm font-medium text-gray-600 mb-1">Open</div>
-                <div className="text-2xl font-bold text-gray-900">{myTasksSummary.open}</div>
+                <div className="text-sm font-semibold text-sky-700 mb-1 flex items-center justify-center gap-2">
+                  <span>📋</span>
+                  Open
+                </div>
+                <div className="text-3xl font-extrabold text-gray-900">{myTasksSummary.open}</div>
               </button>
               <button
                 onClick={() => setMyTasksFilter("completed")}
-                className={`rounded-lg p-4 bg-white border text-center transition-all duration-200 hover:shadow-md ${
-                  myTasksFilter === "completed" ? "border-gray-400 bg-gray-50 shadow-sm" : "border-gray-200 hover:border-gray-300"
+                className={`rounded-xl p-4 text-center transition-all duration-200 hover:shadow-md border bg-gradient-to-br from-gray-50 to-white ${
+                  myTasksFilter === "completed" ? "border-gray-300 shadow" : "border-gray-200 hover:border-gray-300"
                 }`}
               >
-                <div className="text-sm font-medium text-gray-600 mb-1">Completed</div>
-                <div className="text-2xl font-bold text-gray-900">{myTasksSummary.completed}</div>
+                <div className="text-sm font-semibold text-gray-700 mb-1 flex items-center justify-center gap-2">
+                  <span>✅</span>
+                  Completed
+                </div>
+                <div className="text-3xl font-extrabold text-gray-900">{myTasksSummary.completed}</div>
               </button>
             </div>
             <div className="text-right -mt-2">
@@ -1613,13 +1662,13 @@ export default function Dashboard() {
                     return 0;
                   })
                   .map((task) => (
-                                    <Card
+                    <Card
                     key={task.id}
-                    className={`relative transition-all duration-300 hover:shadow-lg hover:-translate-y-1 rounded-xl overflow-hidden group border ${
+                    className={`relative transition-all duration-300 hover:shadow-lg hover:-translate-y-1 rounded-2xl overflow-hidden group border ${
                       task.deletion_status || task.cancel_status
                         ? "opacity-50 bg-gray-50 border-gray-200 cursor-not-allowed"
                         : task.status === "in_progress"
-                        ? "shadow-md border-gray-200 bg-white hover:border-gray-300"
+                        ? "shadow-md border-emerald-200 bg-white hover:border-emerald-300"
                         : task.status === "completed"
                         ? "shadow-sm border-gray-200 bg-gray-50"
                         : "shadow-sm border-gray-200 bg-white hover:border-gray-300"
@@ -1627,7 +1676,7 @@ export default function Dashboard() {
                   >
                     {/* In Progress Task Banner (non-overlapping) */}
                     {task.status === "in_progress" && (
-                      <div className="w-full bg-gray-800 text-white text-center py-1.5 px-3 font-semibold text-xs rounded-t-xl">
+                      <div className="w-full bg-emerald-700 text-white text-center py-1.5 px-3 font-semibold text-xs">
                         🚀 In Progress — Bid Accepted
                       </div>
                     )}
@@ -1667,13 +1716,13 @@ export default function Dashboard() {
                       <div className="mt-2">
                         <Badge
                           variant="outline"
-                          className={`font-medium text-sm px-3 py-1 ${
+                          className={`font-medium text-sm px-3 py-1 rounded-full ${
                             task.cancel_status
                               ? "border-red-200 text-red-600 bg-red-50"
                               : task.deletion_status
                               ? "border-red-200 text-red-600 bg-red-50"
                               : task.status === "in_progress"
-                              ? "border-gray-300 text-gray-700 bg-gray-100"
+                              ? "border-emerald-300 text-emerald-700 bg-emerald-50"
                               : task.status === "completed"
                               ? "border-gray-300 text-gray-600 bg-gray-50"
                               : "border-gray-300 text-gray-600 bg-gray-50"
