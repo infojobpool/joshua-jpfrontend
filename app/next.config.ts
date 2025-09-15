@@ -7,6 +7,7 @@
 // export default nextConfig;
 
 import type { NextConfig } from "next";
+import withPWA from "next-pwa";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -18,13 +19,21 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: isProd, // Skip TypeScript errors in production builds
   },
   images: {
-  remotePatterns: [
-    { protocol: 'https', hostname: 'jobpool.blr1.digitaloceanspaces.com' },
-    { protocol: 'https', hostname: 'blr1.digitaloceanspaces.com' },
-    { protocol: 'https', hostname: 'placeholder.com' } // temporary
-  ]
-},  
-
+    remotePatterns: [
+      { protocol: 'https', hostname: 'jobpool.blr1.digitaloceanspaces.com' },
+      { protocol: 'https', hostname: 'blr1.digitaloceanspaces.com' },
+      { protocol: 'https', hostname: 'placeholder.com' } // temporary
+    ]
+  },
+  // Allow mobile network access (Next.js 15 compatible)
+  experimental: {
+    // allowedDevOrigins will be available in future Next.js versions
+  }
 };
 
-export default nextConfig;
+export default withPWA({
+  dest: "public",
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development', // Disable PWA in development to stop warnings
+})(nextConfig);

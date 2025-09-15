@@ -155,7 +155,13 @@ const LocationDetector = ({ onLocationChange }) => {
         const response = await axios.get(
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
             query
-          )}&addressdetails=1&limit=5`
+          )}&addressdetails=1&limit=5`,
+          {
+            headers: {
+              'Accept-Language': 'en',
+              'User-Agent': 'jobpool-mobile/1.0 (+https://jobpool.in)'
+            }
+          }
         );
         const options = response.data.map((item) => ({
           value: item,
@@ -163,7 +169,11 @@ const LocationDetector = ({ onLocationChange }) => {
         }));
         setSuggestions(options);
       } catch (err) {
-        setError("Error fetching suggestions");
+        if (axios.isAxiosError(err) && err.response?.status === 429) {
+          setError("Too many requests. Please type slower or try again shortly.");
+        } else {
+          setError("Error fetching suggestions");
+        }
       }
     }, 300),
     []
@@ -171,13 +181,33 @@ const LocationDetector = ({ onLocationChange }) => {
 
   // Function to get user's current location
   const getCurrentLocation = async () => {
+    // Check if we're on a secure origin (HTTPS or localhost)
+    const isSecureOrigin = window.location.protocol === 'https:' || 
+                          window.location.hostname === 'localhost' || 
+                          window.location.hostname === '127.0.0.1' ||
+                          window.location.hostname.includes('192.168.');
+    
+    if (!isSecureOrigin) {
+      setError("Location detection requires a secure connection (HTTPS). Please enter your location manually.");
+      return;
+    }
+
     if (navigator.geolocation) {
+      // Show loading state
+      setError("");
+      
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
           try {
             const response = await axios.get(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&zoom=18`
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&zoom=18`,
+              {
+                headers: {
+                  'Accept-Language': 'en',
+                  'User-Agent': 'jobpool-mobile/1.0 (+https://jobpool.in)'
+                }
+              }
             );
             const displayName = response.data.display_name;
             setLocation(response.data);
@@ -187,16 +217,34 @@ const LocationDetector = ({ onLocationChange }) => {
             // Fetch suggestions for the autofilled location to allow refinement
             fetchSuggestions(displayName);
           } catch (err) {
-            setError("Error fetching location details");
+            setError("Error fetching location details. Please try again or enter manually.");
           }
         },
         (err) => {
-          setError("Permission denied or location unavailable");
+          console.error("Geolocation error:", err);
+          switch (err.code) {
+            case err.PERMISSION_DENIED:
+              setError("Location permission denied. Please allow location access or enter manually.");
+              break;
+            case err.POSITION_UNAVAILABLE:
+              setError("Location unavailable. Please enter your location manually.");
+              break;
+            case err.TIMEOUT:
+              setError("Location request timed out. Please try again or enter manually.");
+              break;
+            default:
+              setError("Location detection failed. Please enter your location manually.");
+              break;
+          }
         },
-        { enableHighAccuracy: true } // Request high-accuracy location
+        { 
+          enableHighAccuracy: true,
+          timeout: 10000, // 10 second timeout
+          maximumAge: 300000 // 5 minutes cache
+        }
       );
     } else {
-      setError("Geolocation is not supported by this browser");
+      setError("Geolocation is not supported by this browser. Please enter your location manually.");
     }
   };
 

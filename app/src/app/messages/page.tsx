@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { MobileMessages } from "@/components/mobile/MobileMessages"
+import { useIsMobile } from "@/components/mobile/MobileWrapper"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Send, Paperclip, MoreVertical, Search, MessageSquare } from "lucide-react"
 import { toast, Toaster } from "sonner"
@@ -58,6 +60,7 @@ interface ChatSummary {
 export default function MessagesPage() {
   const router = useRouter()
   const { userId, user, logout } = useStore()
+  const { isMobile } = useIsMobile()
   const [loading, setLoading] = useState(true)
   const [activeChat, setActiveChat] = useState<string | null>(null)
   const [message, setMessage] = useState("")
@@ -216,6 +219,11 @@ export default function MessagesPage() {
         </div>
       </div>
     );
+  }
+
+  // Show mobile messages on mobile devices
+  if (isMobile) {
+    return <MobileMessages />;
   }
 
   return (

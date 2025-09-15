@@ -755,11 +755,10 @@ export function BrowseTasksPage() {
   const formatDate = (dateString?: string): string => {
     if (!dateString) return "No due date";
     try {
-      return new Date(dateString).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
+      // Use a consistent format to avoid hydration issues
+      const date = new Date(dateString);
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
     } catch {
       return "Invalid date";
     }

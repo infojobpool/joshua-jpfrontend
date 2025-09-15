@@ -19,10 +19,13 @@ import { toast } from "sonner";
 import axiosInstance from "../../lib/axiosInstance";
 import useStore from "../../lib/Zustand";
 import axios, { AxiosError } from "axios";
+import { MobileSignIn } from "../../components/mobile/MobileAuth";
+import { useIsMobile } from "../../components/mobile/MobileWrapper";
 
 export default function SignInPage() {
   const { login, isAuthenticated, checkAuth } = useStore();
   const router = useRouter();
+  const { isMobile } = useIsMobile();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -99,6 +102,11 @@ export default function SignInPage() {
   };
 
   if (hydrated && isAuthenticated) return null;
+
+  // Show mobile version on mobile devices
+  if (isMobile) {
+    return <MobileSignIn />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">

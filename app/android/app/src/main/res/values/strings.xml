@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">JobPool</string>
+    <string name="title_activity_main">JobPool</string>
+    <string name="package_name">com.jobpool.app</string>
+    <string name="custom_url_scheme">com.jobpool.app</string>
+</resources>

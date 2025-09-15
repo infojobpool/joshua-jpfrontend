@@ -85,6 +85,7 @@ export default function PostTaskPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState("");
   const { userId } = useStore();
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
 
   useEffect(() => {
     const today = new Date();
@@ -119,15 +120,37 @@ export default function PostTaskPage() {
               })
             )
           );
+          setError("");
+          return;
         }
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-        setError("Failed to load categories. Please try again.");
+      } catch (err: any) {
+        console.warn("Axios categories failed, falling back to fetch. Status:", err?.response?.status);
+      }
+
+      // Fallback: direct fetch using NEXT_PUBLIC_API_BASE_URL (helps on mobile if axios is blocked)
+      try {
+        const res = await fetch(`${apiBase}/get-all-categories/`, {
+          method: "GET",
+          headers: { "Accept": "application/json" },
+          credentials: "omit",
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`Fetch ${res.status} ${res.statusText}: ${text}`);
+        }
+        const data = await res.json();
+        const list = (data?.data || []).map((c: any) => ({ id: c.category_id, name: c.category_name }));
+        setCategories(list);
+        setError("");
+      } catch (fallbackErr: any) {
+        console.error("Fetch categories error:", fallbackErr);
+        setError(`Failed to load categories. API: ${apiBase}`);
+        toast.error(fallbackErr?.message || "Failed to load categories");
       }
     };
 
     fetchCategories();
-  }, []);
+  }, [apiBase]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -280,7 +303,24 @@ export default function PostTaskPage() {
             <p className="text-muted-foreground mt-1">
               Describe what you need done and find the right person for the job
             </p>
-            {error && <p className="text-red-500 text-center mb-4">{error}</p>}
+            {error && (
+              <div className="flex items-center justify-between gap-3 text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded-md mb-4">
+                <span>{error}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError("");
+                    // Re-run categories effect by temporary forcing state change
+                    setCategories([]);
+                    // Manually refetch by calling the effect function via a state flip
+                    // Simply trigger a rerender; the effect depends on apiBase and will run
+                  }}
+                  className="px-2 py-1 text-xs font-medium bg-red-600 text-white rounded"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
           </div>
 
           <Card className="border-0 shadow-sm rounded-xl">

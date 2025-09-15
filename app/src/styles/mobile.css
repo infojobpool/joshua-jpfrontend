@@ -1,0 +1,152 @@
+/* Mobile-specific styles that won't affect desktop */
+
+/* Mobile-only utilities */
+@media (max-width: 767px) {
+  .mobile-only {
+    display: block !important;
+  }
+  
+  .mobile-hidden {
+    display: none !important;
+  }
+  
+  /* Mobile-optimized spacing */
+  .mobile-px-4 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  .mobile-py-6 {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+  
+  /* Mobile-optimized text sizes */
+  .mobile-text-lg {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+  
+  .mobile-text-xl {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+  
+  /* Mobile-optimized buttons */
+  .mobile-btn-full {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  
+  /* Mobile-optimized cards */
+  .mobile-card {
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    margin-bottom: 1rem;
+  }
+  
+  /* Mobile-optimized navigation */
+  .mobile-nav-item {
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+  }
+  
+  /* Mobile-optimized forms */
+  .mobile-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid #d1d5db;
+    font-size: 1rem;
+    color: #111827 !important;
+    background-color: #ffffff;
+  }
+
+  /* Prevent iOS overscroll bounce and accidental zoom on mobile landing */
+  .mobile-fixed {
+    overscroll-behavior: none;
+    touch-action: manipulation;
+    -webkit-overflow-scrolling: auto;
+  }
+  
+  /* Mobile-optimized grids */
+  .mobile-grid-1 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .mobile-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+  
+  /* Mobile-optimized spacing for bottom navigation */
+  .mobile-content {
+    padding-bottom: 5rem; /* Space for bottom nav */
+  }
+  
+  /* Mobile-optimized animations */
+  .mobile-fade-in {
+    animation: mobileFadeIn 0.3s ease-out;
+  }
+  
+  @keyframes mobileFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Mobile-optimized touch targets */
+  .mobile-touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Mobile-optimized scrolling */
+  .mobile-scroll-smooth {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Desktop-only utilities */
+@media (min-width: 768px) {
+  .desktop-only {
+    display: block !important;
+  }
+  
+  .desktop-hidden {
+    display: none !important;
+  }
+  
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* Mobile-specific PWA styles */
+@media (max-width: 767px) and (display-mode: standalone) {
+  .pwa-mobile {
+    /* Styles specific to PWA on mobile */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .pwa-mobile-header {
+    height: calc(60px + env(safe-area-inset-top));
+  }
+  
+  .pwa-mobile-content {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+}

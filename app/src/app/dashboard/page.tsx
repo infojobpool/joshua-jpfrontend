@@ -1,5 +1,8 @@
 "use client";
 
+import { MobileDashboard } from "../../components/mobile/MobileDashboard";
+import { useIsMobile } from "../../components/mobile/MobileWrapper";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -109,6 +112,12 @@ interface APIResponse<T> {
 export default function Dashboard() {
   const router = useRouter();
   const { user, userId, isAuthenticated, logout } = useStore();
+  const { isMobile } = useIsMobile();
+  // Prevent SSR → CSR flicker on mobile by delaying mobile-only UI until mounted
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const mobile = mounted && isMobile;
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
   
   // Debug authentication state
   console.log("🔍 Dashboard render - Auth state:", {
@@ -146,7 +155,7 @@ export default function Dashboard() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-      const fetchResponse = await fetch("https://api.jobpool.in/api/v1/get-all-task-orders/", {
+      const fetchResponse = await fetch(`${API_BASE}/get-all-task-orders/`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -202,11 +211,19 @@ export default function Dashboard() {
   
   // Filter states
   const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [category, setCategory] = useState("all");
   const [priceRange, setPriceRange] = useState([0, 50000]);
   const [location, setLocation] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  // Mobile-only extra filter UI state
+  const [sortBy, setSortBy] = useState<string>("newest");
+  const [onlyOpen, setOnlyOpen] = useState<boolean>(true);
+  const [withImages, setWithImages] = useState<boolean>(false);
+
+  // Inline filters: do not lock body scroll to avoid touch blocking on mobile
   
   // Dialog states
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -248,6 +265,41 @@ export default function Dashboard() {
       if (r) setRequestedTasks(JSON.parse(r));
     } catch {}
   }, []);
+
+  // Ensure categories are loaded when the inline mobile filters are opened
+  useEffect(() => {
+    const loadCats = async () => {
+      try {
+        setCategoriesLoading(true);
+        const token = localStorage.getItem('token');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
+        const res = await fetch(`${API_BASE}/get-all-categories/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : '',
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.status_code === 200 && Array.isArray(json?.data?.categories)) {
+            setCategories(json.data.categories);
+          }
+        }
+      } catch (_) {
+        // silent
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+    if (isMobile && showFilters && categories.length === 0 && !categoriesLoading) {
+      loadCats();
+    }
+  }, [showFilters, isMobile, categories.length, categoriesLoading, API_BASE]);
 
   // Ensure flags for session-hydrated bids (runs once post-hydration)
   useEffect(() => {
@@ -309,7 +361,7 @@ export default function Dashboard() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
-        const fetchResponse = await fetch("https://api.jobpool.in/api/v1/get-all-categories/", {
+        const fetchResponse = await fetch(`${API_BASE}/get-all-categories/`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -369,7 +421,7 @@ export default function Dashboard() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-        const fetchResponse = await fetch(`https://api.jobpool.in/api/v1/get-user-jobs/${userId}/`, {
+        const fetchResponse = await fetch(`${API_BASE}/get-user-jobs/${userId}/`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -631,7 +683,7 @@ export default function Dashboard() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
         
-        const fetchResponse = await fetch("https://api.jobpool.in/api/v1/get-all-jobs/", {
+        const fetchResponse = await fetch(`${API_BASE}/get-all-jobs/`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -820,7 +872,7 @@ export default function Dashboard() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
-        const fetchResponse = await fetch(`https://api.jobpool.in/api/v1/get-user-bids/${userId}/`, {
+        const fetchResponse = await fetch(`${API_BASE}/get-user-bids/${userId}/`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -882,7 +934,7 @@ export default function Dashboard() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
-        const fetchResponse = await fetch(`https://api.jobpool.in/api/v1/get-user-assigned-bids/${userId}/`, {
+        const fetchResponse = await fetch(`${API_BASE}/get-user-assigned-bids/${userId}/`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -963,7 +1015,7 @@ export default function Dashboard() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
-        const fetchResponse = await fetch(`https://api.jobpool.in/api/v1/get-user-requested-bids/${userId}/`, {
+        const fetchResponse = await fetch(`${API_BASE}/get-user-requested-bids/${userId}/`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -1085,7 +1137,7 @@ export default function Dashboard() {
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
         console.log("Fetching completed tasks from get-user-jobs...");
-        const fetchResponse = await fetch(`https://api.jobpool.in/api/v1/get-user-jobs/${userId}/`, {
+        const fetchResponse = await fetch(`${API_BASE}/get-user-jobs/${userId}/`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -1222,7 +1274,7 @@ export default function Dashboard() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000); // Reduced to 15s
       
-      const response = await fetch(`https://api.jobpool.in/api/v1/mark-complete/${jobId}/`, {
+      const response = await fetch(`${API_BASE}/mark-complete/${jobId}/`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1486,55 +1538,38 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-gray-100">
-        <style jsx>{`
-          @keyframes gentle-pulse {
-            0%, 100% { 
-              opacity: 0.6;
-              transform: scale(1);
-            }
-            50% { 
-              opacity: 1;
-              transform: scale(1.05);
-            }
-          }
-          @keyframes smooth-spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-          @keyframes fade-in-out {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 1; }
-          }
-          .animate-gentle-pulse {
-            animation: gentle-pulse 2s ease-in-out infinite;
-          }
-          .animate-smooth-spin {
-            animation: smooth-spin 3s linear infinite;
-          }
-          .animate-fade-in-out {
-            animation: fade-in-out 2s ease-in-out infinite;
-          }
-        `}</style>
+      <div className={`flex h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-gray-100 ${isMobile ? 'px-4' : ''}`}>
         <div className="text-center">
-          {/* Simple elegant loading animation */}
-          <div className="relative mb-8">
-            <div className="w-16 h-16 mx-auto">
-              <div className="w-full h-full border-3 border-gray-200 rounded-full"></div>
-              <div className="absolute top-0 left-0 w-full h-full border-3 border-transparent border-t-blue-500 rounded-full animate-smooth-spin"></div>
-          </div>
+          {/* Mobile-optimized loading animation */}
+          <div className="relative mb-6">
+            {isMobile ? (
+              // Mobile: Bouncing dots animation
+              <div className="flex items-center justify-center space-x-2">
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+              </div>
+            ) : (
+              // Desktop: Spinner animation
+              <div className="w-16 h-16 mx-auto">
+                <div className="w-full h-full border-3 border-gray-200 rounded-full"></div>
+                <div className="absolute top-0 left-0 w-full h-full border-3 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
+              </div>
+            )}
           </div>
           
-          {/* Clean loading text */}
+          {/* Mobile-optimized loading text */}
           <div className="space-y-3">
-            <h2 className="text-xl font-medium text-gray-700 animate-gentle-pulse">
-              Loading Dashboard
+            <h2 className={`font-medium text-gray-700 ${isMobile ? 'text-lg' : 'text-xl'} animate-pulse`}>
+              {isMobile ? 'Loading...' : 'Loading Dashboard'}
             </h2>
-            <div className="flex items-center justify-center space-x-1">
-              <div className="w-1 h-1 bg-gray-400 rounded-full animate-fade-in-out"></div>
-              <div className="w-1 h-1 bg-gray-400 rounded-full animate-fade-in-out" style={{animationDelay: '0.3s'}}></div>
-              <div className="w-1 h-1 bg-gray-400 rounded-full animate-fade-in-out" style={{animationDelay: '0.6s'}}></div>
-            </div>
+            {!isMobile && (
+              <div className="flex items-center justify-center space-x-1">
+                <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse"></div>
+                <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1546,6 +1581,16 @@ export default function Dashboard() {
   }
 
   const NotificationBar = dynamic(() => import("@/components/NotificationBar"), { ssr: false });
+
+  // Always use unified dashboard; remove dummy MobileDashboard on mobile
+
+  const counts = {
+    my: postedTasks.length,
+    available: availableTasks.length,
+    assigned: assignedTasks.length,
+    completed: completedTasks.length,
+    bids: bids.length,
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-50 to-gray-100 overflow-x-hidden">
@@ -1620,15 +1665,101 @@ export default function Dashboard() {
         }
       `}</style>
       
-      <main className="flex-1 w-full max-w-none mx-auto py-6 md:py-10 px-6 md:px-8 lg:px-12">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 animate-fade-in-up">
-          <div className="animate-slide-in-right">
-            <h1 className="text-5xl font-bold tracking-tight text-gray-900">
-              Dashboard
-            </h1>
-            <p className="text-xl text-gray-600 mt-3 font-medium">Manage your tasks and bids efficiently</p>
-          </div>
-          <div className="flex items-center gap-6 animate-slide-in-right">
+      <main className="flex-1 w-full max-w-none mx-auto py-3 md:py-10 px-4 md:px-8 lg:px-12">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 md:mb-8 gap-3 md:gap-4 animate-fade-in-up">
+          {/* Move profile block up on mobile */}
+          {mobile && (
+            <div className="w-full">
+              <div className="flex items-center justify-end">
+                <div className="relative">
+                  <button
+                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                    className="flex items-center gap-3 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 px-4 py-3 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200"
+                  >
+                    <div className="relative">
+                      {user && user.profile_image ? (
+                        <img 
+                          src={user.profile_image} 
+                          alt={(user && user.name) || "Profile"} 
+                          className="h-8 w-8 rounded-full object-cover border-2 border-gray-200"
+                        />
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-sm font-semibold border-2 border-gray-200">
+                          {(user && user.name ? user.name.charAt(0) : "U")}
+                        </div>
+                      )}
+                      <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
+                    </div>
+                    <div className="flex flex-col items-start">
+                      <span className="text-sm font-medium text-gray-900">{user?.name || "User"}</span>
+                      <span className="text-xs text-gray-500">Online</span>
+                    </div>
+                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {profileDropdownOpen && (
+                    <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl border border-gray-200 py-3 z-50 animate-fade-in-up">
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <div className="flex items-center gap-3">
+                          {user?.profile_image ? (
+                            <img 
+                              src={user.profile_image} 
+                              alt={user?.name || "Profile"} 
+                              className="h-10 w-10 rounded-full object-cover border-2 border-gray-200"
+                            />
+                          ) : (
+                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-lg font-semibold border-2 border-gray-200">
+                              {user?.name?.charAt(0) || "U"}
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-medium text-gray-900">{user?.name || "User"}</p>
+                            <p className="text-sm text-gray-500">{user?.email || ""}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="py-2">
+                        <Link href="/profile" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
+                          <div className="p-2 rounded-lg bg-blue-100">
+                            <User className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <span className="text-gray-700 font-medium">My Profile</span>
+                        </Link>
+                        <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
+                          <div className="p-2 rounded-lg bg-gray-100">
+                            <Settings className="h-4 w-4 text-gray-600" />
+                          </div>
+                          <span className="text-gray-700 font-medium">Settings</span>
+                        </Link>
+                        <div className="border-t border-gray-100 my-2"></div>
+                        <button 
+                          onClick={handleSignOut} 
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-red-50 transition-colors duration-200 w-full text-left"
+                        >
+                          <div className="p-2 rounded-lg bg-red-100">
+                            <LogOut className="h-4 w-4 text-red-600" />
+                          </div>
+                          <span className="text-red-600 font-medium">Sign Out</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="mt-2 text-left">
+                <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">Dashboard</h1>
+                <p className="text-xs text-gray-600 mt-1">Manage your tasks and bids efficiently</p>
+              </div>
+            </div>
+          )}
+          {!isMobile && (
+            <div className="animate-slide-in-right">
+              <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-gray-900">
+                Dashboard
+              </h1>
+              <p className="text-sm md:text-xl text-gray-600 mt-2 md:mt-3 font-medium">Manage your tasks and bids efficiently</p>
+            </div>
+          )}
+          <div className="hidden md:flex items-center gap-6 animate-slide-in-right">
             {/* Enhanced Notifications with proper clickable functionality */}
             <div className="relative">
               <NotificationBar />
@@ -1640,39 +1771,173 @@ export default function Dashboard() {
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className="flex items-center gap-3 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 font-medium px-6 py-4 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
               >
-                <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center text-white font-semibold text-lg">
-                  {user?.name?.charAt(0) || "U"}
+                <div className="relative">
+                  {user?.profile_image ? (
+                    <img 
+                      src={user.profile_image} 
+                      alt={user?.name || "Profile"} 
+                      className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-lg font-semibold border-2 border-gray-200">
+                      {user?.name?.charAt(0) || "U"}
+                    </div>
+                  )}
+                  <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
                 </div>
                 <span className="text-lg">{user?.name || "User"}</span>
                 <ChevronDown className={`h-5 w-5 transition-transform duration-300 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
               
               {profileDropdownOpen && (
-                <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-gray-200 py-2 z-50 animate-fade-in-up">
-                  <Link href="/profile" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
-                    <User className="h-4 w-4 text-gray-600" />
-                    <span className="text-gray-700 font-medium">My Profile</span>
-                  </Link>
-                  <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
-                    <Settings className="h-4 w-4 text-gray-600" />
-                    <span className="text-gray-700 font-medium">Settings</span>
-                  </Link>
-                  <div className="border-t border-gray-100 my-1"></div>
-                <button
-                onClick={handleSignOut}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200 w-full text-left"
-                  >
-                    <LogOut className="h-4 w-4 text-gray-600" />
-                    <span className="text-gray-700 font-medium">Sign Out</span>
-                  </button>
+                <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl border border-gray-200 py-3 z-50 animate-fade-in-up">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <div className="flex items-center gap-3">
+                      {user?.profile_image ? (
+                        <img 
+                          src={user.profile_image} 
+                          alt={user?.name || "Profile"} 
+                          className="h-12 w-12 rounded-full object-cover border-2 border-gray-200"
+                        />
+                      ) : (
+                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-xl font-semibold border-2 border-gray-200">
+                          {user?.name?.charAt(0) || "U"}
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-medium text-gray-900 text-lg">{user?.name || "User"}</p>
+                        <p className="text-sm text-gray-500">{user?.email || ""}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="py-2">
+                    <Link href="/profile" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
+                      <div className="p-2 rounded-lg bg-blue-100">
+                        <User className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <span className="text-gray-700 font-medium">My Profile</span>
+                    </Link>
+                    <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
+                      <div className="p-2 rounded-lg bg-gray-100">
+                        <Settings className="h-4 w-4 text-gray-600" />
+                      </div>
+                      <span className="text-gray-700 font-medium">Settings</span>
+                    </Link>
+                    <div className="border-t border-gray-100 my-2"></div>
+                    <button
+                      onClick={handleSignOut}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-red-50 transition-colors duration-200 w-full text-left"
+                    >
+                      <div className="p-2 rounded-lg bg-red-100">
+                        <LogOut className="h-4 w-4 text-red-600" />
+                      </div>
+                      <span className="text-red-600 font-medium">Sign Out</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </div>
 
+        {/* Compact mobile header (disabled to avoid duplicate profile chip) */}
+        {false && (
+          <div className="md:hidden -mt-1 mb-3 flex items-center justify-end">
+            <div className="relative">
+              <button
+                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                className="flex items-center gap-3 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 px-4 py-3 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200"
+              >
+                <div className="relative">
+                  {user?.profile_image ? (
+                    <img 
+                      src={user.profile_image} 
+                      alt={user?.name || "Profile"} 
+                      className="h-8 w-8 rounded-full object-cover border-2 border-gray-200"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-sm font-semibold border-2 border-gray-200">
+                      {user?.name?.charAt(0) || "U"}
+                    </div>
+                  )}
+                  <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="text-sm font-medium text-gray-900">{user?.name || "User"}</span>
+                  <span className="text-xs text-gray-500">Online</span>
+                </div>
+                <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {profileDropdownOpen && (
+                <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl border border-gray-200 py-3 z-50 animate-fade-in-up">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <div className="flex items-center gap-3">
+                      {user && user.profile_image ? (
+                        <img 
+                          src={user.profile_image} 
+                          alt={(user && user.name) || "Profile"} 
+                          className="h-10 w-10 rounded-full object-cover border-2 border-gray-200"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-lg font-semibold border-2 border-gray-200">
+                          {(user && user.name ? user.name.charAt(0) : "U")}
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-medium text-gray-900">{user?.name || "User"}</p>
+                        <p className="text-sm text-gray-500">{user?.email || ""}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="py-2">
+                    <Link href="/profile" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
+                      <div className="p-2 rounded-lg bg-blue-100">
+                        <User className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <span className="text-gray-700 font-medium">My Profile</span>
+                    </Link>
+                    <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
+                      <div className="p-2 rounded-lg bg-gray-100">
+                        <Settings className="h-4 w-4 text-gray-600" />
+                      </div>
+                      <span className="text-gray-700 font-medium">Settings</span>
+                    </Link>
+                    <div className="border-t border-gray-100 my-2"></div>
+                    <button 
+                      onClick={handleSignOut} 
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-red-50 transition-colors duration-200 w-full text-left"
+                    >
+                      <div className="p-2 rounded-lg bg-red-100">
+                        <LogOut className="h-4 w-4 text-red-600" />
+                      </div>
+                      <span className="text-red-600 font-medium">Sign Out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Mobile quick actions: Profile and Post */}
+        {mobile && (
+          <div className="md:hidden mb-3 flex items-center gap-3">
+            <Link href="/profile" className="flex-1">
+              <Button variant="outline" className="w-full h-10 rounded-xl border-gray-300 text-gray-800">
+                Profile
+              </Button>
+            </Link>
+            <Link href="/post-task" className="flex-1">
+              <Button className="w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-700">
+                Post a Task
+              </Button>
+            </Link>
+          </div>
+        )}
+
         {/* Premium Post Task Button */}
-        <div className="flex justify-start mb-8 animate-fade-in-up">
+        {/* Hide big CTA bar on small screens to avoid duplicate name/header block */}
+        <div className="hidden md:flex justify-start mb-8 animate-fade-in-up">
           <Link href="/post-task" passHref>
             <Button className="group bg-gray-900 hover:bg-gray-800 text-white font-semibold px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 text-lg">
               <span className="flex items-center gap-3">
@@ -1684,53 +1949,127 @@ export default function Dashboard() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="flex w-full bg-gray-100 p-1 rounded-2xl border border-gray-200">
-            <TabsTrigger 
-              value="my-tasks" 
-              className="flex-1 rounded-xl transition-all duration-300 hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-gray-200 font-medium py-3"
-            >
-              <span className="flex items-center gap-2">
-                <span className="text-sm">📋</span>
-              My Tasks
-              </span>
+          <TabsList className={
+            isMobile
+              ? "grid grid-cols-5 w-full p-2 bg-white border border-gray-100 rounded-3xl shadow-sm z-20 gap-2 sticky top-[calc(env(safe-area-inset-top)+48px)]"
+              : "flex w-full bg-transparent p-0 border-0 gap-2"
+          }>
+            <TabsTrigger value="my-tasks" className={
+              isMobile 
+                ? "flex flex-col items-center gap-1 px-3 py-4 rounded-2xl text-[11px] font-medium border border-gray-100 bg-white shadow-sm hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-2 data-[state=active]:ring-gray-200"
+                : "px-4 py-2 rounded-xl text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm whitespace-nowrap"
+            }>
+              <span className="text-2xl">📋</span>
+              <span className="hidden md:inline">My Tasks</span>
+              <span className="md:hidden">My Tasks</span>
+              <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full text-[10px] bg-blue-600 text-white shadow">{counts.my}</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="available" 
-              className="flex-1 rounded-xl transition-all duration-300 hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-gray-200 font-medium py-3"
-            >
-              <span className="flex items-center gap-2">
-                <span className="text-sm">🔍</span>
-              Available Tasks
-              </span>
+            <TabsTrigger value="available" className={
+              isMobile 
+                ? "flex flex-col items-center gap-1 px-3 py-4 rounded-2xl text-[11px] font-medium border border-gray-100 bg-white shadow-sm hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-2 data-[state=active]:ring-gray-200"
+                : "px-4 py-2 rounded-xl text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm whitespace-nowrap"
+            }>
+              <span className="text-2xl">🔍</span>
+              <span className="hidden md:inline">Available</span>
+              <span className="md:hidden">Available</span>
+              <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full text-[10px] bg-slate-700 text-white shadow">{counts.available}</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="assigned" 
-              className="flex-1 rounded-xl transition-all duration-300 hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-gray-200 font-medium py-3"
-            >
-              <span className="flex items-center gap-2">
-                <span className="text-sm">👤</span>
-              Assigned to Me
-              </span>
+            <TabsTrigger value="assigned" className={
+              isMobile 
+                ? "flex flex-col items-center gap-1 px-3 py-4 rounded-2xl text-[11px] font-medium border border-gray-100 bg-white shadow-sm hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-2 data-[state=active]:ring-gray-200"
+                : "px-4 py-2 rounded-xl text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm whitespace-nowrap"
+            }>
+              <span className="text-2xl">✅</span>
+              <span className="hidden md:inline">Assigned</span>
+              <span className="md:hidden">Assigned</span>
+              <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full text-[10px] bg-amber-600 text-white shadow">{counts.assigned}</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="completed" 
-              className="flex-1 rounded-xl transition-all duration-300 hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-gray-200 font-medium py-3"
-            >
-              <span className="flex items-center gap-2">
-                <span className="text-sm">✅</span>
-              Completed
-              </span>
+            <TabsTrigger value="completed" className={
+              isMobile 
+                ? "flex flex-col items-center gap-1 px-3 py-4 rounded-2xl text-[11px] font-medium border border-gray-100 bg-white shadow-sm hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-2 data-[state=active]:ring-gray-200"
+                : "px-4 py-2 rounded-xl text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm whitespace-nowrap"
+            }>
+              <span className="text-2xl">🎉</span>
+              <span className="hidden md:inline">Completed</span>
+              <span className="md:hidden">Done</span>
+              <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full text-[10px] bg-emerald-600 text-white shadow">{counts.completed}</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="my-bids" 
-              className="flex-1 rounded-xl transition-all duration-300 hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-gray-200 font-medium py-3"
-            >
-              <span className="flex items-center gap-2">
-                <span className="text-sm">📝</span>
-              My Bids
-              </span>
+            <TabsTrigger value="my-bids" className={
+              isMobile 
+                ? "flex flex-col items-center gap-1 px-3 py-4 rounded-2xl text-[11px] font-medium border border-gray-100 bg-white shadow-sm hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-2 data-[state=active]:ring-gray-200"
+                : "px-4 py-2 rounded-xl text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm whitespace-nowrap"
+            }>
+              <span className="text-2xl">💰</span>
+              <span className="hidden md:inline">My Bids</span>
+              <span className="md:hidden">Bids</span>
+              <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full text-[10px] bg-indigo-600 text-white shadow">{counts.bids}</span>
             </TabsTrigger>
           </TabsList>
+
+          {/* Mobile spacer to ensure content never peeks under the tabs */}
+          <div className="md:hidden h-10"></div>
+
+          {/* Active filter chips (mobile) - removed per request */}
+
+          {isMobile && showFilters && (
+            <div id="mobile-filters" className="mt-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Sort by</label>
+                  <div className="bg-white border border-gray-200 rounded-lg p-2">
+                    <select value={sortBy} onChange={e=>setSortBy(e.target.value)} className="w-full bg-transparent text-gray-700">
+                      <option value="newest">Newest first</option>
+                      <option value="budget_high">Budget: High to Low</option>
+                      <option value="budget_low">Budget: Low to High</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Category</label>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="All" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      {categoriesLoading && (
+                        <SelectItem value="loading" disabled>Loading…</SelectItem>
+                      )}
+                      {categories.map((c)=> (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Price range</label>
+                  <div className="px-2 py-3 bg-gray-50 rounded-lg border">
+                    <Slider value={priceRange} onValueChange={setPriceRange} max={50000} step={10} />
+                    <div className="flex justify-between text-sm mt-2 text-gray-700">
+                      <span>₹{priceRange[0].toLocaleString()}</span>
+                      <span>₹{priceRange[1].toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Location</label>
+                  <Input value={location} onChange={(e)=>setLocation(e.target.value)} placeholder="e.g., Mumbai" />
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input type="checkbox" checked={onlyOpen} onChange={e=>setOnlyOpen(e.target.checked)} /> Only open
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input type="checkbox" checked={withImages} onChange={e=>setWithImages(e.target.checked)} /> With images
+                  </label>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <Button type="button" variant="outline" className="flex-1" onClick={()=>{setSearchTerm("");setCategory("all");setPriceRange([0,50000]);setLocation("");}}>Clear</Button>
+                  <Button type="button" className="flex-1" onClick={()=>setShowFilters(false)}>Apply</Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <TabsContent value="my-tasks" forceMount className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
             <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight border-b border-gray-200 pb-4">Tasks You've Posted</h2>
@@ -1793,7 +2132,7 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className={`grid gap-4 ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
                 {postedTasks
                   .filter((t) => {
                     if (myTasksFilter === "all") return true;
@@ -1816,161 +2155,173 @@ export default function Dashboard() {
                     return 0;
                   })
                   .map((task) => (
-                                    <Card
-                    key={task.id}
-                    className={`relative transition-all duration-300 hover:shadow-lg hover:-translate-y-1 rounded-2xl overflow-hidden group border ${
-                      task.deletion_status || task.cancel_status
-                        ? "opacity-50 bg-gray-50 border-gray-200 cursor-not-allowed"
-                        : task.status === "in_progress"
-                        ? "shadow-md border-emerald-200 bg-white hover:border-emerald-300"
-                        : task.status === "completed"
-                        ? "shadow-sm border-gray-200 bg-gray-50"
-                        : "shadow-sm border-gray-200 bg-white hover:border-gray-300"
-                    }`}
-                  >
-                    {/* In Progress Task Banner (non-overlapping) */}
-                    {task.status === "in_progress" && (
-                      <div className="w-full bg-emerald-700 text-white text-center py-1.5 px-3 font-semibold text-xs">
-                        🚀 In Progress — Bid Accepted
-                      </div>
-                    )}
-                    
-                    {/* Image removed for performance */}
+                    <Card
+                      key={task.id}
+                      className={`relative transition-all duration-300 hover:shadow-lg hover:-translate-y-1 rounded-2xl overflow-hidden group border ${
+                        task.deletion_status || task.cancel_status
+                          ? "opacity-50 bg-gray-50 border-gray-200 cursor-not-allowed"
+                          : task.status === "in_progress"
+                          ? "shadow-md border-emerald-200 bg-white hover:border-emerald-300"
+                          : task.status === "completed"
+                          ? "shadow-sm border-gray-200 bg-gray-50"
+                          : "shadow-sm border-gray-200 bg-white hover:border-gray-300"
+                      }`}
+                    >
+                      {/* In Progress Task Banner */}
+                      {task.status === "in_progress" && (
+                        <div className="w-full bg-emerald-700 text-white text-center py-1.5 px-3 font-semibold text-xs">
+                          🚀 In Progress — Bid Accepted
+                        </div>
+                      )}
+                      
+                      {/* Mobile-optimized layout */}
+                      <div className={isMobile ? "p-4" : "p-6"}>
+                        {/* Header with title and status */}
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1 min-w-0">
+                            <h3 className={`font-semibold text-gray-900 line-clamp-2 ${isMobile ? "text-base" : "text-lg"}`}>
+                              {task.title}
+                            </h3>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Clock className="h-3 w-3 text-gray-400" />
+                              <span className="text-xs text-gray-500">{task.postedAt}</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-2 ml-3">
+                            <Badge
+                              variant="outline"
+                              className={`font-medium text-xs px-2 py-1 rounded-full ${
+                                task.cancel_status
+                                  ? "border-red-200 text-red-600 bg-red-50"
+                                  : task.deletion_status
+                                  ? "border-red-200 text-red-600 bg-red-50"
+                                  : task.status === "in_progress"
+                                  ? "border-emerald-300 text-emerald-700 bg-emerald-50"
+                                  : task.status === "completed"
+                                  ? "border-gray-300 text-gray-600 bg-gray-50"
+                                  : "border-gray-300 text-gray-600 bg-gray-50"
+                              }`}
+                            >
+                              {task.cancel_status
+                                ? "❌ Canceled"
+                                : task.deletion_status
+                                ? "🗑️ Deleted"
+                                : task.status === "in_progress"
+                                ? "🚀 In Progress"
+                                : task.status === "completed"
+                                ? "✅ Completed"
+                                : "📋 Open"}
+                            </Badge>
+                            {!task.deletion_status && !task.cancel_status && (
+                              <div className="flex gap-1">
+                                {(task.status === "open" || task.status === "in_progress") && (
+                                  <button
+                                    onClick={() => handleCancelClick(task.id)}
+                                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded-full shadow-lg transition-all duration-200 hover:scale-110 font-medium text-xs"
+                                    aria-label="Cancel task"
+                                    title="Cancel task"
+                                  >
+                                    ❌
+                                  </button>
+                                )}
+                                {task.status === "open" && (
+                                  <button
+                                    onClick={() => handleDeleteClick(task.id)}
+                                    className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-full shadow-lg transition-all duration-200 hover:scale-110 font-medium text-xs"
+                                    aria-label="Delete task"
+                                    title="Delete task"
+                                  >
+                                    🗑️
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
 
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg">{task.title}</CardTitle>
-                        <div className="flex gap-2">
-                          {!task.deletion_status && !task.cancel_status && (
+                        {/* Description */}
+                        <p className="text-sm text-gray-600 line-clamp-2 mb-3">
+                          {task.description}
+                        </p>
+
+                        {/* Mobile-optimized info row */}
+                        <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"}`}>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 bg-blue-100 px-2 py-1 rounded-lg">
+                              <IndianRupee className="h-4 w-4 text-blue-600 font-bold" />
+                              <span className="font-bold text-blue-800">{task.budget}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-gray-500">
+                              <MapPin className="h-3 w-3" />
+                              <span className="text-xs">{task.location}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className={`flex gap-2 mt-4 ${isMobile ? "flex-col" : "flex-row"}`}>
+                          {task.deletion_status || task.cancel_status ? (
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => handleRequestUndeleteClick(task.id)}
+                            >
+                              Request Access
+                            </Button>
+                          ) : task.status === "in_progress" ? (
                             <>
-                              {(task.status === "open" || task.status === "in_progress") && (
-                              <button
-                                onClick={() => handleCancelClick(task.id)}
-                                className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-full shadow-lg transition-all duration-200 hover:scale-110 font-medium text-sm"
-                                aria-label="Cancel task"
-                                title="Cancel task"
+                              <Button
+                                onClick={() => handleMyTaskComplete(task.id)}
+                                disabled={completingTaskId === task.id}
+                                className={`w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}
                               >
-                                ❌ Cancel
-                              </button>
-                              )}
-                              {task.status === "open" && (
-                              <button
-                                onClick={() => handleDeleteClick(task.id)}
-                                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full shadow-lg transition-all duration-200 hover:scale-110 font-medium text-sm"
-                                aria-label="Delete task"
-                                title="Delete task"
-                              >
-                                🗑️ Delete
-                </button>
-                              )}
+                                {completingTaskId === task.id ? (
+                                  <div className="flex items-center gap-2">
+                                    {isMobile ? (
+                                      <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+                                    ) : (
+                                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    )}
+                                    <span className={isMobile ? 'text-sm' : ''}>Completing...</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-lg">✅</span>
+                                    <span>Mark as Complete</span>
+                                  </div>
+                                )}
+                              </Button>
+                              <Link href={`/tasks/${task.id}`} className="w-full">
+                                <Button variant="outline" className={`w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-lg">👁️</span>
+                                    <span>View Details</span>
+                                  </div>
+                                </Button>
+                              </Link>
                             </>
+                          ) : (
+                            <Link href={`/tasks/${task.id}`} className="w-full">
+                              <Button variant="outline" className={`w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg">👁️</span>
+                                  <span>View Details</span>
+                                </div>
+                              </Button>
+                            </Link>
                           )}
                         </div>
                       </div>
-                      <div className="mt-2">
-                        <Badge
-                          variant="outline"
-                          className={`font-medium text-sm px-3 py-1 rounded-full ${
-                            task.cancel_status
-                              ? "border-red-200 text-red-600 bg-red-50"
-                              : task.deletion_status
-                              ? "border-red-200 text-red-600 bg-red-50"
-                              : task.status === "in_progress"
-                              ? "border-emerald-300 text-emerald-700 bg-emerald-50"
-                              : task.status === "completed"
-                              ? "border-gray-300 text-gray-600 bg-gray-50"
-                              : "border-gray-300 text-gray-600 bg-gray-50"
-                          }`}
-                        >
-                          {task.cancel_status
-                            ? "❌ Canceled"
-                            : task.deletion_status
-                            ? "🗑️ Deleted"
-                            : task.status === "in_progress"
-                            ? "🚀 In Progress"
-                            : task.status === "completed"
-                            ? "✅ Completed"
-                            : "📋 Open"}
-                        </Badge>
-                      </div>
-                      <CardDescription className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>{task.postedAt}</span>
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                        {task.description}
-                      </p>
-                      <div className="flex flex-col gap-3 text-sm">
-                        <div className="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg">
-                          <IndianRupee className="h-4 w-4 text-gray-600" />
-                          <span className="text-lg font-semibold text-gray-800">₹{task.budget}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          <span>{task.location}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="flex flex-col gap-2">
-                      {task.deletion_status || task.cancel_status ? (
-                        <Button
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => handleRequestUndeleteClick(task.id)}
-                        >
-                          Request Access
-                        </Button>
-                      ) : task.status === "in_progress" ? (
-                        <>
-                          <Button
-                            onClick={() => handleMyTaskComplete(task.id)}
-                            disabled={completingTaskId === task.id}
-                            className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                          >
-                            {completingTaskId === task.id ? (
-                              <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                Completing...
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <span className="text-lg">✅</span>
-                                Mark as Complete
-                              </div>
-                            )}
-                          </Button>
-                        <Link href={`/tasks/${task.id}`} className="w-full">
-                            <Button variant="outline" className="w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02]">
-                              <div className="flex items-center gap-2">
-                                <span className="text-lg">👁️</span>
-                            View Details
-                              </div>
-                            </Button>
-                          </Link>
-                        </>
-                      ) : (
-                        <Link href={`/tasks/${task.id}`} className="w-full">
-                          <Button variant="outline" className="w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02]">
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">👁️</span>
-                              View Details
-                            </div>
-                          </Button>
-                        </Link>
-                      )}
-                    </CardFooter>
-                  </Card>
+                    </Card>
                 ))}
               </div>
             )}
           </TabsContent>
 
-          <TabsContent value="available" forceMount className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-2xl font-bold text-gray-900 border-b border-gray-200 pb-3">Available Tasks</h2>
-            <div className="grid gap-6 md:grid-cols-4">
-              <div className="md:col-span-1 space-y-6">
+          <TabsContent value="available" forceMount className="space-y-6 mt-12 pt-2 animate-fade-in-up min-h-[500px]">
+            <h2 className="text-2xl font-bold text-gray-900 pb-2">Available Tasks</h2>
+            <div className={`grid gap-6 ${isMobile ? "grid-cols-1" : "md:grid-cols-4"}`} style={{zIndex:1, position:'relative'}}>
+              <div className={`${isMobile ? "hidden" : "md:col-span-1"} space-y-6`}>
                 <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
                   <CardHeader className="bg-gray-50 border-b border-gray-200 p-6">
                     <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
@@ -2082,7 +2433,7 @@ export default function Dashboard() {
                 </Card>
               </div>
 
-              <div className="md:col-span-3 space-y-6">
+              <div className={`${isMobile ? "col-span-1" : "md:col-span-3"} space-y-6`}>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <form onSubmit={handleSearch} className="flex-1 flex gap-3">
                     <div className="relative flex-1">
@@ -2106,6 +2457,8 @@ export default function Dashboard() {
                     variant="outline"
                     className="sm:hidden bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 font-medium px-4 py-2.5 rounded-lg transition-all duration-200"
                     onClick={() => setShowFilters(!showFilters)}
+                    aria-expanded={showFilters}
+                    aria-controls="mobile-filters"
                   >
                     <Filter className="mr-2 h-4 w-4" />
                     Filters
@@ -2155,57 +2508,71 @@ export default function Dashboard() {
                   </Card>
                   </div>
                 ) : (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <div className={`grid gap-4 ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
                     {filteredTasks.map((task) => {
                       const hasUserBid = requestedTasks.some(bid => bid.task_id === task.id);
                       
                       return (
-                                                <Card key={task.id} className="flex flex-col bg-gradient-to-br from-pink-50 via-rose-50 to-red-50 border-l-4 border-l-pink-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
-                          {/* Image removed for performance */}
-                          <CardHeader className="pb-2">
-                            <div className="flex justify-between items-start">
-                              <CardTitle className="text-lg">{task.title}</CardTitle>
-                              <Badge variant="outline" className="border-pink-500 text-pink-600 font-medium">
+                        <Card key={task.id} className="flex flex-col bg-gradient-to-br from-pink-50 via-rose-50 to-red-50 border-l-4 border-l-pink-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
+                          {/* Mobile-optimized layout */}
+                          <div className={isMobile ? "p-4" : "p-6"}>
+                            {/* Header with title and status */}
+                            <div className="flex justify-between items-start mb-3">
+                              <div className="flex-1 min-w-0">
+                                <h3 className={`font-semibold text-gray-900 line-clamp-2 ${isMobile ? "text-base" : "text-lg"}`}>
+                                  {task.title}
+                                </h3>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Clock className="h-3 w-3 text-gray-400" />
+                                  <span className="text-xs text-gray-500">{task.postedAt}</span>
+                                </div>
+                              </div>
+                              <Badge variant="outline" className="border-pink-500 text-pink-600 font-medium text-xs px-2 py-1">
                                 {task.status === "open" ? "🔓 Open" : 
                                  task.status === "completed" ? "✅ Completed" :
                                  task.status.charAt(0).toUpperCase() + task.status.slice(1)}
                               </Badge>
                             </div>
-                            <CardDescription className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              <span>{task.postedAt}</span>
-                            </CardDescription>
-                          </CardHeader>
-                          <CardContent>
-                            <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+
+                            {/* Description */}
+                            <p className="text-sm text-gray-600 line-clamp-2 mb-3">
                               {task.description}
                             </p>
-                            <div className="flex flex-col gap-3 text-sm">
-                              <div className="flex items-center gap-2 bg-pink-100 px-3 py-2 rounded-lg">
-                                <IndianRupee className="h-5 w-5 text-pink-700 font-bold" />
-                                <span className="text-lg font-bold text-pink-800">₹{task.budget}</span>
-                              </div>
+
+                            {/* Mobile-optimized info row */}
+                            <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"}`}>
                               <div className="flex items-center gap-2">
-                                <MapPin className="h-4 w-4 text-muted-foreground" />
-                                <span>{task.location}</span>
+                                <div className="flex items-center gap-1 bg-pink-100 px-2 py-1 rounded-lg">
+                                  <IndianRupee className="h-4 w-4 text-pink-700 font-bold" />
+                                  <span className="font-bold text-pink-800">{task.budget}</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-gray-500">
+                                  <MapPin className="h-3 w-3" />
+                                  <span className="text-xs">{task.location}</span>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1 text-gray-500">
                                 <Avatar className="h-4 w-4">
                                   <AvatarFallback className="text-xs">
                                     {task.posted_by?.charAt(0) || "?"}
                                   </AvatarFallback>
                                 </Avatar>
-                                <span>{task.posted_by || "Unknown"}</span>
-      </div>
-                </div>
-                          </CardContent>
-                          <CardFooter>
-                            <Link href={`/tasks/${task.id}`} className="w-full">
-                              <Button variant="outline" className="w-full">
-                                {hasUserBid ? "View Offer" : "Make an Offer"}
-                              </Button>
-                            </Link>
-                          </CardFooter>
+                                <span className="text-xs">{task.posted_by || "Unknown"}</span>
+                              </div>
+                            </div>
+
+                            {/* Action button */}
+                            <div className="mt-4">
+                              <Link href={`/tasks/${task.id}`} className="w-full">
+                                <Button variant="outline" className={`w-full border-2 border-pink-300 hover:border-pink-400 text-pink-700 hover:text-pink-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-lg">💰</span>
+                                    <span>{hasUserBid ? "View Offer" : "Make an Offer"}</span>
+                                  </div>
+                                </Button>
+                              </Link>
+                            </div>
+                          </div>
                         </Card>
                       );
                     })}
@@ -2247,84 +2614,97 @@ export default function Dashboard() {
               </Card>
               </div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className={`grid gap-4 ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
                 {assignedTasks.map((task) => (
                   <Card key={task.id} className="bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 border-l-4 border-l-amber-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
-                    {/* Image removed for performance */}
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg">{task.title}</CardTitle>
-                        <Badge className="bg-orange-600 hover:bg-orange-700 text-white font-semibold whitespace-nowrap">
+                    {/* Mobile-optimized layout */}
+                    <div className={isMobile ? "p-4" : "p-6"}>
+                      {/* Header with title and status */}
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className={`font-semibold text-gray-900 line-clamp-2 ${isMobile ? "text-base" : "text-lg"}`}>
+                            {task.title}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Clock className="h-3 w-3 text-gray-400" />
+                            <span className="text-xs text-gray-500">{task.postedAt}</span>
+                          </div>
+                        </div>
+                        <Badge className="bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs px-2 py-1">
                           🚀 In Progress
                         </Badge>
                       </div>
-                      <CardDescription className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>{task.postedAt}</span>
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+
+                      {/* Description */}
+                      <p className="text-sm text-gray-600 line-clamp-2 mb-3">
                         {task.description}
                       </p>
-                      <div className="flex flex-col gap-3 text-sm">
-                        <div className="flex items-center gap-2 bg-orange-100 px-3 py-2 rounded-lg">
-                          <IndianRupee className="h-5 w-5 text-orange-600 font-bold" />
-                          <span className="text-lg font-bold text-orange-800">₹{task.budget}</span>
-                        </div>
+
+                      {/* Mobile-optimized info row */}
+                      <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"}`}>
                         <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          <span>{task.location}</span>
+                          <div className="flex items-center gap-1 bg-orange-100 px-2 py-1 rounded-lg">
+                            <IndianRupee className="h-4 w-4 text-orange-600 font-bold" />
+                            <span className="font-bold text-orange-800">{task.budget}</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-gray-500">
+                            <MapPin className="h-3 w-3" />
+                            <span className="text-xs">{task.location}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 text-gray-500">
                           <Avatar className="h-4 w-4">
                             <AvatarFallback className="text-xs">
                               {task.posted_by?.charAt(0) || "?"}
                             </AvatarFallback>
                           </Avatar>
-                          <span>{task.posted_by}</span>
+                          <span className="text-xs">{task.posted_by}</span>
                         </div>
                       </div>
-                    </CardContent>
-                    <CardFooter>
-                      <div className="flex gap-2 w-full">
+
+                      {/* Action buttons */}
+                      <div className={`flex gap-2 mt-4 ${isMobile ? "flex-col" : "flex-row"}`}>
                         <Link href={`/tasks/${task.id}`} className="flex-1" onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); } catch {} }}>
-                          <Button variant="outline" className="w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02]">
+                          <Button variant="outline" className={`w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
                             <div className="flex items-center gap-2">
                               <span className="text-lg">👁️</span>
-                            View Details
+                              <span>View Details</span>
                             </div>
                           </Button>
                         </Link>
                         <Button
-                          className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                          className={`flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}
                           onClick={() => handleComplete(task.id)}
                           disabled={completingTaskId === task.id}
                         >
                           {completingTaskId === task.id ? (
                             <div className="flex items-center gap-2">
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              Completing...
+                              {isMobile ? (
+                                <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+                              ) : (
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              )}
+                              <span className={isMobile ? 'text-sm' : ''}>Completing...</span>
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
                               <span className="text-lg">✅</span>
-                          Complete
+                              <span>Complete</span>
                             </div>
                           )}
                         </Button>
                         <Button
                           variant="outline"
-                          className="flex-1 border-2 border-red-300 hover:border-red-400 text-red-600 hover:text-red-700 font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02]"
+                          className={`flex-1 border-2 border-red-300 hover:border-red-400 text-red-600 hover:text-red-700 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}
                           onClick={() => handleAssignedCancelClick(task.id)}
                         >
                           <div className="flex items-center gap-2">
                             <span className="text-lg">❌</span>
-                            Cancel
+                            <span>Cancel</span>
                           </div>
                         </Button>
                       </div>
-                    </CardFooter>
+                    </div>
                   </Card>
                 ))}
               </div>
@@ -2336,8 +2716,20 @@ export default function Dashboard() {
             {completedTasksLoading ? (
               <div className="min-h-[400px] flex items-center justify-center">
                 <div className="text-center">
-                  <div className="w-16 h-16 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-gray-600 font-medium">Loading completed tasks...</p>
+                  {isMobile ? (
+                    // Mobile: Bouncing dots
+                    <div className="flex items-center justify-center space-x-2 mb-4">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                    </div>
+                  ) : (
+                    // Desktop: Spinner
+                    <div className="w-16 h-16 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto mb-4"></div>
+                  )}
+                  <p className={`text-gray-600 font-medium ${isMobile ? 'text-sm' : ''}`}>
+                    {isMobile ? 'Loading...' : 'Loading completed tasks...'}
+                  </p>
                 </div>
               </div>
             ) : completedTasks.length === 0 ? (
@@ -2361,48 +2753,62 @@ export default function Dashboard() {
               </Card>
               </div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className={`grid gap-4 ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
                 {completedTasks.map((task) => (
                   <Card key={task.id} className="bg-gradient-to-br from-emerald-50 via-green-50 to-lime-50 border-l-4 border-l-emerald-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
-                    {/* Image removed for performance */}
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg">{task.title}</CardTitle>
-                        <Badge className="bg-green-600 hover:bg-green-700 text-white font-semibold">
+                    {/* Mobile-optimized layout */}
+                    <div className={isMobile ? "p-4" : "p-6"}>
+                      {/* Header with title and status */}
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className={`font-semibold text-gray-900 line-clamp-2 ${isMobile ? "text-base" : "text-lg"}`}>
+                            {task.title}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Clock className="h-3 w-3 text-gray-400" />
+                            <span className="text-xs text-gray-500">Task completed successfully</span>
+                          </div>
+                        </div>
+                        <Badge className="bg-green-600 hover:bg-green-700 text-white font-semibold text-xs px-2 py-1">
                           ✅ Completed
                         </Badge>
                       </div>
-                      <CardDescription className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>Task completed successfully</span>
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+
+                      {/* Description */}
+                      <p className="text-sm text-gray-600 line-clamp-2 mb-3">
                         {task.description}
                       </p>
-                      <div className="flex flex-col gap-3 text-sm">
-                        <div className="flex items-center gap-2 bg-green-100 px-3 py-2 rounded-lg">
-                          <IndianRupee className="h-5 w-5 text-green-600 font-bold" />
-                          <span className="text-lg font-bold text-green-800">₹{task.budget}</span>
-                        </div>
+
+                      {/* Mobile-optimized info row */}
+                      <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"}`}>
                         <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          <span>{task.location}</span>
+                          <div className="flex items-center gap-1 bg-green-100 px-2 py-1 rounded-lg">
+                            <IndianRupee className="h-4 w-4 text-green-600 font-bold" />
+                            <span className="font-bold text-green-800">{task.budget}</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-gray-500">
+                            <MapPin className="h-3 w-3" />
+                            <span className="text-xs">{task.location}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-                          <span>Rating: {task.rating || "Not rated"}/5</span>
+                        <div className="flex items-center gap-1 text-gray-500">
+                          <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
+                          <span className="text-xs">Rating: {task.rating || "Not rated"}/5</span>
                         </div>
                       </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Link href={`/tasks/${task.id}`} className="w-full">
-                        <Button variant="outline" className="w-full">
-                          View Details
-                        </Button>
-                      </Link>
-                    </CardFooter>
+
+                      {/* Action button */}
+                      <div className="mt-4">
+                        <Link href={`/tasks/${task.id}`} className="w-full">
+                          <Button variant="outline" className={`w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">👁️</span>
+                              <span>View Details</span>
+                            </div>
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
                   </Card>
                 ))}
               </div>
@@ -2432,73 +2838,88 @@ export default function Dashboard() {
               </Card>
               </div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className={`grid gap-4 ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
                 {requestedTasks.map((bid) => (
                   <Card key={bid.bid_id} className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
-                    {/* Image removed for performance */}
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg">
-                          {bid.task_title}
-                        </CardTitle>
-                        <div className="flex gap-2">
+                    {/* Mobile-optimized layout */}
+                    <div className={isMobile ? "p-4" : "p-6"}>
+                      {/* Header with title and status */}
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className={`font-semibold text-gray-900 line-clamp-2 ${isMobile ? "text-base" : "text-lg"}`}>
+                            {bid.task_title}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Clock className="h-3 w-3 text-gray-400" />
+                            <span className="text-xs text-gray-500">Bid placed: {bid.created_at}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
                           {bid.task_deleted && (
-                            <Badge className="bg-gray-600 text-white whitespace-nowrap">🗑️ Deleted</Badge>
+                            <Badge className="bg-gray-600 text-white text-xs px-2 py-1">🗑️ Deleted</Badge>
                           )}
                           {bid.task_cancelled && (
-                            <Badge className="bg-red-600 text-white whitespace-nowrap">❌ Cancelled</Badge>
+                            <Badge className="bg-red-600 text-white text-xs px-2 py-1">❌ Cancelled</Badge>
                           )}
                           {!bid.task_deleted && !bid.task_cancelled && (
-                        <Badge
+                            <Badge
                               variant="outline"
-                              className="border-purple-500 text-purple-600 bg-purple-50"
+                              className="border-purple-500 text-purple-600 bg-purple-50 text-xs px-2 py-1"
                             >
                               📝 Requested
-                        </Badge>
+                            </Badge>
                           )}
                         </div>
                       </div>
-                      <CardDescription className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>Bid placed: {bid.created_at}</span>
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+
+                      {/* Description */}
+                      <p className="text-sm text-gray-600 line-clamp-2 mb-3">
                         {bid.task_description}
                       </p>
-                      <div className="flex flex-col gap-2 text-sm">
+
+                      {/* Mobile-optimized info row */}
+                      <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"}`}>
                         <div className="flex items-center gap-2">
-                          <IndianRupee className="h-4 w-4 text-muted-foreground" />
-                          <span>Your bid: {bid.bid_amount}</span>
+                          <div className="flex items-center gap-1 bg-blue-100 px-2 py-1 rounded-lg">
+                            <IndianRupee className="h-4 w-4 text-blue-600 font-bold" />
+                            <span className="font-bold text-blue-800">Your bid: {bid.bid_amount}</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-gray-500">
+                            <MapPin className="h-3 w-3" />
+                            <span className="text-xs">{bid.task_location}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          <span>{bid.task_location}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 text-gray-500">
                           <Avatar className="h-4 w-4">
-                            <AvatarFallback>
+                            <AvatarFallback className="text-xs">
                               {bid.posted_by?.charAt(0) || "?"}
                             </AvatarFallback>
                           </Avatar>
-                          <span>{bid.posted_by}</span>
+                          <span className="text-xs">{bid.posted_by}</span>
                         </div>
                       </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Link href={`/tasks/${bid.task_id}`} className="w-full">
-                        <Button variant="outline" className="w-full">
-                          View Task Details
-                        </Button>
-                      </Link>
-                    </CardFooter>
+
+                      {/* Action button */}
+                      <div className="mt-4">
+                        <Link href={`/tasks/${bid.task_id}`} className="w-full">
+                          <Button variant="outline" className={`w-full border-2 border-blue-300 hover:border-blue-400 text-blue-700 hover:text-blue-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">👁️</span>
+                              <span>View Task Details</span>
+                            </div>
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
                   </Card>
                 ))}
                   </div>
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Mobile Filters Bottom Sheet */}
+        {/* Remove dialog-based filters completely to avoid overlay issues */}
 
         <ConfirmDialog
           open={requestUndeleteOpen}
@@ -2569,6 +2990,15 @@ export default function Dashboard() {
             </DialogFooter>
           </DialogContent>
         </Dialog> 
+
+        {/* Floating Post a Task (mobile only) */}
+        <div className="md:hidden fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-40">
+          <Link href="/post-task">
+            <Button className="rounded-full h-14 w-14 p-0 shadow-xl bg-blue-600 hover:bg-blue-700 active:scale-95 transition-transform">
+              <span className="text-2xl leading-none">+</span>
+            </Button>
+          </Link>
+        </div>
       </main>
     </div>
   );

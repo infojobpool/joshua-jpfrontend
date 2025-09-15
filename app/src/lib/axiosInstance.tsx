@@ -23,12 +23,13 @@ const requestThrottle = {
 };
 
 const axiosInstance = axios.create({
-  baseURL: `https://api.jobpool.in/api/v1`,
+  // Respect env override so all environments (mobile/desktop) hit the same API
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || `https://api.jobpool.in/api/v1`,
   headers: {
     'Content-Type': 'application/json',
     'Cache-Control': 'no-cache',
   },
-  withCredentials: true,
+  withCredentials: false,
   timeout: 60000,
   maxRedirects: 0, // Prevent redirects that cause CORS issues
 });

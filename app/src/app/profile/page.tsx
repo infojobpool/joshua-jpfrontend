@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import axiosInstance from "@/lib/axiosInstance";
+import { MobileProfile } from "@/components/mobile/MobileProfile";
+import { useIsMobile } from "@/components/mobile/MobileWrapper";
 import {
   Card,
   CardContent,
@@ -81,6 +83,7 @@ interface Review {
 export default function ProfilePage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { isMobile } = useIsMobile();
   const [tempAvatar, setTempAvatar] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -144,13 +147,24 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!userId) {
+      // Derive userId from localStorage as a fallback for slow hydration
+      let effectiveUserId = userId as any;
+      if (!effectiveUserId) {
+        try {
+          const local = localStorage.getItem("user");
+          if (local) {
+            const parsed = JSON.parse(local);
+            effectiveUserId = parsed?.id || parsed?.userId || parsed?.user_id;
+          }
+        } catch {}
+      }
+      if (!effectiveUserId) {
         return;
       }
 
       try {
         setIsLoading(true);
-        const response = await axiosInstance.get(`/profile?user_id=${userId}`);
+        const response = await axiosInstance.get(`/profile?user_id=${effectiveUserId}`);
         const data = response.data;
         setProfileUser({
           profile_id: data.profile_id || "",
@@ -202,7 +216,16 @@ export default function ProfilePage() {
       }
     };
 
+    // Run immediately and again when store userId changes
     fetchProfile();
+
+    // Safety fallback: reattempt after 2s if still loading and no data
+    const retry = setTimeout(() => {
+      if (!profileuser.profile_id) {
+        fetchProfile();
+      }
+    }, 2000);
+    return () => clearTimeout(retry);
   }, [userId, logout, router]);
 
   const handleSignOut = () => {
@@ -360,6 +383,8 @@ export default function ProfilePage() {
     </div>
   );
   if (error) return <div>Error: {error}</div>;
+
+  // Use unified profile page for both mobile and desktop so data is consistent
 
   return (
     <div className="flex min-h-screen flex-col">

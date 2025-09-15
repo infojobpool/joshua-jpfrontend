@@ -33,16 +33,16 @@ interface Task {
 export function TaskExamples() {
   const [jobs, setJobs] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const router = useRouter();
 
   const formatDate = (dateString?: string): string => {
     if (!dateString) return "No due date";
     try {
-      return new Date(dateString).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
+      // Use a consistent format to avoid hydration issues
+      const date = new Date(dateString);
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
     } catch {
       return "Invalid date";
     }
@@ -80,6 +80,7 @@ export function TaskExamples() {
   };
 
   useEffect(() => {
+    setIsClient(true);
     fetchJobs();
   }, []);
 
@@ -102,6 +103,21 @@ export function TaskExamples() {
       transition: { type: "spring", stiffness: 100, damping: 10 },
     },
   };
+
+  if (!isClient) {
+    return (
+      <section id="browse" className="py-16 bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
+          <div className="text-center">
+            <div className="animate-pulse">
+              <div className="h-8 bg-gray-200 rounded w-1/3 mx-auto mb-4"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto mb-8"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="browse" className="py-16 bg-gradient-to-br from-blue-50 to-indigo-50">

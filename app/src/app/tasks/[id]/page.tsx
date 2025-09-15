@@ -1255,34 +1255,43 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   // Load user, profile, and sync bids
   useEffect(() => {
     console.log("Starting auth check, userId:", userId, "isAuthenticated:", isAuthenticated);
-    checkAuth();
-    const authTimeout = setTimeout(() => {
-      setAuthLoading(false);
-      if (isAuthenticated && storeUser) {
-        const authUser: User = {
-          id: storeUser.id,
-          name: storeUser.name,
-          avatar: storeUser.avatar || "/images/placeholder.svg",
-          rating: null,
-          taskCount: null,
-          joinedDate: null,
-        };
-        setUser(authUser);
-        localStorage.setItem("user", JSON.stringify(authUser));
-        console.log("Loaded user from store:", authUser);
-      } else {
-        const storedUser = localStorage.getItem("user");
-        if (storedUser && userId) {
-          const parsedUser: User = JSON.parse(storedUser);
-          parsedUser.id = parsedUser.id || userId;
+    
+    // Check if we have user data from localStorage first (hydration-safe)
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        const parsedUser: User = JSON.parse(storedUser);
+        if (parsedUser.id) {
           setUser(parsedUser);
-          console.log("Loaded user from localStorage:", parsedUser);
-        } else {
-          console.log("No authenticated user, redirecting to signin");
-          router.push("/signin");
-          return;
+          setAuthLoading(false);
+          console.log("Loaded user from localStorage (hydration-safe):", parsedUser);
+          return; // Exit early to prevent flicker
         }
+      } catch (e) {
+        console.error("Failed to parse stored user:", e);
       }
+    }
+    
+    // Fallback to Zustand store if localStorage fails
+    checkAuth();
+    setAuthLoading(false);
+    if (isAuthenticated && storeUser) {
+      const authUser: User = {
+        id: storeUser.id,
+        name: storeUser.name,
+        avatar: storeUser.avatar || "/images/placeholder.svg",
+        rating: null,
+        taskCount: null,
+        joinedDate: null,
+      };
+      setUser(authUser);
+      localStorage.setItem("user", JSON.stringify(authUser));
+      console.log("Loaded user from store:", authUser);
+    } else if (!storedUser) {
+      console.log("No authenticated user, redirecting to signin");
+      router.push("/signin");
+      return;
+    }
 
       // Fetch user profile
       const fetchProfile = async () => {
@@ -1323,13 +1332,13 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
             console.error("Error syncing user bids:", error);
           }
         };
+        
+        // Call functions inside the timeout
         fetchProfile();
         syncBids();
       }
-    }, 100);
-
-    return () => clearTimeout(authTimeout);
-  }, [router, userId, isAuthenticated, storeUser, checkAuth, logout]);
+    // No cleanup necessary
+  }, [router, userId, isAuthenticated, storeUser]);
 
   // Load task data
   useEffect(() => {

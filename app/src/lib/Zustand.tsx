@@ -11,6 +11,7 @@ interface UserData {
   accountType: string;
   isLoggedIn: boolean;
   verification_status: number;
+  profile_image?: string;
 }
 
 interface JwtPayload {
