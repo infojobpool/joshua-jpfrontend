@@ -60,3 +60,4 @@ try {
 
 console.log('🎉 Mobile build completed successfully!');
 console.log('📱 You can now run: npx cap sync');
+

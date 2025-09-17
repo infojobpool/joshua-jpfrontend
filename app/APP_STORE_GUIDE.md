@@ -146,3 +146,5 @@ Your JobPool app is now ready to be published to both app stores. The PWA approa
 - **Zero risk** to your live web application
 
 Good luck with your app store submissions! 🎉📱
+
+

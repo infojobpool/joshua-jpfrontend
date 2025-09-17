@@ -83,7 +83,7 @@ export function MobileMessages() {
   if (selectedChat) {
     const chat = chats.find(c => c.id === selectedChat);
     return (
-      <div className="h-screen bg-gray-50 flex flex-col">
+      <div className="bg-gray-50 flex flex-col overscroll-contain" style={{height: '100dvh', minHeight: '100dvh'}}>
         {/* Chat Header */}
         <div className="bg-white shadow-sm border-b border-gray-200 flex-shrink-0">
           <div className="px-4 py-3">
@@ -111,7 +111,10 @@ export function MobileMessages() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-4">
+        <div
+          className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 88px)" }}
+        >
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -137,7 +140,14 @@ export function MobileMessages() {
         </div>
 
         {/* Message Input */}
-        <div className="bg-white border-t border-gray-200 p-4 flex-shrink-0">
+        <div
+          className="bg-white border-t border-gray-200 p-3 flex-shrink-0"
+          style={{
+            position: 'sticky',
+            bottom: 0,
+            paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)'
+          }}
+        >
           <div className="flex items-center space-x-3">
             <button className="p-2 rounded-full hover:bg-gray-100">
               <Paperclip className="h-5 w-5 text-gray-600" />
@@ -149,7 +159,9 @@ export function MobileMessages() {
                 placeholder="Type a message..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                inputMode="text"
+                enterKeyHint="send"
                 className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>

@@ -897,7 +897,8 @@ export default function Dashboard() {
             task_id: bid.task_id.toString(),
             task_title: bid.task_title || "Untitled",
             bid_amount: Number(bid.bid_amount) || 0,
-            status: bid.status || "pending",
+            // Normalize to 'Requested' for clarity in My Bids
+            status: "Requested",
             created_at: bid.created_at
               ? new Date(bid.created_at).toLocaleDateString("en-GB")
               : "Unknown",
@@ -2273,7 +2274,7 @@ export default function Dashboard() {
                               <Button
                                 onClick={() => handleMyTaskComplete(task.id)}
                                 disabled={completingTaskId === task.id}
-                                className={`w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}
+                                className={`${isMobile ? "w-full" : "flex-1"} bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}
                               >
                                 {completingTaskId === task.id ? (
                                   <div className="flex items-center gap-2">
@@ -2291,8 +2292,8 @@ export default function Dashboard() {
                                   </div>
                                 )}
                               </Button>
-                              <Link href={`/tasks/${task.id}`} className="w-full">
-                                <Button variant="outline" className={`w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
+                              <Link href={`/tasks/${task.id}`} className={`${isMobile ? "w-full" : "flex-1"}`}>
+                                <Button variant="outline" className={`${isMobile ? "w-full" : "w-full"} border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
                                   <div className="flex items-center gap-2">
                                     <span className="text-lg">👁️</span>
                                     <span>View Details</span>

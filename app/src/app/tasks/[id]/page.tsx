@@ -1941,10 +1941,38 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     );
   }
 
-  if (!user || !userId || !userProfile) {
+  if (!user || !userId) {
+    // While auth is still hydrating on mobile, avoid flashing login message
+    if (authLoading) {
+      return (
+        <div className="flex h-screen items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="relative">
+              <div className="h-12 w-12 rounded-full border-4 border-blue-500/20 border-t-blue-600 animate-spin" />
+              <div className="absolute inset-0 m-auto h-5 w-5 rounded-full bg-blue-600/10 animate-ping" />
+            </div>
+            <span className="text-sm text-muted-foreground animate-pulse">Preparing your session...</span>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="flex h-screen items-center justify-center">
         Please log in to view task details
+      </div>
+    );
+  }
+
+  if (!userProfile) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative">
+            <div className="h-12 w-12 rounded-full border-4 border-blue-500/20 border-t-blue-600 animate-spin" />
+            <div className="absolute inset-0 m-auto h-5 w-5 rounded-full bg-blue-600/10 animate-ping" />
+          </div>
+          <span className="text-sm text-muted-foreground animate-pulse">Loading profile...</span>
+        </div>
       </div>
     );
   }

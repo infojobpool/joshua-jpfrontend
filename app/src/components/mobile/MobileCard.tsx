@@ -213,3 +213,5 @@ export function MobileTaskCard({ task, onViewDetails, onApply }: MobileTaskCardP
     </MobileCard>
   );
 }
+
+

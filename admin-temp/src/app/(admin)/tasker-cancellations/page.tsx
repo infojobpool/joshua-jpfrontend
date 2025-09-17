@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, MessageSquare, User, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { RefreshCw } from "lucide-react";
 
 interface TaskerCancellation {
   job_id: string;
@@ -30,7 +31,7 @@ export default function TaskerCancellationsPage() {
   const [rows, setRows] = useState<TaskerCancellation[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedCancellation, setSelectedCancellation] = useState<TaskerCancellation | null>(null);
-  const [localCancellations, setLocalCancellations] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const formatDate = (isoString: string): string => {
     try {
@@ -42,49 +43,50 @@ export default function TaskerCancellationsPage() {
     }
   };
 
-  useEffect(() => {
-    const load = async () => {
+  const loadCancellations = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch cancelled jobs directly from backend API
+      const res = await axiosInstance.get("/get-all-jobs-admin/");
+      const jobs: any[] = res.data?.data?.jobs || [];
+      
+      // Filter for cancelled jobs and map to cancellation format
+      const cancelledJobs = jobs
+        .filter((j: any) => j?.cancel_status === true || j?.status === 'Cancelled' || j?.status === 'cancelled')
+        .map((j: any) => ({
+          job_id: j.job_id,
+          job_title: j.job_title || `Task ${j.job_id}`,
+          job_category_name: j.job_category_name || j.job_category || "Unknown",
+          job_location: j.job_location || "Unknown",
+          job_due_date: j.job_due_date || j.created_at,
+          job_budget: j.job_budget || 0,
+          user_ref_id: j.user_ref_id,
+          posted_by: j.posted_by || "Unknown",
+          tasker_id: j.tasker_id,
+          tasker_name: j.tasker_name || "Unknown",
+          cancellation_reason: j.cancellation_reason || j.cancel_reason || "No reason provided",
+          cancelled_at: j.cancelled_at || j.updated_at || j.created_at,
+        }))
+        .sort((a: any, b: any) => {
+          const ta = new Date(a.cancelled_at || 0).getTime();
+          const tb = new Date(b.cancelled_at || 0).getTime();
+          return tb - ta; // newest first
+        });
+      
+      console.log(`📋 Found ${cancelledJobs.length} cancelled jobs from backend`);
+      setRows(cancelledJobs);
+      
+    } catch (error) {
+      console.error("Failed to load tasker cancellations:", error);
+      setError("Failed to load cancellations from backend. Please try again.");
+      
+      // Fallback to localStorage if API fails
       try {
-        setLoading(true);
-        
-        // Load local cancellations from localStorage
         const localData = JSON.parse(localStorage.getItem('taskerCancellations') || '[]');
-        setLocalCancellations(localData);
-        console.log("📋 Local cancellations loaded:", localData);
-        console.log("📋 Total local cancellations:", localData.length);
-        console.log("📋 localStorage keys:", Object.keys(localStorage));
-        
-        const res = await axiosInstance.get("/get-all-jobs-admin/");
-        const jobs: any[] = res.data?.data?.jobs || [];
-        
-        // Create combined list: cancelled jobs from API + local cancellations
-        const apiCancelledJobs = jobs
-          .filter((j: any) => j?.cancel_status === true)
-          .map((j: any) => {
-            // Find matching local cancellation reason
-            const localCancellation = localData.find((lc: any) => lc.taskId === j.job_id);
-            
-            return {
-              job_id: j.job_id,
-              job_title: j.job_title,
-              job_category_name: j.job_category_name,
-              job_location: j.job_location,
-              job_due_date: j.job_due_date,
-              job_budget: j.job_budget,
-              user_ref_id: j.user_ref_id,
-              posted_by: j.posted_by,
-              tasker_id: j.tasker_id,
-              tasker_name: j.tasker_name || localCancellation?.taskerName,
-              cancellation_reason: j.cancellation_reason || localCancellation?.reason,
-              cancelled_at: j.cancelled_at || j.updated_at || j.created_at || localCancellation?.cancelledAt,
-            };
-          })
-          .filter((j: any) => j.cancellation_reason); // Only show jobs with cancellation reasons
-
-        // Add local cancellations that don't have matching API jobs
-        const localOnlyCancellations = localData
-          .filter((lc: any) => !jobs.some((j: any) => j.job_id === lc.taskId))
-          .map((lc: any) => ({
+        if (localData.length > 0) {
+          const localCancellations = localData.map((lc: any) => ({
             job_id: lc.taskId,
             job_title: `Task ${lc.taskId} (Local Only)`,
             job_category_name: "Unknown",
@@ -98,69 +100,51 @@ export default function TaskerCancellationsPage() {
             cancellation_reason: lc.reason,
             cancelled_at: lc.cancelledAt,
           }));
-
-        // Combine and sort
-        const cancelledJobs = [...apiCancelledJobs, ...localOnlyCancellations]
-          .sort((a: any, b: any) => {
-            const ta = new Date(a.cancelled_at || 0).getTime();
-            const tb = new Date(b.cancelled_at || 0).getTime();
-            return tb - ta; // newest first
-          });
-        
-        setRows(cancelledJobs);
-      } catch (error) {
-        console.error("Failed to load tasker cancellations:", error);
-      } finally {
-        setLoading(false);
+          setRows(localCancellations);
+          console.log("📋 Using localStorage fallback:", localCancellations.length);
+        }
+      } catch (localError) {
+        console.error("Failed to load from localStorage:", localError);
       }
-    };
-    load();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCancellations();
   }, []);
 
   return (
     <div className="flex flex-col gap-4">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            Tasker Cancellations
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            View cancellation reasons provided by taskers for assigned tasks
-          </p>
-          <div className="flex gap-2 mt-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                Tasker Cancellations
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                View cancellation reasons provided by taskers for assigned tasks. Data is fetched directly from the backend.
+              </p>
+            </div>
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => {
-                const localData = JSON.parse(localStorage.getItem('taskerCancellations') || '[]');
-                console.log("🔍 Manual localStorage check:", localData);
-                alert(`Found ${localData.length} cancellations in localStorage:\n${JSON.stringify(localData, null, 2)}`);
-              }}
+              onClick={loadCancellations}
+              disabled={loading}
+              className="flex items-center gap-2"
             >
-              Check localStorage
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => {
-                // Add a test cancellation
-                const testData = {
-                  taskId: "test_task_" + Date.now(),
-                  reason: "Test cancellation reason - " + new Date().toLocaleString(),
-                  taskerName: "Test Tasker",
-                  cancelledAt: new Date().toISOString(),
-                  timestamp: Date.now()
-                };
-                const existing = JSON.parse(localStorage.getItem('taskerCancellations') || '[]');
-                existing.push(testData);
-                localStorage.setItem('taskerCancellations', JSON.stringify(existing));
-                alert("Test cancellation added! Refresh the page to see it.");
-              }}
-            >
-              Add Test Data
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Loading...' : 'Refresh'}
             </Button>
           </div>
+          {error && (
+            <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <Table>
