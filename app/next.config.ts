@@ -13,8 +13,12 @@ const isProd = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
   trailingSlash: true,
-  output: process.env.NODE_ENV === 'production' ? 'export' : undefined,
+  // output: process.env.NODE_ENV === 'production' ? 'export' : undefined, // Temporarily disabled for dynamic routes
   distDir: 'out',
+  // Handle dynamic routes for static export
+  generateBuildId: async () => {
+    return 'build-' + Date.now()
+  },
   eslint: {
     ignoreDuringBuilds: isProd, // Skip ESLint in production builds
   },
