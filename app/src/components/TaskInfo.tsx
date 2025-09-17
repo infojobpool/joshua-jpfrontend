@@ -333,6 +333,8 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
                     ? "bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md"
                     : task.status === "canceled"
                     ? "bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-md"
+                    : task.status === "requested"
+                    ? "bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-md"
                     : "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border-blue-200"
                 }`}
               >
@@ -344,6 +346,8 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
                   ? "🗑️ Deleted"
                   : task.status === "canceled"
                   ? "❌ Canceled"
+                  : task.status === "requested"
+                  ? "📝 Requested"
                   : "📋 Open"}
               </Badge>
             </div>

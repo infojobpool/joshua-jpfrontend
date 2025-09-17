@@ -1,0 +1,77 @@
+const fs = require('fs');
+const path = require('path');
+
+// Read the CSS files
+const css1 = fs.readFileSync(path.join(__dirname, 'out', '_next', 'static', 'css', 'de70bee13400563f.css'), 'utf8');
+const css2 = fs.readFileSync(path.join(__dirname, 'out', '_next', 'static', 'css', '0a1617445e9b33e4.css'), 'utf8');
+
+// Create a simple mobile HTML file
+const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+    <title>JobPool - Task Marketplace</title>
+    <style>
+        ${css1}
+        ${css2}
+    </style>
+</head>
+<body class="__variable_188709 __variable_9a8899 antialiased">
+    <div class="flex flex-col min-h-screen">
+        <div class="block">
+            <div class="relative min-h-[100dvh] h-[100dvh] overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white flex items-center justify-center px-4 pt-[calc(env(safe-area-inset-top)+56px)] pb-[calc(env(safe-area-inset-bottom)+72px)]">
+                <div class="relative w-full max-w-md text-center space-y-3">
+                    <div class="w-14 h-14 mx-auto rounded-2xl bg-white/10/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-xl font-bold shadow-lg shadow-black/10">
+                        JP
+                    </div>
+                    <h1 class="text-3xl font-extrabold leading-tight tracking-tight">Get Any Task Done</h1>
+                    <p class="text-blue-100/90">Post a task. Get offers from local helpers. Done safely.</p>
+                    <div class="flex items-center justify-center gap-1.5 text-[11px] text-blue-100/90">
+                        <span class="px-2 py-1 rounded-full bg-white/10 border border-white/20">1k+ customers</span>
+                        <span class="px-2 py-1 rounded-full bg-white/10 border border-white/20">5k+ tasks done</span>
+                        <span class="px-2 py-1 rounded-full bg-white/10 border border-white/20">★ 4.9 rating</span>
+                    </div>
+                    <div class="pt-1">
+                        <div class="flex gap-1.5 overflow-x-auto pb-1 px-1" style="-webkit-overflow-scrolling:touch">
+                            <span class="shrink-0 px-3 py-1.5 rounded-full text-sm bg-white/10 border border-white/20 text-blue-100">Cleaning</span>
+                            <span class="shrink-0 px-3 py-1.5 rounded-full text-sm bg-white/10 border border-white/20 text-blue-100">Moving</span>
+                            <span class="shrink-0 px-3 py-1.5 rounded-full text-sm bg-white/10 border border-white/20 text-blue-100">Handyman</span>
+                            <span class="shrink-0 px-3 py-1.5 rounded-full text-sm bg-white/10 border border-white/20 text-blue-100">Assembly</span>
+                            <span class="shrink-0 px-3 py-1.5 rounded-full text-sm bg-white/10 border border-white/20 text-blue-100">Delivery</span>
+                            <span class="shrink-0 px-3 py-1.5 rounded-full text-sm bg-white/10 border border-white/20 text-blue-100">Plumbing</span>
+                            <span class="shrink-0 px-3 py-1.5 rounded-full text-sm bg-white/10 border border-white/20 text-blue-100">Electrical</span>
+                            <span class="shrink-0 px-3 py-1.5 rounded-full text-sm bg-white/10 border border-white/20 text-blue-100">Mounting</span>
+                        </div>
+                    </div>
+                    <div class="pt-2">
+                        <div class="grid grid-cols-3 gap-1.5 text-left">
+                            <div class="bg-white/10 border border-white/20 rounded-xl p-2">
+                                <p class="text-white text-sm font-semibold">1. Post</p>
+                                <p class="text-[11px] text-blue-100">Describe the task</p>
+                            </div>
+                            <div class="bg-white/10 border border-white/20 rounded-xl p-2">
+                                <p class="text-white text-sm font-semibold">2. Compare</p>
+                                <p class="text-[11px] text-blue-100">Get offers fast</p>
+                            </div>
+                            <div class="bg-white/10 border border-white/20 rounded-xl p-2">
+                                <p class="text-white text-sm font-semibold">3. Done</p>
+                                <p class="text-[11px] text-blue-100">Pay when complete</p>
+                            </div>
+                        </div>
+                    </div>
+                    <a class="block" href="/post-task/">
+                        <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap disabled:pointer-events-none disabled:opacity-50 px-4 py-2 w-full bg-white text-blue-600 hover:bg-blue-50 rounded-3xl h-12 text-base font-semibold shadow-xl shadow-black/10 active:scale-[0.98] transition-transform">
+                            Post a Task - It's Free
+                        </button>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+
+// Write the simple HTML file
+fs.writeFileSync(path.join(__dirname, 'out', 'index.html'), html);
+console.log('Created simple mobile HTML with embedded CSS');

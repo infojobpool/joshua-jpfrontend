@@ -53,7 +53,7 @@ function NotificationBar() {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const [panelPos, setPanelPos] = useState<{ top: number; left: number }>({ top: 80, left: 16 });
 
-  const topSeven = useMemo(() => items.slice(0, 7), [items]);
+  const topThreeBids = useMemo(() => items.filter((n) => n.type === 'bid').slice(0, 3), [items]);
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
@@ -314,10 +314,10 @@ function NotificationBar() {
             <button onClick={markAllRead} className="text-xs text-gray-600 hover:text-gray-900">Mark all read</button>
           </div>
           <ul className="max-h-96 overflow-auto">
-            {topSeven.length === 0 ? (
+            {topThreeBids.length === 0 ? (
               <li className="px-5 py-8 text-sm text-gray-500 text-center">No notifications yet</li>
             ) : (
-              topSeven.map((n) => {
+              topThreeBids.map((n) => {
                 const isBid = n.type === 'bid';
                 const dateMs = Date.parse(n.createdAt);
                 const hasValidDate = !Number.isNaN(dateMs);

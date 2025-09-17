@@ -1,25 +1,3 @@
-import Link from "next/link";
-
-export default function ChatPlaceholder({ params }: { params: { chatId: string } }) {
-  const { chatId } = params;
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 py-10">
-        <div className="mb-6">
-          <Link href="/messages" className="text-blue-600 hover:underline">← Back to Messages</Link>
-        </div>
-        <div className="bg-white rounded-2xl shadow border border-gray-200 p-6">
-          <h1 className="text-2xl font-bold mb-2">Chat</h1>
-          <p className="text-gray-600">Chat ID: <span className="font-mono">{chatId}</span></p>
-          <div className="mt-4 text-sm text-gray-500">
-            Placeholder chat page. Implement full chat UI here.
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 "use client"
 
 import { useState, useEffect, useRef } from "react"

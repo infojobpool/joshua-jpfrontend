@@ -439,6 +439,27 @@ export function OffersSection({
 
       if (response.data.status_code === 200) {
         toast.success(response.data.message || "Bid accepted successfully");
+        
+        // Update task status immediately to show in My Tasks
+        const updatedTask = {
+          ...task,
+          status: "in_progress",
+          assignedTasker: offer.tasker,
+          accepted_bidder_id: offer.tasker.id,
+          assigned_tasker_id: offer.tasker.id
+        };
+        
+        // Update sessionStorage to reflect the change
+        try {
+          const existingTasks = JSON.parse(sessionStorage.getItem("user_tasks") || "[]");
+          const updatedTasks = existingTasks.map((t: any) => 
+            t.id === task.id ? updatedTask : t
+          );
+          sessionStorage.setItem("user_tasks", JSON.stringify(updatedTasks));
+        } catch (e) {
+          console.warn("Failed to update sessionStorage:", e);
+        }
+        
         // Store tasker_id and taskposter_id in sessionStorage
         sessionStorage.setItem("paymentData", JSON.stringify({
           taskId: task.id,
@@ -446,6 +467,23 @@ export function OffersSection({
           taskPosterId: task.poster.id,
           amount: offer.amount,
         }));
+        
+        // Store accepted bidder info for immediate UI update
+        sessionStorage.setItem("acceptedBidder", JSON.stringify({
+          taskId: task.id,
+          taskerId: offer.tasker.id,
+          taskerName: offer.tasker.name,
+          amount: offer.amount,
+          timestamp: Date.now()
+        }));
+        
+        // Store info to remove bid from My Bids section
+        sessionStorage.setItem("acceptedBidRemoval", JSON.stringify({
+          taskId: task.id,
+          taskerId: offer.tasker.id,
+          timestamp: Date.now()
+        }));
+        
         router.push("/payments");
       } else {
         toast.error(response.data.message || "Failed to accept bid");
@@ -576,7 +614,10 @@ export function OffersSection({
               </div>
               {isTaskPoster && (
                 <div className="w-full flex flex-col sm:flex-row gap-2 mt-3">
-                  {task.status !== "completed" && task.status !== "in_progress" && (
+                  {task.status !== "completed" && task.status !== "in_progress" && 
+                   !((task.status === "in_progress" && isTaskPoster) || offer.status === "accepted" || 
+                     (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) || 
+                     (selectedFromSession && selectedFromSession === offer.tasker.id)) && (
                     <Button
                       className="w-full sm:flex-1"
                       size="sm"

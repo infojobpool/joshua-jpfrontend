@@ -2,6 +2,9 @@
 
 import axios from 'axios';
 
+// Environment flag
+const isDev = process.env.NODE_ENV !== 'production';
+
 // Request deduplication cache
 const pendingRequests = new Map<string, Promise<any>>();
 
@@ -18,8 +21,9 @@ const circuitBreaker = {
 const requestThrottle = {
   requests: 0,
   windowStart: Date.now(),
-  windowSize: 10000, // 10 seconds
-  maxRequests: 20 // Max 20 requests per 10 seconds
+  // Relax throttling in development to avoid interrupting local work
+  windowSize: isDev ? 1000 : 10000, // 1s in dev, 10s in prod
+  maxRequests: isDev ? 1000 : 20 // effectively off in dev, strict in prod
 };
 
 const axiosInstance = axios.create({
@@ -51,20 +55,20 @@ axiosInstance.interceptors.request.use(
       }
     }
     
-    // Check request throttling
-    const now = Date.now();
-    if (now - requestThrottle.windowStart > requestThrottle.windowSize) {
-      // Reset window
-      requestThrottle.requests = 0;
-      requestThrottle.windowStart = now;
+    // Check request throttling (disabled for development)
+    if (!isDev) {
+      const now = Date.now();
+      if (now - requestThrottle.windowStart > requestThrottle.windowSize) {
+        // Reset window
+        requestThrottle.requests = 0;
+        requestThrottle.windowStart = now;
+      }
+      if (requestThrottle.requests >= requestThrottle.maxRequests) {
+        console.log(`🚨 Request throttled - too many requests (${requestThrottle.requests}/${requestThrottle.maxRequests})`);
+        return Promise.reject(new Error('Too many requests - please slow down'));
+      }
+      requestThrottle.requests++;
     }
-    
-    if (requestThrottle.requests >= requestThrottle.maxRequests) {
-      console.log(`🚨 Request throttled - too many requests (${requestThrottle.requests}/${requestThrottle.maxRequests})`);
-      return Promise.reject(new Error('Too many requests - please slow down'));
-    }
-    
-    requestThrottle.requests++;
     
     const token = localStorage.getItem('token');
     if (token) {

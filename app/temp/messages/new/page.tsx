@@ -62,13 +62,53 @@ export default function NewMessagePage() {
         return;
       }
 
-      // Send the message
-      const response = await axiosInstance.post('/send-message/', {
-        chat_id: chatId,
-        sender_id: senderId,
-        receiver_id: receiverId,
-        description: message.trim(),
-      });
+      // Send the message - try different possible endpoints
+      let response;
+      try {
+        // First try the original endpoint
+        response = await axiosInstance.post('/send-message/', {
+          chat_id: chatId,
+          sender_id: senderId,
+          receiver_id: receiverId,
+          description: message.trim(),
+        });
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          console.log('🔄 /send-message/ not found, trying /create-message/...');
+          try {
+            response = await axiosInstance.post('/create-message/', {
+              chat_id: chatId,
+              sender_id: senderId,
+              receiver_id: receiverId,
+              description: message.trim(),
+            });
+          } catch (secondError: any) {
+            if (secondError.response?.status === 404) {
+              console.log('🔄 /create-message/ not found, trying /add-message/...');
+              try {
+                response = await axiosInstance.post('/add-message/', {
+                  chat_id: chatId,
+                  sender_id: senderId,
+                  receiver_id: receiverId,
+                  description: message.trim(),
+                });
+              } catch (thirdError: any) {
+                console.log('🔄 /add-message/ not found, trying /message/...');
+                response = await axiosInstance.post('/message/', {
+                  chat_id: chatId,
+                  sender_id: senderId,
+                  receiver_id: receiverId,
+                  description: message.trim(),
+                });
+              }
+            } else {
+              throw secondError;
+            }
+          }
+        } else {
+          throw error;
+        }
+      }
 
       if (response.data.status_code === 200) {
         toast.success('Message sent successfully!');
@@ -160,56 +200,66 @@ export default function NewMessagePage() {
               <p className="text-xs text-gray-500">Start a conversation</p>
             </div>
           </div>
+          <div className="ml-auto">
+            <Button variant="ghost" size="sm" onClick={handleSignOut}>
+              Sign Out
+            </Button>
+          </div>
         </div>
       </header>
 
       {/* Message Form */}
-      <main className="flex-1 p-4">
-        <Card className="h-full">
-          <CardContent className="h-full flex flex-col">
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center max-w-md">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Start a conversation with {receiverName}
-                </h3>
-                <p className="text-gray-500 mb-6">
-                  Send your first message to begin the conversation
-                </p>
-                
-                <div className="space-y-4">
-                  <Textarea
-                    placeholder="Type your message here..."
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    className="min-h-[120px] resize-none"
-                  />
-                  
-                  <div className="flex justify-end">
-                    <Button 
-                      onClick={sendMessage} 
-                      disabled={!message.trim() || loading}
-                      className="px-6"
-                    >
-                      {loading ? (
-                        <div className="flex items-center gap-2">
-                          <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Sending...
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <Send className="h-4 w-4" />
-                          Send Message
-                        </div>
-                      )}
-                    </Button>
-                  </div>
+      <div className="flex-1 p-4">
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle>Send Message</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">To:</label>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback className="bg-blue-100 text-blue-600 font-semibold">
+                      {receiverName.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium text-gray-900">{receiverName}</span>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </main>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Message:</label>
+                <Textarea
+                  placeholder="Type your message here..."
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  className="min-h-[120px] resize-none"
+                  disabled={loading}
+                />
+              </div>
+              
+              <div className="flex justify-end">
+                <Button 
+                  onClick={sendMessage} 
+                  disabled={!message.trim() || loading}
+                  className="px-6"
+                >
+                  {loading ? (
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4 mr-2" />
+                      Send Message
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

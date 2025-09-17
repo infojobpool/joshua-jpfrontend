@@ -7,6 +7,7 @@ import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
 
+
 import {
   Tabs,
   TabsContent,
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+//import Header from "@/components/Header"; // Import the new Header component
 
 interface Address {
   id: number;
@@ -147,6 +149,9 @@ export default function ProfilePage() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      {/* Use the Header component */}
+      {/* <Header user={profileUser} onSignOut={handleSignOut} /> */}
+
       {/* Main content */}
       <main className="flex-1 container py-6 md:py-10 px-4 md:px-6">
         <Link
@@ -195,6 +200,9 @@ export default function ProfilePage() {
                   </span>
                 </div>
               )}
+              {/* {loggedInUserId !== userId && (
+                <Button className="mt-4 w-full">Accept User</Button>
+              )} */}
             </CardHeader>
           </Card>
 

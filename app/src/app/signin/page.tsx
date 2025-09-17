@@ -61,7 +61,18 @@ export default function SignInPage() {
 
     try {
       setIsLoading(true);
-      const response = await axiosInstance.post("/login/", formData);
+      // Send JSON as backend expects; CORS should be allowed now
+      const r = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || '/api/v1'}/login/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email.trim().toLowerCase(),
+          password: formData.password,
+        }),
+        credentials: 'omit',
+        redirect: 'follow',
+      });
+      const response = { data: await r.json(), status: r.status } as any;
 
       if (response.data.status_code === 200 && response.data.data) {
         const { token, user } = response.data.data;

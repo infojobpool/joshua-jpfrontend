@@ -26,10 +26,17 @@ export function MobileSignIn() {
     
     try {
       const normalizedEmail = (formData.email || "").trim().toLowerCase();
-      const payload = { ...formData, email: normalizedEmail };
-      const response = await mobileAxiosInstance.post("/login/", payload);
+      // Align mobile payload with desktop (JSON) and use absolute HTTPS base if provided
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || '/api/v1';
+      const response = await fetch(`${apiBase}/login/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: normalizedEmail, password: formData.password }),
+        credentials: 'omit',
+        redirect: 'follow'
+      }).then(async (r) => ({ status: r.status, data: await r.json() }));
       
-      if (response.data.status_code === 200 && response.data.data) {
+      if (response.data && response.data.status_code === 200 && response.data.data) {
         const { token, user } = response.data.data;
         
         if (!token || !user) {
@@ -48,13 +55,20 @@ export function MobileSignIn() {
         toast.error(response.data.message || "Login failed");
       }
     } catch (error: any) {
-      console.error("Login error:", error);
-      const base = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.jobpool.in/api/v1');
-      if (error.response?.status === 404) {
-        toast.error(`User not found for this email on ${base}. Try Sign Up if new.`);
-      } else {
-        const serverMsg = error.response?.data?.message || error.message;
-        toast.error(serverMsg || "Login failed. Please try again.");
+      // Surface actionable debug info in dev for mobile
+      try {
+        const status = error?.response?.status;
+        const dataMsg = error?.response?.data?.message;
+        const networkMsg = error?.message;
+        const url = (error?.config?.baseURL || "") + (error?.config?.url || "");
+        const detail = status
+          ? `Status ${status}${dataMsg ? `: ${dataMsg}` : ''}`
+          : networkMsg || 'Unknown error';
+        // eslint-disable-next-line no-console
+        console.error('[mobile][login] error', { status, url, data: error?.response?.data, networkMsg });
+        toast.error(detail);
+      } catch (_) {
+        toast.error('Login failed. Please try again.');
       }
     } finally {
       setIsLoading(false);

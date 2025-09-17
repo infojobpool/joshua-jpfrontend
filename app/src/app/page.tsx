@@ -14,7 +14,7 @@ import { MobileWrapper } from '../components/mobile/MobileWrapper'
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Mobile: show only the optimized mobile hero, no scrolling sections */}
+      {/* Mobile landing (default on small screens) */}
       <div className="md:hidden">
         <MobileHeroSection />
         <MobileServiceScroller />
@@ -23,7 +23,7 @@ export default function Home() {
         <MobileTestimonials />
       </div>
 
-      {/* Desktop: full landing experience */}
+      {/* Desktop landing (md and up) */}
       <div className="hidden md:block">
         <HeroSection />
         <FeaturedServices />

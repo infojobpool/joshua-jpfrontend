@@ -12,6 +12,9 @@ import withPWA from "next-pwa";
 const isProd = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
+  trailingSlash: true,
+  output: process.env.NODE_ENV === 'production' ? 'export' : undefined,
+  distDir: 'out',
   eslint: {
     ignoreDuringBuilds: isProd, // Skip ESLint in production builds
   },
@@ -19,11 +22,24 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: isProd, // Skip TypeScript errors in production builds
   },
   images: {
+    unoptimized: process.env.NODE_ENV === 'production', // Disable optimization for static export
     remotePatterns: [
       { protocol: 'https', hostname: 'jobpool.blr1.digitaloceanspaces.com' },
       { protocol: 'https', hostname: 'blr1.digitaloceanspaces.com' },
       { protocol: 'https', hostname: 'placeholder.com' } // temporary
     ]
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: 'https://jobpoolbackend.onrender.com/api/v1/:path*',
+      },
+      {
+        source: '/api/v1/:path*/',
+        destination: 'https://jobpoolbackend.onrender.com/api/v1/:path*/',
+      },
+    ];
   },
   // Allow mobile network access (Next.js 15 compatible)
   experimental: {

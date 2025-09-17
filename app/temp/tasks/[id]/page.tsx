@@ -1204,7 +1204,7 @@ import { Toaster } from "@/components/ui/sonner";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { FormEvent, use, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Task, User, Bid, Offer, ApiBidResponse, ApiJobResponse } from "../../types";
@@ -1227,10 +1227,8 @@ interface UserProfile {
 
 export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { id } = use(params);
   const { userId, user: storeUser, checkAuth, isAuthenticated, logout } = useStore();
-  const fromBid = searchParams.get('fromBid') === 'true';
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -1295,18 +1293,11 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       return;
     }
 
-      // Fetch user profile (non-blocking, runs in background)
+      // Fetch user profile
       const fetchProfile = async () => {
         if (!userId) return;
         try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout - more reasonable
-          
-          const response = await axiosInstance.get(`/profile?user_id=${userId}`, {
-            signal: controller.signal
-          });
-          clearTimeout(timeoutId);
-          
+          const response = await axiosInstance.get(`/profile?user_id=${userId}`);
           const data = response.data;
           const profile: UserProfile = {
             profile_id: data.profile_id || "",
@@ -1319,11 +1310,6 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           setUserProfile(profile);
           console.log("Loaded user profile:", profile);
         } catch (err: any) {
-          // Handle AbortError silently for background tasks
-          if (err.name === 'AbortError' || err.name === 'CanceledError') {
-            console.log("Profile fetch timed out (background task)");
-            return;
-          }
           console.error("Failed to fetch profile:", err);
           if (err.response?.status === 401) {
             logout();
@@ -1347,15 +1333,9 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           }
         };
         
-        // Call functions in parallel (non-blocking)
-        Promise.allSettled([
-          fetchProfile(),
-          syncBids()
-        ]).then(() => {
-          console.log("Background tasks completed");
-        }).catch(err => {
-          console.warn("Some background tasks failed:", err);
-        });
+        // Call functions inside the timeout
+        fetchProfile();
+        syncBids();
       }
     // No cleanup necessary
   }, [router, userId, isAuthenticated, storeUser]);
@@ -1364,9 +1344,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   useEffect(() => {
     const loadTaskData = async () => {
       try {
-        setLoading(true);
-        
-        // Check cache first and render immediately
+        // Check cache first
         const cacheKey = `task_${id}`;
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
@@ -1376,17 +1354,14 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
             console.log("Using cached task data");
             setTask(cachedData.task);
             setLoading(false);
-            // Continue to refresh in background
+            return;
           }
         }
 
-        // Use fetch API with longer timeout for better reliability
+        // Use fetch API for better performance
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-          console.log("Task loading timeout reached, aborting request");
-          controller.abort();
-        }, 30000); // 30s timeout - more generous for slow networks
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
         const response = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
           method: 'GET',
@@ -1551,26 +1526,13 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       } catch (error: any) {
         console.error("Error loading task data:", error);
         if ((error as any)?.name === 'AbortError') {
-          console.log("Task loading was aborted due to timeout");
-          // Try to load from cache as fallback
-          try {
-            const cached = localStorage.getItem(cacheKey);
-            if (cached) {
-              const cachedData = JSON.parse(cached);
-              setTask(cachedData.task);
-              console.log("Loaded task from cache after timeout");
-              return; // Don't set task to null if we loaded from cache
-            }
-          } catch (cacheError) {
-            console.warn("Failed to load from cache:", cacheError);
-          }
-          setTask(null); // Only set to null if no cache available
+          toast.error("Request timed out. Please try again.");
         } else {
           toast.error(
             error.response?.data?.detail || "Failed to load task details"
           );
-          setTask(null);
         }
+        setTask(null);
       } finally {
         setLoading(false);
       }
@@ -1591,48 +1553,15 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
 
-        // Check if current user is the task poster
-        const isTaskPoster = task && task.poster && task.poster.id === userId;
-        
-        let response;
-        if (isTaskPoster) {
-          // Task poster: try to fetch all bids for this task using axiosInstance
-          console.log("Fetching all bids for task (user is poster)");
-          try {
-            const axiosResponse = await axiosInstance.get(`/get-bids/${id}/`, {
-              signal: controller.signal
-            });
-            // Convert axios response to fetch-like response
-            response = {
-              ok: true,
-              json: () => Promise.resolve(axiosResponse.data)
-            } as any;
-          } catch (error) {
-            console.warn("Failed to fetch task bids, falling back to user bids:", error);
-            // Fallback to user bids if task bids endpoint fails
-            response = await fetch(`https://api.jobpool.in/api/v1/get-user-bids/${userId}/`, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-              },
-              credentials: 'omit',
-              signal: controller.signal
-            });
-          }
-        } else {
-          // Non-poster: fetch only user's bids
-          console.log("Fetching user's bids only (user is not poster)");
-          response = await fetch(`https://api.jobpool.in/api/v1/get-user-bids/${userId}/`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            credentials: 'omit',
-            signal: controller.signal
-          });
-        }
+        const response = await fetch(`https://api.jobpool.in/api/v1/get-bids/${id}/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal
+        });
 
         clearTimeout(timeoutId);
         
@@ -1647,34 +1576,19 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           throw new Error(data.message || "Failed to fetch bids");
         }
 
-        let taskBids: Bid[] = [];
-        if (isTaskPoster) {
-          // For task poster, use all bids directly (or filter if fallback was used)
-          taskBids = data.data;
-          console.log("Fetched all task bids for poster:", taskBids);
-        } else {
-          // For non-poster, filter user's bids for this task
-          const allUserBids: Bid[] = data.data;
-          taskBids = allUserBids.filter((bid) => bid.job_id === id);
-          console.log("Filtered user's task bids:", taskBids);
-        }
+        const taskBids: Bid[] = data.data;
+        console.log("Fetched task bids:", taskBids); // Debug log
 
-        // Update localStorage appropriately based on user role
-        if (isTaskPoster) {
-          // For task poster, store all bids for this task
-          localStorage.setItem(`task_${id}_bids`, JSON.stringify(taskBids));
-          console.log("Stored all task bids for poster:", taskBids);
-        } else {
-          // For non-poster, update user's bids
-          const storedBids = localStorage.getItem("bids");
-          let allBids: Bid[] = storedBids ? JSON.parse(storedBids) : [];
-          allBids = [
-            ...allBids.filter((bid) => bid.job_id !== id), // Remove old bids for this task
-            ...taskBids, // Add current user's bids for this task
-          ];
-          localStorage.setItem("bids", JSON.stringify(allBids));
-          console.log("Updated user's bids:", allBids);
-        }
+        // Update localStorage with only the current user's bids
+        const storedBids = localStorage.getItem("bids");
+        let allBids: Bid[] = storedBids ? JSON.parse(storedBids) : [];
+        // Keep non-task bids and update with current user's bids from API
+        allBids = [
+          ...allBids.filter((bid) => bid.job_id !== id), // Remove old bids for this task
+          ...taskBids.filter((bid) => bid.bidder_id === userId), // Add current user's bids
+        ];
+        localStorage.setItem("bids", JSON.stringify(allBids));
+        console.log("Updated localStorage bids:", allBids); // Debug log
 
         // Map all task bids to offers
         const newOffers: Offer[] = taskBids.map((bid: Bid, index: number) => ({
@@ -1768,10 +1682,10 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         localStorage.setItem("bids", JSON.stringify(allBids));
 
         // Refresh bids from API to ensure all offers are up-to-date
-        const response = await axiosInstance.get(`/get-user-bids/${userId}/`);
+        const response = await axiosInstance.get(`/get-bids/${id}/`);
         const data: ApiBidResponse = response.data;
         if (data.status_code === 200) {
-          const taskBids = data.data.filter((bid: Bid) => bid.job_id === id);
+          const taskBids = data.data;
           const newOffers: Offer[] = taskBids.map((bid: Bid, index: number) => ({
             id: `bid${index + 1}`,
             tasker: {
@@ -2057,7 +1971,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
             <div className="h-12 w-12 rounded-full border-4 border-blue-500/20 border-t-blue-600 animate-spin" />
             <div className="absolute inset-0 m-auto h-5 w-5 rounded-full bg-blue-600/10 animate-ping" />
           </div>
-          <span className="text-sm text-muted-foreground animate-pulse">Loading task details...</span>
+          <span className="text-sm text-muted-foreground animate-pulse">Loading profile...</span>
         </div>
       </div>
     );
@@ -2112,7 +2026,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           {/* Main Content - Left Column */}
           <div className="lg:col-span-2 space-y-4">
             <TaskInfo
-              task={fromBid ? { ...task, status: "requested" } : task}
+              task={task}
               openImageGallery={openImageGallery}
               handleMessageUser={handleMessageUser}
               isTaskPoster={isTaskPoster}
