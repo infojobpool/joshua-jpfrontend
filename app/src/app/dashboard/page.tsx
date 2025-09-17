@@ -577,44 +577,10 @@ export default function Dashboard() {
               jobStatus = "deleted";
             } else if (job.cancel_status) {
               jobStatus = "canceled";
-            } else if (job.status === "in_progress" || job.status === "working" || job.status === "assigned" || 
-                      job.status === "accepted" || job.status === "paid" || job.status === "active" ||
-                      job.status === true) {
+            } else if (job.assigned_tasker_id || job.accepted_bidder_id) {
               jobStatus = "in_progress";
-              console.log(`✅ Task ${job.job_id} marked as in_progress due to status: ${job.status} (type: ${typeof job.status})`);
-            } else if (job.bid_accepted === true || job.bid_accepted === "true" || 
-                      job.offer_accepted === true || job.offer_accepted === "true" ||
-                      job.payment_status === "paid" || job.payment_status === "completed" ||
-                      job.payment_status === "success" || job.payment_status === true ||
-                      job.payment_status === "PAID" || job.payment_status === "COMPLETED" ||
-                      job.payment_status === "SUCCESS" || job.payment_status === 1 ||
-                      job.payment_status === "1" || job.payment_status === "confirmed" ||
-                      job.payment_status === "CONFIRMED" || job.payment_status === "processed" ||
-                      job.payment_status === "PROCESSED" || job.payment_status === "settled" ||
-                      job.payment_status === "SETTLED" || hasPaidOrder) {
-              jobStatus = "in_progress";
-              console.log(`Task ${job.job_id} marked as in_progress due to payment/acceptance`);
-              console.log(`🔍 Task ${job.job_id} status details:`, {
-                bid_accepted: job.bid_accepted,
-                offer_accepted: job.offer_accepted,
-                payment_status: job.payment_status,
-                hasPaidOrder: hasPaidOrder,
-                assigned_tasker_id: job.assigned_tasker_id,
-                accepted_bidder_id: job.accepted_bidder_id
-              });
-            }
-            
-            // Debug logging for tasks that remain "open"
-            if (jobStatus === "open" && (job.bid_accepted || job.offer_accepted || job.assigned_tasker_id || job.accepted_bidder_id)) {
-              console.log(`⚠️ Task ${job.job_id} showing as "open" but has acceptance/assignment indicators:`, {
-                bid_accepted: job.bid_accepted,
-                offer_accepted: job.offer_accepted,
-                assigned_tasker_id: job.assigned_tasker_id,
-                accepted_bidder_id: job.accepted_bidder_id,
-                payment_status: job.payment_status,
-                status: job.status,
-                hasPaidOrder: hasPaidOrder
-              });
+            } else {
+              jobStatus = "open";
             }
             
             // All other tasks remain "open"
@@ -985,56 +951,11 @@ export default function Dashboard() {
           }));
           setBids(userBids);
           
-          // Filter out accepted bids by checking task status
-          const filterAcceptedBids = async () => {
-            try {
-              const filteredBids = [];
-              for (const bid of userBids) {
-                try {
-                  const taskResponse = await axiosInstance.get(`/get-job/${bid.task_id}/`);
-                  const taskData = taskResponse.data;
-                  
-                  if (taskData.status_code === 200) {
-                    const job = taskData.data;
-                    const isAccepted = job.bid_accepted === true || 
-                                     job.offer_accepted === true || 
-                                     job.assigned_tasker_id || 
-                                     job.accepted_bidder_id ||
-                                     job.status === "in_progress" ||
-                                     job.status === "accepted" ||
-                                     job.status === "assigned";
-                    
-                    if (!isAccepted) {
-                      filteredBids.push(bid);
-                    } else {
-                      console.log(`Bid ${bid.id} filtered out - task ${bid.task_id} has been accepted`);
-                    }
-                  } else {
-                    // If we can't fetch task data, include the bid (safer to show than hide)
-                    filteredBids.push(bid);
-                  }
-                } catch (taskError) {
-                  console.warn(`Failed to fetch task ${bid.task_id} for bid filtering:`, taskError);
-                  // If we can't fetch task data, include the bid (safer to show than hide)
-                  filteredBids.push(bid);
-                }
-              }
-              
-              const enriched = filteredBids
-                .map((b) => ({ ...b, task_cancelled: false, task_deleted: false }));
-              setRequestedTasks(enriched);
-              try { sessionStorage.setItem("requestedTasks", JSON.stringify(enriched)); } catch {}
-            } catch (error) {
-              console.error("Error filtering accepted bids:", error);
-              // Fallback to showing all bids if filtering fails
-              const enriched = userBids
-                .map((b) => ({ ...b, task_cancelled: false, task_deleted: false }));
-              setRequestedTasks(enriched);
-              try { sessionStorage.setItem("requestedTasks", JSON.stringify(enriched)); } catch {}
-            }
-          };
-          
-          filterAcceptedBids();
+          // Simple bid handling - show all bids
+          const enriched = userBids
+            .map((b) => ({ ...b, task_cancelled: false, task_deleted: false }));
+          setRequestedTasks(enriched);
+          try { sessionStorage.setItem("requestedTasks", JSON.stringify(enriched)); } catch {}
         } else {
           console.warn("No bids found or API error:", result.message);
           // Removed annoying toast notification for no bids found
@@ -1641,15 +1562,11 @@ export default function Dashboard() {
     
     const isNotCanceled = !task.cancel_status;
     
-    // Exclude tasks where user has already submitted a bid
+    // Only exclude tasks where user has already submitted a bid
     const hasUserBid = requestedTasks.some(bid => bid.task_id === task.id);
     const hasNotSubmittedBid = !hasUserBid;
-    
-    // Also exclude tasks that have any offers (bids) from any user
-    const hasAnyOffers = task.offers > 0;
-    const hasNoOffers = !hasAnyOffers;
 
-    return matchesSearch && matchesCategory && matchesPrice && matchesLocation && isNotCanceled && hasNotSubmittedBid && hasNoOffers;
+    return matchesSearch && matchesCategory && matchesPrice && matchesLocation && isNotCanceled && hasNotSubmittedBid;
   });
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
