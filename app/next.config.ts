@@ -13,12 +13,8 @@ const isProd = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
   trailingSlash: true,
-  // output: process.env.NODE_ENV === 'production' ? 'export' : undefined, // Temporarily disabled for dynamic routes
-  distDir: 'out',
-  // Handle dynamic routes for static export
-  generateBuildId: async () => {
-    return 'build-' + Date.now()
-  },
+  // Remove distDir and output config for Vercel deployment
+  // Vercel handles the build output automatically
   eslint: {
     ignoreDuringBuilds: isProd, // Skip ESLint in production builds
   },
@@ -26,7 +22,6 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: isProd, // Skip TypeScript errors in production builds
   },
   images: {
-    unoptimized: process.env.NODE_ENV === 'production', // Disable optimization for static export
     remotePatterns: [
       { protocol: 'https', hostname: 'jobpool.blr1.digitaloceanspaces.com' },
       { protocol: 'https', hostname: 'blr1.digitaloceanspaces.com' },
