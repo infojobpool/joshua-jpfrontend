@@ -63,13 +63,6 @@ interface Task {
   job_completion_status?: string;
   deletion_status: boolean;
   cancel_status: boolean;
-  assigned_tasker_id?: string;
-  accepted_bidder_id?: string;
-  assignedTasker?: {
-    id: string;
-    name: string;
-    avatar: string;
-  } | null;
   images?: Image[];
 }
 
@@ -126,21 +119,19 @@ export default function Dashboard() {
   const mobile = mounted && isMobile;
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
   
-  // Debug authentication state (only in development)
-  if (process.env.NODE_ENV === 'development') {
-    console.log("🔍 Dashboard render - Auth state:", {
-      isAuthenticated,
-      user: user ? { id: user.id, name: user.name } : null,
-      userId,
-      userType: typeof user,
-      userIdType: typeof userId
-    });
-    
-    // Debug useEffect dependencies
-    console.log("🔍 useEffect dependencies - user:", !!user, "userId:", !!userId);
-    console.log("🔍 User object details:", user);
-    console.log("🔍 UserId details:", userId);
-  }
+  // Debug authentication state
+  console.log("🔍 Dashboard render - Auth state:", {
+    isAuthenticated,
+    user: user ? { id: user.id, name: user.name } : null,
+    userId,
+    userType: typeof user,
+    userIdType: typeof userId
+  });
+  
+  // Debug useEffect dependencies
+  console.log("🔍 useEffect dependencies - user:", !!user, "userId:", !!userId);
+  console.log("🔍 User object details:", user);
+  console.log("🔍 UserId details:", userId);
   const [loading, setLoading] = useState(true);
   
   // Task states
@@ -276,7 +267,39 @@ export default function Dashboard() {
   }, []);
 
   // Ensure categories are loaded when the inline mobile filters are opened
-  // Removed duplicate category loading - using main fetchCategories function instead
+  useEffect(() => {
+    const loadCats = async () => {
+      try {
+        setCategoriesLoading(true);
+        const token = localStorage.getItem('token');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
+        const res = await fetch(`${API_BASE}/get-all-categories/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : '',
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.status_code === 200 && Array.isArray(json?.data?.categories)) {
+            setCategories(json.data.categories);
+          }
+        }
+      } catch (_) {
+        // silent
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+    if (isMobile && showFilters && categories.length === 0 && !categoriesLoading) {
+      loadCats();
+    }
+  }, [showFilters, isMobile, categories.length, categoriesLoading, API_BASE]);
 
   // Ensure flags for session-hydrated bids (runs once post-hydration)
   useEffect(() => {
@@ -324,68 +347,6 @@ export default function Dashboard() {
         router.push("/signin");
         return;
       }
-    
-    // Check for recently accepted bidders and update task status
-    try {
-      const acceptedBidder = sessionStorage.getItem("acceptedBidder");
-      if (acceptedBidder) {
-        const bidderData = JSON.parse(acceptedBidder);
-        console.log("Found accepted bidder data:", bidderData);
-        
-        // Update postedTasks to show the accepted bidder
-        setPostedTasks(prev => prev.map(task => 
-          task.id === bidderData.taskId 
-            ? {
-                ...task,
-                status: "in_progress",
-                accepted_bidder_id: bidderData.taskerId,
-                assigned_tasker_id: bidderData.taskerId,
-                assignedTasker: {
-                  id: bidderData.taskerId,
-                  name: bidderData.taskerName,
-                  avatar: "/images/placeholder.svg"
-                }
-              }
-            : task
-        ));
-        
-        // Clear the sessionStorage after using it
-        sessionStorage.removeItem("acceptedBidder");
-      }
-    } catch (e) {
-      console.warn("Failed to process accepted bidder data:", e);
-    }
-    
-    // Check for accepted bids to remove from My Bids section
-    try {
-      const acceptedBidRemoval = sessionStorage.getItem("acceptedBidRemoval");
-      if (acceptedBidRemoval) {
-        const removalData = JSON.parse(acceptedBidRemoval);
-        console.log("Found accepted bid removal data:", removalData);
-        
-        // Remove the accepted bid from requestedTasks
-        setRequestedTasks(prev => prev.filter(bid => 
-          !(bid.task_id === removalData.taskId && bid.bid_id === removalData.taskerId)
-        ));
-        
-        // Update sessionStorage
-        try {
-          const currentRequestedTasks = JSON.parse(sessionStorage.getItem("requestedTasks") || "[]");
-          const filteredTasks = currentRequestedTasks.filter((bid: any) => 
-            !(bid.task_id === removalData.taskId && bid.bid_id === removalData.taskerId)
-          );
-          sessionStorage.setItem("requestedTasks", JSON.stringify(filteredTasks));
-        } catch (e) {
-          console.warn("Failed to update sessionStorage for bid removal:", e);
-        }
-        
-        // Clear the sessionStorage after using it
-        sessionStorage.removeItem("acceptedBidRemoval");
-      }
-    } catch (e) {
-      console.warn("Failed to process accepted bid removal data:", e);
-    }
-    
     console.log("🔍 Auth check passed, setting loading false and fetching task orders");
     setLoading(false);
     fetchTaskOrders(); // Fetch task orders when user is authenticated
@@ -418,28 +379,9 @@ export default function Dashboard() {
         }
 
         const result = await fetchResponse.json();
-        console.log("Categories API response:", result);
         
         if (result.status_code === 200 && result.data?.categories) {
-          console.log("Setting categories:", result.data.categories);
           setCategories(result.data.categories);
-        } else {
-          console.warn("Categories API returned unexpected format:", result);
-          // Try alternative data structure
-          if (result.status_code === 200 && Array.isArray(result.data)) {
-            console.log("Trying alternative categories format:", result.data);
-            setCategories(result.data);
-          } else {
-            // Fallback to default categories if API fails
-            console.log("Using fallback categories");
-            setCategories([
-              { id: "fallback-general", name: "General" },
-              { id: "fallback-cleaning", name: "Cleaning" },
-              { id: "fallback-delivery", name: "Delivery" },
-              { id: "fallback-maintenance", name: "Maintenance" },
-              { id: "fallback-other", name: "Other" }
-            ]);
-          }
         }
       } catch (error) {
         // Handle AbortError separately (don't show error for timeouts)
@@ -448,15 +390,6 @@ export default function Dashboard() {
           return;
         }
         console.error("Failed to fetch categories:", error);
-        // Set fallback categories on error
-        console.log("Setting fallback categories due to error");
-        setCategories([
-          { id: "fallback-general", name: "General" },
-          { id: "fallback-cleaning", name: "Cleaning" },
-          { id: "fallback-delivery", name: "Delivery" },
-          { id: "fallback-maintenance", name: "Maintenance" },
-          { id: "fallback-other", name: "Other" }
-        ]);
       }
     };
 
@@ -467,29 +400,26 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user || !userId) return;
     
-    // Render immediately from cache, then refresh in background
-    const cacheKey = `user_tasks_${userId}`;
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      try {
-        const cachedData = JSON.parse(cached);
-        const cacheAge = Date.now() - cachedData.timestamp;
-        if (cacheAge < 300000) { // 5 minute cache
-          setPostedTasks(cachedData.tasks);
-          // Continue to refresh in background
-        }
-      } catch (e) {
-        console.warn("Failed to parse cached user tasks");
-      }
-    }
 
     const fetchUserTasks = async () => {
       try {
+        // Check cache first
+        const cacheKey = `user_tasks_${userId}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const cachedData = JSON.parse(cached);
+          const cacheAge = Date.now() - cachedData.timestamp;
+          if (cacheAge < 60000) { // 1 minute cache
+            console.log("Using cached user tasks");
+            setPostedTasks(cachedData.tasks);
+            return;
+          }
+        }
         
         // Use the faster get-all-jobs-admin API with better filtering
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // Reduced to 8 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
         const fetchResponse = await fetch(`${API_BASE}/get-user-jobs/${userId}/`, {
           method: 'GET',
@@ -577,10 +507,44 @@ export default function Dashboard() {
               jobStatus = "deleted";
             } else if (job.cancel_status) {
               jobStatus = "canceled";
-            } else if (job.assigned_tasker_id || job.accepted_bidder_id) {
+            } else if (job.status === "in_progress" || job.status === "working" || job.status === "assigned" || 
+                      job.status === "accepted" || job.status === "paid" || job.status === "active" ||
+                      job.status === true) {
               jobStatus = "in_progress";
-            } else {
-              jobStatus = "open";
+              console.log(`✅ Task ${job.job_id} marked as in_progress due to status: ${job.status} (type: ${typeof job.status})`);
+            } else if (job.bid_accepted === true || job.bid_accepted === "true" || 
+                      job.offer_accepted === true || job.offer_accepted === "true" ||
+                      job.payment_status === "paid" || job.payment_status === "completed" ||
+                      job.payment_status === "success" || job.payment_status === true ||
+                      job.payment_status === "PAID" || job.payment_status === "COMPLETED" ||
+                      job.payment_status === "SUCCESS" || job.payment_status === 1 ||
+                      job.payment_status === "1" || job.payment_status === "confirmed" ||
+                      job.payment_status === "CONFIRMED" || job.payment_status === "processed" ||
+                      job.payment_status === "PROCESSED" || job.payment_status === "settled" ||
+                      job.payment_status === "SETTLED" || hasPaidOrder) {
+              jobStatus = "in_progress";
+              console.log(`Task ${job.job_id} marked as in_progress due to payment/acceptance`);
+              console.log(`🔍 Task ${job.job_id} status details:`, {
+                bid_accepted: job.bid_accepted,
+                offer_accepted: job.offer_accepted,
+                payment_status: job.payment_status,
+                hasPaidOrder: hasPaidOrder,
+                assigned_tasker_id: job.assigned_tasker_id,
+                accepted_bidder_id: job.accepted_bidder_id
+              });
+            }
+            
+            // Debug logging for tasks that remain "open"
+            if (jobStatus === "open" && (job.bid_accepted || job.offer_accepted || job.assigned_tasker_id || job.accepted_bidder_id)) {
+              console.log(`⚠️ Task ${job.job_id} showing as "open" but has acceptance/assignment indicators:`, {
+                bid_accepted: job.bid_accepted,
+                offer_accepted: job.offer_accepted,
+                assigned_tasker_id: job.assigned_tasker_id,
+                accepted_bidder_id: job.accepted_bidder_id,
+                payment_status: job.payment_status,
+                status: job.status,
+                hasPaidOrder: hasPaidOrder
+              });
             }
             
             // All other tasks remain "open"
@@ -602,17 +566,10 @@ export default function Dashboard() {
               job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
               deletion_status: job.deletion_status || false,
               cancel_status: job.cancel_status ?? false,
-              assigned_tasker_id: job.assigned_tasker_id,
-              accepted_bidder_id: job.accepted_bidder_id,
-              assignedTasker: (job.assigned_tasker_id || job.accepted_bidder_id) ? {
-                id: job.assigned_tasker_id || job.accepted_bidder_id,
-                name: job.assigned_tasker_name || job.accepted_bidder_name || "Unknown Bidder",
-                avatar: "/images/placeholder.svg"
-              } : null,
               images: job.job_images?.urls?.length
                 ? job.job_images.urls.map((url: string, index: number) => ({
                     id: `img${index + 1}`,
-                    url: (typeof url === "string" && (url.includes("placeholder.com") || url.includes("broken") || !url.startsWith("http"))) ? "/images/placeholder.svg" : url,
+                    url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
                     alt: `Job image ${index + 1}`,
                   }))
                 : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
@@ -846,7 +803,7 @@ export default function Dashboard() {
                 images: job.job_images?.urls?.length
                   ? job.job_images.urls.map((url: string, index: number) => ({
                       id: `img${index + 1}`,
-                      url: (typeof url === "string" && (url.includes("placeholder.com") || url.includes("broken") || !url.startsWith("http"))) ? "/images/placeholder.svg" : url,
+                      url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
                       alt: `Job image ${index + 1}`,
                     }))
                   : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
@@ -940,8 +897,7 @@ export default function Dashboard() {
             task_id: bid.task_id.toString(),
             task_title: bid.task_title || "Untitled",
             bid_amount: Number(bid.bid_amount) || 0,
-            // Normalize to 'Requested' for clarity in My Bids
-            status: "Requested",
+            status: bid.status || "pending",
             created_at: bid.created_at
               ? new Date(bid.created_at).toLocaleDateString("en-GB")
               : "Unknown",
@@ -950,12 +906,6 @@ export default function Dashboard() {
             posted_by: bid.posted_by || "Unknown",
           }));
           setBids(userBids);
-          
-          // Simple bid handling - show all bids
-          const enriched = userBids
-            .map((b) => ({ ...b, task_cancelled: false, task_deleted: false }));
-          setRequestedTasks(enriched);
-          try { sessionStorage.setItem("requestedTasks", JSON.stringify(enriched)); } catch {}
         } else {
           console.warn("No bids found or API error:", result.message);
           // Removed annoying toast notification for no bids found
@@ -1029,11 +979,11 @@ export default function Dashboard() {
             deletion_status: job.deletion_status || false,
             cancel_status: job.cancel_status ?? false,
             images: job.job_images?.urls?.length
-                ? job.job_images.urls.map((url: string, index: number) => ({
-                    id: `img${index + 1}`,
-                    url: (typeof url === "string" && (url.includes("placeholder.com") || url.includes("broken") || !url.startsWith("http"))) ? "/images/placeholder.svg" : url,
-                    alt: `Job image ${index + 1}`,
-                  }))
+              ? job.job_images.urls.map((url: string, index: number) => ({
+                  id: `img${index + 1}`,
+                  url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
+                  alt: `Job image ${index + 1}`,
+                }))
               : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
           }));
           setAssignedTasks(tasks);
@@ -1124,10 +1074,22 @@ export default function Dashboard() {
                 return { id: b.bid_id, task_id: b.task_id, cancelled: !!isCancelled, deleted: !!isDeleted };
               })
             );
-            // Note: requestedTasks is now set in the filterAcceptedBids function in the main bid fetching logic
+            const cancelledMap: Record<string, boolean> = {};
+            const deletedMap: Record<string, boolean> = {};
+            for (const res of results) {
+              if (res.status === 'fulfilled') {
+                cancelledMap[res.value.task_id] = res.value.cancelled;
+                deletedMap[res.value.task_id] = res.value.deleted;
+              }
+            }
+            const enriched = bids
+              .map((b) => ({ ...b, task_cancelled: cancelledMap[b.task_id] ?? false, task_deleted: deletedMap[b.task_id] ?? false }));
+            setRequestedTasks(enriched);
+            try { sessionStorage.setItem("requestedTasks", JSON.stringify(enriched)); } catch {}
           } catch {
             // If enrichment fails, fallback to original list
-            console.warn("Failed to enrich bid data");
+          setRequestedTasks(bids);
+            try { sessionStorage.setItem("requestedTasks", JSON.stringify(bids)); } catch {}
           }
         } else {
           console.warn("No requested bids found or API error:", result.message);
@@ -1561,12 +1523,8 @@ export default function Dashboard() {
       task.location.toLowerCase().includes(location.toLowerCase());
     
     const isNotCanceled = !task.cancel_status;
-    
-    // Only exclude tasks where user has already submitted a bid
-    const hasUserBid = requestedTasks.some(bid => bid.task_id === task.id);
-    const hasNotSubmittedBid = !hasUserBid;
 
-    return matchesSearch && matchesCategory && matchesPrice && matchesLocation && isNotCanceled && hasNotSubmittedBid;
+    return matchesSearch && matchesCategory && matchesPrice && matchesLocation && isNotCanceled;
   });
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
@@ -1579,15 +1537,50 @@ export default function Dashboard() {
   };
 
   if (loading) {
-    const Loading = require("@/components/Loading").default;
-    return <Loading label="Loading dashboard" fullScreen />;
+    return (
+      <div className={`flex h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-gray-100 ${isMobile ? 'px-4' : ''}`}>
+        <div className="text-center">
+          {/* Mobile-optimized loading animation */}
+          <div className="relative mb-6">
+            {isMobile ? (
+              // Mobile: Bouncing dots animation
+              <div className="flex items-center justify-center space-x-2">
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+              </div>
+            ) : (
+              // Desktop: Spinner animation
+              <div className="w-16 h-16 mx-auto">
+                <div className="w-full h-full border-3 border-gray-200 rounded-full"></div>
+                <div className="absolute top-0 left-0 w-full h-full border-3 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
+              </div>
+            )}
+          </div>
+          
+          {/* Mobile-optimized loading text */}
+          <div className="space-y-3">
+            <h2 className={`font-medium text-gray-700 ${isMobile ? 'text-lg' : 'text-xl'} animate-pulse`}>
+              {isMobile ? 'Loading...' : 'Loading Dashboard'}
+            </h2>
+            {!isMobile && (
+              <div className="flex items-center justify-center space-x-1">
+                <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse"></div>
+                <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                <div className="w-1 h-1 bg-gray-400 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {
     return null;
   }
 
-  // const NotificationBar = dynamic(() => import("@/components/NotificationBar"), { ssr: false });
+  const NotificationBar = dynamic(() => import("@/components/NotificationBar"), { ssr: false });
 
   // Always use unified dashboard; remove dummy MobileDashboard on mobile
 
@@ -1596,7 +1589,7 @@ export default function Dashboard() {
     available: availableTasks.length,
     assigned: assignedTasks.length,
     completed: completedTasks.length,
-    bids: requestedTasks.length,
+    bids: bids.length,
   };
 
   return (
@@ -1769,7 +1762,7 @@ export default function Dashboard() {
           <div className="hidden md:flex items-center gap-6 animate-slide-in-right">
             {/* Enhanced Notifications with proper clickable functionality */}
             <div className="relative">
-              {/* <NotificationBar /> */}
+              <NotificationBar />
             </div>
             
             {/* Premium Profile Dropdown */}
@@ -2042,11 +2035,9 @@ export default function Dashboard() {
                       {categoriesLoading && (
                         <SelectItem value="loading" disabled>Loading…</SelectItem>
                       )}
-                      {categories
-                        .filter((c) => c && c.id && c.name) // Filter out invalid categories
-                        .map((c, index) => (
-                          <SelectItem key={`${c.id}-${index}`} value={c.id}>{c.name}</SelectItem>
-                        ))}
+                      {categories.map((c)=> (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -2183,13 +2174,6 @@ export default function Dashboard() {
                         </div>
                       )}
                       
-                      {/* Selected Bidder Banner */}
-                      {task.status === "in_progress" && (task.accepted_bidder_id || task.assigned_tasker_id) && (
-                        <div className="w-full bg-purple-600 text-white text-center py-1.5 px-3 font-semibold text-xs">
-                          📝 Selected Bidder
-                        </div>
-                      )}
-                      
                       {/* Mobile-optimized layout */}
                       <div className={isMobile ? "p-4" : "p-6"}>
                         {/* Header with title and status */}
@@ -2211,8 +2195,6 @@ export default function Dashboard() {
                                   ? "border-red-200 text-red-600 bg-red-50"
                                   : task.deletion_status
                                   ? "border-red-200 text-red-600 bg-red-50"
-                                  : task.status === "in_progress" && (task.accepted_bidder_id || task.assigned_tasker_id)
-                                  ? "border-purple-300 text-purple-700 bg-purple-50"
                                   : task.status === "in_progress"
                                   ? "border-emerald-300 text-emerald-700 bg-emerald-50"
                                   : task.status === "completed"
@@ -2224,8 +2206,6 @@ export default function Dashboard() {
                                 ? "❌ Canceled"
                                 : task.deletion_status
                                 ? "🗑️ Deleted"
-                                : task.status === "in_progress" && (task.accepted_bidder_id || task.assigned_tasker_id)
-                                ? "📝 Selected"
                                 : task.status === "in_progress"
                                 ? "🚀 In Progress"
                                 : task.status === "completed"
@@ -2264,28 +2244,6 @@ export default function Dashboard() {
                           {task.description}
                         </p>
 
-                        {/* Bidder Information for Completed and In-Progress Tasks */}
-                        {(task.status === "completed" || task.status === "in_progress") && (task.accepted_bidder_id || task.assigned_tasker_id) && (
-                          <div className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="text-sm font-semibold text-gray-700">👤 Assigned Bidder:</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                                {task.assignedTasker?.name?.charAt(0) || "U"}
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-gray-900">
-                                  {task.assignedTasker?.name || "Unknown Bidder"}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  ID: {task.accepted_bidder_id || task.assigned_tasker_id}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
                         {/* Mobile-optimized info row */}
                         <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"}`}>
                           <div className="flex items-center gap-2">
@@ -2315,7 +2273,7 @@ export default function Dashboard() {
                               <Button
                                 onClick={() => handleMyTaskComplete(task.id)}
                                 disabled={completingTaskId === task.id}
-                                className={`${isMobile ? "w-full" : "flex-1"} bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}
+                                className={`w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}
                               >
                                 {completingTaskId === task.id ? (
                                   <div className="flex items-center gap-2">
@@ -2333,8 +2291,8 @@ export default function Dashboard() {
                                   </div>
                                 )}
                               </Button>
-                              <Link href={`/tasks/${task.id}`} className={`${isMobile ? "w-full" : "flex-1"}`}>
-                                <Button variant="outline" className={`${isMobile ? "w-full" : "w-full"} border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
+                              <Link href={`/tasks/${task.id}`} className="w-full">
+                                <Button variant="outline" className={`w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
                                   <div className="flex items-center gap-2">
                                     <span className="text-lg">👁️</span>
                                     <span>View Details</span>
@@ -2394,10 +2352,8 @@ export default function Dashboard() {
                             <SelectContent className="rounded-lg border border-gray-200 shadow-lg">
                               <SelectItem value="all" className="rounded-md">All Categories</SelectItem>
                           {categories.length > 0 ? (
-                            categories
-                              .filter((cat) => cat && cat.id && cat.name) // Filter out invalid categories
-                              .map((cat, index) => (
-                                  <SelectItem key={`${cat.id}-${index}`} value={cat.id} className="rounded-md">
+                            categories.map((cat) => (
+                                  <SelectItem key={cat.id} value={cat.id} className="rounded-md">
                                 {cat.name}
                               </SelectItem>
                             ))
@@ -2554,8 +2510,10 @@ export default function Dashboard() {
                 ) : (
                   <div className={`grid gap-4 ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
                     {filteredTasks.map((task) => {
+                      const hasUserBid = requestedTasks.some(bid => bid.task_id === task.id);
+                      
                       return (
-                        <Card key={task.id} className="flex flex-col bg-white border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
+                        <Card key={task.id} className="flex flex-col bg-gradient-to-br from-pink-50 via-rose-50 to-red-50 border-l-4 border-l-pink-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
                           {/* Mobile-optimized layout */}
                           <div className={isMobile ? "p-4" : "p-6"}>
                             {/* Header with title and status */}
@@ -2569,7 +2527,7 @@ export default function Dashboard() {
                                   <span className="text-xs text-gray-500">{task.postedAt}</span>
                                 </div>
                               </div>
-                              <Badge variant="outline" className="border-gray-300 text-gray-700 bg-gray-50 font-medium text-xs px-2 py-1">
+                              <Badge variant="outline" className="border-pink-500 text-pink-600 font-medium text-xs px-2 py-1">
                                 {task.status === "open" ? "🔓 Open" : 
                                  task.status === "completed" ? "✅ Completed" :
                                  task.status.charAt(0).toUpperCase() + task.status.slice(1)}
@@ -2584,9 +2542,9 @@ export default function Dashboard() {
                             {/* Mobile-optimized info row */}
                             <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"}`}>
                               <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-lg">
-                                  <IndianRupee className="h-4 w-4 text-gray-700 font-bold" />
-                                  <span className="font-bold text-gray-800">{task.budget}</span>
+                                <div className="flex items-center gap-1 bg-pink-100 px-2 py-1 rounded-lg">
+                                  <IndianRupee className="h-4 w-4 text-pink-700 font-bold" />
+                                  <span className="font-bold text-pink-800">{task.budget}</span>
                                 </div>
                                 <div className="flex items-center gap-1 text-gray-500">
                                   <MapPin className="h-3 w-3" />
@@ -2606,10 +2564,10 @@ export default function Dashboard() {
                             {/* Action button */}
                             <div className="mt-4">
                               <Link href={`/tasks/${task.id}`} className="w-full">
-                                <Button variant="outline" className={`w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
+                                <Button variant="outline" className={`w-full border-2 border-pink-300 hover:border-pink-400 text-pink-700 hover:text-pink-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
                                   <div className="flex items-center gap-2">
                                     <span className="text-lg">💰</span>
-                                    <span>Make an Offer</span>
+                                    <span>{hasUserBid ? "View Offer" : "Make an Offer"}</span>
                                   </div>
                                 </Button>
                               </Link>
@@ -2756,7 +2714,24 @@ export default function Dashboard() {
           <TabsContent value="completed" forceMount className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
             <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-green-200 pb-2">Completed Tasks</h2>
             {completedTasksLoading ? (
-              (() => { const Loading = require("@/components/Loading").default; return <Loading label="Loading completed tasks" />; })()
+              <div className="min-h-[400px] flex items-center justify-center">
+                <div className="text-center">
+                  {isMobile ? (
+                    // Mobile: Bouncing dots
+                    <div className="flex items-center justify-center space-x-2 mb-4">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                    </div>
+                  ) : (
+                    // Desktop: Spinner
+                    <div className="w-16 h-16 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto mb-4"></div>
+                  )}
+                  <p className={`text-gray-600 font-medium ${isMobile ? 'text-sm' : ''}`}>
+                    {isMobile ? 'Loading...' : 'Loading completed tasks...'}
+                  </p>
+                </div>
+              </div>
             ) : completedTasks.length === 0 ? (
               <div className="min-h-[400px] flex items-center justify-center">
                 <Card className="w-full max-w-2xl mx-auto shadow-lg border-0 bg-gradient-to-br from-green-50 to-emerald-50">
@@ -2926,7 +2901,7 @@ export default function Dashboard() {
 
                       {/* Action button */}
                       <div className="mt-4">
-                        <Link href={`/tasks/${bid.task_id}?fromBid=true`} className="w-full">
+                        <Link href={`/tasks/${bid.task_id}`} className="w-full">
                           <Button variant="outline" className={`w-full border-2 border-blue-300 hover:border-blue-400 text-blue-700 hover:text-blue-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
                             <div className="flex items-center gap-2">
                               <span className="text-lg">👁️</span>
