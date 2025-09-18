@@ -8,9 +8,22 @@
   "theme_color": "#3b82f6",
   "orientation": "portrait-primary",
   "scope": "/",
+  "id": "/?source=pwa",
   "lang": "en",
   "categories": ["productivity", "business", "utilities"],
   "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "/icons/icon-192x192.svg",
       "sizes": "192x192",
@@ -26,13 +39,13 @@
   ],
   "screenshots": [
     {
-      "src": "/screenshots/mobile-home.png",
+      "src": "/images/mobileapp.png",
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow"
     },
     {
-      "src": "/screenshots/desktop-home.png",
+      "src": "/images/banner.png",
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide"
