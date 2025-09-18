@@ -3,8 +3,9 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.jobpool.app',
   appName: 'JobPool',
-  webDir: 'out',
+  webDir: 'dist',
   server: {
+    url: 'https://www.jobpool.in',
     androidScheme: 'https',
     allowNavigation: ['*']
   },

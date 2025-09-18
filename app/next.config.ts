@@ -13,8 +13,6 @@ const isProd = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
   trailingSlash: true,
-  // Remove distDir and output config for Vercel deployment
-  // Vercel handles the build output automatically
   eslint: {
     ignoreDuringBuilds: isProd, // Skip ESLint in production builds
   },
