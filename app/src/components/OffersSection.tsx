@@ -606,9 +606,6 @@ export function OffersSection({
                 {(offer.status === "accepted" || (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) || (selectedFromSession && selectedFromSession === offer.tasker.id)) && (
                   <div className="flex items-center gap-2">
                     <span className="rounded-full bg-green-100 text-green-700 px-3 py-1 text-xs font-medium">Selected</span>
-                    <Button size="sm" onClick={() => openCompleteModal(offer.id)}>
-                      Mark as Complete
-                    </Button>
                   </div>
                 )}
               </div>
