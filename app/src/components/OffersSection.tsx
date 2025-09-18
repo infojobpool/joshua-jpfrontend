@@ -578,16 +578,7 @@ export function OffersSection({
                 </div>
                 <div className="text-right">
                   {/* Show amount only for task poster or if it's the current user's offer */}
-                  {(() => {
-                    // Handle both string and number types for ID comparison
-                    const isCurrentUserOffer = currentUserId && (
-                      offer.tasker.id === currentUserId || 
-                      offer.tasker.id === String(currentUserId) || 
-                      String(offer.tasker.id) === currentUserId
-                    );
-                    const shouldShowAmount = isTaskPoster || isCurrentUserOffer;
-                    return shouldShowAmount;
-                  })() && (
+                  {(isTaskPoster || (currentUserId && offer.tasker.id === currentUserId)) && (
                     <p className="font-bold text-gray-900">
                       <IndianRupee className="w-4 h-4 inline" />{" "}
                       {offer.amount.toFixed(2)}
@@ -611,7 +602,6 @@ export function OffersSection({
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                {/* Show message to everyone - all bidders can see each other's messages */}
                 <p className="text-sm text-gray-700">{offer.message}</p>
                 {(offer.status === "accepted" || (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) || (selectedFromSession && selectedFromSession === offer.tasker.id)) && (
                   <div className="flex items-center gap-2">
