@@ -3,7 +3,7 @@
 import { MobileDashboard } from "../../components/mobile/MobileDashboard";
 import { useIsMobile } from "../../components/mobile/MobileWrapper";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -66,6 +67,8 @@ interface Task {
   cancel_status?: boolean;
   // New: flag to indicate this job is assigned to the current user (tasker)
   assignedToMe?: boolean;
+  // Derived flags for filtering completed lists
+  _posterIsMe?: boolean;
 }
 
 interface Bid {
@@ -117,6 +120,27 @@ export default function Dashboard() {
   const { isMobile } = useIsMobile();
   // Prevent SSR → CSR flicker on mobile by delaying mobile-only UI until mounted
   const [mounted, setMounted] = useState(false);
+  // Notifications UI state
+  const [showNotifications, setShowNotifications] = useState(false);
+  const dummyNotifications = [
+    { id: "n1", title: "Bid Accepted", desc: "Swanika accepted your bid on 'Install AC'.", time: "2m ago", tone: "success" },
+    { id: "n2", title: "Payment Confirmed", desc: "₹2,000 payment confirmed for 'Fix door hinge'.", time: "10m ago", tone: "info" },
+    { id: "n3", title: "New Message", desc: "You have a new message from Rahul.", time: "1h ago", tone: "neutral" },
+  ];
+  // Robust user id resolution across sources (store → user → storage)
+  const effectiveUserId = useMemo(() => {
+    try {
+      const fromStore = userId ?? (user as any)?.id;
+      if (fromStore !== undefined && fromStore !== null && fromStore !== "") {
+        return String(fromStore);
+      }
+      const fromStorage =
+        (typeof window !== "undefined" && (localStorage.getItem("userId") || sessionStorage.getItem("userId"))) || "";
+      return fromStorage ? String(fromStorage) : "";
+    } catch {
+      return "";
+    }
+  }, [userId, user]);
   useEffect(() => { setMounted(true); }, []);
   const mobile = mounted && isMobile;
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
@@ -126,26 +150,30 @@ export default function Dashboard() {
     isAuthenticated,
     user: user ? { id: user.id, name: user.name } : null,
     userId,
+    effectiveUserId,
     userType: typeof user,
     userIdType: typeof userId
   });
   
   // Debug useEffect dependencies
-  console.log("🔍 useEffect dependencies - user:", !!user, "userId:", !!userId);
+  console.log("🔍 useEffect dependencies - user:", !!user, "userId:", !!userId, "effectiveUserId:", !!effectiveUserId);
   console.log("🔍 User object details:", user);
-  console.log("🔍 UserId details:", userId);
+  console.log("🔍 UserId details:", userId, "effectiveUserId:", effectiveUserId);
   const [loading, setLoading] = useState(true);
   
   // Task states
   const [postedTasks, setPostedTasks] = useState<Task[]>([]);
   const [availableTasks, setAvailableTasks] = useState<Task[]>([]);
   const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
-  const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
+  const [completedTasks, setCompletedTasks] = useState<Task[]>([]); // Tasker Completed
   const [completedTasksLoading, setCompletedTasksLoading] = useState<boolean>(false);
   const [bids, setBids] = useState<Bid[]>([]);
   const [requestedTasks, setRequestedTasks] = useState<BidRequest[]>([]);
   // Local filter for My Tasks summary chips
   const [myTasksFilter, setMyTasksFilter] = useState<"all" | "in_progress" | "open" | "completed">("all");
+  const [myTasksQuery, setMyTasksQuery] = useState("");
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [showDatePicker, setShowDatePicker] = useState(false);
   // Store task orders to check payment status
   const [taskOrders, setTaskOrders] = useState<any[]>([]);
   
@@ -346,7 +374,7 @@ export default function Dashboard() {
   useEffect(() => {
     console.log("🔍 Auth check useEffect - isAuthenticated:", isAuthenticated, "user:", !!user, "userId:", !!userId);
     
-    if (!isAuthenticated || !user || !userId) {
+    if (!isAuthenticated || !user || !(userId || effectiveUserId)) {
         console.log("🔍 Redirecting to signin - missing auth data");
         router.push("/signin");
         return;
@@ -354,7 +382,7 @@ export default function Dashboard() {
     console.log("🔍 Auth check passed, setting loading false and fetching task orders");
     setLoading(false);
     fetchTaskOrders(); // Fetch task orders when user is authenticated
-  }, [isAuthenticated, user, userId, router]);
+  }, [isAuthenticated, user, userId, effectiveUserId, router]);
 
   // Fetch categories
   useEffect(() => {
@@ -402,13 +430,13 @@ export default function Dashboard() {
 
   // Fetch user's posted tasks
   useEffect(() => {
-    if (!user || !userId) return;
+    if (!user || !(userId || effectiveUserId)) return;
     
 
     const fetchUserTasks = async () => {
       try {
         // Check cache first
-        const cacheKey = `user_tasks_${userId}`;
+        const cacheKey = `user_tasks_${userId || effectiveUserId}`;
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
           const cachedData = JSON.parse(cached);
@@ -425,7 +453,7 @@ export default function Dashboard() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-        const fetchResponse = await fetch(`${API_BASE}/get-user-jobs/${userId}/`, {
+        const fetchResponse = await fetch(`${API_BASE}/get-user-jobs/${userId || effectiveUserId}/`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -449,10 +477,11 @@ export default function Dashboard() {
           // Filter for tasks that belong to the current user
           const userJobs = result.data.jobs.filter((job: any) => {
             const jobUserId = job.user_ref_id || job.posted_by_id || job.user_id;
-            return jobUserId === userId?.toString() || jobUserId === userId;
+            const me = (userId || effectiveUserId)?.toString();
+            return jobUserId === me;
           });
           
-          console.log(`🔍 Found ${userJobs.length} tasks for user ${userId} out of ${result.data.jobs.length} total jobs`);
+          console.log(`🔍 Found ${userJobs.length} tasks for user ${userId || effectiveUserId} out of ${result.data.jobs.length} total jobs`);
           
           // First, get the basic task data
           const tasks: Task[] = userJobs.map((job: any) => {
@@ -554,9 +583,24 @@ export default function Dashboard() {
             // All other tasks remain "open"
             
 
-            // Determine if this job is assigned to current user (tasker)
-            const assignedId = job.assigned_tasker_id || job.assigned_user_id || job.assigned_to || job.accepted_bidder_id;
-            const assignedToMe = assignedId ? String(assignedId) === String(userId) : false;
+            // Determine if this job is assigned to current user (tasker) - handle multiple backend field variants
+            const possibleTaskerIds = [
+              job.assigned_tasker_id,
+              job.assigned_user_id,
+              job.assigned_to,
+              job.accepted_bidder_id,
+              job.tasker_id,
+              job.executor_id,
+            ].filter((v: any) => v !== undefined && v !== null);
+            const normalizedUserId = userId != null ? String(userId).trim() : "";
+            const assignedToMe = possibleTaskerIds.some((v: any) => String(v).trim() === normalizedUserId);
+            if (jobStatus === "completed" && !assignedToMe) {
+              console.debug("Completed job not linked to current tasker", {
+                job_id: job.job_id,
+                possibleTaskerIds,
+                normalizedUserId,
+              });
+            }
 
             return {
               id: job.job_id.toString(),
@@ -622,7 +666,7 @@ export default function Dashboard() {
     };
 
     fetchUserTasks();
-  }, [user, userId, taskOrders]);
+  }, [user, userId, effectiveUserId, taskOrders]);
 
   // Test useEffect
   useEffect(() => {
@@ -670,13 +714,13 @@ export default function Dashboard() {
   console.log("🔍 About to register fetchAllTasks useEffect");
   useEffect(() => {
     console.log("🔍 ===== FETCH ALL TASKS useEffect TRIGGERED =====");
-    console.log("🔍 useEffect triggered - user:", user, "userId:", userId);
+    console.log("🔍 useEffect triggered - user:", user, "userId:", userId, "effectiveUserId:", effectiveUserId);
     console.log("🔍 User type:", typeof user, "UserId type:", typeof userId);
     console.log("🔍 User keys:", user ? Object.keys(user) : "No user");
     console.log("🔍 User ID from user object:", user?.id);
     console.log("🔍 User ID from store:", userId);
     
-    if (!user || !userId) {
+    if (!user || !(userId || effectiveUserId)) {
       console.log("🔍 User or userId missing, returning early");
       console.log("🔍 user exists:", !!user, "userId exists:", !!userId);
       console.log("🔍 user.id exists:", !!user?.id);
@@ -727,7 +771,7 @@ export default function Dashboard() {
 
         if (result.status_code === 200 && result.data?.jobs) {
           console.log("🔍 Total jobs from API:", result.data.jobs.length);
-          console.log("🔍 Current user ID:", userId);
+          console.log("🔍 Current user ID:", userId || effectiveUserId);
           console.log("🔍 User from store:", user?.id);
           
           const tasks: Task[] = result.data.jobs
@@ -736,7 +780,7 @@ export default function Dashboard() {
               
               // The API uses user_ref_id as the user identifier
               const jobPostedById = job.user_ref_id;
-              const currentUserId = userId?.toString();
+              const currentUserId = (userId || effectiveUserId)?.toString();
               
               // Use userId from store as the primary identifier
               const isNotPostedByUser = jobPostedById !== currentUserId;
@@ -872,7 +916,7 @@ export default function Dashboard() {
 
   // Fetch user's bids
   useEffect(() => {
-    if (!user || !userId) return;
+    if (!user || !(userId || effectiveUserId)) return;
 
     const fetchBids = async () => {
       try {
@@ -881,7 +925,7 @@ export default function Dashboard() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
-        const fetchResponse = await fetch(`${API_BASE}/get-user-bids/${userId}/`, {
+        const fetchResponse = await fetch(`${API_BASE}/get-user-bids/${userId || effectiveUserId}/`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -930,11 +974,11 @@ export default function Dashboard() {
     };
 
     fetchBids();
-  }, [user, userId]);
+  }, [user, userId, effectiveUserId]);
 
   // Fetch assigned tasks
   useEffect(() => {
-    if (!user || !userId) return;
+    if (!user || !(userId || effectiveUserId)) return;
 
     const fetchAssignedBids = async () => {
       try {
@@ -943,7 +987,7 @@ export default function Dashboard() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
-        const fetchResponse = await fetch(`${API_BASE}/get-user-assigned-bids/${userId}/`, {
+        const fetchResponse = await fetch(`${API_BASE}/get-user-assigned-bids/${userId || effectiveUserId}/`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -1011,7 +1055,7 @@ export default function Dashboard() {
     };
 
     fetchAssignedBids();
-  }, [user, userId]);
+  }, [user, userId, effectiveUserId]);
 
   // Fetch requested bids
   useEffect(() => {
@@ -1130,14 +1174,53 @@ export default function Dashboard() {
         const cacheKey = `completed_tasks_${userId}`;
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
-          const cachedData = JSON.parse(cached);
-          const cacheAge = Date.now() - cachedData.timestamp;
-          if (cacheAge < 300000) { // 5 minutes cache (completed tasks change less frequently)
-            console.log("Using cached completed tasks");
-            setCompletedTasks(cachedData.tasks);
-            setCompletedTasksLoading(false);
-            return;
-          }
+          try {
+            const cachedData = JSON.parse(cached);
+            const cacheAge = Date.now() - cachedData.timestamp;
+            const hasTasks = Array.isArray(cachedData.tasks) && cachedData.tasks.length > 0;
+            if (cacheAge < 300000 && hasTasks) { // 5 minutes cache and must have tasks
+              // Merge cache with session-stored and completed bids to include most recent completes
+              let mergedFromCache: Task[] = cachedData.tasks || [];
+              try {
+                const localRaw = sessionStorage.getItem("tasker_completed");
+                const localTasks: Task[] = localRaw ? JSON.parse(localRaw) : [];
+                const fromBids: Task[] = (requestedTasks || [])
+                  .filter((b) => {
+                    const s = String(b.status || "").toLowerCase();
+                    return s === "completed" || s === "done" || s === "closed";
+                  })
+                  .map((b) => ({
+                    id: String(b.task_id),
+                    title: b.task_title || "Untitled",
+                    description: b.task_description || "",
+                    budget: Number((b as any).job_budget) || 0,
+                    location: b.task_location || "",
+                    status: "completed",
+                    postedAt: b.created_at || "",
+                    completedDate: new Date().toLocaleDateString("en-GB"),
+                    rating: undefined,
+                    offers: 0,
+                    posted_by: b.posted_by || "Unknown",
+                    category: (b as any).job_category || "general",
+                    images: (b as any).images || [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+                    assignedToMe: true,
+                  } as Task));
+                const byId = new Map<string, Task>();
+                [...mergedFromCache, ...localTasks, ...fromBids].forEach((t) => byId.set(String(t.id), t));
+                mergedFromCache = Array.from(byId.values());
+              } catch {}
+
+              console.log("Using cached completed tasks (merged)");
+              setCompletedTasks(mergedFromCache);
+              // Refresh cache with merged list so a subsequent refresh keeps latest
+              localStorage.setItem(cacheKey, JSON.stringify({
+                tasks: mergedFromCache,
+                timestamp: Date.now()
+              }));
+              setCompletedTasksLoading(false);
+              return;
+            }
+          } catch {}
         }
 
         // Use the same fast endpoint as available tasks for consistency
@@ -1194,9 +1277,24 @@ export default function Dashboard() {
               jobStatus = "cancelled";
             }
             
-            // Determine if this job is assigned to current user (tasker)
-            const assignedId = job.assigned_tasker_id || job.assigned_user_id || job.assigned_to || job.accepted_bidder_id;
-            const assignedToMe = assignedId ? String(assignedId) === String(userId) : false;
+            // Normalize poster and tasker ids based on API field variations
+            const possiblePosterIds = [
+              job.user_ref_id,
+              job.posted_by_id,
+              job.user_id,
+              job.taskmanager_id,
+            ].filter((v: any) => v !== undefined && v !== null);
+            const possibleTaskerIds2 = [
+              job.assigned_tasker_id,
+              job.assigned_user_id,
+              job.assigned_to,
+              job.accepted_bidder_id,
+              job.tasker_id,
+              job.executor_id,
+            ].filter((v: any) => v !== undefined && v !== null);
+            const normalizedUserId2 = userId != null ? String(userId).trim() : "";
+            const posterIsMe = possiblePosterIds.some((v: any) => String(v).trim() === normalizedUserId2);
+            const assignedToMe = possibleTaskerIds2.some((v: any) => String(v).trim() === normalizedUserId2);
 
             return {
               id: job.job_id,
@@ -1221,32 +1319,80 @@ export default function Dashboard() {
                   }))
                 : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
               assignedToMe,
+              _posterIsMe: posterIsMe,
             };
           });
 
-          // Filter for completed tasks only and assigned to current user (tasker view)
-          const completedTasks = tasks.filter(task => task.status === "completed" && task.assignedToMe);
-          // Merge with session-stored completed tasks (fallback for API lag)
-          let merged = completedTasks;
+          // Build completed list prioritizing items the tasker explicitly marked complete (session-sourced)
+          let merged: Task[] = [];
           try {
             const raw = sessionStorage.getItem("tasker_completed");
-            if (raw) {
-              const local: Task[] = JSON.parse(raw);
+            const local: Task[] = raw ? JSON.parse(raw) : [];
+            if (Array.isArray(local) && local.length > 0) {
+              // Fallback enrich: include any API-completed tasks assigned to me
+              const apiCompletedForMe = tasks.filter(t => t.status === "completed" && t.assignedToMe);
               const map = new Map<string, Task>();
-              [...completedTasks, ...local].forEach(t => map.set(String(t.id), t));
+              [...local, ...apiCompletedForMe].forEach(t => map.set(String(t.id), t));
               merged = Array.from(map.values());
+            } else {
+              // No local record yet: fallback to API-completed tasks assigned to me
+              merged = tasks.filter(t => t.status === "completed" && t.assignedToMe);
+              // Also include any id present in session-stored tasker_completed even if API didn't mark assignment
+              try {
+                const raw2 = sessionStorage.getItem("tasker_completed");
+                const local2: Task[] = raw2 ? JSON.parse(raw2) : [];
+                if (Array.isArray(local2) && local2.length > 0) {
+                  const map2 = new Map<string, Task>();
+                  [...merged, ...local2].forEach(t => map2.set(String(t.id), t));
+                  merged = Array.from(map2.values());
+                }
+              } catch {}
+            }
+          } catch {
+            // On parse error, fallback to API-completed tasks assigned to me
+            merged = tasks.filter(t => t.status === "completed" && t.assignedToMe);
+          }
+
+          // Additional safety net: include COMPLETED items from My Bids even if job isn't in the jobs list
+          try {
+            const completedFromBids: Task[] = (requestedTasks || [])
+              .filter((b) => {
+                const statusStr = String(b.status || "").toLowerCase();
+                // Common completion indicators returned by bids endpoints
+                return statusStr === "completed" || statusStr === "done" || statusStr === "closed";
+              })
+              .map((b) => ({
+                id: String(b.task_id),
+                title: b.task_title || "Untitled",
+                description: b.task_description || "",
+                budget: Number((b as any).job_budget) || 0,
+                location: b.task_location || "",
+                status: "completed",
+                postedAt: b.created_at || "",
+                completedDate: new Date().toLocaleDateString("en-GB"),
+                rating: undefined,
+                offers: 0,
+                posted_by: b.posted_by || "Unknown",
+                category: (b as any).job_category || "general",
+                images: (b as any).images || [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+                assignedToMe: true,
+              } as Task));
+
+            if (completedFromBids.length > 0) {
+              const byId = new Map<string, Task>();
+              [...merged, ...completedFromBids].forEach((t) => byId.set(String(t.id), t));
+              merged = Array.from(byId.values());
             }
           } catch {}
+
+          // Save tasker-completed list only (poster-completed remains in My Tasks counts)
+          setCompletedTasks(merged);
+          // Cache only if we actually have completed tasks to avoid overwriting with empty
           if (merged.length > 0) {
-            console.log(`Found ${merged.length} completed tasks for user ${userId}`);
-            setCompletedTasks(merged);
-            // Cache the completed tasks
             localStorage.setItem(cacheKey, JSON.stringify({
               tasks: merged,
               timestamp: Date.now()
             }));
-          } else {
-            console.log("No completed tasks found");
           }
         } else {
           console.log("No jobs found in API response");
@@ -1270,6 +1416,7 @@ export default function Dashboard() {
           }
           return;
         }
+        // Do not clear existing list on fetch error; keep last known good state
         console.error("Failed to fetch completed tasks:", err);
       } finally {
         setCompletedTasksLoading(false);
@@ -1951,31 +2098,87 @@ export default function Dashboard() {
         {/* Mobile quick actions: Profile and Post */}
         {mobile && (
           <div className="md:hidden mb-3 flex items-center gap-3">
-            <Link href="/profile" className="flex-1">
-              <Button variant="outline" className="w-full h-10 rounded-xl border-gray-300 text-gray-800">
-                Profile
-              </Button>
-            </Link>
             <Link href="/post-task" className="flex-1">
-              <Button className="w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-700">
+              <Button className="w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white">
                 Post a Task
               </Button>
             </Link>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowNotifications((s) => !s)}
+                className="relative inline-flex items-center justify-center h-10 w-10 rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow transition"
+                aria-label="Notifications"
+                title="Notifications"
+              >
+                <Bell className="h-5 w-5 text-gray-700" />
+                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full text-[10px] bg-emerald-600 text-white">
+                  3
+                </span>
+              </button>
+            </div>
           </div>
         )}
 
         {/* Premium Post Task Button */}
         {/* Hide big CTA bar on small screens to avoid duplicate name/header block */}
         <div className="hidden md:flex justify-start mb-8 animate-fade-in-up">
-          <Link href="/post-task" passHref>
-            <Button className="group bg-gray-900 hover:bg-gray-800 text-white font-semibold px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 text-lg">
-              <span className="flex items-center gap-3">
-                <span className="text-xl group-hover:rotate-90 transition-transform duration-300">+</span>
-                Post a Task
+          <div className="flex items-center justify-between w-full gap-4">
+            <button
+              onClick={() => setShowNotifications((s) => !s)}
+              className="relative inline-flex items-center justify-center h-12 w-12 rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow transition"
+              aria-label="Notifications"
+              title="Notifications"
+            >
+              <Bell className="h-5 w-5 text-gray-700" />
+              <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full text-[10px] bg-emerald-600 text-white">
+                3
               </span>
-            </Button>
-          </Link>
+            </button>
+            <Link href="/post-task" passHref className="ml-auto">
+              <Button className="group bg-gray-900 hover:bg-gray-800 text-white font-semibold px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 text-lg">
+                <span className="flex items-center gap-3">
+                  <span className="text-xl group-hover:rotate-90 transition-transform duration-300">+</span>
+                  Post a Task
+                </span>
+              </Button>
+            </Link>
+          </div>
         </div>
+
+        {showNotifications && (
+          <div className="fixed right-6 top-24 z-50 w-[360px] max-w-[92vw] bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-emerald-50 to-green-50">
+              <div className="font-semibold text-gray-800">Notifications</div>
+              <button
+                className="h-8 w-8 inline-flex items-center justify-center rounded-full hover:bg-gray-100"
+                onClick={() => setShowNotifications(false)}
+                aria-label="Close"
+              >
+                <X className="h-4 w-4 text-gray-600" />
+              </button>
+            </div>
+            <div className="max-h-[60vh] overflow-auto">
+              {dummyNotifications.map((n) => (
+                <div key={n.id} className="px-4 py-3 flex items-start gap-3 hover:bg-gray-50">
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center text-white ${n.tone === 'success' ? 'bg-emerald-500' : n.tone === 'info' ? 'bg-blue-500' : 'bg-gray-400'}`}>
+                    <Bell className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium text-gray-900 truncate">{n.title}</div>
+                      <div className="text-xs text-gray-500 ml-2 whitespace-nowrap">{n.time}</div>
+                    </div>
+                    <div className="text-sm text-gray-600 line-clamp-2">{n.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="px-4 py-3 border-t bg-gray-50 flex gap-2">
+              <Button variant="outline" className="h-9 px-3 border-gray-300">Mark all read</Button>
+              <Button className="h-9 px-3 bg-emerald-600 hover:bg-emerald-700">View all</Button>
+            </div>
+          </div>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className={
@@ -2020,7 +2223,7 @@ export default function Dashboard() {
             }>
               <span className="text-2xl">🎉</span>
               <span className="hidden md:inline">Completed</span>
-              <span className="md:hidden">Done</span>
+              <span className="md:hidden">Completed</span>
               <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full text-[10px] bg-emerald-600 text-white shadow">{counts.completed}</span>
             </TabsTrigger>
             <TabsTrigger value="my-bids" className={
@@ -2101,52 +2304,42 @@ export default function Dashboard() {
 
           <TabsContent value="my-tasks" forceMount className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
             <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight border-b border-gray-200 pb-4">Tasks You've Posted</h2>
-            {/* Premium Summary strip */}
-            <div className="grid grid-cols-3 gap-4">
-              <button
-                onClick={() => setMyTasksFilter("in_progress")}
-                className={`rounded-xl p-4 text-center transition-all duration-200 hover:shadow-md border bg-gradient-to-br from-emerald-50 to-white ${
-                  myTasksFilter === "in_progress" ? "border-emerald-300 shadow" : "border-gray-200 hover:border-emerald-200"
-                }`}
-              >
-                <div className="text-sm font-semibold text-emerald-700 mb-1 flex items-center justify-center gap-2">
-                  <span>🚀</span>
-                  In Progress
+            {/* Premium Toolbar */}
+            <div className={`mb-3 rounded-2xl border border-gray-200 bg-white/70 supports-[backdrop-filter]:bg-white/60 backdrop-blur px-3 py-2 shadow-sm hover:shadow-md transition`}> 
+              <div className={`flex ${isMobile ? "flex-col gap-2" : "items-center gap-3"}`}>
+              <div className={`relative ${isMobile ? "w-full" : "w-80"}`}>
+                <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Input
+                  placeholder="Search your tasks..."
+                  value={myTasksQuery}
+                  onChange={(e) => setMyTasksQuery(e.target.value)}
+                  className={`pl-9 ${isMobile ? "h-10" : "h-9"}`}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Select value={myTasksFilter} onValueChange={(v) => setMyTasksFilter(v as any)}>
+                  <SelectTrigger className={`${isMobile ? "h-10" : "h-9"} w-44`}>
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+                {/* Date range temporarily removed */}
+                <Button variant="outline" className={`${isMobile ? "h-10" : "h-9"} border-gray-300`} onClick={() => { setMyTasksFilter("all"); setMyTasksQuery(""); }}>Clear</Button>
+              </div>
+              {!isMobile && (
+                <div className="ml-auto hidden md:flex items-center gap-2 pr-1">
+                  <span className="text-xs text-gray-500">Counts:</span>
+                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">In Progress {myTasksSummary.inProgress}</span>
+                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-700">Open {myTasksSummary.open}</span>
+                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">Completed {myTasksSummary.completed}</span>
                 </div>
-                <div className="text-3xl font-extrabold text-gray-900">{myTasksSummary.inProgress}</div>
-              </button>
-              <button
-                onClick={() => setMyTasksFilter("open")}
-                className={`rounded-xl p-4 text-center transition-all duration-200 hover:shadow-md border bg-gradient-to-br from-sky-50 to-white ${
-                  myTasksFilter === "open" ? "border-sky-300 shadow" : "border-gray-200 hover:border-sky-200"
-                }`}
-              >
-                <div className="text-sm font-semibold text-sky-700 mb-1 flex items-center justify-center gap-2">
-                  <span>📋</span>
-                  Open
-                </div>
-                <div className="text-3xl font-extrabold text-gray-900">{myTasksSummary.open}</div>
-              </button>
-              <button
-                onClick={() => setMyTasksFilter("completed")}
-                className={`rounded-xl p-4 text-center transition-all duration-200 hover:shadow-md border bg-gradient-to-br from-gray-50 to-white ${
-                  myTasksFilter === "completed" ? "border-gray-300 shadow" : "border-gray-200 hover:border-gray-300"
-                }`}
-              >
-                <div className="text-sm font-semibold text-gray-700 mb-1 flex items-center justify-center gap-2">
-                  <span>✅</span>
-                  Completed
-                </div>
-                <div className="text-3xl font-extrabold text-gray-900">{myTasksSummary.completed}</div>
-              </button>
-            </div>
-            <div className="text-right -mt-2">
-              <button 
-                onClick={() => setMyTasksFilter("all")} 
-                className="text-xs text-gray-500 hover:text-gray-700 transition-colors duration-200"
-              >
-                Clear filter
-              </button>
+              )}
+              </div>
             </div>
             {postedTasks.length === 0 ? (
               <Card>
@@ -2167,6 +2360,23 @@ export default function Dashboard() {
                     if (myTasksFilter === "in_progress") return t.status === "in_progress" && !t.deletion_status && !t.cancel_status;
                     if (myTasksFilter === "open") return t.status === "open" && !t.deletion_status && !t.cancel_status;
                     if (myTasksFilter === "completed") return t.status === "completed";
+                    return true;
+                  })
+                  .filter((t) => {
+                    const q = myTasksQuery.trim().toLowerCase();
+                    if (!q) return true;
+                    return (
+                      String(t.title || "").toLowerCase().includes(q) ||
+                      String(t.description || "").toLowerCase().includes(q) ||
+                      String(t.location || "").toLowerCase().includes(q)
+                    );
+                  })
+                  .filter((t) => {
+                    if (!dateRange?.from && !dateRange?.to) return true;
+                    const d = t.postedAt ? new Date(t.postedAt.split('/').reverse().join('-')) : undefined;
+                    if (!d || isNaN(d as any)) return true;
+                    if (dateRange?.from && d < new Date(dateRange.from.toDateString())) return false;
+                    if (dateRange?.to && d > new Date(dateRange.to.toDateString())) return false;
                     return true;
                   })
                   .sort((a, b) => {
@@ -2713,7 +2923,7 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="completed" forceMount className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-green-200 pb-2">Completed Tasks</h2>
+            <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-green-200 pb-2">Completed</h2>
             {completedTasksLoading ? (
               <div className="min-h-[400px] flex items-center justify-center">
                 <div className="text-center">

@@ -44,6 +44,7 @@ const MainHeader: React.FC = () => {
     "/browse",
     "/browse-tasks",
     "/profile",
+    "/messages",
   ];
   if (isAuthenticated && pathname && hideOnPrefixes.some((p) => pathname.startsWith(p))) {
     return null;

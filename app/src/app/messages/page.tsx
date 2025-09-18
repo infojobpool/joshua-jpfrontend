@@ -87,6 +87,7 @@ export default function MessagesPage() {
         const chatSummaries: ChatSummary[] = [];
 
         // Fetch details for each chat
+        const validChatIds: string[] = [];
         for (const chatId of chatIds) {
           try {
             const response = await axiosInstance.get(`/get-messages/${chatId}`);
@@ -108,12 +109,27 @@ export default function MessagesPage() {
                   lastMessage: lastMessage.description,
                   lastMessageTime: lastMessage.tstamp,
                 });
+                validChatIds.push(chatId);
               }
             }
           } catch (error) {
-            console.error(`Error fetching chat ${chatId}:`, error);
+            // If the chat no longer exists (404), silently drop it from the list
+            // and clean it from localStorage to avoid repeated errors
+            // For other errors, log a compact warning
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const status = (error as any)?.response?.status;
+            if (status !== 404) {
+              console.warn(`Messages list: could not fetch chat ${chatId} (status ${status ?? 'unknown'})`);
+              // keep it, may be a transient issue
+              validChatIds.push(chatId);
+            }
           }
         }
+
+        // Persist the cleaned list of valid chat ids
+        try {
+          localStorage.setItem("userChats", JSON.stringify(validChatIds));
+        } catch {}
 
         // Sort chats by last message time (newest first)
         chatSummaries.sort((a, b) => {
@@ -131,6 +147,15 @@ export default function MessagesPage() {
     };
 
     fetchChats();
+    // Restore scroll position if available
+    try {
+      const y = sessionStorage.getItem('messagesScrollY');
+      if (y) {
+        setTimeout(() => {
+          window.scrollTo(0, parseInt(y, 10));
+        }, 0);
+      }
+    } catch {}
   }, [userId, router]);
 
   const handleSignOut = () => {
@@ -172,29 +197,6 @@ export default function MessagesPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <Toaster position="top-right" />
-      <header className="border-b bg-white">
-        <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-            <span className="text-primary">JobPool</span>
-          </Link>
-          <nav className="hidden md:flex gap-6">
-            <Link href="/dashboard" className="text-sm font-medium hover:underline underline-offset-4">
-              Dashboard
-            </Link>
-            <Link href="/browse" className="text-sm font-medium hover:underline underline-offset-4">
-              Browse Tasks
-            </Link>
-            <Link href="/post-task" className="text-sm font-medium hover:underline underline-offset-4">
-              Post a Task
-            </Link>
-          </nav>
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" onClick={handleSignOut}>
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </header>
       <main className="flex-1 container py-6 md:py-10 px-4 md:px-6">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-6">
@@ -231,8 +233,13 @@ export default function MessagesPage() {
                   chat.lastMessage.toLowerCase().includes(searchTerm.toLowerCase())
                 )
                 .map((chat) => (
-                <Card key={chat.chatid} className="hover:shadow-md transition-shadow cursor-pointer">
-                  <Link href={`/messages/${chat.chatid}`}>
+                <Card key={chat.chatid} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => {
+                  try {
+                    sessionStorage.setItem('messagesScrollY', String(window.scrollY));
+                    sessionStorage.setItem('messagesLastChatId', chat.chatid);
+                  } catch {}
+                  router.push(`/messages/${chat.chatid}`);
+                }}>
                     <CardContent className="p-4">
                       <div className="flex items-center gap-4">
                         <Avatar className="h-12 w-12">
@@ -256,7 +263,6 @@ export default function MessagesPage() {
                         </div>
                       </div>
                     </CardContent>
-                  </Link>
                 </Card>
               ))}
             </div>
