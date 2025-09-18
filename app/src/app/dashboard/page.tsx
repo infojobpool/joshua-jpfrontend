@@ -61,9 +61,11 @@ interface Task {
   posted_by: string;
   category: string;
   job_completion_status?: string;
-  deletion_status: boolean;
-  cancel_status: boolean;
   images?: Image[];
+  deletion_status?: boolean;
+  cancel_status?: boolean;
+  // New: flag to indicate this job is assigned to the current user (tasker)
+  assignedToMe?: boolean;
 }
 
 interface Bid {
@@ -237,6 +239,8 @@ export default function Dashboard() {
   const [cancellationReason, setCancellationReason] = useState("");
   const [activeTab, setActiveTab] = useState<string>("available");
 
+  // Safe user for UI (prevents null TS checks in JSX)
+  const safeUser = user ?? { name: "User", email: "", profile_image: "" } as any;
 
   // Close profile dropdown when clicking outside
   useEffect(() => {
@@ -550,6 +554,10 @@ export default function Dashboard() {
             // All other tasks remain "open"
             
 
+            // Determine if this job is assigned to current user (tasker)
+            const assignedId = job.assigned_tasker_id || job.assigned_user_id || job.assigned_to || job.accepted_bidder_id;
+            const assignedToMe = assignedId ? String(assignedId) === String(userId) : false;
+
             return {
               id: job.job_id.toString(),
               title: job.job_title || "Untitled",
@@ -573,6 +581,7 @@ export default function Dashboard() {
                     alt: `Job image ${index + 1}`,
                   }))
                 : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+              assignedToMe,
             };
           });
 
@@ -1185,12 +1194,16 @@ export default function Dashboard() {
               jobStatus = "cancelled";
             }
             
+            // Determine if this job is assigned to current user (tasker)
+            const assignedId = job.assigned_tasker_id || job.assigned_user_id || job.assigned_to || job.accepted_bidder_id;
+            const assignedToMe = assignedId ? String(assignedId) === String(userId) : false;
+
             return {
-              id: job.job_id.toString(),
-              title: job.job_title || "Untitled",
-              description: job.job_description || "No description provided.",
+              id: job.job_id,
+              title: job.job_title,
+              description: job.job_description,
               budget: Number(job.job_budget) || 0,
-              location: job.job_location || "Unknown",
+              location: job.job_location || "",
               status: jobStatus,
               postedAt: (() => {
                 const raw = job.job_due_date || job.created_at;
@@ -1207,20 +1220,29 @@ export default function Dashboard() {
                     alt: `Job image ${index + 1}`,
                   }))
                 : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+              assignedToMe,
             };
           });
 
-          // Filter for completed tasks only
-          const completedTasks = tasks.filter(task => task.status === "completed");
-          
-          if (completedTasks.length > 0) {
-            console.log(`Found ${completedTasks.length} completed tasks for user ${userId}`);
-            
-            setCompletedTasks(completedTasks);
-            
+          // Filter for completed tasks only and assigned to current user (tasker view)
+          const completedTasks = tasks.filter(task => task.status === "completed" && task.assignedToMe);
+          // Merge with session-stored completed tasks (fallback for API lag)
+          let merged = completedTasks;
+          try {
+            const raw = sessionStorage.getItem("tasker_completed");
+            if (raw) {
+              const local: Task[] = JSON.parse(raw);
+              const map = new Map<string, Task>();
+              [...completedTasks, ...local].forEach(t => map.set(String(t.id), t));
+              merged = Array.from(map.values());
+            }
+          } catch {}
+          if (merged.length > 0) {
+            console.log(`Found ${merged.length} completed tasks for user ${userId}`);
+            setCompletedTasks(merged);
             // Cache the completed tasks
             localStorage.setItem(cacheKey, JSON.stringify({
-              tasks: completedTasks,
+              tasks: merged,
               timestamp: Date.now()
             }));
           } else {
@@ -1295,21 +1317,28 @@ export default function Dashboard() {
         // Optimistic UI update
         const completedTask = assignedTasks.find((task) => task.id === jobId);
         if (completedTask) {
-        setAssignedTasks((prev) => prev.filter((task) => task.id !== jobId));
-        setCompletedTasks((prev) => [
-          ...prev,
-          {
-              ...completedTask,
+          setAssignedTasks((prev) => prev.filter((task) => String(task.id) !== String(jobId)));
+          const newCompleted = {
+            ...completedTask,
             status: "completed",
             completedDate: new Date().toLocaleDateString("en-GB"),
-          },
-        ]);
+            assignedToMe: true,
+          } as Task;
+          setCompletedTasks((prev) => [
+            ...prev,
+            newCompleted,
+          ]);
+          try {
+            const raw = sessionStorage.getItem("tasker_completed");
+            const list: Task[] = raw ? JSON.parse(raw) : [];
+            const deduped = [...list.filter(t => String(t.id) !== String(newCompleted.id)), newCompleted];
+            sessionStorage.setItem("tasker_completed", JSON.stringify(deduped));
+          } catch {}
         }
-
-        // Navigate to completion page
-        setTimeout(() => {
-        router.push(`/tasks/${jobId}/complete`);
-        }, 500);
+        
+        // Switch to Completed tab and signal refresh
+        try { sessionStorage.setItem("refresh_completed", "1"); } catch {}
+        setActiveTab("completed");
       } else {
         toast.dismiss(`complete-${jobId}`);
         console.error("Error marking task as complete:", result);
@@ -1677,21 +1706,21 @@ export default function Dashboard() {
                     className="flex items-center gap-3 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 px-4 py-3 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200"
                   >
                     <div className="relative">
-                      {user && user.profile_image ? (
+                      {safeUser.profile_image ? (
                         <img 
-                          src={user.profile_image} 
-                          alt={(user && user.name) || "Profile"} 
+                          src={safeUser.profile_image} 
+                          alt={safeUser.name || "Profile"} 
                           className="h-8 w-8 rounded-full object-cover border-2 border-gray-200"
                         />
                       ) : (
                         <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-sm font-semibold border-2 border-gray-200">
-                          {(user && user.name ? user.name.charAt(0) : "U")}
+                          {safeUser.name?.charAt(0) || "U"}
                         </div>
                       )}
                       <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
                     </div>
                     <div className="flex flex-col items-start">
-                      <span className="text-sm font-medium text-gray-900">{user?.name || "User"}</span>
+                      <span className="text-sm font-medium text-gray-900">{safeUser.name || "User"}</span>
                       <span className="text-xs text-gray-500">Online</span>
                     </div>
                     <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
@@ -1700,20 +1729,20 @@ export default function Dashboard() {
                     <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl border border-gray-200 py-3 z-50 animate-fade-in-up">
                       <div className="px-4 py-3 border-b border-gray-100">
                         <div className="flex items-center gap-3">
-                          {user?.profile_image ? (
+                          {safeUser.profile_image ? (
                             <img 
-                              src={user.profile_image} 
-                              alt={user?.name || "Profile"} 
+                              src={safeUser.profile_image || ""} 
+                              alt={safeUser.name || "Profile"} 
                               className="h-10 w-10 rounded-full object-cover border-2 border-gray-200"
                             />
                           ) : (
                             <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-lg font-semibold border-2 border-gray-200">
-                              {user?.name?.charAt(0) || "U"}
+                              {(safeUser.name ? safeUser.name.charAt(0) : "U")}
                             </div>
                           )}
                           <div>
-                            <p className="font-medium text-gray-900">{user?.name || "User"}</p>
-                            <p className="text-sm text-gray-500">{user?.email || ""}</p>
+                            <p className="font-medium text-gray-900">{safeUser.name || "User"}</p>
+                            <p className="text-sm text-gray-500">{safeUser.email || ""}</p>
                           </div>
                         </div>
                       </div>
@@ -1772,20 +1801,20 @@ export default function Dashboard() {
                 className="flex items-center gap-3 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 font-medium px-6 py-4 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
               >
                 <div className="relative">
-                  {user?.profile_image ? (
+                  {safeUser.profile_image ? (
                     <img 
-                      src={user.profile_image} 
-                      alt={user?.name || "Profile"} 
+                      src={safeUser.profile_image} 
+                      alt={safeUser.name || "Profile"} 
                       className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
                     />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-lg font-semibold border-2 border-gray-200">
-                      {user?.name?.charAt(0) || "U"}
+                      {safeUser.name?.charAt(0) || "U"}
                     </div>
                   )}
                   <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
                 </div>
-                <span className="text-lg">{user?.name || "User"}</span>
+                <span className="text-lg">{safeUser.name || "User"}</span>
                 <ChevronDown className={`h-5 w-5 transition-transform duration-300 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
               
@@ -1793,20 +1822,20 @@ export default function Dashboard() {
                 <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl border border-gray-200 py-3 z-50 animate-fade-in-up">
                   <div className="px-4 py-3 border-b border-gray-100">
                     <div className="flex items-center gap-3">
-                      {user?.profile_image ? (
+                      {safeUser.profile_image ? (
                         <img 
-                          src={user.profile_image} 
-                          alt={user?.name || "Profile"} 
+                          src={safeUser.profile_image} 
+                          alt={safeUser.name || "Profile"} 
                           className="h-12 w-12 rounded-full object-cover border-2 border-gray-200"
                         />
                       ) : (
                         <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-xl font-semibold border-2 border-gray-200">
-                          {user?.name?.charAt(0) || "U"}
+                          {safeUser.name?.charAt(0) || "U"}
                         </div>
                       )}
                       <div>
-                        <p className="font-medium text-gray-900 text-lg">{user?.name || "User"}</p>
-                        <p className="text-sm text-gray-500">{user?.email || ""}</p>
+                        <p className="font-medium text-gray-900 text-lg">{safeUser.name || "User"}</p>
+                        <p className="text-sm text-gray-500">{safeUser.email || ""}</p>
                       </div>
                     </div>
                   </div>
@@ -1849,21 +1878,21 @@ export default function Dashboard() {
                 className="flex items-center gap-3 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 px-4 py-3 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200"
               >
                 <div className="relative">
-                  {user?.profile_image ? (
+                  {safeUser.profile_image ? (
                     <img 
-                      src={user.profile_image} 
-                      alt={user?.name || "Profile"} 
+                      src={safeUser.profile_image} 
+                      alt={safeUser.name || "Profile"} 
                       className="h-8 w-8 rounded-full object-cover border-2 border-gray-200"
                     />
                   ) : (
                     <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-sm font-semibold border-2 border-gray-200">
-                      {user?.name?.charAt(0) || "U"}
+                      {safeUser.name?.charAt(0) || "U"}
                     </div>
                   )}
                   <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
                 </div>
                 <div className="flex flex-col items-start">
-                  <span className="text-sm font-medium text-gray-900">{user?.name || "User"}</span>
+                  <span className="text-sm font-medium text-gray-900">{safeUser.name || "User"}</span>
                   <span className="text-xs text-gray-500">Online</span>
                 </div>
                 <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
@@ -1872,20 +1901,20 @@ export default function Dashboard() {
                 <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl border border-gray-200 py-3 z-50 animate-fade-in-up">
                   <div className="px-4 py-3 border-b border-gray-100">
                     <div className="flex items-center gap-3">
-                      {user && user.profile_image ? (
+                      {safeUser && safeUser.profile_image ? (
                         <img 
-                          src={user.profile_image} 
-                          alt={(user && user.name) || "Profile"} 
+                          src={safeUser.profile_image || ""} 
+                          alt={(safeUser.name) || "Profile"} 
                           className="h-10 w-10 rounded-full object-cover border-2 border-gray-200"
                         />
                       ) : (
                         <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-lg font-semibold border-2 border-gray-200">
-                          {(user && user.name ? user.name.charAt(0) : "U")}
+                          {(safeUser.name ? safeUser.name.charAt(0) : "U")}
                         </div>
                       )}
                       <div>
-                        <p className="font-medium text-gray-900">{user?.name || "User"}</p>
-                        <p className="text-sm text-gray-500">{user?.email || ""}</p>
+                        <p className="font-medium text-gray-900">{safeUser.name || "User"}</p>
+                        <p className="text-sm text-gray-500">{safeUser.email || ""}</p>
                       </div>
                     </div>
                   </div>
@@ -2000,9 +2029,8 @@ export default function Dashboard() {
                 : "px-4 py-2 rounded-xl text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm whitespace-nowrap"
             }>
               <span className="text-2xl">💰</span>
-              <span className="hidden md:inline">My Bids</span>
-              <span className="md:hidden">Bids</span>
-              <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full text-[10px] bg-indigo-600 text-white shadow">{counts.bids}</span>
+              <span className="hidden md:inline">My All Bids</span>
+              <span className="md:hidden">All Bids</span>
             </TabsTrigger>
           </TabsList>
 
@@ -2270,35 +2298,19 @@ export default function Dashboard() {
                             </Button>
                           ) : task.status === "in_progress" ? (
                             <>
-                              <Button
-                                onClick={() => handleMyTaskComplete(task.id)}
-                                disabled={completingTaskId === task.id}
-                                className={`w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}
-                              >
-                                {completingTaskId === task.id ? (
-                                  <div className="flex items-center gap-2">
-                                    {isMobile ? (
-                                      <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-                                    ) : (
-                                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                    )}
-                                    <span className={isMobile ? 'text-sm' : ''}>Completing...</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-lg">✅</span>
-                                    <span>Mark as Complete</span>
-                                  </div>
-                                )}
-                              </Button>
-                              <Link href={`/tasks/${task.id}`} className="w-full">
-                                <Button variant="outline" className={`w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-lg">👁️</span>
-                                    <span>View Details</span>
-                                  </div>
-                                </Button>
-                              </Link>
+                              <div className="flex flex-wrap gap-2 w-full items-center">
+                                <Link href={`/tasks/${task.id}`} className="shrink-0">
+                                  <Button
+                                    variant="outline"
+                                    className={`w-auto border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-md shadow transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}
+                                  >
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-base">👁️</span>
+                                      <span>View Details</span>
+                                    </div>
+                                  </Button>
+                                </Link>
+                              </div>
                             </>
                           ) : (
                             <Link href={`/tasks/${task.id}`} className="w-full">
@@ -2663,9 +2675,9 @@ export default function Dashboard() {
                       </div>
 
                       {/* Action buttons */}
-                      <div className={`flex gap-2 mt-4 ${isMobile ? "flex-col" : "flex-row"}`}>
-                        <Link href={`/tasks/${task.id}`} className="flex-1" onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); } catch {} }}>
-                          <Button variant="outline" className={`w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
+                      <div className={`flex flex-wrap items-center gap-2 mt-4`}>
+                        <Link href={`/tasks/${task.id}`} className="shrink-0" onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); } catch {} }}>
+                          <Button variant="outline" className={`w-auto border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}>
                             <div className="flex items-center gap-2">
                               <span className="text-lg">👁️</span>
                               <span>View Details</span>
@@ -2673,34 +2685,23 @@ export default function Dashboard() {
                           </Button>
                         </Link>
                         <Button
-                          className={`flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}
-                          onClick={() => handleComplete(task.id)}
-                          disabled={completingTaskId === task.id}
-                        >
-                          {completingTaskId === task.id ? (
-                            <div className="flex items-center gap-2">
-                              {isMobile ? (
-                                <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-                              ) : (
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              )}
-                              <span className={isMobile ? 'text-sm' : ''}>Completing...</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">✅</span>
-                              <span>Complete</span>
-                            </div>
-                          )}
-                        </Button>
-                        <Button
                           variant="outline"
-                          className={`flex-1 border-2 border-red-300 hover:border-red-400 text-red-600 hover:text-red-700 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}
+                          className={`shrink-0 w-auto border-2 border-red-300 hover:border-red-400 text-red-600 hover:text-red-700 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}
                           onClick={() => handleAssignedCancelClick(task.id)}
                         >
                           <div className="flex items-center gap-2">
                             <span className="text-lg">❌</span>
                             <span>Cancel</span>
+                          </div>
+                        </Button>
+                        <Button
+                          className={`shrink-0 w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}
+                          onClick={() => handleComplete(task.id)}
+                          disabled={completingTaskId === task.id}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">✅</span>
+                            <span>Mark as Complete</span>
                           </div>
                         </Button>
                       </div>
@@ -2816,7 +2817,7 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="my-bids" forceMount className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-purple-200 pb-2">My Bids</h2>
+            <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-purple-200 pb-2">My All Bids</h2>
             {requestedTasks.length === 0 ? (
               <div className="min-h-[400px] flex items-center justify-center">
                 <Card className="w-full max-w-2xl mx-auto shadow-lg border-0 bg-gradient-to-br from-purple-50 to-violet-50">
@@ -2860,14 +2861,6 @@ export default function Dashboard() {
                           )}
                           {bid.task_cancelled && (
                             <Badge className="bg-red-600 text-white text-xs px-2 py-1">❌ Cancelled</Badge>
-                          )}
-                          {!bid.task_deleted && !bid.task_cancelled && (
-                            <Badge
-                              variant="outline"
-                              className="border-purple-500 text-purple-600 bg-purple-50 text-xs px-2 py-1"
-                            >
-                              📝 Requested
-                            </Badge>
                           )}
                         </div>
                       </div>

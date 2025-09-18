@@ -78,6 +78,7 @@ interface Review {
   comment: string;
   date: string;
   isEditing: boolean;
+  jobTitle?: string;
 }
 
 export default function ProfilePage() {
@@ -202,6 +203,7 @@ export default function ProfilePage() {
               comment: review.comment || "",
               date: review.timestamp ? formatDate(review.timestamp) : "",
               isEditing: false,
+              jobTitle: review.job_title || review.task_title || review.title || review?.job?.job_title || "",
             }))
           );
         }
@@ -835,7 +837,7 @@ export default function ProfilePage() {
                               </div>
                               <div className="flex items-center space-x-2 text-sm font-bold">
                                 <Briefcase className="h-4 w-4 text-muted-foreground" />
-                                <span>Job Title: {profileuser.job_title}</span>
+                                <span>Job Title: {review.jobTitle || profileuser.job_title || "—"}</span>
                               </div>
                             </div>
                           </div>

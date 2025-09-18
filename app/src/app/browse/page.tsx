@@ -27,6 +27,7 @@ export default function BrowseTasksPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoadingTasks, setIsLoadingTasks] = useState(false)
+  const [myBidTaskIds, setMyBidTaskIds] = useState<Set<string>>(new Set())
 
   // Define task interface for type safety
   interface Task {
@@ -176,6 +177,25 @@ export default function BrowseTasksPage() {
     }
   };
 
+  // Load user's bid task ids from localStorage
+  const loadMyBidTaskIds = () => {
+    try {
+      const stored = localStorage.getItem("bids")
+      const userRaw = localStorage.getItem("user")
+      const currentUserId = userRaw ? (JSON.parse(userRaw)?.id?.toString() || "") : ""
+      if (stored && currentUserId) {
+        const bids: Array<{ job_id: string; bidder_id?: string | number }> = JSON.parse(stored)
+        const mine = bids.filter(b => (b.bidder_id !== undefined ? String(b.bidder_id) === currentUserId : true))
+        const ids = new Set<string>(mine.map(b => String(b.job_id)))
+        setMyBidTaskIds(ids)
+      } else {
+        setMyBidTaskIds(new Set())
+      }
+    } catch (_) {
+      setMyBidTaskIds(new Set())
+    }
+  }
+
   // Fetch categories from API
   const fetchCategories = async () => {
     try {
@@ -206,6 +226,9 @@ export default function BrowseTasksPage() {
     // Only show active tasks that are not deleted
     if (task.deletion_status || !task.status) return false;
 
+    // Hide tasks I already bid on
+    if (myBidTaskIds.has(String(task.id))) return false
+
     // Filter by search term
     const matchesSearch =
       searchTerm === "" ||
@@ -231,10 +254,18 @@ export default function BrowseTasksPage() {
       setUser(JSON.parse(storedUser))
     }
     setLoading(false)
-    
+
     // Fetch tasks and categories
     fetchTasks()
     fetchCategories()
+
+    // Load my bids initially
+    loadMyBidTaskIds()
+
+    // Refresh my bids when tab gains focus (after submitting from task page)
+    const onFocus = () => loadMyBidTaskIds()
+    window.addEventListener("focus", onFocus)
+    return () => window.removeEventListener("focus", onFocus)
   }, [])
 
   // Fix the linting error by adding the proper type to the event parameter
