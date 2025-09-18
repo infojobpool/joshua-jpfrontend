@@ -50,43 +50,5 @@
       "type": "image/png",
       "form_factor": "wide"
     }
-  ],
-  "shortcuts": [
-    {
-      "name": "Post a Task",
-      "short_name": "Post Task",
-      "description": "Post a new task for taskers to complete",
-      "url": "/post-task",
-      "icons": [
-        {
-          "src": "/icons/shortcut-post.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "Browse Tasks",
-      "short_name": "Browse",
-      "description": "Browse available tasks",
-      "url": "/browse-tasks",
-      "icons": [
-        {
-          "src": "/icons/shortcut-browse.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "Dashboard",
-      "short_name": "Dashboard",
-      "description": "View your dashboard",
-      "url": "/dashboard",
-      "icons": [
-        {
-          "src": "/icons/shortcut-dashboard.png",
-          "sizes": "96x96"
-        }
-      ]
-    }
   ]
 }
