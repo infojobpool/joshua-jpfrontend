@@ -187,31 +187,40 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           }
         }
 
-        // Use fetch API with longer timeout for better reliability
+        // Primary request (fetch) with reasonable timeout and Axios fallback
         const token = localStorage.getItem('token');
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
           console.log("Task loading timeout reached, aborting request");
           controller.abort();
-        }, 30000); // 30s timeout - more generous for slow networks
+        }, 12000); // 12s timeout – faster feedback
 
-        const response = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          credentials: 'omit',
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+        let data: ApiJobResponse;
+        try {
+          const response = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            credentials: 'omit',
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          data = await response.json();
+        } catch (primaryErr) {
+          // Fallback to axios instance (may have different infra/routing)
+          console.warn("Primary task fetch failed, trying fallback via axiosInstance", primaryErr);
+          try {
+            const axiosResp = await axiosInstance.get(`/get-job/${id}/`);
+            data = axiosResp.data as ApiJobResponse;
+          } catch (fallbackErr) {
+            throw fallbackErr;
+          }
         }
-
-        const data: ApiJobResponse = await response.json();
 
         if (data.status_code !== 200) {
           throw new Error(data.message);

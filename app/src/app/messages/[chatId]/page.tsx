@@ -55,6 +55,7 @@ export default function ChatPage() {
   const [chatInfo, setChatInfo] = useState<ChatInfo | null>(null)
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const [otherUserName, setOtherUserName] = useState("")
+  const inputRef = useRef<HTMLInputElement | null>(null)
 
 
 
@@ -578,7 +579,17 @@ export default function ChatPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push('/messages')}
+            onClick={() => {
+              const backTaskId = searchParams?.get('task_id') || chatInfo?.task?.id || ''
+              if (backTaskId) {
+                router.push(`/tasks/${backTaskId}`)
+                return
+              }
+              try {
+                sessionStorage.setItem('messagesReturnFromChat', '1')
+              } catch {}
+              router.push('/messages')
+            }}
             className="mr-6 hover:bg-gray-100/80 p-3 rounded-full transition-all duration-200 group"
           >
             <ArrowLeft className="h-6 w-6 text-gray-600 group-hover:text-blue-600 transition-colors" />
@@ -731,6 +742,13 @@ export default function ChatPage() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
+                onFocus={() => {
+                  // Ensure the input is visible when the keyboard opens on mobile
+                  setTimeout(() => {
+                    inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  }, 50)
+                }}
+                ref={inputRef}
                 className="w-full border-2 border-gray-200/50 focus:border-blue-500 rounded-3xl px-4 md:px-6 py-3 md:py-5 bg-gray-50/60 focus:bg-white pr-16 md:pr-20 text-base md:text-lg font-medium shadow-xl transition-all duration-200 backdrop-blur-sm"
                 disabled={sending}
               />
