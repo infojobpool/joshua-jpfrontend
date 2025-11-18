@@ -439,27 +439,14 @@ export function OffersSection({
 
       if (response.data.status_code === 200) {
         toast.success(response.data.message || "Bid accepted successfully");
-        
-        // Update task status immediately to show in My Tasks
-        const updatedTask = {
-          ...task,
-          status: "in_progress",
-          assignedTasker: offer.tasker,
-          accepted_bidder_id: offer.tasker.id,
-          assigned_tasker_id: offer.tasker.id
-        };
-        
-        // Update sessionStorage to reflect the change
-        try {
-          const existingTasks = JSON.parse(sessionStorage.getItem("user_tasks") || "[]");
-          const updatedTasks = existingTasks.map((t: any) => 
-            t.id === task.id ? updatedTask : t
-          );
-          sessionStorage.setItem("user_tasks", JSON.stringify(updatedTasks));
-        } catch (e) {
-          console.warn("Failed to update sessionStorage:", e);
-        }
-        
+
+        /**
+         * ⚠️ Do NOT mark the task as in-progress yet.
+         * We only want to transition once the payment is successfully captured.
+         * Otherwise, cancelled/failed Razorpay payments would still show the task
+         * as in progress which confuses both taskers and posters.
+         */
+
         // Store tasker_id and taskposter_id in sessionStorage
         sessionStorage.setItem("paymentData", JSON.stringify({
           taskId: task.id,
