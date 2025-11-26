@@ -126,7 +126,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         if (!userId) return;
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout - more reasonable
+          const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout - faster feedback
           
           const response = await axiosInstance.get(`/profile?user_id=${userId}`, {
             signal: controller.signal
@@ -195,47 +195,56 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         // Check cache first and render immediately
         const cacheKey = `task_${id}`;
         const cached = localStorage.getItem(cacheKey);
+        let hasCachedData = false;
         if (cached) {
           const cachedData = JSON.parse(cached);
           const cacheAge = Date.now() - cachedData.timestamp;
           if (cacheAge < 300000) { // 5 minutes cache
-            console.log("Using cached task data");
+            console.log("Using cached task data, refreshing in background");
             setTask(cachedData.task);
             setLoading(false);
-            // Continue to refresh in background
+            hasCachedData = true;
+            // Continue to refresh in background (don't block UI)
           }
         }
 
-        // Primary request (fetch) with reasonable timeout and Axios fallback
+        // Primary request with shorter timeout for faster feedback
         const token = localStorage.getItem('token');
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
           console.log("Task loading timeout reached, aborting request");
           controller.abort();
-        }, 12000); // 12s timeout – faster feedback
+        }, 6000); // 6s timeout – faster feedback
 
         let data: ApiJobResponse;
         try {
-          const response = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            credentials: 'omit',
-            signal: controller.signal
-          });
+          // Try axiosInstance first (it has better error handling and circuit breaker)
+          const axiosResp = await Promise.race([
+            axiosInstance.get(`/get-job/${id}/`, { signal: controller.signal }),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Request timeout')), 6000)
+            )
+          ]) as any;
           clearTimeout(timeoutId);
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-          }
-          data = await response.json();
-        } catch (primaryErr) {
-          // Fallback to axios instance (may have different infra/routing)
-          console.warn("Primary task fetch failed, trying fallback via axiosInstance", primaryErr);
+          data = axiosResp.data as ApiJobResponse;
+        } catch (primaryErr: any) {
+          clearTimeout(timeoutId);
+          // Fallback to fetch API
+          console.warn("Axios task fetch failed, trying fallback via fetch", primaryErr);
           try {
-            const axiosResp = await axiosInstance.get(`/get-job/${id}/`);
-            data = axiosResp.data as ApiJobResponse;
+            const response = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              credentials: 'omit',
+              signal: controller.signal
+            });
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`);
+            }
+            data = await response.json();
           } catch (fallbackErr) {
             throw fallbackErr;
           }
@@ -383,9 +392,20 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           task: mappedTask,
           timestamp: Date.now()
         }));
+        
+        // Only set loading to false if we didn't already show cached data
+        if (!hasCachedData) {
+          setLoading(false);
+        }
       } catch (error: any) {
         console.error("Error loading task data:", error);
-        if ((error as any)?.name === 'AbortError') {
+        // If we had cached data, don't show error - just log it
+        if (hasCachedData) {
+          console.warn("Background refresh failed, using cached data:", error);
+          return; // Keep showing cached data
+        }
+        
+        if ((error as any)?.name === 'AbortError' || error?.message === 'Request timeout') {
           console.log("Task loading was aborted due to timeout");
           // Try to load from cache as fallback
           try {
@@ -393,20 +413,21 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
             if (cached) {
               const cachedData = JSON.parse(cached);
               setTask(cachedData.task);
+              setLoading(false);
               console.log("Loaded task from cache after timeout");
               return; // Don't set task to null if we loaded from cache
             }
           } catch (cacheError) {
             console.warn("Failed to load from cache:", cacheError);
           }
-          setTask(null); // Only set to null if no cache available
+          toast.error("Request timed out. Please try again.");
+          setTask(null);
         } else {
           toast.error(
-            error.response?.data?.detail || "Failed to load task details"
+            error.response?.data?.detail || error?.message || "Failed to load task details"
           );
           setTask(null);
         }
-      } finally {
         setLoading(false);
       }
     };
@@ -424,28 +445,28 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         // Use fetch API for better performance
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout - faster feedback
 
         // Check if current user is the task poster
         const isTaskPoster = task && task.poster && task.poster.id === userId;
         
-        let response;
-        if (isTaskPoster) {
-          // Task poster: try to fetch all bids for this task using axiosInstance
-          console.log("Fetching all bids for task (user is poster)");
+        // Use axiosInstance with timeout for better performance
+        let data: ApiBidResponse;
+        try {
+          const axiosResponse = await Promise.race([
+            axiosInstance.get(`/get-bids/${id}/`, { signal: controller.signal }),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Request timeout')), 8000)
+            )
+          ]) as any;
+          clearTimeout(timeoutId);
+          data = axiosResponse.data as ApiBidResponse;
+        } catch (error: any) {
+          clearTimeout(timeoutId);
+          // Fallback to user bids endpoint if task bids endpoint fails
+          console.warn("Failed to fetch task bids, falling back to user bids:", error);
           try {
-            const axiosResponse = await axiosInstance.get(`/get-bids/${id}/`, {
-              signal: controller.signal
-            });
-            // Convert axios response to fetch-like response
-            response = {
-              ok: true,
-              json: () => Promise.resolve(axiosResponse.data)
-            } as any;
-          } catch (error) {
-            console.warn("Failed to fetch task bids, falling back to user bids:", error);
-            // Fallback to user bids if task bids endpoint fails
-            response = await fetch(`https://api.jobpool.in/api/v1/get-user-bids/${userId}/`, {
+            const fallbackResponse = await fetch(`https://api.jobpool.in/api/v1/get-user-bids/${userId}/`, {
               method: 'GET',
               headers: {
                 'Authorization': `Bearer ${token}`,
@@ -454,40 +475,15 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               credentials: 'omit',
               signal: controller.signal
             });
-          }
-        } else {
-          // Non-poster: try to fetch all bids for this task (amounts hidden in UI)
-          console.log("Fetching all task bids for non-poster (privacy enforced in UI)");
-          try {
-            const axiosResponse = await axiosInstance.get(`/get-bids/${id}/`, {
-              signal: controller.signal
-            });
-            // Convert axios response to fetch-like response
-            response = {
-              ok: true,
-              json: () => Promise.resolve(axiosResponse.data)
-            } as any;
-          } catch (error) {
-            console.warn("Failed to fetch all task bids, falling back to user's bids:", error);
-            response = await fetch(`https://api.jobpool.in/api/v1/get-user-bids/${userId}/`, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-              },
-              credentials: 'omit',
-              signal: controller.signal
-            });
+            if (!fallbackResponse.ok) {
+              throw new Error(`HTTP ${fallbackResponse.status}`);
+            }
+            data = await fallbackResponse.json();
+          } catch (fallbackErr) {
+            throw fallbackErr;
           }
         }
 
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const data: ApiBidResponse = await response.json();
         console.log("Raw API response for bids:", data); // Debug log
 
         if (data.status_code !== 200) {
