@@ -1190,6 +1190,21 @@ export default function Dashboard() {
       try {
         setCompletedTasksLoading(true);
         
+        const cacheKey = `completed_tasks_${userId}`;
+        
+        // Check cache first (5 min TTL) - use it as fallback if API fails
+        let cachedTasks: Task[] = [];
+        try {
+          const cached = localStorage.getItem(cacheKey);
+          if (cached) {
+            const cachedData = JSON.parse(cached);
+            const cacheAge = Date.now() - cachedData.timestamp;
+            if (cacheAge < 300000 && Array.isArray(cachedData.tasks)) { // 5 minutes
+              cachedTasks = cachedData.tasks;
+              console.log("Using cached completed tasks while fetching fresh data");
+            }
+          }
+        } catch {}
         
         // Use the same fast endpoint as available tasks for consistency
         const token = localStorage.getItem('token');
@@ -1197,112 +1212,144 @@ export default function Dashboard() {
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
         console.log("Fetching completed tasks from get-user-jobs...");
-        const fetchResponse = await fetch(`${API_BASE}/get-user-jobs/${userId}/`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          credentials: 'omit',
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!fetchResponse.ok) {
-          console.warn("Get user jobs failed with status:", fetchResponse.status);
-          // Show fallback message for database connection issues
-          if (fetchResponse.status >= 500) {
-            toast.error("Server is experiencing high load. Please try again in a moment.");
-          }
-          return;
-        }
-
-        const result = await fetchResponse.json();
-
-        if (result.status_code === 200 && result.data?.jobs) {
-          // First, get the basic task data
-          const tasks: Task[] = result.data.jobs.map((job: any) => {
-            let jobStatus = "open";
-            
-            // Check if this task has a paid order - use correct field name
-            const hasPaidOrder = taskOrders.some(order => {
-              const orderTaskId = order.job_id || order.postId || order.post_id || order.task_id;
-              // Status 1 = Completed/Paid, Status 0 = Processing
-              // TEMPORARY FIX: Treat status 0 as paid since backend isn't updating to status 1
-              const isPaid = order.status === 1 || order.status === "1" || order.status === 0;
-              const isMatching = orderTaskId === job.job_id.toString();
-              
-              return isMatching && isPaid;
-            });
-            
-            // Determine job status based on completion and payment
-            if (job.job_completion_status === 1) {
-              jobStatus = "completed";
-            } else if (hasPaidOrder) {
-              jobStatus = "in_progress";
-            } else if (job.deletion_status || job.cancel_status) {
-              jobStatus = "cancelled";
-            }
-            
-            // Normalize poster and tasker ids based on API field variations
-            const possiblePosterIds = [
-              job.user_ref_id,
-              job.posted_by_id,
-              job.user_id,
-              job.taskmanager_id,
-            ].filter((v: any) => v !== undefined && v !== null);
-            const possibleTaskerIds2 = [
-              job.assigned_tasker_id,
-              job.assigned_user_id,
-              job.assigned_to,
-              job.accepted_bidder_id,
-              job.tasker_id,
-              job.executor_id,
-            ].filter((v: any) => v !== undefined && v !== null);
-            const normalizedUserId2 = userId != null ? String(userId).trim() : "";
-            const posterIsMe = possiblePosterIds.some((v: any) => String(v).trim() === normalizedUserId2);
-            const assignedToMe = possibleTaskerIds2.some((v: any) => String(v).trim() === normalizedUserId2);
-
-            return {
-              id: job.job_id,
-              title: job.job_title,
-              description: job.job_description,
-              budget: Number(job.job_budget) || 0,
-              location: job.job_location || "",
-              status: jobStatus,
-              postedAt: (() => {
-                const raw = job.job_due_date || job.created_at;
-                return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
-              })(),
-              completedDate: jobStatus === "completed" ? (() => {
-                const raw = job.updated_at || job.completed_at;
-                return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
-              })() : undefined,
-              images: job.images && Array.isArray(job.images) && job.images.length > 0
-                ? job.images.map((url: string, index: number) => ({
-                    id: `img${index + 1}`,
-                    url,
-                    alt: `Job image ${index + 1}`,
-                  }))
-                : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
-              assignedToMe,
-              _posterIsMe: posterIsMe,
-            };
+        let completedForMe: Task[] = [];
+        
+        try {
+          const fetchResponse = await fetch(`${API_BASE}/get-user-jobs/${userId}/`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            credentials: 'omit',
+            signal: controller.signal
           });
 
-          const completedForMe = tasks.filter((t) => t.status === "completed" && t.assignedToMe);
-          const mergedWithReviews = applyLocalPosterReviews(completedForMe);
-          setCompletedTasks(mergedWithReviews);
-        } else {
-          console.log("No jobs found in API response");
+          clearTimeout(timeoutId);
+
+          if (fetchResponse.ok) {
+            const result = await fetchResponse.json();
+
+            if (result.status_code === 200 && result.data?.jobs) {
+              // First, get the basic task data
+              const tasks: Task[] = result.data.jobs.map((job: any) => {
+                let jobStatus = "open";
+                
+                // Check if this task has a paid order - use correct field name
+                const hasPaidOrder = taskOrders.some(order => {
+                  const orderTaskId = order.job_id || order.postId || order.post_id || order.task_id;
+                  // Status 1 = Completed/Paid, Status 0 = Processing
+                  // TEMPORARY FIX: Treat status 0 as paid since backend isn't updating to status 1
+                  const isPaid = order.status === 1 || order.status === "1" || order.status === 0;
+                  const isMatching = orderTaskId === job.job_id.toString();
+                  
+                  return isMatching && isPaid;
+                });
+                
+                // Determine job status based on completion and payment
+                if (job.job_completion_status === 1) {
+                  jobStatus = "completed";
+                } else if (hasPaidOrder) {
+                  jobStatus = "in_progress";
+                } else if (job.deletion_status || job.cancel_status) {
+                  jobStatus = "cancelled";
+                }
+                
+                // Normalize poster and tasker ids based on API field variations
+                const possiblePosterIds = [
+                  job.user_ref_id,
+                  job.posted_by_id,
+                  job.user_id,
+                  job.taskmanager_id,
+                ].filter((v: any) => v !== undefined && v !== null);
+                const possibleTaskerIds2 = [
+                  job.assigned_tasker_id,
+                  job.assigned_user_id,
+                  job.assigned_to,
+                  job.accepted_bidder_id,
+                  job.tasker_id,
+                  job.executor_id,
+                ].filter((v: any) => v !== undefined && v !== null);
+                const normalizedUserId2 = userId != null ? String(userId).trim() : "";
+                const posterIsMe = possiblePosterIds.some((v: any) => String(v).trim() === normalizedUserId2);
+                const assignedToMe = possibleTaskerIds2.some((v: any) => String(v).trim() === normalizedUserId2);
+
+                return {
+                  id: job.job_id,
+                  title: job.job_title,
+                  description: job.job_description,
+                  budget: Number(job.job_budget) || 0,
+                  location: job.job_location || "",
+                  status: jobStatus,
+                  postedAt: (() => {
+                    const raw = job.job_due_date || job.created_at;
+                    return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
+                  })(),
+                  completedDate: jobStatus === "completed" ? (() => {
+                    const raw = job.updated_at || job.completed_at;
+                    return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
+                  })() : undefined,
+                  images: job.images && Array.isArray(job.images) && job.images.length > 0
+                    ? job.images.map((url: string, index: number) => ({
+                        id: `img${index + 1}`,
+                        url,
+                        alt: `Job image ${index + 1}`,
+                      }))
+                    : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+                  assignedToMe,
+                  _posterIsMe: posterIsMe,
+                };
+              });
+
+              completedForMe = tasks.filter((t) => t.status === "completed" && t.assignedToMe);
+            }
+          } else {
+            console.warn("Get user jobs failed with status:", fetchResponse.status);
+            if (fetchResponse.status >= 500) {
+              toast.error("Server is experiencing high load. Using cached data.");
+            }
+          }
+        } catch (fetchErr: any) {
+          if (fetchErr?.name === 'AbortError') {
+            console.log("⏰ Fetch completed tasks was aborted (timeout)");
+          } else {
+            console.error("Failed to fetch completed tasks:", fetchErr);
+          }
+        }
+
+        // Merge backend data with cache (backend takes priority, but cache fills gaps)
+        const byId = new Map<string, Task>();
+        // First add backend data
+        completedForMe.forEach(t => byId.set(String(t.id), t));
+        // Then add cached tasks that aren't in backend (to preserve old completions)
+        cachedTasks.forEach(t => {
+          if (!byId.has(String(t.id))) {
+            byId.set(String(t.id), t);
+          }
+        });
+        
+        const merged = Array.from(byId.values());
+        const mergedWithReviews = applyLocalPosterReviews(merged);
+        
+        setCompletedTasks(mergedWithReviews);
+        
+        // Update cache with merged data
+        if (mergedWithReviews.length > 0) {
+          localStorage.setItem(cacheKey, JSON.stringify({
+            tasks: mergedWithReviews,
+            timestamp: Date.now()
+          }));
         }
       } catch (err) {
-        if ((err as any)?.name === 'AbortError') {
-          console.log("⏰ Fetch completed tasks was aborted (timeout)");
-          return;
-        }
         console.error("Failed to fetch completed tasks:", err);
+        // Fallback to cache on any error
+        try {
+          const cached = localStorage.getItem(`completed_tasks_${userId}`);
+          if (cached) {
+            const cachedData = JSON.parse(cached);
+            setCompletedTasks(applyLocalPosterReviews(cachedData.tasks || []));
+          }
+        } catch {}
       } finally {
         setCompletedTasksLoading(false);
       }
@@ -1360,9 +1407,22 @@ export default function Dashboard() {
             ...prev,
             newCompleted,
           ]);
+          
+          // Update cache immediately
+          try {
+            const cacheKey = `completed_tasks_${userId}`;
+            const cached = localStorage.getItem(cacheKey);
+            const cachedData = cached ? JSON.parse(cached) : { tasks: [], timestamp: 0 };
+            const existingTasks = cachedData.tasks || [];
+            const updatedTasks = [...existingTasks.filter((t: Task) => String(t.id) !== String(jobId)), newCompleted];
+            localStorage.setItem(cacheKey, JSON.stringify({
+              tasks: updatedTasks,
+              timestamp: Date.now()
+            }));
+          } catch {}
         }
         
-        // Switch to Completed tab and signal refresh
+        // Switch to Completed tab
         setActiveTab("completed");
       } else {
         toast.dismiss(`complete-${jobId}`);
