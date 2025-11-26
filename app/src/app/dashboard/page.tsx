@@ -1181,36 +1181,150 @@ export default function Dashboard() {
     fetchRequestedBids();
   }, [user, userId]);
 
-  // Fetch completed tasks with deduplication
+  // Fetch completed tasks - no caching, rely on backend API
+  const fetchCompletedTasks = async () => {
+    if (!userId) return;
+    
+    try {
+      setCompletedTasksLoading(true);
+      
+      // Fetch directly from API - no caching
+      const token = localStorage.getItem('token');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+      console.log("Fetching completed tasks from API...");
+      let completedForMe: Task[] = [];
+      
+      try {
+        const fetchResponse = await fetch(`${API_BASE}/get-user-jobs/${userId}/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (fetchResponse.ok) {
+          const result = await fetchResponse.json();
+
+          if (result.status_code === 200 && result.data?.jobs) {
+            // First, get the basic task data
+            const tasks: Task[] = result.data.jobs.map((job: any) => {
+              let jobStatus = "open";
+              
+              // Check if this task has a paid order - use correct field name
+              const hasPaidOrder = taskOrders.some(order => {
+                const orderTaskId = order.job_id || order.postId || order.post_id || order.task_id;
+                // Status 1 = Completed/Paid, Status 0 = Processing
+                const isPaid = order.status === 1 || order.status === "1" || order.status === 0;
+                const isMatching = orderTaskId === job.job_id.toString();
+                
+                return isMatching && isPaid;
+              });
+              
+              // Determine job status based on completion and payment
+              if (job.job_completion_status === 1) {
+                jobStatus = "completed";
+              } else if (hasPaidOrder) {
+                jobStatus = "in_progress";
+              } else if (job.deletion_status || job.cancel_status) {
+                jobStatus = "cancelled";
+              }
+              
+              // Normalize poster and tasker ids based on API field variations
+              const possiblePosterIds = [
+                job.user_ref_id,
+                job.posted_by_id,
+                job.user_id,
+                job.taskmanager_id,
+              ].filter((v: any) => v !== undefined && v !== null);
+              const possibleTaskerIds2 = [
+                job.assigned_tasker_id,
+                job.assigned_user_id,
+                job.assigned_to,
+                job.accepted_bidder_id,
+                job.tasker_id,
+                job.executor_id,
+              ].filter((v: any) => v !== undefined && v !== null);
+              const normalizedUserId2 = userId != null ? String(userId).trim() : "";
+              const posterIsMe = possiblePosterIds.some((v: any) => String(v).trim() === normalizedUserId2);
+              const assignedToMe = possibleTaskerIds2.some((v: any) => String(v).trim() === normalizedUserId2);
+
+              return {
+                id: job.job_id,
+                title: job.job_title,
+                description: job.job_description,
+                budget: Number(job.job_budget) || 0,
+                location: job.job_location || "",
+                status: jobStatus,
+                job_completion_status: job.job_completion_status,
+                postedAt: (() => {
+                  const raw = job.job_due_date || job.created_at;
+                  return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
+                })(),
+                completedDate: jobStatus === "completed" ? (() => {
+                  const raw = job.updated_at || job.completed_at;
+                  return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
+                })() : undefined,
+                images: job.images && Array.isArray(job.images) && job.images.length > 0
+                  ? job.images.map((url: string, index: number) => ({
+                      id: `img${index + 1}`,
+                      url,
+                      alt: `Job image ${index + 1}`,
+                    }))
+                  : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+                assignedToMe,
+                _posterIsMe: posterIsMe,
+              };
+            });
+
+            // Include ALL completed tasks - both assigned to me AND posted by me
+            completedForMe = tasks.filter((t) => 
+              t.status === "completed" && (t.assignedToMe || t._posterIsMe)
+            );
+            console.log(`Found ${completedForMe.length} completed tasks from API (assigned: ${tasks.filter(t => t.status === "completed" && t.assignedToMe).length}, posted: ${tasks.filter(t => t.status === "completed" && t._posterIsMe).length})`);
+          }
+        } else {
+          console.warn("Get user jobs failed with status:", fetchResponse.status);
+          if (fetchResponse.status >= 500) {
+            toast.error("Server error. Please try again.");
+          }
+        }
+      } catch (fetchErr: any) {
+        if (fetchErr?.name === 'AbortError') {
+          console.log("⏰ Fetch completed tasks was aborted (timeout)");
+          toast.error("Request timed out. Please try again.");
+        } else {
+          console.error("Failed to fetch completed tasks:", fetchErr);
+          toast.error("Failed to load completed tasks. Please try again.");
+        }
+      }
+
+      // Use API data directly - no cache merging
+      const mergedWithReviews = applyLocalPosterReviews(completedForMe);
+      setCompletedTasks(mergedWithReviews);
+      
+    } catch (err) {
+      console.error("Failed to fetch completed tasks:", err);
+      toast.error("Failed to load completed tasks. Please try again.");
+    } finally {
+      setCompletedTasksLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!user || !userId) return;
-
-
-    const fetchCompletedTasks = async () => {
-      try {
-        setCompletedTasksLoading(true);
-        
-        const cacheKey = `completed_tasks_${userId}`;
-        
-        // Check cache - for completed tasks, we keep them forever (no expiration)
-        let cachedTasks: Task[] = [];
-        try {
-          const cached = localStorage.getItem(cacheKey);
-          if (cached) {
-            const cachedData = JSON.parse(cached);
-            if (Array.isArray(cachedData.tasks)) {
-              cachedTasks = cachedData.tasks;
-              console.log(`Using ${cachedTasks.length} cached completed tasks while fetching fresh data`);
-            }
-          }
-        } catch {}
-        
-        // Use the same fast endpoint as available tasks for consistency
-        const token = localStorage.getItem('token');
+    fetchCompletedTasks();
+  }, [user, userId, taskOrders]);
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-        console.log("Fetching completed tasks from get-user-jobs...");
+        console.log("Fetching completed tasks from API...");
         let completedForMe: Task[] = [];
         
         try {
@@ -1238,7 +1352,6 @@ export default function Dashboard() {
                 const hasPaidOrder = taskOrders.some(order => {
                   const orderTaskId = order.job_id || order.postId || order.post_id || order.task_id;
                   // Status 1 = Completed/Paid, Status 0 = Processing
-                  // TEMPORARY FIX: Treat status 0 as paid since backend isn't updating to status 1
                   const isPaid = order.status === 1 || order.status === "1" || order.status === 0;
                   const isMatching = orderTaskId === job.job_id.toString();
                   
@@ -1280,6 +1393,7 @@ export default function Dashboard() {
                   budget: Number(job.job_budget) || 0,
                   location: job.job_location || "",
                   status: jobStatus,
+                  job_completion_status: job.job_completion_status,
                   postedAt: (() => {
                     const raw = job.job_due_date || job.created_at;
                     return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
@@ -1301,64 +1415,34 @@ export default function Dashboard() {
               });
 
               // Include ALL completed tasks - both assigned to me AND posted by me
-              // This ensures we see all completed tasks forever
               completedForMe = tasks.filter((t) => 
                 t.status === "completed" && (t.assignedToMe || t._posterIsMe)
               );
-              console.log(`Found ${completedForMe.length} completed tasks (assigned: ${tasks.filter(t => t.status === "completed" && t.assignedToMe).length}, posted: ${tasks.filter(t => t.status === "completed" && t._posterIsMe).length})`);
+              console.log(`Found ${completedForMe.length} completed tasks from API (assigned: ${tasks.filter(t => t.status === "completed" && t.assignedToMe).length}, posted: ${tasks.filter(t => t.status === "completed" && t._posterIsMe).length})`);
             }
           } else {
             console.warn("Get user jobs failed with status:", fetchResponse.status);
             if (fetchResponse.status >= 500) {
-              toast.error("Server is experiencing high load. Using cached data.");
+              toast.error("Server error. Please try again.");
             }
           }
         } catch (fetchErr: any) {
           if (fetchErr?.name === 'AbortError') {
             console.log("⏰ Fetch completed tasks was aborted (timeout)");
+            toast.error("Request timed out. Please try again.");
           } else {
             console.error("Failed to fetch completed tasks:", fetchErr);
+            toast.error("Failed to load completed tasks. Please try again.");
           }
         }
 
-        // Merge backend data with cache (backend takes priority, but cache fills gaps)
-        const byId = new Map<string, Task>();
-        // First add backend data
-        completedForMe.forEach(t => byId.set(String(t.id), t));
-        // Then add cached tasks that aren't in backend (to preserve old completions)
-        cachedTasks.forEach(t => {
-          if (!byId.has(String(t.id))) {
-            byId.set(String(t.id), t);
-          }
-        });
-        
-        const merged = Array.from(byId.values());
-        const mergedWithReviews = applyLocalPosterReviews(merged);
-        
+        // Use API data directly - no cache merging
+        const mergedWithReviews = applyLocalPosterReviews(completedForMe);
         setCompletedTasks(mergedWithReviews);
         
-        // Update cache with merged data - completed tasks persist forever
-        // Only update if we have tasks (don't clear cache if API returns empty)
-        if (mergedWithReviews.length > 0) {
-          localStorage.setItem(cacheKey, JSON.stringify({
-            tasks: mergedWithReviews,
-            timestamp: Date.now()
-          }));
-          console.log(`Saved ${mergedWithReviews.length} completed tasks to permanent cache`);
-        } else if (cachedTasks.length > 0) {
-          // If API returned empty but we have cached tasks, keep the cache
-          console.log(`API returned no completed tasks, keeping ${cachedTasks.length} cached tasks`);
-        }
       } catch (err) {
         console.error("Failed to fetch completed tasks:", err);
-        // Fallback to cache on any error
-        try {
-          const cached = localStorage.getItem(`completed_tasks_${userId}`);
-          if (cached) {
-            const cachedData = JSON.parse(cached);
-            setCompletedTasks(applyLocalPosterReviews(cachedData.tasks || []));
-          }
-        } catch {}
+        toast.error("Failed to load completed tasks. Please try again.");
       } finally {
         setCompletedTasksLoading(false);
       }
@@ -1418,22 +1502,11 @@ export default function Dashboard() {
             newCompleted,
           ]);
           
-          // Update cache immediately - completed tasks persist forever
-          try {
-            const cacheKey = `completed_tasks_${userId}`;
-            const cached = localStorage.getItem(cacheKey);
-            const cachedData = cached ? JSON.parse(cached) : { tasks: [], timestamp: 0 };
-            const existingTasks = cachedData.tasks || [];
-            // Remove old entry if exists, then add new one
-            const updatedTasks = [...existingTasks.filter((t: Task) => String(t.id) !== String(jobId)), newCompleted];
-            localStorage.setItem(cacheKey, JSON.stringify({
-              tasks: updatedTasks,
-              timestamp: Date.now()
-            }));
-            console.log(`Added task ${jobId} to completed tasks cache (total: ${updatedTasks.length})`);
-          } catch (e) {
-            console.error("Failed to update completed tasks cache:", e);
-          }
+          // Refresh completed tasks from API after marking as complete
+          // No local cache - rely on backend
+          setTimeout(() => {
+            fetchCompletedTasks();
+          }, 1000);
         }
         
         // Switch to Completed tab
@@ -1490,21 +1563,11 @@ export default function Dashboard() {
             return [...prev, newCompleted];
           });
           
-          // Update cache immediately
-          try {
-            const cacheKey = `completed_tasks_${userId}`;
-            const cached = localStorage.getItem(cacheKey);
-            const cachedData = cached ? JSON.parse(cached) : { tasks: [], timestamp: 0 };
-            const existingTasks = cachedData.tasks || [];
-            const updatedTasks = [...existingTasks.filter((t: Task) => String(t.id) !== String(jobId)), newCompleted];
-            localStorage.setItem(cacheKey, JSON.stringify({
-              tasks: updatedTasks,
-              timestamp: Date.now()
-            }));
-            console.log(`Added posted task ${jobId} to completed tasks cache (total: ${updatedTasks.length})`);
-          } catch (e) {
-            console.error("Failed to update completed tasks cache:", e);
-          }
+          // Refresh completed tasks from API after marking as complete
+          // No local cache - rely on backend
+          setTimeout(() => {
+            fetchCompletedTasks();
+          }, 1000);
         }
         
         // Update the posted task status
