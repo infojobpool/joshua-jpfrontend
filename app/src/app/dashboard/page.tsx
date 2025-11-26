@@ -184,8 +184,12 @@ export default function Dashboard() {
       if (!raw) return tasks;
       const map = JSON.parse(raw);
       return tasks.map((task) =>
-        map[task.id]
-          ? { ...task, rating: map[task.id].rating, review_comment: map[task.id].comment }
+        map[String(task.id)]
+          ? {
+              ...task,
+              rating: map[String(task.id)].rating,
+              review_comment: map[String(task.id)].comment,
+            }
           : task
       );
     } catch (error) {

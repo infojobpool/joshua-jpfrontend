@@ -352,6 +352,9 @@ interface ReviewDetails {
   timestamp?: string;
   taskId: string;
   taskerId: string;
+  taskTitle?: string;
+  posterId: string;
+  posterName?: string;
 }
 
 interface OffersSectionProps {
@@ -520,18 +523,21 @@ export function OffersSection({
         comment: reviewComment,
       });
       toast.success("Task marked complete and review submitted");
-      const submittedReview = {
+          const submittedReview: ReviewDetails = {
         rating: reviewRating,
         comment: reviewComment,
         timestamp: new Date().toISOString(),
         taskId: task.id,
         taskerId: offer.tasker.id,
+            taskTitle: task.title,
+            posterId: task.poster.id,
+            posterName: task.poster.name,
       };
       onTaskCompleted?.(submittedReview);
       try {
-        const raw = localStorage.getItem("poster_reviews");
+            const raw = localStorage.getItem("poster_reviews");
         const parsed = raw ? JSON.parse(raw) : {};
-        parsed[task.id] = submittedReview;
+            parsed[String(task.id)] = submittedReview;
         localStorage.setItem("poster_reviews", JSON.stringify(parsed));
       } catch (storageError) {
         console.warn("Failed to persist poster review locally:", storageError);

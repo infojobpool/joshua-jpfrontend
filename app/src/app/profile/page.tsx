@@ -196,16 +196,17 @@ export default function ProfilePage() {
         });
 
         if (Array.isArray(data.reviews)) {
-          setReviews(
-            data.reviews.map((review: any, index: number) => ({
-              id: index + 1,
-              rating: review.rating || 0,
-              comment: review.comment || "",
-              date: review.timestamp ? formatDate(review.timestamp) : "",
-              isEditing: false,
-              jobTitle: review.job_title || review.task_title || review.title || review?.job?.job_title || "",
-            }))
-          );
+          const normalizedReviews = data.reviews.map((review: any, index: number) => ({
+            id: index + 1,
+            rating: review.rating || 0,
+            comment: review.comment || "",
+            date: review.timestamp ? formatDate(review.timestamp) : "",
+            isEditing: false,
+            jobTitle: review.job_title || review.task_title || review.title || review?.job?.job_title || "",
+          }));
+
+          const mergedWithLocal = mergeLocalPosterReviews(normalizedReviews, effectiveUserId, formatDate);
+          setReviews(mergedWithLocal);
         }
       } catch (err: any) {
         setError("Failed to load profile");
@@ -271,6 +272,42 @@ export default function ProfilePage() {
     setTempAvatar(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+    }
+  };
+
+  const mergeLocalPosterReviews = (
+    existingReviews: Review[],
+    profileOwnerId: string,
+    formatter: (date: string) => string
+  ): Review[] => {
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem("poster_reviews") : null;
+      if (!raw) return existingReviews;
+      const map = JSON.parse(raw);
+      const localEntries = Object.values(map).filter(
+        (entry: any) => String(entry.posterId) === String(profileOwnerId)
+      ) as Array<any>;
+
+      if (!localEntries.length) return existingReviews;
+
+      const localReviews = localEntries.map((entry, idx) => ({
+        id: existingReviews.length + idx + 1,
+        rating: entry.rating || 0,
+        comment: entry.comment || "",
+        date: entry.timestamp ? formatter(entry.timestamp) : "",
+        isEditing: false,
+        jobTitle: entry.taskTitle || "Task",
+      }));
+
+      const deduped = new Map<string, Review>();
+      [...existingReviews, ...localReviews].forEach((review) => {
+        const key = `${review.jobTitle}-${review.comment}-${review.rating}-${review.date}`;
+        deduped.set(key, review);
+      });
+      return Array.from(deduped.values());
+    } catch (error) {
+      console.warn("Failed to merge local poster reviews into profile:", error);
+      return existingReviews;
     }
   };
 
