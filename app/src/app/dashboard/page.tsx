@@ -1192,16 +1192,15 @@ export default function Dashboard() {
         
         const cacheKey = `completed_tasks_${userId}`;
         
-        // Check cache first (5 min TTL) - use it as fallback if API fails
+        // Check cache - for completed tasks, we keep them forever (no expiration)
         let cachedTasks: Task[] = [];
         try {
           const cached = localStorage.getItem(cacheKey);
           if (cached) {
             const cachedData = JSON.parse(cached);
-            const cacheAge = Date.now() - cachedData.timestamp;
-            if (cacheAge < 300000 && Array.isArray(cachedData.tasks)) { // 5 minutes
+            if (Array.isArray(cachedData.tasks)) {
               cachedTasks = cachedData.tasks;
-              console.log("Using cached completed tasks while fetching fresh data");
+              console.log(`Using ${cachedTasks.length} cached completed tasks while fetching fresh data`);
             }
           }
         } catch {}
@@ -1301,7 +1300,12 @@ export default function Dashboard() {
                 };
               });
 
-              completedForMe = tasks.filter((t) => t.status === "completed" && t.assignedToMe);
+              // Include ALL completed tasks - both assigned to me AND posted by me
+              // This ensures we see all completed tasks forever
+              completedForMe = tasks.filter((t) => 
+                t.status === "completed" && (t.assignedToMe || t._posterIsMe)
+              );
+              console.log(`Found ${completedForMe.length} completed tasks (assigned: ${tasks.filter(t => t.status === "completed" && t.assignedToMe).length}, posted: ${tasks.filter(t => t.status === "completed" && t._posterIsMe).length})`);
             }
           } else {
             console.warn("Get user jobs failed with status:", fetchResponse.status);
@@ -1333,12 +1337,17 @@ export default function Dashboard() {
         
         setCompletedTasks(mergedWithReviews);
         
-        // Update cache with merged data
+        // Update cache with merged data - completed tasks persist forever
+        // Only update if we have tasks (don't clear cache if API returns empty)
         if (mergedWithReviews.length > 0) {
           localStorage.setItem(cacheKey, JSON.stringify({
             tasks: mergedWithReviews,
             timestamp: Date.now()
           }));
+          console.log(`Saved ${mergedWithReviews.length} completed tasks to permanent cache`);
+        } else if (cachedTasks.length > 0) {
+          // If API returned empty but we have cached tasks, keep the cache
+          console.log(`API returned no completed tasks, keeping ${cachedTasks.length} cached tasks`);
         }
       } catch (err) {
         console.error("Failed to fetch completed tasks:", err);
@@ -1409,18 +1418,22 @@ export default function Dashboard() {
             newCompleted,
           ]);
           
-          // Update cache immediately
+          // Update cache immediately - completed tasks persist forever
           try {
             const cacheKey = `completed_tasks_${userId}`;
             const cached = localStorage.getItem(cacheKey);
             const cachedData = cached ? JSON.parse(cached) : { tasks: [], timestamp: 0 };
             const existingTasks = cachedData.tasks || [];
+            // Remove old entry if exists, then add new one
             const updatedTasks = [...existingTasks.filter((t: Task) => String(t.id) !== String(jobId)), newCompleted];
             localStorage.setItem(cacheKey, JSON.stringify({
               tasks: updatedTasks,
               timestamp: Date.now()
             }));
-          } catch {}
+            console.log(`Added task ${jobId} to completed tasks cache (total: ${updatedTasks.length})`);
+          } catch (e) {
+            console.error("Failed to update completed tasks cache:", e);
+          }
         }
         
         // Switch to Completed tab
@@ -1456,6 +1469,44 @@ export default function Dashboard() {
       if (response.data.status_code === 200) {
         toast.dismiss(`my-complete-${jobId}`);
         toast.success("Task marked as complete!");
+        
+        // Find the completed task
+        const completedTask = postedTasks.find((task) => task.id === jobId);
+        if (completedTask) {
+          const newCompleted = {
+            ...completedTask,
+            status: "completed",
+            job_completion_status: 1,
+            completedDate: new Date().toLocaleDateString("en-GB"),
+            _posterIsMe: true, // Mark as posted by me
+          } as Task;
+          
+          // Add to completed tasks list
+          setCompletedTasks((prev) => {
+            const exists = prev.some(t => String(t.id) === String(jobId));
+            if (exists) {
+              return prev.map(t => String(t.id) === String(jobId) ? newCompleted : t);
+            }
+            return [...prev, newCompleted];
+          });
+          
+          // Update cache immediately
+          try {
+            const cacheKey = `completed_tasks_${userId}`;
+            const cached = localStorage.getItem(cacheKey);
+            const cachedData = cached ? JSON.parse(cached) : { tasks: [], timestamp: 0 };
+            const existingTasks = cachedData.tasks || [];
+            const updatedTasks = [...existingTasks.filter((t: Task) => String(t.id) !== String(jobId)), newCompleted];
+            localStorage.setItem(cacheKey, JSON.stringify({
+              tasks: updatedTasks,
+              timestamp: Date.now()
+            }));
+            console.log(`Added posted task ${jobId} to completed tasks cache (total: ${updatedTasks.length})`);
+          } catch (e) {
+            console.error("Failed to update completed tasks cache:", e);
+          }
+        }
+        
         // Update the posted task status
         setPostedTasks((prev) =>
           prev.map((task) =>
