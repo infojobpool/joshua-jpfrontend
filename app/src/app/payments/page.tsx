@@ -10,7 +10,7 @@ import { PaymentFailed } from "@/components/payment-failed"; // Adjust path
 import { Task } from "../types"; // Adjust path to your types
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import axiosInstance from "../../lib/axiosInstance"; // Adjust path to your axiosInstance
+import axiosInstance, { resetCircuitBreaker } from "../../lib/axiosInstance"; // Adjust path to your axiosInstance
 
 // Mock task data (replace with actual task data, e.g., via API or props)
 const mockTask: Task = {
@@ -82,7 +82,19 @@ export default function PaymentPage() {
       setRazorpayLoaded(true);
       console.log("Razorpay loaded on mount");
     }
+    // Reset circuit breaker on payment page mount to allow fresh attempts
+    resetCircuitBreaker();
   }, []);
+
+  const clearPaymentSession = () => {
+    try {
+      sessionStorage.removeItem("paymentData");
+      sessionStorage.removeItem("acceptedBidder");
+      sessionStorage.removeItem("acceptedBidRemoval");
+    } catch (err) {
+      console.warn("Failed to clear payment session data:", err);
+    }
+  };
 
   // Fallback to query params or mock data if sessionStorage is empty
   const taskId = paymentData?.taskId || searchParams.get("taskId") || mockTask.id;
@@ -182,6 +194,7 @@ export default function PaymentPage() {
             setPaymentStatus(data.data.payment_status);
             if (data.data.payment_status === "captured") {
               console.log("Payment captured successfully");
+              clearPaymentSession();
               alert("Payment successful!");
               setShowPaymentModal(false);
               // Optionally fetch and display task order details
@@ -193,6 +206,7 @@ export default function PaymentPage() {
             console.error("Verification error:", err);
             setErrorMessage(err.message || "Payment verification failed");
             setShowPaymentFailed(true);
+            clearPaymentSession();
           }
         },
         prefill: {
@@ -208,6 +222,7 @@ export default function PaymentPage() {
             console.log("Razorpay modal dismissed");
             setErrorMessage("Payment cancelled by user");
             setShowPaymentFailed(true);
+            clearPaymentSession();
           },
         },
       };
@@ -232,6 +247,7 @@ export default function PaymentPage() {
       }
       setErrorMessage(err.message || "Failed to initiate payment");
       setShowPaymentFailed(true);
+      clearPaymentSession();
     } finally {
       setIsSubmitting(false);
     }
@@ -261,16 +277,21 @@ export default function PaymentPage() {
   const closeModal = () => {
     setShowPaymentModal(false);
     setShowPaymentFailed(false);
+    clearPaymentSession();
   };
 
   const handleRetry = () => {
+    // Reset circuit breaker before retrying
+    resetCircuitBreaker();
     setShowPaymentFailed(false);
+    setHasTriedOnce(false); // Reset retry flag
     handlePayment();
   };
 
   const handleGoHome = () => {
     router.push("/dashboard");
     closeModal();
+    clearPaymentSession();
   };
 
   console.log("Current state:", { showPaymentModal, showPaymentFailed, paymentStatus, errorMessage, razorpayLoaded });

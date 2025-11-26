@@ -58,6 +58,7 @@ interface Task {
   dueDate?: string;
   completedDate?: string;
   rating?: number;
+  review_comment?: string;
   offers: number;
   posted_by: string;
   category: string;
@@ -176,6 +177,22 @@ export default function Dashboard() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   // Store task orders to check payment status
   const [taskOrders, setTaskOrders] = useState<any[]>([]);
+
+  const applyLocalPosterReviews = (tasks: Task[]): Task[] => {
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem("poster_reviews") : null;
+      if (!raw) return tasks;
+      const map = JSON.parse(raw);
+      return tasks.map((task) =>
+        map[task.id]
+          ? { ...task, rating: map[task.id].rating, review_comment: map[task.id].comment }
+          : task
+      );
+    } catch (error) {
+      console.warn("Failed to merge local poster reviews:", error);
+      return tasks;
+    }
+  };
   
   // Fetch task orders to check payment status
   const fetchTaskOrders = async () => {
@@ -1211,10 +1228,11 @@ export default function Dashboard() {
               } catch {}
 
               console.log("Using cached completed tasks (merged)");
-              setCompletedTasks(mergedFromCache);
+              const mergedWithReviews = applyLocalPosterReviews(mergedFromCache);
+              setCompletedTasks(mergedWithReviews);
               // Refresh cache with merged list so a subsequent refresh keeps latest
               localStorage.setItem(cacheKey, JSON.stringify({
-                tasks: mergedFromCache,
+                tasks: mergedWithReviews,
                 timestamp: Date.now()
               }));
               setCompletedTasksLoading(false);
@@ -1386,11 +1404,12 @@ export default function Dashboard() {
           } catch {}
 
           // Save tasker-completed list only (poster-completed remains in My Tasks counts)
-          setCompletedTasks(merged);
+          const mergedWithReviews = applyLocalPosterReviews(merged);
+          setCompletedTasks(mergedWithReviews);
           // Cache only if we actually have completed tasks to avoid overwriting with empty
-          if (merged.length > 0) {
+          if (mergedWithReviews.length > 0) {
             localStorage.setItem(cacheKey, JSON.stringify({
-              tasks: merged,
+              tasks: mergedWithReviews,
               timestamp: Date.now()
             }));
           }
@@ -1408,7 +1427,7 @@ export default function Dashboard() {
             const cachedTasks = localStorage.getItem(fallbackCacheKey);
             if (cachedTasks) {
               const cachedData = JSON.parse(cachedTasks);
-              setCompletedTasks(cachedData.tasks);
+              setCompletedTasks(applyLocalPosterReviews(cachedData.tasks));
               console.log("Loaded completed tasks from cache after timeout");
             }
           } catch (cacheError) {
@@ -3007,6 +3026,12 @@ export default function Dashboard() {
                           <span className="text-xs">Rating: {task.rating || "Not rated"}/5</span>
                         </div>
                       </div>
+
+                    {task.review_comment && (
+                      <p className="mt-3 text-sm text-gray-700 italic border-l-4 border-green-200 pl-3">
+                        “{task.review_comment}”
+                      </p>
+                    )}
 
                       {/* Action button */}
                       <div className="mt-4">

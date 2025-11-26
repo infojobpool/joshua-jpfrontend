@@ -50,6 +50,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [reviewRating, setReviewRating] = useState<number>(5);
   const [reviewComment, setReviewComment] = useState<string>("");
+  const [posterReview, setPosterReview] = useState<{ rating: number; comment: string; timestamp?: string } | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
   const [showImageGallery, setShowImageGallery] = useState<boolean>(false);
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
@@ -60,6 +61,21 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [cancelReason, setCancelReason] = useState<string>("");
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
   const taskerId = offers.length > 0 ? offers[0].tasker.id : null;
+
+  useEffect(() => {
+    if (!task?.id) return;
+    try {
+      const raw = localStorage.getItem("poster_reviews");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed[task.id]) {
+          setPosterReview(parsed[task.id]);
+        }
+      }
+    } catch (error) {
+      console.warn("Failed to hydrate poster review from storage:", error);
+    }
+  }, [task?.id]);
 
   // Load user, profile, and sync bids
   useEffect(() => {
@@ -835,6 +851,15 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     }
   };
 
+  const handlePosterReviewCompleted = (details: { rating: number; comment: string; timestamp?: string }) => {
+    setPosterReview({ rating: details.rating, comment: details.comment, timestamp: details.timestamp });
+    setTask((prevTask) =>
+      prevTask
+        ? { ...prevTask, status: "completed", job_completion_status: 1 }
+        : prevTask
+    );
+  };
+
   const openImageGallery = (index: number) => {
     setCurrentImageIndex(index);
     setShowImageGallery(true);
@@ -992,6 +1017,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               isSubmitting={isSubmitting}
               taskerId={taskerId}
               completionStatus={task.job_completion_status}
+              existingReview={posterReview}
             />
             {/* Allow tasker to request cancellation */}
             {(!isTaskPoster && (task.status === "in_progress" || !!task.assignedTasker)) && (
@@ -1015,6 +1041,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               isSubmitting={isSubmitting}
               currentUserId={userId}
               blockSubmitInitial={!isTaskPoster && (task.status === "in_progress" || !!task.assignedTasker)}
+              onTaskCompleted={handlePosterReviewCompleted}
+              existingReview={posterReview}
             />
           </div>
           

@@ -10,6 +10,12 @@ import {
 } from "./ui/card";
 import { Textarea } from "./ui/textarea";
 
+interface PosterReview {
+  rating: number;
+  comment: string;
+  timestamp?: string;
+}
+
 interface ReviewSectionProps {
   isTaskPoster: boolean;
   taskStatus: boolean;
@@ -21,6 +27,7 @@ interface ReviewSectionProps {
   isSubmitting: boolean;
   taskerId: string | null;
   completionStatus: number;
+  existingReview?: PosterReview | null;
 }
 
 export function ReviewSection({
@@ -34,8 +41,31 @@ export function ReviewSection({
   isSubmitting,
   taskerId,
   completionStatus,
+  existingReview,
 }: ReviewSectionProps) {
-  if (!taskStatus || !isTaskPoster || !taskerId || completionStatus !== 1)
+  if (!isTaskPoster || !taskerId) return null;
+
+  if (existingReview) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Review</CardTitle>
+          <CardDescription>Thanks for reviewing the tasker.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2 text-yellow-500 font-semibold">
+            <Star className="h-4 w-4 fill-yellow-500" />
+            <span>{existingReview.rating}/5</span>
+          </div>
+          <p className="mt-3 text-sm text-gray-700 italic leading-relaxed">
+            “{existingReview.comment}”
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!taskStatus || completionStatus !== 1)
     return null;
 
   return (

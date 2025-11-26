@@ -346,6 +346,14 @@ interface Task {
   assignedTasker?: User;
 }
 
+interface ReviewDetails {
+  rating: number;
+  comment: string;
+  timestamp?: string;
+  taskId: string;
+  taskerId: string;
+}
+
 interface OffersSectionProps {
   task: Task;
   offers: Offer[];
@@ -360,6 +368,8 @@ interface OffersSectionProps {
   isSubmitting: boolean;
   currentUserId?: string;
   blockSubmitInitial?: boolean; // hint from parent to suppress form immediately
+  onTaskCompleted?: (details: ReviewDetails) => void;
+  existingReview?: Pick<ReviewDetails, "rating" | "comment" | "timestamp"> | null;
 }
 
 export function OffersSection({
@@ -376,6 +386,8 @@ export function OffersSection({
   isSubmitting,
   currentUserId,
   blockSubmitInitial = false,
+  onTaskCompleted,
+  existingReview,
 }: OffersSectionProps) {
   const [error, setError] = useState("");
   const router = useRouter();
@@ -493,7 +505,7 @@ export function OffersSection({
 
   const handleCompleteWithReview = async () => {
     if (!activeOfferId) return;
-    const offer = offers.find(o => o.id === activeOfferId);
+    const offer = offers.find((o) => o.id === activeOfferId);
     if (!offer) return;
     try {
       setCompleting(true);
@@ -508,6 +520,22 @@ export function OffersSection({
         comment: reviewComment,
       });
       toast.success("Task marked complete and review submitted");
+      const submittedReview = {
+        rating: reviewRating,
+        comment: reviewComment,
+        timestamp: new Date().toISOString(),
+        taskId: task.id,
+        taskerId: offer.tasker.id,
+      };
+      onTaskCompleted?.(submittedReview);
+      try {
+        const raw = localStorage.getItem("poster_reviews");
+        const parsed = raw ? JSON.parse(raw) : {};
+        parsed[task.id] = submittedReview;
+        localStorage.setItem("poster_reviews", JSON.stringify(parsed));
+      } catch (storageError) {
+        console.warn("Failed to persist poster review locally:", storageError);
+      }
       setCompleteOpen(false);
       setReviewComment("");
     } catch (e: any) {
@@ -588,9 +616,11 @@ export function OffersSection({
                   </p>
                 </div>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <p className="text-sm text-gray-700">{offer.message}</p>
-                {(offer.status === "accepted" || (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) || (selectedFromSession && selectedFromSession === offer.tasker.id)) && (
+                {(offer.status === "accepted" ||
+                  (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) ||
+                  (selectedFromSession && selectedFromSession === offer.tasker.id)) && (
                   <div className="flex items-center gap-2">
                     <span className="rounded-full bg-green-100 text-green-700 px-3 py-1 text-xs font-medium">Selected</span>
                   </div>
@@ -619,8 +649,33 @@ export function OffersSection({
                   >
                     Message
                   </Button>
+                  { (offer.status === "accepted" ||
+                      (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) ||
+                      (selectedFromSession && selectedFromSession === offer.tasker.id)) &&
+                    task.status === "in_progress" &&
+                    !existingReview && (
+                      <Button
+                        size="sm"
+                        className="w-full sm:flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() => openCompleteModal(offer.id)}
+                      >
+                        Mark Complete & Review
+                      </Button>
+                    )}
                 </div>
               )}
+              {existingReview &&
+                (offer.status === "accepted" ||
+                  (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) ||
+                  (selectedFromSession && selectedFromSession === offer.tasker.id)) && (
+                  <div className="mt-3 rounded-xl border border-green-100 bg-green-50 p-4 text-sm text-gray-700 space-y-1">
+                    <p className="font-semibold flex items-center gap-2">
+                      <span className="text-yellow-500">★ {existingReview.rating}/5</span>
+                      <span>Your review</span>
+                    </p>
+                    <p className="italic leading-relaxed">“{existingReview.comment}”</p>
+                  </div>
+                )}
             </div>
           ))
         )}
