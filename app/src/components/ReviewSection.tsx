@@ -81,12 +81,24 @@ export function ReviewSection({
   }
 
   // Show review form only for completed tasks
+  // Check both completionStatus and taskStatus to handle cases where backend hasn't updated yet
   const isCompleted = completionStatus === 1 || 
                       taskStatus === "completed" || 
                       taskStatus === true ||
                       (typeof taskStatus === "string" && taskStatus.toLowerCase() === "completed");
   
-  if (!isCompleted) return null;
+  if (!isCompleted) {
+    // Debug log to help identify why review form isn't showing
+    console.log("ReviewSection: Not showing form because:", {
+      completionStatus,
+      taskStatus,
+      isTaskPoster,
+      isTaskerReview,
+      taskerId,
+      posterId
+    });
+    return null;
+  }
 
   return (
     <Card>

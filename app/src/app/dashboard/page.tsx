@@ -1400,6 +1400,7 @@ export default function Dashboard() {
           const newCompleted = {
             ...completedTask,
             status: "completed",
+            job_completion_status: 1, // Set completion status to 1
             completedDate: new Date().toLocaleDateString("en-GB"),
             assignedToMe: true,
           } as Task;
@@ -1459,7 +1460,7 @@ export default function Dashboard() {
         setPostedTasks((prev) =>
           prev.map((task) =>
             task.id === jobId
-              ? { ...task, status: "completed", completedDate: new Date().toLocaleDateString("en-GB") }
+              ? { ...task, status: "completed", job_completion_status: 1, completedDate: new Date().toLocaleDateString("en-GB") }
               : task
           )
         );

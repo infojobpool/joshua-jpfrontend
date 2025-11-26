@@ -958,6 +958,18 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     );
   };
 
+  // Update task completion status when viewing completed tasks
+  useEffect(() => {
+    if (task && task.status === "completed" && task.job_completion_status !== 1) {
+      // If task status is completed but completion_status isn't 1, update it locally
+      setTask((prevTask) =>
+        prevTask
+          ? { ...prevTask, job_completion_status: 1 }
+          : prevTask
+      );
+    }
+  }, [task?.status, task?.job_completion_status]);
+
   const openImageGallery = (index: number) => {
     setCurrentImageIndex(index);
     setShowImageGallery(true);
