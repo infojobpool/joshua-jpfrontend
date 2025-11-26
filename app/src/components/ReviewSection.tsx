@@ -28,6 +28,8 @@ interface ReviewSectionProps {
   taskerId: string | null;
   completionStatus: number;
   existingReview?: PosterReview | null;
+  isTaskerReview?: boolean; // If true, this is a tasker reviewing the poster
+  posterId?: string | null; // Poster ID for tasker reviews
 }
 
 export function ReviewSection({
@@ -42,11 +44,16 @@ export function ReviewSection({
   taskerId,
   completionStatus,
   existingReview,
+  isTaskerReview = false,
+  posterId = null,
 }: ReviewSectionProps) {
-  if (!isTaskPoster || !taskerId) return null;
-
-  // Don't show if not the task poster or no tasker assigned
-  if (!isTaskPoster || !taskerId) return null;
+  // For poster reviews: need to be poster and have tasker
+  // For tasker reviews: need to be tasker and have poster
+  if (isTaskerReview) {
+    if (!posterId) return null; // Tasker review needs poster ID
+  } else {
+    if (!isTaskPoster || !taskerId) return null; // Poster review needs to be poster and have tasker
+  }
 
   // Show existing review if available
   if (existingReview) {
@@ -54,7 +61,11 @@ export function ReviewSection({
       <Card>
         <CardHeader>
           <CardTitle>Your Review</CardTitle>
-          <CardDescription>Thanks for reviewing the tasker.</CardDescription>
+          <CardDescription>
+            {isTaskerReview 
+              ? "Thanks for reviewing the task poster." 
+              : "Thanks for reviewing the tasker."}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 text-yellow-500 font-semibold">
@@ -81,7 +92,11 @@ export function ReviewSection({
     <Card>
       <CardHeader>
         <CardTitle>Leave a Review</CardTitle>
-        <CardDescription>Share your experience with the tasker</CardDescription>
+        <CardDescription>
+          {isTaskerReview 
+            ? "Share your experience with the task poster" 
+            : "Share your experience with the tasker"}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmitReview} className="space-y-4">

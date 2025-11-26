@@ -51,6 +51,10 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [reviewRating, setReviewRating] = useState<number>(5);
   const [reviewComment, setReviewComment] = useState<string>("");
   const [posterReview, setPosterReview] = useState<{ rating: number; comment: string; timestamp?: string } | null>(null);
+  // Tasker review state (for taskers reviewing the poster)
+  const [taskerReviewRating, setTaskerReviewRating] = useState<number>(5);
+  const [taskerReviewComment, setTaskerReviewComment] = useState<string>("");
+  const [taskerReview, setTaskerReview] = useState<{ rating: number; comment: string; timestamp?: string } | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
   const [showImageGallery, setShowImageGallery] = useState<boolean>(false);
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
@@ -718,12 +722,79 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
       if (response.data.status_code === 200) {
         toast.success("Your review has been submitted!");
+        // Store in localStorage
+        try {
+          const stored = localStorage.getItem("poster_reviews");
+          const reviews = stored ? JSON.parse(stored) : {};
+          reviews[task?.id || id] = {
+            rating: reviewRating,
+            comment: reviewComment,
+            timestamp: new Date().toISOString(),
+          };
+          localStorage.setItem("poster_reviews", JSON.stringify(reviews));
+          setPosterReview({ rating: reviewRating, comment: reviewComment });
+        } catch (e) {
+          console.warn("Failed to store review locally:", e);
+        }
         router.push("/dashboard");
       } else {
         throw new Error(response.data.message || "Failed to submit review");
       }
     } catch (error: any) {
       console.error("Error submitting review:", error);
+      toast.error(error.response?.data?.message || "Failed to submit review");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handler for tasker reviews (tasker reviewing the poster)
+  const handleSubmitTaskerReview = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!taskerReviewComment) {
+      toast.error("Please provide a review comment");
+      return;
+    }
+    if (!task?.poster?.id) {
+      toast.error("No poster found for this task");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const payload = {
+        job_ref_id: id,
+        reviewer_id: userId,
+        user_id: task.poster.id, // Reviewing the poster
+        rating: taskerReviewRating,
+        comment: taskerReviewComment,
+      };
+
+      const response = await axiosInstance.put("/submit-review/", payload);
+
+      if (response.data.status_code === 200) {
+        toast.success("Your review has been submitted!");
+        // Store in localStorage
+        try {
+          const stored = localStorage.getItem("tasker_reviews");
+          const reviews = stored ? JSON.parse(stored) : {};
+          reviews[task.id] = {
+            rating: taskerReviewRating,
+            comment: taskerReviewComment,
+            timestamp: new Date().toISOString(),
+          };
+          localStorage.setItem("tasker_reviews", JSON.stringify(reviews));
+          setTaskerReview({ rating: taskerReviewRating, comment: taskerReviewComment });
+        } catch (e) {
+          console.warn("Failed to store tasker review locally:", e);
+        }
+        router.push("/dashboard");
+      } else {
+        throw new Error(response.data.message || "Failed to submit review");
+      }
+    } catch (error: any) {
+      console.error("Error submitting tasker review:", error);
       toast.error(error.response?.data?.message || "Failed to submit review");
     } finally {
       setIsSubmitting(false);
@@ -1005,6 +1076,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               isEditing={isEditing}
               setIsEditing={setIsEditing}
             />
+            {/* Poster Review Section (poster reviewing tasker) */}
             <ReviewSection
               isTaskPoster={isTaskPoster}
               taskStatus={task.status}
@@ -1018,6 +1090,24 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               completionStatus={task.job_completion_status}
               existingReview={posterReview}
             />
+            {/* Tasker Review Section (tasker reviewing poster) */}
+            {!isTaskPoster && taskerId === userId && (
+              <ReviewSection
+                isTaskPoster={false}
+                taskStatus={task.status}
+                handleSubmitReview={handleSubmitTaskerReview}
+                reviewRating={taskerReviewRating}
+                setReviewRating={setTaskerReviewRating}
+                reviewComment={taskerReviewComment}
+                setReviewComment={setTaskerReviewComment}
+                isSubmitting={isSubmitting}
+                taskerId={null}
+                completionStatus={task.job_completion_status}
+                existingReview={taskerReview}
+                isTaskerReview={true}
+                posterId={task.poster.id}
+              />
+            )}
             {/* Allow tasker to request cancellation */}
             {(!isTaskPoster && (task.status === "in_progress" || !!task.assignedTasker)) && (
               <div className="flex gap-2">
