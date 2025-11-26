@@ -110,6 +110,7 @@ export default function ProfilePage() {
   });
 
   const [reviews, setReviews] = useState<Review[]>([]);
+  const apiVerificationLoaded = useRef(false); // Track if API has provided verification status
 
   const formatDate = (dateString: string): string => {
     if (!dateString) return "";
@@ -136,15 +137,17 @@ export default function ProfilePage() {
     }
   }, [router]);
 
+  // Set verification status from localStorage as initial fallback
+  // API data will override this when fetchProfile completes
   useEffect(() => {
-    if (user) {
+    if (user && user.verification_status !== undefined && !apiVerificationLoaded.current) {
       setVerificationStatus({
         pan: { completed: user.verification_status >= 1 },
         aadhar: { completed: user.verification_status >= 2 },
         bank: { completed: user.verification_status >= 3 },
       });
     }
-  }, [user]);
+  }, [user?.id]); // Only run when user ID changes, not on every user update
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -194,6 +197,32 @@ export default function ProfilePage() {
             : undefined,
           job_title: data.job_title || "",
         });
+
+        // Update verification status from API response (preferred over localStorage)
+        const apiVerificationStatus = data.verification_status ?? data.verificationStatus ?? null;
+        if (apiVerificationStatus !== null && typeof apiVerificationStatus === 'number') {
+          setVerificationStatus({
+            pan: { completed: apiVerificationStatus >= 1 },
+            aadhar: { completed: apiVerificationStatus >= 2 },
+            bank: { completed: apiVerificationStatus >= 3 },
+          });
+          apiVerificationLoaded.current = true; // Mark that API data has been loaded
+          // Also update localStorage user if it exists
+          try {
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+              const parsedUser = JSON.parse(storedUser);
+              parsedUser.verification_status = apiVerificationStatus;
+              localStorage.setItem("user", JSON.stringify(parsedUser));
+              setUser(parsedUser);
+            }
+          } catch (e) {
+            console.warn("Failed to update localStorage user verification status:", e);
+          }
+        } else {
+          // If API doesn't return verification_status, mark as loaded anyway to prevent localStorage override
+          apiVerificationLoaded.current = true;
+        }
 
         if (Array.isArray(data.reviews)) {
           const normalizedReviews = data.reviews.map((review: any, index: number) => ({
