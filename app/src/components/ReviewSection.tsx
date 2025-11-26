@@ -18,7 +18,7 @@ interface PosterReview {
 
 interface ReviewSectionProps {
   isTaskPoster: boolean;
-  taskStatus: boolean;
+  taskStatus: string | boolean; // Can be string like "completed" or boolean
   handleSubmitReview: (e: FormEvent) => void;
   reviewRating: number;
   setReviewRating: (rating: number) => void;
@@ -45,6 +45,10 @@ export function ReviewSection({
 }: ReviewSectionProps) {
   if (!isTaskPoster || !taskerId) return null;
 
+  // Don't show if not the task poster or no tasker assigned
+  if (!isTaskPoster || !taskerId) return null;
+
+  // Show existing review if available
   if (existingReview) {
     return (
       <Card>
@@ -58,15 +62,20 @@ export function ReviewSection({
             <span>{existingReview.rating}/5</span>
           </div>
           <p className="mt-3 text-sm text-gray-700 italic leading-relaxed">
-            “{existingReview.comment}”
+            "{existingReview.comment}"
           </p>
         </CardContent>
       </Card>
     );
   }
 
-  if (!taskStatus || completionStatus !== 1)
-    return null;
+  // Show review form only for completed tasks
+  const isCompleted = completionStatus === 1 || 
+                      taskStatus === "completed" || 
+                      taskStatus === true ||
+                      (typeof taskStatus === "string" && taskStatus.toLowerCase() === "completed");
+  
+  if (!isCompleted) return null;
 
   return (
     <Card>

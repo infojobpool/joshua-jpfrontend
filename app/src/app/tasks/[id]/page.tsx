@@ -60,7 +60,10 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [showCancelDialog, setShowCancelDialog] = useState<boolean>(false);
   const [cancelReason, setCancelReason] = useState<string>("");
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
-  const taskerId = offers.length > 0 ? offers[0].tasker.id : null;
+  // Get taskerId from offers first, then fallback to assignedTasker for completed tasks
+  const taskerId = offers.length > 0 
+    ? offers[0].tasker.id 
+    : (task?.assignedTasker?.id ? String(task.assignedTasker.id) : null);
 
   useEffect(() => {
     if (!task?.id) return;
