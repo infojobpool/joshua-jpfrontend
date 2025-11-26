@@ -1191,60 +1191,6 @@ export default function Dashboard() {
         setCompletedTasksLoading(true);
         
         
-        // Check cache first with longer TTL for better performance (completed tasks don't change often)
-        const cacheKey = `completed_tasks_${userId}`;
-        const cached = localStorage.getItem(cacheKey);
-        if (cached) {
-          try {
-            const cachedData = JSON.parse(cached);
-            const cacheAge = Date.now() - cachedData.timestamp;
-            const hasTasks = Array.isArray(cachedData.tasks) && cachedData.tasks.length > 0;
-            if (cacheAge < 300000 && hasTasks) { // 5 minutes cache and must have tasks
-              // Merge cache with session-stored and completed bids to include most recent completes
-              let mergedFromCache: Task[] = cachedData.tasks || [];
-              try {
-                const localRaw = sessionStorage.getItem("tasker_completed");
-                const localTasks: Task[] = localRaw ? JSON.parse(localRaw) : [];
-                const fromBids: Task[] = (requestedTasks || [])
-                  .filter((b) => {
-                    const s = String(b.status || "").toLowerCase();
-                    return s === "completed" || s === "done" || s === "closed";
-                  })
-                  .map((b) => ({
-                    id: String(b.task_id),
-                    title: b.task_title || "Untitled",
-                    description: b.task_description || "",
-                    budget: Number((b as any).job_budget) || 0,
-                    location: b.task_location || "",
-                    status: "completed",
-                    postedAt: b.created_at || "",
-                    completedDate: new Date().toLocaleDateString("en-GB"),
-                    rating: undefined,
-                    offers: 0,
-                    posted_by: b.posted_by || "Unknown",
-                    category: (b as any).job_category || "general",
-                    images: (b as any).images || [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
-                    assignedToMe: true,
-                  } as Task));
-                const byId = new Map<string, Task>();
-                [...mergedFromCache, ...localTasks, ...fromBids].forEach((t) => byId.set(String(t.id), t));
-                mergedFromCache = Array.from(byId.values());
-              } catch {}
-
-              console.log("Using cached completed tasks (merged)");
-              const mergedWithReviews = applyLocalPosterReviews(mergedFromCache);
-              setCompletedTasks(mergedWithReviews);
-              // Refresh cache with merged list so a subsequent refresh keeps latest
-              localStorage.setItem(cacheKey, JSON.stringify({
-                tasks: mergedWithReviews,
-                timestamp: Date.now()
-              }));
-              setCompletedTasksLoading(false);
-              return;
-            }
-          } catch {}
-        }
-
         // Use the same fast endpoint as available tasks for consistency
         const token = localStorage.getItem('token');
         const controller = new AbortController();
@@ -1345,101 +1291,17 @@ export default function Dashboard() {
             };
           });
 
-          // Build completed list prioritizing items the tasker explicitly marked complete (session-sourced)
-          let merged: Task[] = [];
-          try {
-            const raw = sessionStorage.getItem("tasker_completed");
-            const local: Task[] = raw ? JSON.parse(raw) : [];
-            if (Array.isArray(local) && local.length > 0) {
-              // Fallback enrich: include any API-completed tasks assigned to me
-              const apiCompletedForMe = tasks.filter(t => t.status === "completed" && t.assignedToMe);
-              const map = new Map<string, Task>();
-              [...local, ...apiCompletedForMe].forEach(t => map.set(String(t.id), t));
-              merged = Array.from(map.values());
-            } else {
-              // No local record yet: fallback to API-completed tasks assigned to me
-              merged = tasks.filter(t => t.status === "completed" && t.assignedToMe);
-              // Also include any id present in session-stored tasker_completed even if API didn't mark assignment
-              try {
-                const raw2 = sessionStorage.getItem("tasker_completed");
-                const local2: Task[] = raw2 ? JSON.parse(raw2) : [];
-                if (Array.isArray(local2) && local2.length > 0) {
-                  const map2 = new Map<string, Task>();
-                  [...merged, ...local2].forEach(t => map2.set(String(t.id), t));
-                  merged = Array.from(map2.values());
-                }
-              } catch {}
-            }
-          } catch {
-            // On parse error, fallback to API-completed tasks assigned to me
-            merged = tasks.filter(t => t.status === "completed" && t.assignedToMe);
-          }
-
-          // Additional safety net: include COMPLETED items from My Bids even if job isn't in the jobs list
-          try {
-            const completedFromBids: Task[] = (requestedTasks || [])
-              .filter((b) => {
-                const statusStr = String(b.status || "").toLowerCase();
-                // Common completion indicators returned by bids endpoints
-                return statusStr === "completed" || statusStr === "done" || statusStr === "closed";
-              })
-              .map((b) => ({
-                id: String(b.task_id),
-                title: b.task_title || "Untitled",
-                description: b.task_description || "",
-                budget: Number((b as any).job_budget) || 0,
-                location: b.task_location || "",
-                status: "completed",
-                postedAt: b.created_at || "",
-                completedDate: new Date().toLocaleDateString("en-GB"),
-                rating: undefined,
-                offers: 0,
-                posted_by: b.posted_by || "Unknown",
-                category: (b as any).job_category || "general",
-                images: (b as any).images || [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
-                assignedToMe: true,
-              } as Task));
-
-            if (completedFromBids.length > 0) {
-              const byId = new Map<string, Task>();
-              [...merged, ...completedFromBids].forEach((t) => byId.set(String(t.id), t));
-              merged = Array.from(byId.values());
-            }
-          } catch {}
-
-          // Save tasker-completed list only (poster-completed remains in My Tasks counts)
-          const mergedWithReviews = applyLocalPosterReviews(merged);
+          const completedForMe = tasks.filter((t) => t.status === "completed" && t.assignedToMe);
+          const mergedWithReviews = applyLocalPosterReviews(completedForMe);
           setCompletedTasks(mergedWithReviews);
-          // Cache only if we actually have completed tasks to avoid overwriting with empty
-          if (mergedWithReviews.length > 0) {
-            localStorage.setItem(cacheKey, JSON.stringify({
-              tasks: mergedWithReviews,
-              timestamp: Date.now()
-            }));
-          }
         } else {
           console.log("No jobs found in API response");
         }
       } catch (err) {
-        // Handle AbortError separately (don't show error for timeouts)
         if ((err as any)?.name === 'AbortError') {
           console.log("⏰ Fetch completed tasks was aborted (timeout)");
-          
-          // Try to load from cache as fallback
-          try {
-            const fallbackCacheKey = `completed_tasks_${userId}`;
-            const cachedTasks = localStorage.getItem(fallbackCacheKey);
-            if (cachedTasks) {
-              const cachedData = JSON.parse(cachedTasks);
-              setCompletedTasks(applyLocalPosterReviews(cachedData.tasks));
-              console.log("Loaded completed tasks from cache after timeout");
-            }
-          } catch (cacheError) {
-            console.error("Failed to load cached completed tasks:", cacheError);
-          }
           return;
         }
-        // Do not clear existing list on fetch error; keep last known good state
         console.error("Failed to fetch completed tasks:", err);
       } finally {
         setCompletedTasksLoading(false);
@@ -1498,16 +1360,9 @@ export default function Dashboard() {
             ...prev,
             newCompleted,
           ]);
-          try {
-            const raw = sessionStorage.getItem("tasker_completed");
-            const list: Task[] = raw ? JSON.parse(raw) : [];
-            const deduped = [...list.filter(t => String(t.id) !== String(newCompleted.id)), newCompleted];
-            sessionStorage.setItem("tasker_completed", JSON.stringify(deduped));
-          } catch {}
         }
         
         // Switch to Completed tab and signal refresh
-        try { sessionStorage.setItem("refresh_completed", "1"); } catch {}
         setActiveTab("completed");
       } else {
         toast.dismiss(`complete-${jobId}`);
