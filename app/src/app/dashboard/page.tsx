@@ -2132,7 +2132,6 @@ export default function Dashboard() {
               <span className="text-2xl">📋</span>
               <span className="hidden md:inline">My Tasks</span>
               <span className="md:hidden">My Tasks</span>
-              <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full text-[10px] bg-blue-600 text-white shadow">{counts.my}</span>
             </TabsTrigger>
             <TabsTrigger value="available" className={
               isMobile 
@@ -2142,7 +2141,6 @@ export default function Dashboard() {
               <span className="text-2xl">🔍</span>
               <span className="hidden md:inline">Available</span>
               <span className="md:hidden">Available</span>
-              <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full text-[10px] bg-slate-700 text-white shadow">{counts.available}</span>
             </TabsTrigger>
             <TabsTrigger value="assigned" className={
               isMobile 
@@ -2152,7 +2150,6 @@ export default function Dashboard() {
               <span className="text-2xl">✅</span>
               <span className="hidden md:inline">Assigned</span>
               <span className="md:hidden">Assigned</span>
-              <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full text-[10px] bg-amber-600 text-white shadow">{counts.assigned}</span>
             </TabsTrigger>
             <TabsTrigger value="completed" className={
               isMobile 
@@ -2162,7 +2159,6 @@ export default function Dashboard() {
               <span className="text-2xl">🎉</span>
               <span className="hidden md:inline">Completed</span>
               <span className="md:hidden">Completed</span>
-              <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full text-[10px] bg-emerald-600 text-white shadow">{counts.completed}</span>
             </TabsTrigger>
             <TabsTrigger value="my-bids" className={
               isMobile 
