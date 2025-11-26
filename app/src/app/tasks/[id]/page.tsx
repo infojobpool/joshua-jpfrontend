@@ -718,25 +718,39 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         comment: reviewComment,
       };
 
+      console.log("Submitting review with payload:", payload);
       const response = await axiosInstance.put("/submit-review/", payload);
+      console.log("Review submission response:", response.data);
 
       if (response.data.status_code === 200) {
-        toast.success("Your review has been submitted!");
-        // Store in localStorage
+        // Store in localStorage first
+        const reviewData = {
+          rating: reviewRating,
+          comment: reviewComment,
+          timestamp: new Date().toISOString(),
+        };
+        
         try {
           const stored = localStorage.getItem("poster_reviews");
           const reviews = stored ? JSON.parse(stored) : {};
-          reviews[task?.id || id] = {
-            rating: reviewRating,
-            comment: reviewComment,
-            timestamp: new Date().toISOString(),
-          };
+          reviews[task?.id || id] = reviewData;
           localStorage.setItem("poster_reviews", JSON.stringify(reviews));
-          setPosterReview({ rating: reviewRating, comment: reviewComment });
+          console.log("Review saved to localStorage:", reviewData);
         } catch (e) {
-          console.warn("Failed to store review locally:", e);
+          console.error("Failed to store review locally:", e);
         }
-        router.push("/dashboard");
+        
+        // Update state immediately
+        setPosterReview(reviewData);
+        
+        // Clear form
+        setReviewRating(5);
+        setReviewComment("");
+        
+        toast.success("Your review has been submitted!");
+        
+        // Don't redirect immediately - let user see the review was saved
+        // They can navigate away manually if needed
       } else {
         throw new Error(response.data.message || "Failed to submit review");
       }
@@ -771,25 +785,39 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         comment: taskerReviewComment,
       };
 
+      console.log("Submitting tasker review with payload:", payload);
       const response = await axiosInstance.put("/submit-review/", payload);
+      console.log("Tasker review submission response:", response.data);
 
       if (response.data.status_code === 200) {
-        toast.success("Your review has been submitted!");
-        // Store in localStorage
+        // Store in localStorage first
+        const reviewData = {
+          rating: taskerReviewRating,
+          comment: taskerReviewComment,
+          timestamp: new Date().toISOString(),
+        };
+        
         try {
           const stored = localStorage.getItem("tasker_reviews");
           const reviews = stored ? JSON.parse(stored) : {};
-          reviews[task.id] = {
-            rating: taskerReviewRating,
-            comment: taskerReviewComment,
-            timestamp: new Date().toISOString(),
-          };
+          reviews[task.id] = reviewData;
           localStorage.setItem("tasker_reviews", JSON.stringify(reviews));
-          setTaskerReview({ rating: taskerReviewRating, comment: taskerReviewComment });
+          console.log("Tasker review saved to localStorage:", reviewData);
         } catch (e) {
-          console.warn("Failed to store tasker review locally:", e);
+          console.error("Failed to store tasker review locally:", e);
         }
-        router.push("/dashboard");
+        
+        // Update state immediately
+        setTaskerReview(reviewData);
+        
+        // Clear form
+        setTaskerReviewRating(5);
+        setTaskerReviewComment("");
+        
+        toast.success("Your review has been submitted!");
+        
+        // Don't redirect immediately - let user see the review was saved
+        // They can navigate away manually if needed
       } else {
         throw new Error(response.data.message || "Failed to submit review");
       }
