@@ -50,6 +50,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [reviewRating, setReviewRating] = useState<number>(5);
   const [reviewComment, setReviewComment] = useState<string>("");
+  const [existingReview, setExistingReview] = useState<{ rating: number; comment: string; timestamp?: string } | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
   const [showImageGallery, setShowImageGallery] = useState<boolean>(false);
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
@@ -60,6 +61,23 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [cancelReason, setCancelReason] = useState<string>("");
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
   const taskerId = offers.length > 0 ? offers[0].tasker.id : null;
+
+  // Check for existing review in localStorage when task loads
+  useEffect(() => {
+    if (!task?.id || !userId) return;
+    try {
+      const raw = localStorage.getItem("poster_reviews");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed[task.id]) {
+          setExistingReview(parsed[task.id]);
+          console.log("Found existing review for task:", task.id, parsed[task.id]);
+        }
+      }
+    } catch (error) {
+      console.warn("Failed to load existing review from localStorage:", error);
+    }
+  }, [task?.id, userId]);
 
   // Load user, profile, and sync bids
   useEffect(() => {
@@ -709,8 +727,32 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       const response = await axiosInstance.put("/submit-review/", payload);
 
       if (response.data.status_code === 200) {
+        // Save review to localStorage
+        const reviewData = {
+          rating: reviewRating,
+          comment: reviewComment,
+          timestamp: new Date().toISOString(),
+        };
+        
+        try {
+          const stored = localStorage.getItem("poster_reviews");
+          const reviews = stored ? JSON.parse(stored) : {};
+          reviews[task?.id || id] = reviewData;
+          localStorage.setItem("poster_reviews", JSON.stringify(reviews));
+          console.log("Review saved to localStorage:", reviewData);
+        } catch (e) {
+          console.error("Failed to store review locally:", e);
+        }
+        
+        // Update state to show the review
+        setExistingReview(reviewData);
+        
+        // Clear form
+        setReviewRating(5);
+        setReviewComment("");
+        
         toast.success("Your review has been submitted!");
-        router.push("/dashboard");
+        // Don't redirect immediately - let user see their review
       } else {
         throw new Error(response.data.message || "Failed to submit review");
       }
@@ -999,6 +1041,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               isSubmitting={isSubmitting}
               taskerId={taskerId}
               completionStatus={task.job_completion_status}
+              existingReview={existingReview}
             />
             {/* Allow tasker to request cancellation */}
             {(!isTaskPoster && (task.status === "in_progress" || !!task.assignedTasker)) && (

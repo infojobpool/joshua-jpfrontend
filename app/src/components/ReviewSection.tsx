@@ -10,15 +10,9 @@ import {
 } from "./ui/card";
 import { Textarea } from "./ui/textarea";
 
-interface PosterReview {
-  rating: number;
-  comment: string;
-  timestamp?: string;
-}
-
 interface ReviewSectionProps {
   isTaskPoster: boolean;
-  taskStatus: string | boolean; // Can be string like "completed" or boolean
+  taskStatus: boolean;
   handleSubmitReview: (e: FormEvent) => void;
   reviewRating: number;
   setReviewRating: (rating: number) => void;
@@ -27,9 +21,7 @@ interface ReviewSectionProps {
   isSubmitting: boolean;
   taskerId: string | null;
   completionStatus: number;
-  existingReview?: PosterReview | null;
-  isTaskerReview?: boolean; // If true, this is a tasker reviewing the poster
-  posterId?: string | null; // Poster ID for tasker reviews
+  existingReview?: { rating: number; comment: string; timestamp?: string } | null;
 }
 
 export function ReviewSection({
@@ -44,71 +36,60 @@ export function ReviewSection({
   taskerId,
   completionStatus,
   existingReview,
-  isTaskerReview = false,
-  posterId = null,
 }: ReviewSectionProps) {
-  // For poster reviews: need to be poster and have tasker
-  // For tasker reviews: need to be tasker and have poster
-  if (isTaskerReview) {
-    if (!posterId) return null; // Tasker review needs poster ID
-  } else {
-    if (!isTaskPoster || !taskerId) return null; // Poster review needs to be poster and have tasker
-  }
+  if (!taskStatus || !isTaskPoster || !taskerId || completionStatus !== 1)
+    return null;
 
-  // Show existing review if available
+  // If review already exists, show it instead of the form
   if (existingReview) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>Your Review</CardTitle>
-          <CardDescription>
-            {isTaskerReview 
-              ? "Thanks for reviewing the task poster." 
-              : "Thanks for reviewing the tasker."}
-          </CardDescription>
+          <CardDescription>Thanks for reviewing the tasker</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2 text-yellow-500 font-semibold">
-            <Star className="h-4 w-4 fill-yellow-500" />
-            <span>{existingReview.rating}/5</span>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Rating:</span>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    className={`h-5 w-5 ${
+                      existingReview.rating >= star
+                        ? "fill-yellow-400 text-yellow-400"
+                        : "text-gray-300"
+                    }`}
+                  />
+                ))}
+                <span className="ml-2 text-sm text-muted-foreground">
+                  {existingReview.rating}/5
+                </span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <span className="text-sm font-medium">Comment:</span>
+              <p className="text-sm text-muted-foreground bg-gray-50 p-3 rounded-md">
+                {existingReview.comment}
+              </p>
+            </div>
+            {existingReview.timestamp && (
+              <p className="text-xs text-muted-foreground">
+                Submitted: {new Date(existingReview.timestamp).toLocaleDateString()}
+              </p>
+            )}
           </div>
-          <p className="mt-3 text-sm text-gray-700 italic leading-relaxed">
-            "{existingReview.comment}"
-          </p>
         </CardContent>
       </Card>
     );
-  }
-
-  // Show review form only for completed tasks
-  // Check both completionStatus and taskStatus to handle cases where backend hasn't updated yet
-  const isCompleted = completionStatus === 1 || 
-                      taskStatus === "completed" || 
-                      taskStatus === true ||
-                      (typeof taskStatus === "string" && taskStatus.toLowerCase() === "completed");
-  
-  if (!isCompleted) {
-    // Debug log to help identify why review form isn't showing
-    console.log("ReviewSection: Not showing form because:", {
-      completionStatus,
-      taskStatus,
-      isTaskPoster,
-      isTaskerReview,
-      taskerId,
-      posterId
-    });
-    return null;
   }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Leave a Review</CardTitle>
-        <CardDescription>
-          {isTaskerReview 
-            ? "Share your experience with the task poster" 
-            : "Share your experience with the tasker"}
-        </CardDescription>
+        <CardDescription>Share your experience with the tasker</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmitReview} className="space-y-4">
