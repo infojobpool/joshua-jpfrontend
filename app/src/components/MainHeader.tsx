@@ -59,7 +59,8 @@ const MainHeader: React.FC = () => {
             <img 
               src="/images/jobpool-logo.png" 
               alt="JobPool Logo" 
-              className="h-12 w-auto group-hover:opacity-90 transition-opacity"
+              className="h-16 w-auto group-hover:opacity-90 transition-opacity"
+              style={{ mixBlendMode: 'multiply' }}
             />
           </Link>
 

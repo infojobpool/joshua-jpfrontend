@@ -32,7 +32,8 @@ const Header: React.FC<HeaderProps> = ({ user, onSignOut }) => {
           <img 
             src="/images/jobpool-logo.png" 
             alt="JobPool Logo" 
-            className="h-10 w-auto"
+            className="h-14 w-auto"
+            style={{ mixBlendMode: 'multiply' }}
           />
         </Link>
         <div className="flex items-center gap-4">

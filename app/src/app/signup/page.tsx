@@ -125,7 +125,8 @@ export default function SignUpPage() {
             <img 
               src="/images/jobpool-logo.png" 
               alt="JobPool Logo" 
-              className="h-16 w-auto group-hover:opacity-90 transition-opacity"
+              className="h-24 w-auto group-hover:opacity-90 transition-opacity"
+              style={{ mixBlendMode: 'multiply' }}
             />
           </Link>
         </div>
