@@ -110,7 +110,6 @@ export default function ProfilePage() {
   });
 
   const [reviews, setReviews] = useState<Review[]>([]);
-  const apiVerificationLoaded = useRef(false); // Track if API has provided verification status
 
   const formatDate = (dateString: string): string => {
     if (!dateString) return "";
@@ -137,17 +136,15 @@ export default function ProfilePage() {
     }
   }, [router]);
 
-  // Set verification status from localStorage as initial fallback
-  // API data will override this when fetchProfile completes
   useEffect(() => {
-    if (user && user.verification_status !== undefined && !apiVerificationLoaded.current) {
+    if (user) {
       setVerificationStatus({
         pan: { completed: user.verification_status >= 1 },
         aadhar: { completed: user.verification_status >= 2 },
         bank: { completed: user.verification_status >= 3 },
       });
     }
-  }, [user?.id]); // Only run when user ID changes, not on every user update
+  }, [user]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -198,7 +195,7 @@ export default function ProfilePage() {
           job_title: data.job_title || "",
         });
 
-        // Update verification status from API response (preferred over localStorage)
+        // Update verification status from API response
         const apiVerificationStatus = data.verification_status ?? data.verificationStatus ?? null;
         if (apiVerificationStatus !== null && typeof apiVerificationStatus === 'number') {
           setVerificationStatus({
@@ -206,7 +203,6 @@ export default function ProfilePage() {
             aadhar: { completed: apiVerificationStatus >= 2 },
             bank: { completed: apiVerificationStatus >= 3 },
           });
-          apiVerificationLoaded.current = true; // Mark that API data has been loaded
           // Also update localStorage user if it exists
           try {
             const storedUser = localStorage.getItem("user");
@@ -219,23 +215,19 @@ export default function ProfilePage() {
           } catch (e) {
             console.warn("Failed to update localStorage user verification status:", e);
           }
-        } else {
-          // If API doesn't return verification_status, mark as loaded anyway to prevent localStorage override
-          apiVerificationLoaded.current = true;
         }
 
         if (Array.isArray(data.reviews)) {
-          const normalizedReviews = data.reviews.map((review: any, index: number) => ({
-            id: index + 1,
-            rating: review.rating || 0,
-            comment: review.comment || "",
-            date: review.timestamp ? formatDate(review.timestamp) : "",
-            isEditing: false,
-            jobTitle: review.job_title || review.task_title || review.title || review?.job?.job_title || "",
-          }));
-
-          const mergedWithLocal = mergeLocalPosterReviews(normalizedReviews, effectiveUserId, formatDate);
-          setReviews(mergedWithLocal);
+          setReviews(
+            data.reviews.map((review: any, index: number) => ({
+              id: index + 1,
+              rating: review.rating || 0,
+              comment: review.comment || "",
+              date: review.timestamp ? formatDate(review.timestamp) : "",
+              isEditing: false,
+              jobTitle: review.job_title || review.task_title || review.title || review?.job?.job_title || "",
+            }))
+          );
         }
       } catch (err: any) {
         setError("Failed to load profile");
@@ -301,42 +293,6 @@ export default function ProfilePage() {
     setTempAvatar(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
-    }
-  };
-
-  const mergeLocalPosterReviews = (
-    existingReviews: Review[],
-    profileOwnerId: string,
-    formatter: (date: string) => string
-  ): Review[] => {
-    try {
-      const raw = typeof window !== "undefined" ? localStorage.getItem("poster_reviews") : null;
-      if (!raw) return existingReviews;
-      const map = JSON.parse(raw);
-      const localEntries = Object.values(map).filter(
-        (entry: any) => String(entry.posterId) === String(profileOwnerId)
-      ) as Array<any>;
-
-      if (!localEntries.length) return existingReviews;
-
-      const localReviews = localEntries.map((entry, idx) => ({
-        id: existingReviews.length + idx + 1,
-        rating: entry.rating || 0,
-        comment: entry.comment || "",
-        date: entry.timestamp ? formatter(entry.timestamp) : "",
-        isEditing: false,
-        jobTitle: entry.taskTitle || "Task",
-      }));
-
-      const deduped = new Map<string, Review>();
-      [...existingReviews, ...localReviews].forEach((review) => {
-        const key = `${review.jobTitle}-${review.comment}-${review.rating}-${review.date}`;
-        deduped.set(key, review);
-      });
-      return Array.from(deduped.values());
-    } catch (error) {
-      console.warn("Failed to merge local poster reviews into profile:", error);
-      return existingReviews;
     }
   };
 
