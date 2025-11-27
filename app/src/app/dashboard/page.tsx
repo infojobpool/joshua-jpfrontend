@@ -857,6 +857,9 @@ export default function Dashboard() {
               }
               // All other tasks remain "open" for bidding
               
+              const postedMeta = formatTimestampValue(
+                job.job_tstamp || job.created_at || job.timestamp || job.job_due_date
+              );
 
               return {
                 id: job.job_id.toString(),
@@ -865,7 +868,10 @@ export default function Dashboard() {
                 budget: Number(job.job_budget) || 0,
                 location: job.job_location || "Unknown",
                 status: jobStatus,
-                postedAt: job.job_due_date
+                postedAt: postedMeta.formatted,
+                postedAtSortValue: postedMeta.sortValue,
+                postedAtISO: postedMeta.iso,
+                dueDate: job.job_due_date
                   ? new Date(job.job_due_date).toLocaleDateString("en-GB")
                   : "Unknown",
                 offers: job.offers || 0, // Use original offers field as fallback
@@ -1625,6 +1631,17 @@ export default function Dashboard() {
 
     return matchesSearch && matchesCategory && matchesPrice && matchesLocation && isNotCanceled;
   });
+
+  // Sort available tasks: newest posted first by default
+  const sortedAvailableTasks = useMemo(() => {
+    const copy = [...filteredTasks];
+    copy.sort((a, b) => {
+      const aVal = a.postedAtSortValue ?? 0;
+      const bVal = b.postedAtSortValue ?? 0;
+      return bVal - aVal; // newest first
+    });
+    return copy;
+  }, [filteredTasks]);
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -2608,7 +2625,7 @@ export default function Dashboard() {
 
                 <div className="flex justify-between items-center">
                   <p className="text-sm text-muted-foreground">
-                    {filteredTasks.length} tasks found
+                    {sortedAvailableTasks.length} tasks found
                   </p>
                   <Select defaultValue="newest">
                     <SelectTrigger className="w-[180px]">
@@ -2623,7 +2640,7 @@ export default function Dashboard() {
                   </Select>
                 </div>
 
-                {filteredTasks.length === 0 ? (
+                {sortedAvailableTasks.length === 0 ? (
                   <div className="min-h-[400px] flex items-center justify-center">
                     <Card className="w-full max-w-2xl mx-auto shadow-lg border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
                       <CardContent className="flex flex-col items-center justify-center py-20 px-12 text-center">
@@ -2650,7 +2667,7 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <div className={`grid gap-4 ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
-                    {filteredTasks.map((task) => {
+                    {sortedAvailableTasks.map((task) => {
                       const hasUserBid = requestedTasks.some(bid => bid.task_id === task.id);
                       
                       return (
@@ -2663,9 +2680,15 @@ export default function Dashboard() {
                                 <h3 className={`font-semibold text-gray-900 line-clamp-2 ${isMobile ? "text-base" : "text-lg"}`}>
                                   {task.title}
                                 </h3>
-                                <div className="flex items-center gap-2 mt-1">
+                                <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
                                   <Clock className="h-3 w-3 text-gray-400" />
-                                  <span className="text-xs text-gray-500">{task.postedAt}</span>
+                                  <span>Posted: {task.postedAt}</span>
+                                  {task.dueDate && task.dueDate !== "Unknown" && (
+                                    <>
+                                      <span className="mx-1 text-gray-300">•</span>
+                                      <span>Due: {task.dueDate}</span>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                               <Badge variant="outline" className="border-pink-500 text-pink-600 font-medium text-xs px-2 py-1">
