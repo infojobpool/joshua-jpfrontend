@@ -931,8 +931,7 @@ export default function Dashboard() {
         
         // Don't clear available tasks on error - keep showing existing ones
         console.log("🔄 Keeping existing available tasks due to API error");
-        
-        toast.error("Unable to refresh tasks. Showing cached data.");
+        // Quiet down the UI: log the issue but avoid spamming the user with toasts
       } finally {
         console.log("🔍 fetchAllTasks completed");
         // avoid global loader flicker
