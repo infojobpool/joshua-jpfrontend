@@ -154,7 +154,7 @@ export function Navbar() {
             whileTap={{ scale: 0.95 }}
           >
             <img 
-              src="/images/jobpool-logo.svg" 
+              src="/images/jobpool-logo.png" 
               alt="JobPool Logo" 
               className="h-10 w-auto"
             />

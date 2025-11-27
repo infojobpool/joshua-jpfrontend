@@ -134,7 +134,7 @@ export default function SignInPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center justify-center group">
             <img 
-              src="/images/jobpool-logo.svg" 
+              src="/images/jobpool-logo.png" 
               alt="JobPool Logo" 
               className="h-16 w-auto group-hover:opacity-90 transition-opacity"
             />

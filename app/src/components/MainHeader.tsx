@@ -57,7 +57,7 @@ const MainHeader: React.FC = () => {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
             <img 
-              src="/images/jobpool-logo.svg" 
+              src="/images/jobpool-logo.png" 
               alt="JobPool Logo" 
               className="h-12 w-auto group-hover:opacity-90 transition-opacity"
             />

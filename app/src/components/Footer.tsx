@@ -10,7 +10,7 @@ const Footer: React.FC = () => {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <img 
-                src="/images/jobpool-logo.svg" 
+                src="/images/jobpool-logo.png" 
                 alt="JobPool Logo" 
                 className="h-12 w-auto"
               />

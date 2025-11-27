@@ -84,7 +84,7 @@ export function MobileDashboard() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
               <img 
-                src="/images/jobpool-logo.svg" 
+                src="/images/jobpool-logo.png" 
                 alt="JobPool Logo" 
                 className="h-10 w-auto"
               />

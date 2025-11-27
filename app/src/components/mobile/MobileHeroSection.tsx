@@ -11,7 +11,7 @@ export function MobileHeroSection() {
       <div className="relative w-full max-w-md text-center space-y-3">
         <div className="mx-auto flex items-center justify-center">
           <img 
-            src="/images/jobpool-logo.svg" 
+            src="/images/jobpool-logo.png" 
             alt="JobPool Logo" 
             className="h-16 w-auto"
           />

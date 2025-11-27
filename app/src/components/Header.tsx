@@ -30,7 +30,7 @@ const Header: React.FC<HeaderProps> = ({ user, onSignOut }) => {
           className="flex items-center gap-2"
         >
           <img 
-            src="/images/jobpool-logo.svg" 
+            src="/images/jobpool-logo.png" 
             alt="JobPool Logo" 
             className="h-10 w-auto"
           />
