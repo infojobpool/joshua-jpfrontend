@@ -55,17 +55,12 @@ const MainHeader: React.FC = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
-                <span className="text-white font-bold text-lg">JP</span>
-              </div>
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">JobPool</span>
-              <span className="text-xs text-gray-500 -mt-1">Connect & Earn</span>
-            </div>
+          <Link href="/" className="flex items-center gap-2 group">
+            <img 
+              src="/images/jobpool-logo.svg" 
+              alt="JobPool Logo" 
+              className="h-12 w-auto group-hover:opacity-90 transition-opacity"
+            />
           </Link>
 
           {/* Desktop Navigation */}

@@ -27,9 +27,13 @@ const Header: React.FC<HeaderProps> = ({ user, onSignOut }) => {
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
         <Link
           href="/dashboard"
-          className="flex items-center gap-2 font-bold text-xl"
+          className="flex items-center gap-2"
         >
-          <span className="text-primary">JobPool</span>
+          <img 
+            src="/images/jobpool-logo.svg" 
+            alt="JobPool Logo" 
+            className="h-10 w-auto"
+          />
         </Link>
         <div className="flex items-center gap-4">
           <DropdownMenu>

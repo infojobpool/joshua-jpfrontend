@@ -83,11 +83,12 @@ export function MobileDashboard() {
         <div className="px-4 py-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-lg">JP</span>
-              </div>
+              <img 
+                src="/images/jobpool-logo.svg" 
+                alt="JobPool Logo" 
+                className="h-10 w-auto"
+              />
               <div>
-                <h1 className="text-xl font-bold text-gray-900">JobPool</h1>
                 <p className="text-sm text-gray-500">Welcome back!</p>
               </div>
             </div>

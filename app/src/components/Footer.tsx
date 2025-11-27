@@ -9,16 +9,11 @@ const Footer: React.FC = () => {
           {/* Company Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
-                  <span className="text-white font-bold text-lg">JP</span>
-                </div>
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-gray-900"></div>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xl font-bold">JobPool</span>
-                <span className="text-xs text-gray-400 -mt-1">Connect & Earn</span>
-              </div>
+              <img 
+                src="/images/jobpool-logo.svg" 
+                alt="JobPool Logo" 
+                className="h-12 w-auto"
+              />
             </div>
             <p className="text-gray-300 text-sm">
               Connect with skilled professionals to get your tasks done quickly and efficiently.

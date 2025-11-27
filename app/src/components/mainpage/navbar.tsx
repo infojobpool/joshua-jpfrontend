@@ -153,10 +153,11 @@ export function Navbar() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">JP</span>
-            </div>
-            <span className="text-blue-600 font-bold text-2xl">JobPool</span>
+            <img 
+              src="/images/jobpool-logo.svg" 
+              alt="JobPool Logo" 
+              className="h-10 w-auto"
+            />
           </motion.div>
         </Link>
 
