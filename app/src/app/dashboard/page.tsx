@@ -115,6 +115,26 @@ interface APIResponse<T> {
   data: T;
 }
 
+// Helper to normalize timestamp fields for display & sorting
+function formatTimestampValue(raw: any): {
+  formatted: string;
+  sortValue: number;
+  iso: string;
+} {
+  if (!raw) {
+    return { formatted: "Unknown", sortValue: 0, iso: "" };
+  }
+  const date = new Date(raw);
+  if (isNaN(date.getTime())) {
+    return { formatted: "Unknown", sortValue: 0, iso: "" };
+  }
+  return {
+    formatted: date.toLocaleDateString("en-GB"),
+    sortValue: date.getTime(),
+    iso: date.toISOString(),
+  };
+}
+
 export default function Dashboard() {
   const router = useRouter();
   const { user, userId, isAuthenticated, logout } = useStore();
