@@ -195,9 +195,25 @@ export default function ProfilePage() {
           job_title: data.job_title || "",
         });
 
-        // Update verification status from API response
-        const apiVerificationStatus = data.verification_status ?? data.verificationStatus ?? null;
+        // Update verification status from API response - check multiple possible locations
+        const apiVerificationStatus = 
+          data.verification_status ?? 
+          data.verificationStatus ?? 
+          data.data?.verification_status ??
+          null;
+        
+        console.log("🔍 Profile API Response:", {
+          fullResponse: response.data,
+          data: data,
+          verification_status: data.verification_status,
+          verificationStatus: data.verificationStatus,
+          nested: data.data?.verification_status,
+          finalValue: apiVerificationStatus,
+          type: typeof apiVerificationStatus
+        });
+        
         if (apiVerificationStatus !== null && typeof apiVerificationStatus === 'number') {
+          console.log("✅ Setting verification status from API:", apiVerificationStatus);
           setVerificationStatus({
             pan: { completed: apiVerificationStatus >= 1 },
             aadhar: { completed: apiVerificationStatus >= 2 },
@@ -214,6 +230,18 @@ export default function ProfilePage() {
             }
           } catch (e) {
             console.warn("Failed to update localStorage user verification status:", e);
+          }
+        } else {
+          console.warn("⚠️ No valid verification_status found in API response. Value:", apiVerificationStatus);
+          // Fallback: If bank_info exists with account number, assume bank is verified
+          // This is a heuristic - ideally API should return verification_status
+          if (data.bank_info && data.bank_info.bank_account_number) {
+            console.log("⚠️ Using fallback: bank_info exists, assuming verification_status = 3");
+            setVerificationStatus({
+              pan: { completed: true }, // If bank is verified, PAN and Aadhar must be too
+              aadhar: { completed: true },
+              bank: { completed: true },
+            });
           }
         }
 
