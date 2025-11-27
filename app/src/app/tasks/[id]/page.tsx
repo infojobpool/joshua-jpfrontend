@@ -50,11 +50,6 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [reviewRating, setReviewRating] = useState<number>(5);
   const [reviewComment, setReviewComment] = useState<string>("");
-  const [posterReview, setPosterReview] = useState<{ rating: number; comment: string; timestamp?: string } | null>(null);
-  // Tasker review state (for taskers reviewing the poster)
-  const [taskerReviewRating, setTaskerReviewRating] = useState<number>(5);
-  const [taskerReviewComment, setTaskerReviewComment] = useState<string>("");
-  const [taskerReview, setTaskerReview] = useState<{ rating: number; comment: string; timestamp?: string } | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
   const [showImageGallery, setShowImageGallery] = useState<boolean>(false);
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
@@ -64,25 +59,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [showCancelDialog, setShowCancelDialog] = useState<boolean>(false);
   const [cancelReason, setCancelReason] = useState<string>("");
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
-  // Get taskerId from offers first, then fallback to assignedTasker for completed tasks
-  const taskerId = offers.length > 0 
-    ? offers[0].tasker.id 
-    : (task?.assignedTasker?.id ? String(task.assignedTasker.id) : null);
-
-  useEffect(() => {
-    if (!task?.id) return;
-    try {
-      const raw = localStorage.getItem("poster_reviews");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed[task.id]) {
-          setPosterReview(parsed[task.id]);
-        }
-      }
-    } catch (error) {
-      console.warn("Failed to hydrate poster review from storage:", error);
-    }
-  }, [task?.id]);
+  const taskerId = offers.length > 0 ? offers[0].tasker.id : null;
 
   // Load user, profile, and sync bids
   useEffect(() => {
@@ -130,7 +107,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         if (!userId) return;
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout - faster feedback
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout - more reasonable
           
           const response = await axiosInstance.get(`/profile?user_id=${userId}`, {
             signal: controller.signal
@@ -199,56 +176,47 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         // Check cache first and render immediately
         const cacheKey = `task_${id}`;
         const cached = localStorage.getItem(cacheKey);
-        let hasCachedData = false;
         if (cached) {
           const cachedData = JSON.parse(cached);
           const cacheAge = Date.now() - cachedData.timestamp;
           if (cacheAge < 300000) { // 5 minutes cache
-            console.log("Using cached task data, refreshing in background");
+            console.log("Using cached task data");
             setTask(cachedData.task);
             setLoading(false);
-            hasCachedData = true;
-            // Continue to refresh in background (don't block UI)
+            // Continue to refresh in background
           }
         }
 
-        // Primary request with shorter timeout for faster feedback
+        // Primary request (fetch) with reasonable timeout and Axios fallback
         const token = localStorage.getItem('token');
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
           console.log("Task loading timeout reached, aborting request");
           controller.abort();
-        }, 6000); // 6s timeout – faster feedback
+        }, 12000); // 12s timeout – faster feedback
 
         let data: ApiJobResponse;
         try {
-          // Try axiosInstance first (it has better error handling and circuit breaker)
-          const axiosResp = await Promise.race([
-            axiosInstance.get(`/get-job/${id}/`, { signal: controller.signal }),
-            new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Request timeout')), 6000)
-            )
-          ]) as any;
+          const response = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            credentials: 'omit',
+            signal: controller.signal
+          });
           clearTimeout(timeoutId);
-          data = axiosResp.data as ApiJobResponse;
-        } catch (primaryErr: any) {
-          clearTimeout(timeoutId);
-          // Fallback to fetch API
-          console.warn("Axios task fetch failed, trying fallback via fetch", primaryErr);
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          data = await response.json();
+        } catch (primaryErr) {
+          // Fallback to axios instance (may have different infra/routing)
+          console.warn("Primary task fetch failed, trying fallback via axiosInstance", primaryErr);
           try {
-            const response = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-              },
-              credentials: 'omit',
-              signal: controller.signal
-            });
-            if (!response.ok) {
-              throw new Error(`HTTP ${response.status}`);
-            }
-            data = await response.json();
+            const axiosResp = await axiosInstance.get(`/get-job/${id}/`);
+            data = axiosResp.data as ApiJobResponse;
           } catch (fallbackErr) {
             throw fallbackErr;
           }
@@ -340,6 +308,25 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         // All other tasks remain "open" for bidding
         
 
+        // Normalize "posted" date so it matches dashboard cards:
+        // Prefer true creation timestamps over due date.
+        const rawPosted =
+          job.tstamp ||
+          job.timestamp ||
+          job.created_at ||
+          job.job_tstamp ||
+          job.job_due_date;
+
+        const formattedPosted =
+          rawPosted && !isNaN(new Date(rawPosted).getTime())
+            ? new Date(rawPosted).toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                timeZone: "UTC",
+              })
+            : "N/A";
+
         const mappedTask: Task = {
           id: job.job_id,
           title: job.job_title,
@@ -348,19 +335,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           location: job.job_location,
           status: jobStatus,
           job_completion_status: job.job_completion_status,
-          postedAt: job.timestamp
-            ? (() => {
-                const date = new Date(job.timestamp);
-                return isNaN(date.getTime())
-                  ? "Invalid Date"
-                  : date.toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                      timeZone: "UTC",
-                    });
-              })()
-            : "N/A",
+          postedAt: formattedPosted,
           dueDate: job.job_due_date
             ? new Date(job.job_due_date).toLocaleDateString("en-GB", {
                 day: "2-digit",
@@ -396,20 +371,9 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           task: mappedTask,
           timestamp: Date.now()
         }));
-        
-        // Only set loading to false if we didn't already show cached data
-        if (!hasCachedData) {
-          setLoading(false);
-        }
       } catch (error: any) {
         console.error("Error loading task data:", error);
-        // If we had cached data, don't show error - just log it
-        if (hasCachedData) {
-          console.warn("Background refresh failed, using cached data:", error);
-          return; // Keep showing cached data
-        }
-        
-        if ((error as any)?.name === 'AbortError' || error?.message === 'Request timeout') {
+        if ((error as any)?.name === 'AbortError') {
           console.log("Task loading was aborted due to timeout");
           // Try to load from cache as fallback
           try {
@@ -417,21 +381,20 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
             if (cached) {
               const cachedData = JSON.parse(cached);
               setTask(cachedData.task);
-              setLoading(false);
               console.log("Loaded task from cache after timeout");
               return; // Don't set task to null if we loaded from cache
             }
           } catch (cacheError) {
             console.warn("Failed to load from cache:", cacheError);
           }
-          toast.error("Request timed out. Please try again.");
-          setTask(null);
+          setTask(null); // Only set to null if no cache available
         } else {
           toast.error(
-            error.response?.data?.detail || error?.message || "Failed to load task details"
+            error.response?.data?.detail || "Failed to load task details"
           );
           setTask(null);
         }
+      } finally {
         setLoading(false);
       }
     };
@@ -449,28 +412,28 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         // Use fetch API for better performance
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout - faster feedback
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
 
         // Check if current user is the task poster
         const isTaskPoster = task && task.poster && task.poster.id === userId;
         
-        // Use axiosInstance with timeout for better performance
-        let data: ApiBidResponse;
-        try {
-          const axiosResponse = await Promise.race([
-            axiosInstance.get(`/get-bids/${id}/`, { signal: controller.signal }),
-            new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Request timeout')), 8000)
-            )
-          ]) as any;
-          clearTimeout(timeoutId);
-          data = axiosResponse.data as ApiBidResponse;
-        } catch (error: any) {
-          clearTimeout(timeoutId);
-          // Fallback to user bids endpoint if task bids endpoint fails
-          console.warn("Failed to fetch task bids, falling back to user bids:", error);
+        let response;
+        if (isTaskPoster) {
+          // Task poster: try to fetch all bids for this task using axiosInstance
+          console.log("Fetching all bids for task (user is poster)");
           try {
-            const fallbackResponse = await fetch(`https://api.jobpool.in/api/v1/get-user-bids/${userId}/`, {
+            const axiosResponse = await axiosInstance.get(`/get-bids/${id}/`, {
+              signal: controller.signal
+            });
+            // Convert axios response to fetch-like response
+            response = {
+              ok: true,
+              json: () => Promise.resolve(axiosResponse.data)
+            } as any;
+          } catch (error) {
+            console.warn("Failed to fetch task bids, falling back to user bids:", error);
+            // Fallback to user bids if task bids endpoint fails
+            response = await fetch(`https://api.jobpool.in/api/v1/get-user-bids/${userId}/`, {
               method: 'GET',
               headers: {
                 'Authorization': `Bearer ${token}`,
@@ -479,15 +442,40 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               credentials: 'omit',
               signal: controller.signal
             });
-            if (!fallbackResponse.ok) {
-              throw new Error(`HTTP ${fallbackResponse.status}`);
-            }
-            data = await fallbackResponse.json();
-          } catch (fallbackErr) {
-            throw fallbackErr;
+          }
+        } else {
+          // Non-poster: try to fetch all bids for this task (amounts hidden in UI)
+          console.log("Fetching all task bids for non-poster (privacy enforced in UI)");
+          try {
+            const axiosResponse = await axiosInstance.get(`/get-bids/${id}/`, {
+              signal: controller.signal
+            });
+            // Convert axios response to fetch-like response
+            response = {
+              ok: true,
+              json: () => Promise.resolve(axiosResponse.data)
+            } as any;
+          } catch (error) {
+            console.warn("Failed to fetch all task bids, falling back to user's bids:", error);
+            response = await fetch(`https://api.jobpool.in/api/v1/get-user-bids/${userId}/`, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              credentials: 'omit',
+              signal: controller.signal
+            });
           }
         }
 
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data: ApiBidResponse = await response.json();
         console.log("Raw API response for bids:", data); // Debug log
 
         if (data.status_code !== 200) {
@@ -718,111 +706,16 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         comment: reviewComment,
       };
 
-      console.log("Submitting review with payload:", payload);
       const response = await axiosInstance.put("/submit-review/", payload);
-      console.log("Review submission response:", response.data);
 
       if (response.data.status_code === 200) {
-        // Store in localStorage first
-        const reviewData = {
-          rating: reviewRating,
-          comment: reviewComment,
-          timestamp: new Date().toISOString(),
-        };
-        
-        try {
-          const stored = localStorage.getItem("poster_reviews");
-          const reviews = stored ? JSON.parse(stored) : {};
-          reviews[task?.id || id] = reviewData;
-          localStorage.setItem("poster_reviews", JSON.stringify(reviews));
-          console.log("Review saved to localStorage:", reviewData);
-        } catch (e) {
-          console.error("Failed to store review locally:", e);
-        }
-        
-        // Update state immediately
-        setPosterReview(reviewData);
-        
-        // Clear form
-        setReviewRating(5);
-        setReviewComment("");
-        
         toast.success("Your review has been submitted!");
-        
-        // Don't redirect immediately - let user see the review was saved
-        // They can navigate away manually if needed
+        router.push("/dashboard");
       } else {
         throw new Error(response.data.message || "Failed to submit review");
       }
     } catch (error: any) {
       console.error("Error submitting review:", error);
-      toast.error(error.response?.data?.message || "Failed to submit review");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Handler for tasker reviews (tasker reviewing the poster)
-  const handleSubmitTaskerReview = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!taskerReviewComment) {
-      toast.error("Please provide a review comment");
-      return;
-    }
-    if (!task?.poster?.id) {
-      toast.error("No poster found for this task");
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const payload = {
-        job_ref_id: id,
-        reviewer_id: userId,
-        user_id: task.poster.id, // Reviewing the poster
-        rating: taskerReviewRating,
-        comment: taskerReviewComment,
-      };
-
-      console.log("Submitting tasker review with payload:", payload);
-      const response = await axiosInstance.put("/submit-review/", payload);
-      console.log("Tasker review submission response:", response.data);
-
-      if (response.data.status_code === 200) {
-        // Store in localStorage first
-        const reviewData = {
-          rating: taskerReviewRating,
-          comment: taskerReviewComment,
-          timestamp: new Date().toISOString(),
-        };
-        
-        try {
-          const stored = localStorage.getItem("tasker_reviews");
-          const reviews = stored ? JSON.parse(stored) : {};
-          reviews[task.id] = reviewData;
-          localStorage.setItem("tasker_reviews", JSON.stringify(reviews));
-          console.log("Tasker review saved to localStorage:", reviewData);
-        } catch (e) {
-          console.error("Failed to store tasker review locally:", e);
-        }
-        
-        // Update state immediately
-        setTaskerReview(reviewData);
-        
-        // Clear form
-        setTaskerReviewRating(5);
-        setTaskerReviewComment("");
-        
-        toast.success("Your review has been submitted!");
-        
-        // Don't redirect immediately - let user see the review was saved
-        // They can navigate away manually if needed
-      } else {
-        throw new Error(response.data.message || "Failed to submit review");
-      }
-    } catch (error: any) {
-      console.error("Error submitting tasker review:", error);
       toast.error(error.response?.data?.message || "Failed to submit review");
     } finally {
       setIsSubmitting(false);
@@ -948,27 +841,6 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       toast.error(error?.response?.data?.message || "Failed to initiate chat");
     }
   };
-
-  const handlePosterReviewCompleted = (details: { rating: number; comment: string; timestamp?: string }) => {
-    setPosterReview({ rating: details.rating, comment: details.comment, timestamp: details.timestamp });
-    setTask((prevTask) =>
-      prevTask
-        ? { ...prevTask, status: "completed", job_completion_status: 1 }
-        : prevTask
-    );
-  };
-
-  // Update task completion status when viewing completed tasks
-  useEffect(() => {
-    if (task && task.status === "completed" && task.job_completion_status !== 1) {
-      // If task status is completed but completion_status isn't 1, update it locally
-      setTask((prevTask) =>
-        prevTask
-          ? { ...prevTask, job_completion_status: 1 }
-          : prevTask
-      );
-    }
-  }, [task?.status, task?.job_completion_status]);
 
   const openImageGallery = (index: number) => {
     setCurrentImageIndex(index);
@@ -1116,7 +988,6 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               isEditing={isEditing}
               setIsEditing={setIsEditing}
             />
-            {/* Poster Review Section (poster reviewing tasker) */}
             <ReviewSection
               isTaskPoster={isTaskPoster}
               taskStatus={task.status}
@@ -1128,26 +999,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               isSubmitting={isSubmitting}
               taskerId={taskerId}
               completionStatus={task.job_completion_status}
-              existingReview={posterReview}
             />
-            {/* Tasker Review Section (tasker reviewing poster) */}
-            {!isTaskPoster && taskerId === userId && (
-              <ReviewSection
-                isTaskPoster={false}
-                taskStatus={task.status}
-                handleSubmitReview={handleSubmitTaskerReview}
-                reviewRating={taskerReviewRating}
-                setReviewRating={setTaskerReviewRating}
-                reviewComment={taskerReviewComment}
-                setReviewComment={setTaskerReviewComment}
-                isSubmitting={isSubmitting}
-                taskerId={null}
-                completionStatus={task.job_completion_status}
-                existingReview={taskerReview}
-                isTaskerReview={true}
-                posterId={task.poster.id}
-              />
-            )}
             {/* Allow tasker to request cancellation */}
             {(!isTaskPoster && (task.status === "in_progress" || !!task.assignedTasker)) && (
               <div className="flex gap-2">
@@ -1170,8 +1022,6 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               isSubmitting={isSubmitting}
               currentUserId={userId}
               blockSubmitInitial={!isTaskPoster && (task.status === "in_progress" || !!task.assignedTasker)}
-              onTaskCompleted={handlePosterReviewCompleted}
-              existingReview={posterReview}
             />
           </div>
           
