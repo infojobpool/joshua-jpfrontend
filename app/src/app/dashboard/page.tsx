@@ -857,8 +857,9 @@ export default function Dashboard() {
               }
               // All other tasks remain "open" for bidding
               
+              // Posted date should come from creation timestamp, not due date
               const postedMeta = formatTimestampValue(
-                job.job_tstamp || job.created_at || job.timestamp || job.job_due_date
+                job.tstamp || job.timestamp || job.created_at || job.job_tstamp || job.job_due_date
               );
 
               return {
