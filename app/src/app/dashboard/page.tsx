@@ -840,6 +840,7 @@ export default function Dashboard() {
                 });
               }
               
+              // Original behaviour: only show tasks NOT posted by the current user, and still open
               return isNotPostedByUser && isOpen;
             })
             .map((job: any) => {
