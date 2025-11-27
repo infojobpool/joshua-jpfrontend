@@ -425,14 +425,37 @@ export default function Dashboard() {
     fetchTaskOrders(); // Fetch task orders when user is authenticated
   }, [isAuthenticated, user, userId, effectiveUserId, router]);
 
-  // Fetch categories
+  // Fetch categories - load on mount and when user is available
   useEffect(() => {
+    if (!user && !userId) return; // Wait for user to be available
+    
     const fetchCategories = async () => {
       try {
-        // Use fetch API directly to bypass axios timeout issues
+        setCategoriesLoading(true);
         const token = localStorage.getItem('token');
+        if (!token) {
+          console.warn("No token available for categories fetch");
+          return;
+        }
+        
+        // Try axiosInstance first (better error handling)
+        try {
+          const response = await axiosInstance.get('/get-all-categories/');
+          if (response.data?.status_code === 200) {
+            const cats = response.data.data?.categories || response.data.data || [];
+            if (Array.isArray(cats) && cats.length > 0) {
+              setCategories(cats);
+              setCategoriesLoading(false);
+              return;
+            }
+          }
+        } catch (axiosError) {
+          console.warn("Axios categories fetch failed, trying fetch API:", axiosError);
+        }
+        
+        // Fallback to fetch API
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
 
         const fetchResponse = await fetch(`${API_BASE}/get-all-categories/`, {
           method: 'GET',
@@ -453,8 +476,12 @@ export default function Dashboard() {
 
         const result = await fetchResponse.json();
         
-        if (result.status_code === 200 && result.data?.categories) {
-          setCategories(result.data.categories);
+        // Handle different response structures
+        if (result.status_code === 200) {
+          const cats = result.data?.categories || result.data || [];
+          if (Array.isArray(cats) && cats.length > 0) {
+            setCategories(cats);
+          }
         }
       } catch (error) {
         // Handle AbortError separately (don't show error for timeouts)
@@ -463,11 +490,13 @@ export default function Dashboard() {
           return;
         }
         console.error("Failed to fetch categories:", error);
+      } finally {
+        setCategoriesLoading(false);
       }
     };
 
     fetchCategories();
-  }, []);
+  }, [user, userId, API_BASE]);
 
   // Fetch user's posted tasks
   useEffect(() => {
