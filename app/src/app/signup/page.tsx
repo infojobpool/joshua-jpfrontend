@@ -19,7 +19,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { Toaster } from "../../components/ui/sonner";
 import { toast } from "sonner";
 import axiosInstance from "@/lib/axiosInstance";
-import axios, { AxiosError } from "axios";
+import axios from "axios";
 
 type AccountType = "tasker" | "poster" | "both";
 
@@ -92,15 +92,26 @@ export default function SignUpPage() {
       }, 3000);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        const axiosError = err as AxiosError<{ message: string }>;
-        if (axiosError.response?.status === 409) {
-          toast.error(
-            axiosError.response.data?.message || "User already exists."
-          );
+        const status = err.response?.status;
+        const data: any = err.response?.data;
+
+        // 409: user already exists
+        if (status === 409) {
+          toast.error(data?.message || "User already exists.");
+        }
+        // 422: validation error – show backend field message (e.g. full name too long)
+        else if (status === 422 && Array.isArray(data?.detail) && data.detail.length > 0) {
+          const firstError = data.detail[0];
+          const field = Array.isArray(firstError.loc) ? firstError.loc.slice(-1)[0] : undefined;
+          const msg = firstError.msg || data?.message || "Please check the highlighted fields.";
+          const friendly = field ? `${msg} (Field: ${field})` : msg;
+          toast.error(friendly);
         } else {
-          toast.error("An error occurred while creating your account");
+          // Fallback for other API errors
+          toast.error(data?.message || "An error occurred while creating your account");
         }
       } else {
+        // Non-Axios error
         toast.error("Something went wrong");
       }
     } finally {
