@@ -339,18 +339,25 @@ export default function Dashboard() {
     } catch {}
   }, []);
 
-  // Ensure categories are loaded when the inline mobile filters are opened
+  // Ensure categories are loaded when the inline mobile filters are opened (only if not already loaded)
   useEffect(() => {
+    // Don't reload if categories are already loaded
+    if (categories.length > 0) return;
+    
     const loadCats = async () => {
       try {
         setCategoriesLoading(true);
         const token = localStorage.getItem('token');
+        if (!token) {
+          setCategoriesLoading(false);
+          return;
+        }
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 20000);
         const res = await fetch(`${API_BASE}/get-all-categories/`, {
           method: 'GET',
           headers: {
-            'Authorization': token ? `Bearer ${token}` : '',
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
           credentials: 'omit',
@@ -359,16 +366,34 @@ export default function Dashboard() {
         clearTimeout(timeoutId);
         if (res.ok) {
           const json = await res.json();
-          if (json?.status_code === 200 && Array.isArray(json?.data?.categories)) {
-            setCategories(json.data.categories);
+          console.log("📂 Mobile categories response:", json);
+          
+          // Try multiple response structures
+          const cats = json?.data?.categories || 
+                      json?.data || 
+                      json?.categories ||
+                      json || 
+                      [];
+          
+          if (Array.isArray(cats) && cats.length > 0) {
+            // Normalize category objects
+            const normalized = cats.map((cat: any) => ({
+              id: cat.id || cat.category_id || cat._id || String(cat),
+              name: cat.name || cat.category_name || cat.title || String(cat)
+            }));
+            setCategories(normalized);
           }
         }
-      } catch (_) {
-        // silent
+      } catch (error: any) {
+        if (error?.name !== 'AbortError') {
+          console.error("Mobile categories fetch error:", error);
+        }
       } finally {
         setCategoriesLoading(false);
       }
     };
+    
+    // Only load on mobile if filters are shown and categories haven't been loaded yet
     if (isMobile && showFilters && categories.length === 0 && !categoriesLoading) {
       loadCats();
     }
@@ -435,22 +460,44 @@ export default function Dashboard() {
         const token = localStorage.getItem('token');
         if (!token) {
           console.warn("No token available for categories fetch");
+          setCategoriesLoading(false);
           return;
         }
         
         // Try axiosInstance first (better error handling)
         try {
           const response = await axiosInstance.get('/get-all-categories/');
+          console.log("📂 Categories API response:", response.data);
+          
           if (response.data?.status_code === 200) {
-            const cats = response.data.data?.categories || response.data.data || [];
+            // Try multiple possible response structures
+            const cats = response.data.data?.categories || 
+                        response.data.data || 
+                        response.data.categories ||
+                        response.data || 
+                        [];
+            
+            console.log("📂 Extracted categories:", cats);
+            
             if (Array.isArray(cats) && cats.length > 0) {
-              setCategories(cats);
+              // Ensure each category has id and name
+              const normalized = cats.map((cat: any) => ({
+                id: cat.id || cat.category_id || cat._id || String(cat),
+                name: cat.name || cat.category_name || cat.title || String(cat)
+              }));
+              console.log("📂 Normalized categories:", normalized);
+              setCategories(normalized);
               setCategoriesLoading(false);
               return;
+            } else {
+              console.warn("📂 Categories array is empty or not an array:", cats);
             }
+          } else {
+            console.warn("📂 Categories API returned non-200 status:", response.data);
           }
-        } catch (axiosError) {
+        } catch (axiosError: any) {
           console.warn("Axios categories fetch failed, trying fetch API:", axiosError);
+          console.warn("Error details:", axiosError.response?.data || axiosError.message);
         }
         
         // Fallback to fetch API
@@ -471,25 +518,43 @@ export default function Dashboard() {
 
         if (!fetchResponse.ok) {
           console.warn("Fetch categories failed with status:", fetchResponse.status);
+          setCategoriesLoading(false);
           return;
         }
 
         const result = await fetchResponse.json();
+        console.log("📂 Fetch API categories response:", result);
         
         // Handle different response structures
         if (result.status_code === 200) {
-          const cats = result.data?.categories || result.data || [];
+          const cats = result.data?.categories || 
+                      result.data || 
+                      result.categories ||
+                      result || 
+                      [];
+          
           if (Array.isArray(cats) && cats.length > 0) {
-            setCategories(cats);
+            // Ensure each category has id and name
+            const normalized = cats.map((cat: any) => ({
+              id: cat.id || cat.category_id || cat._id || String(cat),
+              name: cat.name || cat.category_name || cat.title || String(cat)
+            }));
+            console.log("📂 Normalized categories from fetch:", normalized);
+            setCategories(normalized);
+          } else {
+            console.warn("📂 Categories array is empty from fetch API:", cats);
           }
+        } else {
+          console.warn("📂 Fetch API returned non-200 status:", result);
         }
-      } catch (error) {
+      } catch (error: any) {
         // Handle AbortError separately (don't show error for timeouts)
-        if ((error as any)?.name === 'AbortError') {
+        if (error?.name === 'AbortError') {
           console.log("⏰ Fetch categories was aborted (timeout)");
-          return;
+        } else {
+          console.error("Failed to fetch categories:", error);
+          console.error("Error details:", error.response?.data || error.message);
         }
-        console.error("Failed to fetch categories:", error);
       } finally {
         setCategoriesLoading(false);
       }
@@ -2273,13 +2338,16 @@ export default function Dashboard() {
                       <SelectValue placeholder="All" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      {categoriesLoading && (
-                        <SelectItem value="loading" disabled>Loading…</SelectItem>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {categoriesLoading ? (
+                        <SelectItem value="loading" disabled>Loading categories...</SelectItem>
+                      ) : categories.length === 0 ? (
+                        <SelectItem value="no-categories" disabled>No categories available</SelectItem>
+                      ) : (
+                        categories.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))
                       )}
-                      {categories.map((c)=> (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
                     </SelectContent>
                   </Select>
                 </div>
