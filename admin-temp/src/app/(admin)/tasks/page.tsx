@@ -359,29 +359,26 @@ export default function TasksPage() {
 
   // Permanently delete a task
   const handleHardDelete = async (taskId: string) => {
+    if (!confirm('⚠️ Are you sure? This action cannot be undone!')) {
+      return;
+    }
+
     try {
       setIsLoading(true);
-      // Backend expects PUT for delete-job; use that first, fallback to DELETE if needed
-      let response;
-      try {
-        response = await axiosInstance.put(`/delete-job/${taskId}/`, { hard_delete: true });
-      } catch (err: any) {
-        // If server rejects PUT with 405, try DELETE
-        if (err?.response?.status === 405) {
-          response = await axiosInstance.delete(`/delete-job/${taskId}/`);
-        } else {
-          throw err;
-        }
-      }
+      const response = await axiosInstance.delete(
+        `/admin/permanent-delete-task/${taskId}`
+      );
+      
       if (response.data.status_code === 200) {
-        toast.success("Task deleted permanently");
+        toast.success("Task permanently deleted");
         setTasks((prev) => prev.filter((t) => t.id !== taskId));
         setIsDetailsDialogOpen(false);
       } else {
         toast.error(response.data.message || "Failed to delete task");
       }
-    } catch {
-      toast.error("An error occurred while deleting the task");
+    } catch (error: any) {
+      console.error("Permanent delete error:", error);
+      toast.error(error.response?.data?.message || "An error occurred while deleting the task");
     } finally {
       setIsLoading(false);
     }

@@ -1564,6 +1564,31 @@ export default function Dashboard() {
     setRequestUndeleteOpen(false);
   };
 
+  const handlePermanentDelete = async (taskId: string) => {
+    if (!confirm('⚠️ Are you sure? This action cannot be undone!')) {
+      return;
+    }
+
+    try {
+      const response = await axiosInstance.delete(
+        `/admin/permanent-delete-task/${taskId}`
+      );
+      
+      if (response.data.status_code === 200) {
+        toast.success('Task permanently deleted');
+        // Remove from posted tasks list immediately
+        setPostedTasks((prev) => prev.filter((task) => task.id !== taskId));
+        // Refresh the task list to ensure consistency
+        // The useEffect will automatically refetch when dependencies change
+      } else {
+        toast.error(response.data.message || 'Failed to delete task');
+      }
+    } catch (error: any) {
+      console.error("Permanent delete error:", error);
+      toast.error(error.response?.data?.message || 'Failed to delete task');
+    }
+  };
+
   const handleSignOut = () => {
     logout();
     router.push("/signin");
@@ -2485,13 +2510,22 @@ export default function Dashboard() {
                         {/* Action buttons */}
                         <div className={`flex gap-2 mt-4 ${isMobile ? "flex-col" : "flex-row"}`}>
                           {task.deletion_status || task.cancel_status ? (
-                            <Button
-                              variant="outline"
-                              className="w-full"
-                              onClick={() => handleRequestUndeleteClick(task.id)}
-                            >
-                              Request Access
-                            </Button>
+                            <div className="flex gap-2 w-full">
+                              <Button
+                                variant="outline"
+                                className="flex-1"
+                                onClick={() => handleRequestUndeleteClick(task.id)}
+                              >
+                                Request Access
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                className="flex-1"
+                                onClick={() => handlePermanentDelete(task.id)}
+                              >
+                                Delete Permanently
+                              </Button>
+                            </div>
                           ) : task.status === "in_progress" ? (
                             <>
                               <div className="flex flex-wrap gap-2 w-full items-center">
