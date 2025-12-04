@@ -99,7 +99,16 @@ export default function PostTaskPage() {
     // Check if user is logged in
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
+      
+      // Check if user is fully verified (PAN, Aadhar, and Bank)
+      // verification_status: 1 = PAN, 2 = Aadhar, 3 = Bank (fully verified)
+      if (parsedUser.verification_status === undefined || parsedUser.verification_status < 3) {
+        toast.error("Please complete your verification (PAN, Aadhar, and Bank Account) to post tasks");
+        router.push("/verification");
+        return;
+      }
     } else {
       // Redirect to sign in if not logged in
       router.push("/signin");
@@ -198,6 +207,17 @@ export default function PostTaskPage() {
   };
 
   const confirmPostSubmission = async () => {
+    // Double-check verification status before submission
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      if (parsedUser.verification_status === undefined || parsedUser.verification_status < 3) {
+        toast.error("Please complete your verification (PAN, Aadhar, and Bank Account) to post tasks");
+        router.push("/verification");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     setShowConfirmPost(false);
 

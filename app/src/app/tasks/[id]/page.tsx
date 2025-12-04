@@ -586,10 +586,33 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       toast.error("Please fill in all required fields");
       return;
     }
+    
+    // Check if user is fully verified (PAN, Aadhar, and Bank)
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      if (parsedUser.verification_status === undefined || parsedUser.verification_status < 3) {
+        toast.error("Please complete your verification (PAN, Aadhar, and Bank Account) to place bids");
+        router.push("/verification");
+        return;
+      }
+    }
+    
     setShowConfirmBid(true);
   };
 
   const confirmBidSubmission = async () => {
+    // Double-check verification status before submission
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      if (parsedUser.verification_status === undefined || parsedUser.verification_status < 3) {
+        toast.error("Please complete your verification (PAN, Aadhar, and Bank Account) to place bids");
+        router.push("/verification");
+        return;
+      }
+    }
+
     const offerAmountNumber = parseFloat(offerAmount);
 
     const payload = {
