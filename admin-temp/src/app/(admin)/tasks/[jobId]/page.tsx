@@ -79,28 +79,20 @@ export default function TaskOffersPage() {
     if (!bidId) return;
     try {
       setDeletingId(bidId);
-      let res;
-      try {
-        // Try standard DELETE first
-        res = await axiosInstance.delete(`/delete-bid/${bidId}/`);
-      } catch (err: any) {
-        // Fallback: some backends use PUT with { hard_delete: true }
-        if (err?.response?.status === 405 || err?.response?.status === 404) {
-          res = await axiosInstance.put(`/delete-bid/${bidId}/`, { hard_delete: true });
-        } else {
-          throw err;
-        }
-      }
-      if (res?.data?.status_code === 200) {
-        setBids((prev) => prev.filter((b) => b.bid_id !== bidId));
-        toast.success(res.data.message || "Bid deleted successfully");
+      const response = await axiosInstance.delete(
+        `/admin/delete-bid/${bidId}`
+      );
+      
+      if (response.data.status_code === 200) {
+        toast.success('Bid deleted successfully');
+        // Refresh the bids list
+        fetchBids();
       } else {
-        toast.error(res?.data?.message || "Failed to delete bid");
+        toast.error(response.data.message || 'Failed to delete bid');
       }
-    } catch (e: any) {
-      // eslint-disable-next-line no-console
-      console.error("[admin] delete bid error", e);
-      toast.error(e?.response?.data?.message || "An error occurred while deleting the bid");
+    } catch (error: any) {
+      console.error("[admin] delete bid error", error);
+      toast.error(error?.response?.data?.message || 'Failed to delete bid');
     } finally {
       setDeletingId(null);
     }
