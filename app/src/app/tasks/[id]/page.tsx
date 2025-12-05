@@ -60,6 +60,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [showCancelDialog, setShowCancelDialog] = useState<boolean>(false);
   const [cancelReason, setCancelReason] = useState<string>("");
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
+  const [isVerified, setIsVerified] = useState<boolean>(false);
+  const [verificationChecked, setVerificationChecked] = useState<boolean>(false);
   const taskerId = offers.length > 0 ? offers[0].tasker.id : null;
 
   // Check for existing review in localStorage when task loads
@@ -120,7 +122,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       return;
     }
 
-      // Fetch user profile (non-blocking, runs in background)
+      // Fetch user profile and verification status
       const fetchProfile = async () => {
         if (!userId) return;
         try {
@@ -143,16 +145,63 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           };
           setUserProfile(profile);
           console.log("Loaded user profile:", profile);
+          
+          // Check verification status from API response
+          const apiVerificationStatus = data.verification_status || 
+                                       data.data?.verification_status || 
+                                       response.data?.data?.verification_status;
+          
+          if (apiVerificationStatus !== undefined) {
+            const verified = apiVerificationStatus >= 3; // 3 = PAN + Aadhar + Bank verified
+            setIsVerified(verified);
+            setVerificationChecked(true);
+            console.log("Verification status from API:", apiVerificationStatus, "Verified:", verified);
+            
+            // Update localStorage user with latest verification status
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+              const parsedUser = JSON.parse(storedUser);
+              parsedUser.verification_status = apiVerificationStatus;
+              localStorage.setItem("user", JSON.stringify(parsedUser));
+            }
+          } else {
+            // Fallback to localStorage verification status
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+              const parsedUser = JSON.parse(storedUser);
+              const verified = parsedUser.verification_status >= 3;
+              setIsVerified(verified);
+              setVerificationChecked(true);
+              console.log("Using localStorage verification status:", parsedUser.verification_status, "Verified:", verified);
+            }
+          }
         } catch (err: any) {
           // Handle AbortError silently for background tasks
           if (err.name === 'AbortError' || err.name === 'CanceledError') {
             console.log("Profile fetch timed out (background task)");
+            // Still check localStorage for verification status
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+              const parsedUser = JSON.parse(storedUser);
+              const verified = parsedUser.verification_status >= 3;
+              setIsVerified(verified);
+              setVerificationChecked(true);
+            }
             return;
           }
           console.error("Failed to fetch profile:", err);
           if (err.response?.status === 401) {
             logout();
             router.push("/signin");
+          } else {
+            // Fallback to localStorage verification status on error
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+              const parsedUser = JSON.parse(storedUser);
+              const verified = parsedUser.verification_status >= 3;
+              setIsVerified(verified);
+              setVerificationChecked(true);
+            }
           }
         }
       };
@@ -587,7 +636,20 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       return;
     }
     
+    // Wait for verification check to complete
+    if (!verificationChecked) {
+      toast.error("Please wait while we verify your account status...");
+      return;
+    }
+    
     // Check if user is fully verified (PAN, Aadhar, and Bank)
+    if (!isVerified) {
+      toast.error("Please complete your verification (PAN, Aadhar, and Bank Account) to place bids");
+      router.push("/verification");
+      return;
+    }
+    
+    // Double-check from localStorage as well
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
@@ -596,21 +658,38 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         router.push("/verification");
         return;
       }
+    } else {
+      toast.error("Please log in to place bids");
+      router.push("/signin");
+      return;
     }
     
     setShowConfirmBid(true);
   };
 
   const confirmBidSubmission = async () => {
-    // Double-check verification status before submission
+    // Triple-check verification status before API call
+    if (!verificationChecked || !isVerified) {
+      toast.error("Please complete your verification (PAN, Aadhar, and Bank Account) to place bids");
+      setShowConfirmBid(false);
+      router.push("/verification");
+      return;
+    }
+    
     const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      if (parsedUser.verification_status === undefined || parsedUser.verification_status < 3) {
-        toast.error("Please complete your verification (PAN, Aadhar, and Bank Account) to place bids");
-        router.push("/verification");
-        return;
-      }
+    if (!storedUser) {
+      toast.error("Please log in to place bids");
+      setShowConfirmBid(false);
+      router.push("/signin");
+      return;
+    }
+    
+    const parsedUser = JSON.parse(storedUser);
+    if (parsedUser.verification_status === undefined || parsedUser.verification_status < 3) {
+      toast.error("Please complete your verification (PAN, Aadhar, and Bank Account) to place bids");
+      setShowConfirmBid(false);
+      router.push("/verification");
+      return;
     }
 
     const offerAmountNumber = parseFloat(offerAmount);
@@ -1088,6 +1167,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               isSubmitting={isSubmitting}
               currentUserId={userId}
               blockSubmitInitial={!isTaskPoster && (task.status === "in_progress" || !!task.assignedTasker)}
+              isVerified={isVerified}
+              verificationChecked={verificationChecked}
             />
           </div>
           

@@ -346,17 +346,6 @@ interface Task {
   assignedTasker?: User;
 }
 
-interface ReviewDetails {
-  rating: number;
-  comment: string;
-  timestamp?: string;
-  taskId: string;
-  taskerId: string;
-  taskTitle?: string;
-  posterId: string;
-  posterName?: string;
-}
-
 interface OffersSectionProps {
   task: Task;
   offers: Offer[];
@@ -371,8 +360,8 @@ interface OffersSectionProps {
   isSubmitting: boolean;
   currentUserId?: string;
   blockSubmitInitial?: boolean; // hint from parent to suppress form immediately
-  onTaskCompleted?: (details: ReviewDetails) => void;
-  existingReview?: Pick<ReviewDetails, "rating" | "comment" | "timestamp"> | null;
+  isVerified?: boolean; // verification status for bid submission
+  verificationChecked?: boolean; // whether verification status has been checked
 }
 
 export function OffersSection({
@@ -389,8 +378,8 @@ export function OffersSection({
   isSubmitting,
   currentUserId,
   blockSubmitInitial = false,
-  onTaskCompleted,
-  existingReview,
+  isVerified = false,
+  verificationChecked = false,
 }: OffersSectionProps) {
   const [error, setError] = useState("");
   const router = useRouter();
@@ -454,14 +443,27 @@ export function OffersSection({
 
       if (response.data.status_code === 200) {
         toast.success(response.data.message || "Bid accepted successfully");
-
-        /**
-         * ⚠️ Do NOT mark the task as in-progress yet.
-         * We only want to transition once the payment is successfully captured.
-         * Otherwise, cancelled/failed Razorpay payments would still show the task
-         * as in progress which confuses both taskers and posters.
-         */
-
+        
+        // Update task status immediately to show in My Tasks
+        const updatedTask = {
+          ...task,
+          status: "in_progress",
+          assignedTasker: offer.tasker,
+          accepted_bidder_id: offer.tasker.id,
+          assigned_tasker_id: offer.tasker.id
+        };
+        
+        // Update sessionStorage to reflect the change
+        try {
+          const existingTasks = JSON.parse(sessionStorage.getItem("user_tasks") || "[]");
+          const updatedTasks = existingTasks.map((t: any) => 
+            t.id === task.id ? updatedTask : t
+          );
+          sessionStorage.setItem("user_tasks", JSON.stringify(updatedTasks));
+        } catch (e) {
+          console.warn("Failed to update sessionStorage:", e);
+        }
+        
         // Store tasker_id and taskposter_id in sessionStorage
         sessionStorage.setItem("paymentData", JSON.stringify({
           taskId: task.id,
@@ -508,7 +510,7 @@ export function OffersSection({
 
   const handleCompleteWithReview = async () => {
     if (!activeOfferId) return;
-    const offer = offers.find((o) => o.id === activeOfferId);
+    const offer = offers.find(o => o.id === activeOfferId);
     if (!offer) return;
     try {
       setCompleting(true);
@@ -523,25 +525,6 @@ export function OffersSection({
         comment: reviewComment,
       });
       toast.success("Task marked complete and review submitted");
-          const submittedReview: ReviewDetails = {
-        rating: reviewRating,
-        comment: reviewComment,
-        timestamp: new Date().toISOString(),
-        taskId: task.id,
-        taskerId: offer.tasker.id,
-            taskTitle: task.title,
-            posterId: task.poster.id,
-            posterName: task.poster.name,
-      };
-      onTaskCompleted?.(submittedReview);
-      try {
-            const raw = localStorage.getItem("poster_reviews");
-        const parsed = raw ? JSON.parse(raw) : {};
-            parsed[String(task.id)] = submittedReview;
-        localStorage.setItem("poster_reviews", JSON.stringify(parsed));
-      } catch (storageError) {
-        console.warn("Failed to persist poster review locally:", storageError);
-      }
       setCompleteOpen(false);
       setReviewComment("");
     } catch (e: any) {
@@ -622,11 +605,9 @@ export function OffersSection({
                   </p>
                 </div>
               </div>
-              <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-700">{offer.message}</p>
-                {(offer.status === "accepted" ||
-                  (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) ||
-                  (selectedFromSession && selectedFromSession === offer.tasker.id)) && (
+                {(offer.status === "accepted" || (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) || (selectedFromSession && selectedFromSession === offer.tasker.id)) && (
                   <div className="flex items-center gap-2">
                     <span className="rounded-full bg-green-100 text-green-700 px-3 py-1 text-xs font-medium">Selected</span>
                   </div>
@@ -655,33 +636,8 @@ export function OffersSection({
                   >
                     Message
                   </Button>
-                  { (offer.status === "accepted" ||
-                      (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) ||
-                      (selectedFromSession && selectedFromSession === offer.tasker.id)) &&
-                    task.status === "in_progress" &&
-                    !existingReview && (
-                      <Button
-                        size="sm"
-                        className="w-full sm:flex-1 bg-green-600 hover:bg-green-700 text-white"
-                        onClick={() => openCompleteModal(offer.id)}
-                      >
-                        Mark Complete & Review
-                      </Button>
-                    )}
                 </div>
               )}
-              {existingReview &&
-                (offer.status === "accepted" ||
-                  (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) ||
-                  (selectedFromSession && selectedFromSession === offer.tasker.id)) && (
-                  <div className="mt-3 rounded-xl border border-green-100 bg-green-50 p-4 text-sm text-gray-700 space-y-1">
-                    <p className="font-semibold flex items-center gap-2">
-                      <span className="text-yellow-500">★ {existingReview.rating}/5</span>
-                      <span>Your review</span>
-                    </p>
-                    <p className="italic leading-relaxed">“{existingReview.comment}”</p>
-                  </div>
-                )}
             </div>
           ))
         )}
@@ -716,41 +672,65 @@ export function OffersSection({
       )}
       {!isTaskPoster && !shouldBlockSubmit && !hasSubmittedOffer && (
         <CardFooter>
-          <form onSubmit={handleSubmitOffer} className="w-full space-y-4">
-            <div className="space-y-2">
-              <label
-                htmlFor="offerAmount"
-                className="flex items-center space-x-1"
+          {verificationChecked && !isVerified ? (
+            <div className="w-full p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800 font-medium mb-2">
+                ⚠️ Verification Required
+              </p>
+              <p className="text-sm text-yellow-700 mb-3">
+                Please complete your verification (PAN, Aadhar, and Bank Account) to place bids on tasks.
+              </p>
+              <Button 
+                type="button" 
+                onClick={() => router.push('/verification')}
+                className="w-full bg-yellow-600 hover:bg-yellow-700"
               >
-                <span>Your Offer</span>
-                <IndianRupee className="w-3 h-3" />
-              </label>
-              <Input
-                id="offerAmount"
-                type="number"
-                placeholder="e.g., 50"
-                value={offerAmount}
-                onChange={(e) => setOfferAmount(e.target.value)}
-                required
-                min="1"
-              />
+                Complete Verification
+              </Button>
             </div>
-            <div className="space-y-2">
-              <label htmlFor="offerMessage">Message</label>
-              <Textarea
-                id="offerMessage"
-                placeholder="Introduce yourself and explain why you're a good fit for this task..."
-                value={offerMessage}
-                onChange={handleChange}
-                rows={4}
-                required
-              />
-              {error && <p className="text-red-500 text-sm">{error}</p>}
-            </div>
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Submit Offer"}
-            </Button>
-          </form>
+          ) : (
+            <form onSubmit={handleSubmitOffer} className="w-full space-y-4">
+              <div className="space-y-2">
+                <label
+                  htmlFor="offerAmount"
+                  className="flex items-center space-x-1"
+                >
+                  <span>Your Offer</span>
+                  <IndianRupee className="w-3 h-3" />
+                </label>
+                <Input
+                  id="offerAmount"
+                  type="number"
+                  placeholder="e.g., 50"
+                  value={offerAmount}
+                  onChange={(e) => setOfferAmount(e.target.value)}
+                  required
+                  min="1"
+                  disabled={!verificationChecked || !isVerified || isSubmitting}
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="offerMessage">Message</label>
+                <Textarea
+                  id="offerMessage"
+                  placeholder="Introduce yourself and explain why you're a good fit for this task..."
+                  value={offerMessage}
+                  onChange={handleChange}
+                  rows={4}
+                  required
+                  disabled={!verificationChecked || !isVerified || isSubmitting}
+                />
+                {error && <p className="text-red-500 text-sm">{error}</p>}
+              </div>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={!verificationChecked || !isVerified || isSubmitting}
+              >
+                {isSubmitting ? "Submitting..." : verificationChecked && !isVerified ? "Verification Required" : "Submit Offer"}
+              </Button>
+            </form>
+          )}
         </CardFooter>
       )}
       {!isTaskPoster && task.status !== "completed" && task.status !== "in_progress" && hasSubmittedOffer && (
