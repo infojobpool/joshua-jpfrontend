@@ -64,6 +64,11 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [verificationChecked, setVerificationChecked] = useState<boolean>(false);
   const taskerId = offers.length > 0 ? offers[0].tasker.id : null;
 
+  // Debug: Log verification state changes
+  useEffect(() => {
+    console.log("🔍 Verification state changed:", { isVerified, verificationChecked });
+  }, [isVerified, verificationChecked]);
+
   // Check for existing review in localStorage when task loads
   useEffect(() => {
     if (!task?.id || !userId) return;
@@ -163,26 +168,53 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           console.log("Loaded user profile:", profile);
           
           // Check verification status from API response - try multiple possible locations
-          const apiVerificationStatus = data.verification_status !== undefined ? data.verification_status :
-                                       data.data?.verification_status !== undefined ? data.data.verification_status :
-                                       response.data?.data?.verification_status !== undefined ? response.data?.data?.verification_status :
-                                       response.data?.verification_status !== undefined ? response.data?.verification_status :
-                                       null;
+          // Check all possible nested structures
+          const apiVerificationStatus = 
+            data?.verification_status !== undefined ? data.verification_status :
+            data?.verificationStatus !== undefined ? data.verificationStatus :
+            data?.data?.verification_status !== undefined ? data.data.verification_status :
+            data?.data?.verificationStatus !== undefined ? data.data.verificationStatus :
+            response.data?.verification_status !== undefined ? response.data.verification_status :
+            response.data?.verificationStatus !== undefined ? response.data.verificationStatus :
+            response.data?.data?.verification_status !== undefined ? response.data.data.verification_status :
+            response.data?.data?.verificationStatus !== undefined ? response.data.data.verificationStatus :
+            null;
           
           console.log("🔍 Full API response for verification:", {
             data,
             responseData: response.data,
             apiVerificationStatus,
-            allKeys: Object.keys(data || {})
+            allKeys: Object.keys(data || {}),
+            dataKeys: data ? Object.keys(data) : [],
+            responseDataKeys: response.data ? Object.keys(response.data) : []
           });
           
-          if (apiVerificationStatus !== null && apiVerificationStatus !== undefined) {
+          // Also check if verification status might be in pan_verified, aadhaar_verified fields
+          const panVerified = data?.pan_verified || data?.panVerified || data?.data?.pan_verified;
+          const aadhaarVerified = data?.aadhaar_verified || data?.aadhaarVerified || data?.aadhaar_verified || data?.data?.aadhaar_verified;
+          const bankVerified = data?.bank_verified || data?.bankVerified || data?.data?.bank_verified;
+          
+          console.log("🔍 Individual verification flags:", { panVerified, aadhaarVerified, bankVerified });
+          
+          // If we have individual flags but no status number, calculate it
+          let calculatedStatus = null;
+          if (apiVerificationStatus === null && (panVerified !== undefined || aadhaarVerified !== undefined || bankVerified !== undefined)) {
+            if (bankVerified) calculatedStatus = 3;
+            else if (aadhaarVerified) calculatedStatus = 2;
+            else if (panVerified) calculatedStatus = 1;
+            else calculatedStatus = 0;
+            console.log("🔍 Calculated verification status from flags:", calculatedStatus);
+          }
+          
+          const finalVerificationStatus = apiVerificationStatus !== null ? apiVerificationStatus : calculatedStatus;
+          
+          if (finalVerificationStatus !== null && finalVerificationStatus !== undefined) {
             // Convert to number if it's a string
-            const statusNum = typeof apiVerificationStatus === 'string' ? parseInt(apiVerificationStatus, 10) : Number(apiVerificationStatus);
+            const statusNum = typeof finalVerificationStatus === 'string' ? parseInt(finalVerificationStatus, 10) : Number(finalVerificationStatus);
             const verified = !isNaN(statusNum) && statusNum >= 2; // >= 2 = PAN + Aadhar (sufficient for bidding)
             setIsVerified(verified);
             setVerificationChecked(true);
-            console.log("✅ Verification status from API:", apiVerificationStatus, "->", statusNum, "Verified:", verified);
+            console.log("✅ Verification status from API:", finalVerificationStatus, "->", statusNum, "Verified:", verified);
             
             // Update localStorage user with latest verification status
             const storedUser = localStorage.getItem("user");
@@ -190,6 +222,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               const parsedUser = JSON.parse(storedUser);
               parsedUser.verification_status = statusNum;
               localStorage.setItem("user", JSON.stringify(parsedUser));
+              console.log("💾 Updated localStorage verification_status to:", statusNum);
             }
           } else {
             // Fallback to localStorage verification status
