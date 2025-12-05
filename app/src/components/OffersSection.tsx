@@ -678,7 +678,7 @@ export function OffersSection({
                 ⚠️ Verification Required
               </p>
               <p className="text-sm text-yellow-700 mb-3">
-                Please complete your verification (PAN, Aadhar, and Bank Account) to place bids on tasks.
+                Please complete your verification (PAN and Aadhar) to place bids on tasks.
               </p>
               <Button 
                 type="button" 

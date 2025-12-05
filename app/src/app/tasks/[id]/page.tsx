@@ -96,9 +96,10 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           console.log("Loaded user from localStorage (hydration-safe):", parsedUser);
           
           // Check verification status immediately from localStorage
+          // verification_status >= 2 (PAN + Aadhar) is sufficient for bidding
           if (parsedUser.verification_status !== undefined && parsedUser.verification_status !== null) {
             const statusNum = typeof parsedUser.verification_status === 'string' ? parseInt(parsedUser.verification_status, 10) : Number(parsedUser.verification_status);
-            const verified = !isNaN(statusNum) && statusNum >= 3;
+            const verified = !isNaN(statusNum) && statusNum >= 2; // >= 2 = PAN + Aadhar (sufficient for bidding)
             setIsVerified(verified);
             setVerificationChecked(true);
             console.log("✅ Initial verification check from localStorage:", parsedUser.verification_status, "->", statusNum, "Verified:", verified);
@@ -178,7 +179,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           if (apiVerificationStatus !== null && apiVerificationStatus !== undefined) {
             // Convert to number if it's a string
             const statusNum = typeof apiVerificationStatus === 'string' ? parseInt(apiVerificationStatus, 10) : Number(apiVerificationStatus);
-            const verified = !isNaN(statusNum) && statusNum >= 3; // 3 = PAN + Aadhar + Bank verified
+            const verified = !isNaN(statusNum) && statusNum >= 2; // >= 2 = PAN + Aadhar (sufficient for bidding)
             setIsVerified(verified);
             setVerificationChecked(true);
             console.log("✅ Verification status from API:", apiVerificationStatus, "->", statusNum, "Verified:", verified);
@@ -196,7 +197,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
             if (storedUser) {
               const parsedUser = JSON.parse(storedUser);
               const statusNum = typeof parsedUser.verification_status === 'string' ? parseInt(parsedUser.verification_status, 10) : Number(parsedUser.verification_status);
-              const verified = !isNaN(statusNum) && statusNum >= 3;
+              const verified = !isNaN(statusNum) && statusNum >= 2; // >= 2 = PAN + Aadhar (sufficient for bidding)
               setIsVerified(verified);
               setVerificationChecked(true);
               console.log("⚠️ Using localStorage verification status:", parsedUser.verification_status, "->", statusNum, "Verified:", verified);
@@ -215,7 +216,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
             const storedUser = localStorage.getItem("user");
             if (storedUser) {
               const parsedUser = JSON.parse(storedUser);
-              const verified = parsedUser.verification_status >= 3;
+              const statusNum = typeof parsedUser.verification_status === 'string' ? parseInt(parsedUser.verification_status, 10) : Number(parsedUser.verification_status);
+              const verified = !isNaN(statusNum) && statusNum >= 2; // >= 2 = PAN + Aadhar (sufficient for bidding)
               setIsVerified(verified);
               setVerificationChecked(true);
             }
@@ -230,10 +232,11 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
             const storedUser = localStorage.getItem("user");
             if (storedUser) {
               const parsedUser = JSON.parse(storedUser);
-              const verified = parsedUser.verification_status >= 3;
+              const statusNum = typeof parsedUser.verification_status === 'string' ? parseInt(parsedUser.verification_status, 10) : Number(parsedUser.verification_status);
+              const verified = !isNaN(statusNum) && statusNum >= 2; // >= 2 = PAN + Aadhar (sufficient for bidding)
               setIsVerified(verified);
               setVerificationChecked(true);
-              console.log("Fallback verification check from localStorage on error:", parsedUser.verification_status, "Verified:", verified);
+              console.log("Fallback verification check from localStorage on error:", parsedUser.verification_status, "->", statusNum, "Verified:", verified);
             } else {
               // If no user in localStorage, assume not verified
               setIsVerified(false);
@@ -251,8 +254,9 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         const storedUser = localStorage.getItem("user");
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
-          if (parsedUser.verification_status !== undefined) {
-            const verified = parsedUser.verification_status >= 3;
+          if (parsedUser.verification_status !== undefined && parsedUser.verification_status !== null) {
+            const statusNum = typeof parsedUser.verification_status === 'string' ? parseInt(parsedUser.verification_status, 10) : Number(parsedUser.verification_status);
+            const verified = !isNaN(statusNum) && statusNum >= 2; // >= 2 = PAN + Aadhar (sufficient for bidding)
             setIsVerified(verified);
             setVerificationChecked(true);
           } else {
@@ -698,9 +702,9 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       return;
     }
     
-    // Check if user is fully verified (PAN, Aadhar, and Bank)
+    // Check if user is verified (PAN + Aadhar minimum required for bidding)
     if (!isVerified) {
-      toast.error("Please complete your verification (PAN, Aadhar, and Bank Account) to place bids");
+      toast.error("Please complete your verification (PAN and Aadhar) to place bids");
       router.push("/verification");
       return;
     }
@@ -710,8 +714,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       const statusNum = typeof parsedUser.verification_status === 'string' ? parseInt(parsedUser.verification_status, 10) : Number(parsedUser.verification_status);
-      if (parsedUser.verification_status === undefined || parsedUser.verification_status === null || isNaN(statusNum) || statusNum < 3) {
-        toast.error("Please complete your verification (PAN, Aadhar, and Bank Account) to place bids");
+      if (parsedUser.verification_status === undefined || parsedUser.verification_status === null || isNaN(statusNum) || statusNum < 2) {
+        toast.error("Please complete your verification (PAN and Aadhar) to place bids");
         router.push("/verification");
         return;
       }
@@ -727,7 +731,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const confirmBidSubmission = async () => {
     // Triple-check verification status before API call
     if (!verificationChecked || !isVerified) {
-      toast.error("Please complete your verification (PAN, Aadhar, and Bank Account) to place bids");
+      toast.error("Please complete your verification (PAN and Aadhar) to place bids");
       setShowConfirmBid(false);
       router.push("/verification");
       return;
@@ -743,8 +747,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     
     const parsedUser = JSON.parse(storedUser);
     const statusNum = typeof parsedUser.verification_status === 'string' ? parseInt(parsedUser.verification_status, 10) : Number(parsedUser.verification_status);
-    if (parsedUser.verification_status === undefined || parsedUser.verification_status === null || isNaN(statusNum) || statusNum < 3) {
-      toast.error("Please complete your verification (PAN, Aadhar, and Bank Account) to place bids");
+    if (parsedUser.verification_status === undefined || parsedUser.verification_status === null || isNaN(statusNum) || statusNum < 2) {
+      toast.error("Please complete your verification (PAN and Aadhar) to place bids");
       setShowConfirmBid(false);
       router.push("/verification");
       return;
