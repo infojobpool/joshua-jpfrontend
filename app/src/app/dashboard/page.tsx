@@ -2337,7 +2337,7 @@ export default function Dashboard() {
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="All" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[300px] overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgb(156_163_175)_rgb(243_244_246)] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-gray-500">
                       <SelectItem value="all">All Categories</SelectItem>
                       {categoriesLoading ? (
                         <SelectItem value="loading" disabled>Loading categories...</SelectItem>
@@ -2659,7 +2659,7 @@ export default function Dashboard() {
                             <SelectTrigger className="border-0 focus:ring-0 text-gray-700">
                           <SelectValue placeholder="Select a category" />
                         </SelectTrigger>
-                            <SelectContent className="rounded-lg border border-gray-200 shadow-lg">
+                            <SelectContent className="rounded-lg border border-gray-200 shadow-lg max-h-[300px] overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgb(156_163_175)_rgb(243_244_246)] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-gray-500">
                               <SelectItem value="all" className="rounded-md">All Categories</SelectItem>
                           {categories.length > 0 ? (
                             categories.map((cat) => (
