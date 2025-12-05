@@ -190,31 +190,43 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           });
           
           // Also check if verification status might be in pan_verified, aadhaar_verified fields
-          const panVerified = data?.pan_verified || data?.panVerified || data?.data?.pan_verified;
-          const aadhaarVerified = data?.aadhaar_verified || data?.aadhaarVerified || data?.aadhaar_verified || data?.data?.aadhaar_verified;
-          const bankVerified = data?.bank_verified || data?.bankVerified || data?.data?.bank_verified;
+          const panVerified = data?.pan_verified || data?.panVerified || data?.data?.pan_verified || response.data?.pan_verified;
+          const aadhaarVerified = data?.aadhaar_verified || data?.aadhaarVerified || data?.aadhaar_verified || data?.data?.aadhaar_verified || response.data?.aadhaar_verified;
+          const bankVerified = data?.bank_verified || data?.bankVerified || data?.data?.bank_verified || response.data?.bank_verified;
           
           console.log("🔍 Individual verification flags:", { panVerified, aadhaarVerified, bankVerified });
           
           // If we have individual flags but no status number, calculate it
           let calculatedStatus = null;
           if (apiVerificationStatus === null && (panVerified !== undefined || aadhaarVerified !== undefined || bankVerified !== undefined)) {
-            if (bankVerified) calculatedStatus = 3;
-            else if (aadhaarVerified) calculatedStatus = 2;
-            else if (panVerified) calculatedStatus = 1;
+            if (bankVerified === true || bankVerified === 1) calculatedStatus = 3;
+            else if (aadhaarVerified === true || aadhaarVerified === 1) calculatedStatus = 2;
+            else if (panVerified === true || panVerified === 1) calculatedStatus = 1;
             else calculatedStatus = 0;
             console.log("🔍 Calculated verification status from flags:", calculatedStatus);
           }
           
           const finalVerificationStatus = apiVerificationStatus !== null ? apiVerificationStatus : calculatedStatus;
           
-          if (finalVerificationStatus !== null && finalVerificationStatus !== undefined) {
+          // If still no status found, check if bank_info exists (indicates at least some verification)
+          if (finalVerificationStatus === null) {
+            const bankInfo = data?.bank_info || data?.bankInfo || data?.data?.bank_info || response.data?.bank_info;
+            if (bankInfo && Object.keys(bankInfo).length > 0) {
+              // If bank info exists, assume at least PAN + Aadhar + Bank (3)
+              calculatedStatus = 3;
+              console.log("🔍 Found bank_info, assuming verification_status = 3");
+            }
+          }
+          
+          const finalStatus = finalVerificationStatus !== null ? finalVerificationStatus : calculatedStatus;
+          
+          if (finalStatus !== null && finalStatus !== undefined) {
             // Convert to number if it's a string
-            const statusNum = typeof finalVerificationStatus === 'string' ? parseInt(finalVerificationStatus, 10) : Number(finalVerificationStatus);
+            const statusNum = typeof finalStatus === 'string' ? parseInt(finalStatus, 10) : Number(finalStatus);
             const verified = !isNaN(statusNum) && statusNum >= 2; // >= 2 = PAN + Aadhar (sufficient for bidding)
             setIsVerified(verified);
             setVerificationChecked(true);
-            console.log("✅ Verification status from API:", finalVerificationStatus, "->", statusNum, "Verified:", verified);
+            console.log("✅ Verification status from API:", finalStatus, "->", statusNum, "Verified:", verified);
             
             // Update localStorage user with latest verification status
             const storedUser = localStorage.getItem("user");
@@ -230,15 +242,25 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
             if (storedUser) {
               const parsedUser = JSON.parse(storedUser);
               const statusNum = typeof parsedUser.verification_status === 'string' ? parseInt(parsedUser.verification_status, 10) : Number(parsedUser.verification_status);
-              const verified = !isNaN(statusNum) && statusNum >= 2; // >= 2 = PAN + Aadhar (sufficient for bidding)
-              setIsVerified(verified);
-              setVerificationChecked(true);
-              console.log("⚠️ Using localStorage verification status:", parsedUser.verification_status, "->", statusNum, "Verified:", verified);
+              
+              if (!isNaN(statusNum) && statusNum >= 0) {
+                // Valid number found in localStorage
+                const verified = statusNum >= 2; // >= 2 = PAN + Aadhar (sufficient for bidding)
+                setIsVerified(verified);
+                setVerificationChecked(true);
+                console.log("⚠️ Using localStorage verification status:", parsedUser.verification_status, "->", statusNum, "Verified:", verified);
+              } else {
+                // Invalid or missing verification status - assume not verified
+                console.warn("⚠️ Invalid verification_status in localStorage:", parsedUser.verification_status);
+                setIsVerified(false);
+                setVerificationChecked(true);
+                console.log("❌ No valid verification status found, defaulting to not verified");
+              }
             } else {
-              // No verification status found anywhere
+              // No user in localStorage
               setIsVerified(false);
               setVerificationChecked(true);
-              console.log("❌ No verification status found");
+              console.log("❌ No user found in localStorage");
             }
           }
         } catch (err: any) {
