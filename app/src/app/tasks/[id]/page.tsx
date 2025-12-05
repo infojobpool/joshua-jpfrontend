@@ -94,7 +94,22 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           setUser(parsedUser);
           setAuthLoading(false);
           console.log("Loaded user from localStorage (hydration-safe):", parsedUser);
-          return; // Exit early to prevent flicker
+          
+          // Check verification status immediately from localStorage
+          if (parsedUser.verification_status !== undefined && parsedUser.verification_status !== null) {
+            const statusNum = typeof parsedUser.verification_status === 'string' ? parseInt(parsedUser.verification_status, 10) : Number(parsedUser.verification_status);
+            const verified = !isNaN(statusNum) && statusNum >= 3;
+            setIsVerified(verified);
+            setVerificationChecked(true);
+            console.log("✅ Initial verification check from localStorage:", parsedUser.verification_status, "->", statusNum, "Verified:", verified);
+          } else {
+            // No verification status in localStorage yet, wait for API
+            setIsVerified(false);
+            setVerificationChecked(false);
+            console.log("⏳ No verification status in localStorage, waiting for API...");
+          }
+          
+          // Continue to fetch profile for latest verification status (will update if different)
         }
       } catch (e) {
         console.error("Failed to parse stored user:", e);
@@ -146,22 +161,33 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           setUserProfile(profile);
           console.log("Loaded user profile:", profile);
           
-          // Check verification status from API response
-          const apiVerificationStatus = data.verification_status || 
-                                       data.data?.verification_status || 
-                                       response.data?.data?.verification_status;
+          // Check verification status from API response - try multiple possible locations
+          const apiVerificationStatus = data.verification_status !== undefined ? data.verification_status :
+                                       data.data?.verification_status !== undefined ? data.data.verification_status :
+                                       response.data?.data?.verification_status !== undefined ? response.data?.data?.verification_status :
+                                       response.data?.verification_status !== undefined ? response.data?.verification_status :
+                                       null;
           
-          if (apiVerificationStatus !== undefined) {
-            const verified = apiVerificationStatus >= 3; // 3 = PAN + Aadhar + Bank verified
+          console.log("🔍 Full API response for verification:", {
+            data,
+            responseData: response.data,
+            apiVerificationStatus,
+            allKeys: Object.keys(data || {})
+          });
+          
+          if (apiVerificationStatus !== null && apiVerificationStatus !== undefined) {
+            // Convert to number if it's a string
+            const statusNum = typeof apiVerificationStatus === 'string' ? parseInt(apiVerificationStatus, 10) : Number(apiVerificationStatus);
+            const verified = !isNaN(statusNum) && statusNum >= 3; // 3 = PAN + Aadhar + Bank verified
             setIsVerified(verified);
             setVerificationChecked(true);
-            console.log("Verification status from API:", apiVerificationStatus, "Verified:", verified);
+            console.log("✅ Verification status from API:", apiVerificationStatus, "->", statusNum, "Verified:", verified);
             
             // Update localStorage user with latest verification status
             const storedUser = localStorage.getItem("user");
             if (storedUser) {
               const parsedUser = JSON.parse(storedUser);
-              parsedUser.verification_status = apiVerificationStatus;
+              parsedUser.verification_status = statusNum;
               localStorage.setItem("user", JSON.stringify(parsedUser));
             }
           } else {
@@ -169,10 +195,16 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
             const storedUser = localStorage.getItem("user");
             if (storedUser) {
               const parsedUser = JSON.parse(storedUser);
-              const verified = parsedUser.verification_status >= 3;
+              const statusNum = typeof parsedUser.verification_status === 'string' ? parseInt(parsedUser.verification_status, 10) : Number(parsedUser.verification_status);
+              const verified = !isNaN(statusNum) && statusNum >= 3;
               setIsVerified(verified);
               setVerificationChecked(true);
-              console.log("Using localStorage verification status:", parsedUser.verification_status, "Verified:", verified);
+              console.log("⚠️ Using localStorage verification status:", parsedUser.verification_status, "->", statusNum, "Verified:", verified);
+            } else {
+              // No verification status found anywhere
+              setIsVerified(false);
+              setVerificationChecked(true);
+              console.log("❌ No verification status found");
             }
           }
         } catch (err: any) {
@@ -201,10 +233,34 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               const verified = parsedUser.verification_status >= 3;
               setIsVerified(verified);
               setVerificationChecked(true);
+              console.log("Fallback verification check from localStorage on error:", parsedUser.verification_status, "Verified:", verified);
+            } else {
+              // If no user in localStorage, assume not verified
+              setIsVerified(false);
+              setVerificationChecked(true);
             }
           }
         }
       };
+
+      // Always fetch profile to get latest verification status (even if we have localStorage data)
+      if (userId) {
+        fetchProfile();
+      } else {
+        // If no userId, check localStorage only
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          if (parsedUser.verification_status !== undefined) {
+            const verified = parsedUser.verification_status >= 3;
+            setIsVerified(verified);
+            setVerificationChecked(true);
+          } else {
+            setIsVerified(false);
+            setVerificationChecked(true);
+          }
+        }
+      }
 
       // Sync user's bids to localStorage
       if (userId) {
@@ -653,7 +709,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
-      if (parsedUser.verification_status === undefined || parsedUser.verification_status < 3) {
+      const statusNum = typeof parsedUser.verification_status === 'string' ? parseInt(parsedUser.verification_status, 10) : Number(parsedUser.verification_status);
+      if (parsedUser.verification_status === undefined || parsedUser.verification_status === null || isNaN(statusNum) || statusNum < 3) {
         toast.error("Please complete your verification (PAN, Aadhar, and Bank Account) to place bids");
         router.push("/verification");
         return;
@@ -685,7 +742,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     }
     
     const parsedUser = JSON.parse(storedUser);
-    if (parsedUser.verification_status === undefined || parsedUser.verification_status < 3) {
+    const statusNum = typeof parsedUser.verification_status === 'string' ? parseInt(parsedUser.verification_status, 10) : Number(parsedUser.verification_status);
+    if (parsedUser.verification_status === undefined || parsedUser.verification_status === null || isNaN(statusNum) || statusNum < 3) {
       toast.error("Please complete your verification (PAN, Aadhar, and Bank Account) to place bids");
       setShowConfirmBid(false);
       router.push("/verification");
