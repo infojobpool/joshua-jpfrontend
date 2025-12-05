@@ -150,10 +150,16 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout - more reasonable
           
+          // Try to get verification status from profile endpoint
           const response = await axiosInstance.get(`/profile?user_id=${userId}`, {
             signal: controller.signal
           });
           clearTimeout(timeoutId);
+          
+          console.log("🔍 Raw profile API response:", response);
+          console.log("🔍 Response data:", response.data);
+          console.log("🔍 Response data type:", typeof response.data);
+          console.log("🔍 Response data keys:", response.data ? Object.keys(response.data) : []);
           
           const data = response.data;
           const profile: UserProfile = {
