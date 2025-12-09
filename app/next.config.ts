@@ -12,6 +12,8 @@ import withPWA from "next-pwa";
 const isProd = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
+  // Enable static export for Capacitor mobile apps
+  output: process.env.BUILD_MOBILE === 'true' ? 'export' : undefined,
   trailingSlash: true,
   eslint: {
     ignoreDuringBuilds: isProd, // Skip ESLint in production builds
@@ -20,6 +22,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: isProd, // Skip TypeScript errors in production builds
   },
   images: {
+    unoptimized: process.env.BUILD_MOBILE === 'true', // Disable image optimization for static export
     remotePatterns: [
       { protocol: 'https', hostname: 'jobpool.blr1.digitaloceanspaces.com' },
       { protocol: 'https', hostname: 'blr1.digitaloceanspaces.com' },

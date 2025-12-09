@@ -3,9 +3,10 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.jobpool.app',
   appName: 'JobPool',
-  webDir: 'dist',
+  webDir: 'out', // Next.js static export outputs to 'out' directory
   server: {
-    url: 'https://www.jobpool.in',
+    // Remove server.url for production builds - use local webDir instead
+    // url: 'https://www.jobpool.in',
     androidScheme: 'https',
     allowNavigation: ['*']
   },
