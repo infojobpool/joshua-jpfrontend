@@ -152,8 +152,7 @@ export default function ProfilePage() {
   //   }
   // }, [user]);
 
-  useEffect(() => {
-    const fetchProfile = async () => {
+  const fetchProfile = async (forceRefresh = false) => {
       // Derive userId from localStorage as a fallback for slow hydration
       let effectiveUserId = userId as any;
       if (!effectiveUserId) {
@@ -310,7 +309,7 @@ export default function ProfilePage() {
         setIsLoading(false);
         setIsRefreshingVerification(false);
       }
-    };
+  };
 
   useEffect(() => {
     // Run immediately and again when store userId changes
