@@ -19,6 +19,8 @@ export function MobileSignIn() {
     password: ""
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [showResendVerification, setShowResendVerification] = useState(false);
+  const [isResending, setIsResending] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +54,14 @@ export function MobileSignIn() {
           router.push("/dashboard");
         }
       } else {
-        toast.error(response.data.message || "Login failed");
+        const errorMessage = response.data.message || "Login failed";
+        // Check if error is related to email verification
+        if (errorMessage.toLowerCase().includes("verify") || 
+            errorMessage.toLowerCase().includes("verification") ||
+            (errorMessage.toLowerCase().includes("email") && errorMessage.toLowerCase().includes("not"))) {
+          setShowResendVerification(true);
+        }
+        toast.error(errorMessage);
       }
     } catch (error: any) {
       // Surface actionable debug info in dev for mobile
@@ -66,6 +75,16 @@ export function MobileSignIn() {
           : networkMsg || 'Unknown error';
         // eslint-disable-next-line no-console
         console.error('[mobile][login] error', { status, url, data: error?.response?.data, networkMsg });
+        
+        // Check if error is related to email verification
+        if (status === 403 || status === 401 || (dataMsg && (
+          dataMsg.toLowerCase().includes("verify") || 
+          dataMsg.toLowerCase().includes("verification") ||
+          (dataMsg.toLowerCase().includes("email") && dataMsg.toLowerCase().includes("not"))
+        ))) {
+          setShowResendVerification(true);
+        }
+        
         toast.error(detail);
       } catch (_) {
         toast.error('Login failed. Please try again.');
@@ -80,6 +99,40 @@ export function MobileSignIn() {
       ...formData,
       [e.target.name]: e.target.value
     });
+    // Reset resend verification message when email changes
+    if (e.target.name === "email") {
+      setShowResendVerification(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!formData.email) {
+      toast.error("Please enter your email address");
+      return;
+    }
+
+    try {
+      setIsResending(true);
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || '/api/v1';
+      const response = await fetch(`${apiBase}/resend-verification-email/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email.trim().toLowerCase() }),
+        credentials: 'omit',
+      }).then(async (r) => ({ status: r.status, data: await r.json() }));
+
+      if (response.data.status_code === 200) {
+        toast.success("Verification email sent! Please check your inbox.");
+        setShowResendVerification(false);
+      } else {
+        toast.error(response.data.message || "Failed to send verification email");
+      }
+    } catch (error: any) {
+      const errorMsg = error?.response?.data?.message || "Failed to send verification email. Please try again.";
+      toast.error(errorMsg);
+    } finally {
+      setIsResending(false);
+    }
   };
 
   if (!isMobile) {
@@ -139,6 +192,29 @@ export function MobileSignIn() {
                 Forgot password?
               </Link>
             </div>
+
+            {showResendVerification && (
+              <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-4">
+                <p className="text-sm text-yellow-800 mb-3">
+                  Your email address hasn't been verified yet. Please check your inbox for the verification link, or click below to resend it.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={isResending}
+                  className="w-full px-4 py-2 text-sm font-medium text-yellow-700 bg-white border border-yellow-300 rounded-lg hover:bg-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isResending ? (
+                    <div className="flex items-center justify-center">
+                      <div className="w-4 h-4 border-2 border-yellow-300 border-t-yellow-700 rounded-full animate-spin mr-2"></div>
+                      Sending...
+                    </div>
+                  ) : (
+                    "Resend Verification Email"
+                  )}
+                </button>
+              </div>
+            )}
 
             <MobileButton 
               type="submit" 

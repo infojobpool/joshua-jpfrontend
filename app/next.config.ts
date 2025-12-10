@@ -15,12 +15,11 @@ const nextConfig: NextConfig = {
   // Enable static export for Capacitor mobile apps
   output: process.env.BUILD_MOBILE === 'true' ? 'export' : undefined,
   trailingSlash: true,
-  eslint: {
-    ignoreDuringBuilds: isProd, // Skip ESLint in production builds
-  },
   typescript: {
     ignoreBuildErrors: isProd, // Skip TypeScript errors in production builds
   },
+  // Turbopack configuration (Next.js 16+)
+  turbopack: {},
   images: {
     unoptimized: process.env.BUILD_MOBILE === 'true', // Disable image optimization for static export
     remotePatterns: [

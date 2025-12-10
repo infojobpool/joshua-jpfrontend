@@ -100,7 +100,6 @@ export default function ProfilePage() {
         setIsLoading(true);
         const response = await axiosInstance.get(`/profile?user_id=${userId}`);
         const data = response.data;
-        const avatar = data.profile_img || "";
         setProfileUser({
           profile_id: data.profile_id || "",
           name: data.name || "",
@@ -113,29 +112,22 @@ export default function ProfilePage() {
                 isDefault: addr.isDefault || index === 0,
               }))
             : [],
-          avatar,
+          avatar: data.profile_img || "",
         });
 
         if (Array.isArray(data.reviews)) {
-          const normalizedReviews = data.reviews.map((review: any, index: number) => ({
-            id: index + 1,
-            name: review.reviewer_name || "Anonymous",
-            avatar: review.reviewer_avatar || "",
-            date: review.timestamp ? formatDate(review.timestamp) : "",
-            rating: review.rating || 0,
-            comment: review.comment || "",
-            project: review.project || "",
-            role: review.role || "tasker",
-          }));
-
-          const merged = mergeLocalPosterReviews(
-            normalizedReviews,
-            userId,
-            avatar,
-            formatDate,
-            loggedInUserId
+          setReviews(
+            data.reviews.map((review: any, index: number) => ({
+              id: index + 1,
+              name: review.reviewer_name || "Anonymous",
+              avatar: review.reviewer_avatar || "",
+              date: review.timestamp ? formatDate(review.timestamp) : "",
+              rating: review.rating || 0,
+              comment: review.comment || "",
+              project: review.project || "",
+              role: review.role || "tasker",
+            }))
           );
-          setReviews(merged);
         }
       } catch (err: any) {
         setError("Failed to load profile");
@@ -149,45 +141,6 @@ export default function ProfilePage() {
 
     fetchProfile();
   }, [userId, router]);
-
-  const mergeLocalPosterReviews = (
-    existingReviews: Review[],
-    profileOwnerId: string,
-    profileAvatar: string,
-    formatter: (date: string) => string,
-    loggedInId?: string
-  ): Review[] => {
-    try {
-      const raw = typeof window !== "undefined" ? localStorage.getItem("poster_reviews") : null;
-      if (!raw) return existingReviews;
-      const map = JSON.parse(raw);
-      const entries = Object.values(map).filter(
-        (entry: any) => String(entry.posterId) === String(profileOwnerId)
-      ) as Array<any>;
-      if (!entries.length) return existingReviews;
-
-      const localReviews = entries.map((entry, idx) => ({
-        id: existingReviews.length + idx + 1,
-        name: entry.posterName || (loggedInId && String(loggedInId) === String(profileOwnerId) ? "You" : "Poster"),
-        avatar: profileAvatar,
-        date: entry.timestamp ? formatter(entry.timestamp) : "",
-        rating: entry.rating || 0,
-        comment: entry.comment || "",
-        project: entry.taskTitle || "",
-        role: "taskmaster" as const,
-      }));
-
-      const deduped = new Map<string, Review>();
-      [...existingReviews, ...localReviews].forEach((review) => {
-        const key = `${review.project}-${review.comment}-${review.rating}-${review.date}-${review.role}`;
-        deduped.set(key, review);
-      });
-      return Array.from(deduped.values());
-    } catch (error) {
-      console.warn("Failed to merge local poster reviews into profile page:", error);
-      return existingReviews;
-    }
-  };
 
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;

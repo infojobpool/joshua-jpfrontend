@@ -32,6 +32,8 @@ export default function SignInPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [showResendVerification, setShowResendVerification] = useState(false);
+  const [isResending, setIsResending] = useState(false);
 
   // Hydrate auth state and redirect away if already logged in
   useEffect(() => {
@@ -48,6 +50,10 @@ export default function SignInPage() {
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    // Reset resend verification message when email changes
+    if (name === "email") {
+      setShowResendVerification(false);
+    }
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -89,26 +95,65 @@ export default function SignInPage() {
         if (user.verification_status === 0) router.push("/verification");
         else router.push("/dashboard");
       } else {
-        toast.error(response.data.message || "Login failed");
+        const errorMessage = response.data.message || "Login failed";
+        // Check if error is related to email verification
+        if (errorMessage.toLowerCase().includes("verify") || 
+            errorMessage.toLowerCase().includes("verification") ||
+            errorMessage.toLowerCase().includes("email") && errorMessage.toLowerCase().includes("not")) {
+          setShowResendVerification(true);
+        }
+        toast.error(errorMessage);
       }
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         const axiosError = err as AxiosError<{ message?: string }>;
         const status = axiosError.response?.status;
+        const errorMessage = axiosError.response?.data?.message || "";
 
         if (status === 404) {
-          toast.error(axiosError.response?.data?.message || "User not found.");
+          toast.error(errorMessage || "User not found.");
+        } else if (status === 403 || status === 401) {
+          // Check if error is related to email verification
+          if (errorMessage.toLowerCase().includes("verify") || 
+              errorMessage.toLowerCase().includes("verification") ||
+              errorMessage.toLowerCase().includes("email") && errorMessage.toLowerCase().includes("not")) {
+            setShowResendVerification(true);
+          }
+          toast.error(errorMessage || "An error occurred while logging in");
         } else {
-          toast.error(
-            axiosError.response?.data?.message ||
-              "An error occurred while logging in"
-          );
+          toast.error(errorMessage || "An error occurred while logging in");
         }
       } else {
         toast.error("Something went wrong");
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!formData.email) {
+      toast.error("Please enter your email address");
+      return;
+    }
+
+    try {
+      setIsResending(true);
+      const response = await axiosInstance.post("/resend-verification-email/", {
+        email: formData.email.trim().toLowerCase(),
+      });
+
+      if (response.data.status_code === 200) {
+        toast.success("Verification email sent! Please check your inbox.");
+        setShowResendVerification(false);
+      } else {
+        toast.error(response.data.message || "Failed to send verification email");
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || "Failed to send verification email. Please try again.";
+      toast.error(errorMsg);
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -186,6 +231,29 @@ export default function SignInPage() {
                   className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200"
                 />
               </div>
+              {showResendVerification && (
+                <div className="rounded-md bg-yellow-50 border border-yellow-200 p-4">
+                  <p className="text-sm text-yellow-800 mb-3">
+                    Your email address hasn't been verified yet. Please check your inbox for the verification link, or click below to resend it.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleResendVerification}
+                    disabled={isResending}
+                    className="w-full border-yellow-300 text-yellow-700 hover:bg-yellow-100"
+                  >
+                    {isResending ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-yellow-300 border-t-yellow-700 rounded-full animate-spin"></div>
+                        Sending...
+                      </div>
+                    ) : (
+                      "Resend Verification Email"
+                    )}
+                  </Button>
+                </div>
+              )}
             </CardContent>
             <CardFooter className="flex flex-col space-y-4 pt-6">
               <Button 

@@ -17,17 +17,6 @@ const circuitBreaker = {
   isOpen: false
 };
 
-// Payment endpoints that should bypass circuit breaker or have higher threshold
-const paymentEndpoints = ['/create-order/', '/verify-payment/'];
-
-// Function to reset circuit breaker (can be called manually)
-export const resetCircuitBreaker = () => {
-  circuitBreaker.failures = 0;
-  circuitBreaker.isOpen = false;
-  circuitBreaker.lastFailureTime = 0;
-  console.log('🔄 Circuit breaker manually reset');
-};
-
 // Request throttling to prevent API overload
 const requestThrottle = {
   requests: 0,
@@ -52,15 +41,9 @@ const axiosInstance = axios.create({
 // Add a request interceptor to include JWT in headers and deduplicate requests
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Check if this is a payment endpoint
-    const isPaymentEndpoint = paymentEndpoints.some(endpoint => 
-      config.url?.includes(endpoint)
-    );
-    
-    // Payment endpoints bypass circuit breaker completely (backend auth issues shouldn't block payments)
-    if (circuitBreaker.isOpen && !isPaymentEndpoint) {
+    // Check circuit breaker
+    if (circuitBreaker.isOpen) {
       const timeSinceLastFailure = Date.now() - circuitBreaker.lastFailureTime;
-      
       if (timeSinceLastFailure < circuitBreaker.timeout) {
         console.log(`🚨 Circuit breaker OPEN - blocking request to ${config.url}`);
         return Promise.reject(new Error('Service temporarily unavailable - too many failures'));
@@ -70,11 +53,6 @@ axiosInstance.interceptors.request.use(
         circuitBreaker.failures = 0;
         console.log(`🔄 Circuit breaker CLOSED - retrying requests`);
       }
-    }
-    
-    // For payment endpoints, log that we're bypassing circuit breaker
-    if (isPaymentEndpoint && circuitBreaker.isOpen) {
-      console.log(`💳 Payment endpoint bypassing circuit breaker: ${config.url}`);
     }
     
     // Check request throttling (disabled for development)
@@ -134,22 +112,11 @@ axiosInstance.interceptors.response.use(
   },
   async (error) => {
     // Handle circuit breaker logic for failures
-    // Don't count payment endpoint failures as harshly, or allow them to bypass
-    const isPaymentEndpoint = paymentEndpoints.some(endpoint => 
-      error.config?.url?.includes(endpoint)
-    );
-    
     if (error.response?.status >= 500) {
-      // Payment endpoints need more failures before triggering circuit breaker
-      if (isPaymentEndpoint) {
-        circuitBreaker.failures += 0.5; // Count as half a failure
-      } else {
-        circuitBreaker.failures++;
-      }
+      circuitBreaker.failures++;
       circuitBreaker.lastFailureTime = Date.now();
       
-      const threshold = isPaymentEndpoint ? circuitBreaker.threshold * 2 : circuitBreaker.threshold;
-      if (circuitBreaker.failures >= threshold) {
+      if (circuitBreaker.failures >= circuitBreaker.threshold) {
         circuitBreaker.isOpen = true;
         console.log(`🚨 Circuit breaker OPENED after ${circuitBreaker.failures} failures`);
       }

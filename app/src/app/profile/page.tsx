@@ -233,14 +233,63 @@ export default function ProfilePage() {
           }
         } else {
           console.warn("⚠️ No valid verification_status found in API response. Value:", apiVerificationStatus);
-          // Fallback: If bank_info exists with account number, assume bank is verified
-          // This is a heuristic - ideally API should return verification_status
-          if (data.bank_info && data.bank_info.bank_account_number) {
-            console.log("⚠️ Using fallback: bank_info exists, assuming verification_status = 3");
+          
+          // Fallback 1: Check localStorage user object for verification_status
+          try {
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+              const parsedUser = JSON.parse(storedUser);
+              if (parsedUser.verification_status !== null && typeof parsedUser.verification_status === 'number') {
+                console.log("✅ Using localStorage verification_status:", parsedUser.verification_status);
+                setVerificationStatus({
+                  pan: { completed: parsedUser.verification_status >= 1 },
+                  aadhar: { completed: parsedUser.verification_status >= 2 },
+                  bank: { completed: parsedUser.verification_status >= 3 },
+                });
+                return; // Exit early if we found it in localStorage
+              }
+            }
+          } catch (e) {
+            console.warn("Failed to check localStorage for verification_status:", e);
+          }
+          
+          // Fallback 2: Check for individual verification fields or data presence in API response
+          const hasPan = data.pan_number || data.pan || data.pan_verified || data.pan_status;
+          const hasAadhar = data.aadhar_number || data.aadhaar_number || data.aadhar || data.aadhar_verified || data.aadhar_status;
+          const hasBank = data.bank_info && data.bank_info.bank_account_number;
+          
+          console.log("🔍 Checking individual verification fields in API response:", {
+            hasPan,
+            hasAadhar,
+            hasBank,
+            pan_number: data.pan_number,
+            aadhar_number: data.aadhar_number,
+            bank_info: data.bank_info
+          });
+          
+          // If bank is verified, PAN and Aadhar must be verified too (logical requirement)
+          if (hasBank) {
+            console.log("✅ Using fallback: bank_info exists, assuming all verifications complete");
             setVerificationStatus({
-              pan: { completed: true }, // If bank is verified, PAN and Aadhar must be too
+              pan: { completed: true },
               aadhar: { completed: true },
               bank: { completed: true },
+            });
+          } else if (hasAadhar) {
+            // If Aadhar exists, PAN must be verified too
+            console.log("✅ Using fallback: Aadhar exists, assuming PAN and Aadhar verified");
+            setVerificationStatus({
+              pan: { completed: true },
+              aadhar: { completed: true },
+              bank: { completed: false },
+            });
+          } else if (hasPan) {
+            // Only PAN verified
+            console.log("✅ Using fallback: PAN exists, assuming PAN verified");
+            setVerificationStatus({
+              pan: { completed: true },
+              aadhar: { completed: false },
+              bank: { completed: false },
             });
           }
         }
@@ -768,8 +817,7 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     <div className="w-full space-y-4 md:w-2/3">
-                      {verificationStatus.bank.completed &&
-                      profileuser.bank_info ? (
+                      {verificationStatus.bank.completed ? (
                         <>
                           <div className="rounded-md bg-green-50 p-3 text-green-700">
                             <div className="flex items-center">
@@ -781,48 +829,50 @@ export default function ProfilePage() {
                               </div>
                             </div>
                           </div>
-                          <div className="grid gap-4 md:grid-cols-2">
-                            {/* <div>
-                              <p className="text-sm font-medium text-muted-foreground">
-                                Account Holder Name
-                              </p>
-                              <p>{profileuser.bank_info.account_holder_name}</p>
-                            </div> */}
-                            <div>
-                              <p className="text-sm font-medium text-muted-foreground">
-                                Account Number
-                              </p>
-                              <p>
-                                {profileuser.bank_info.bank_account_number}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-muted-foreground">
-                                IFSC Code
-                              </p>
-                              <p>
-                                {profileuser.bank_info.ifsc_code}
+                          {profileuser.bank_info && (
+                            <div className="grid gap-4 md:grid-cols-2">
+                              {/* <div>
+                                <p className="text-sm font-medium text-muted-foreground">
+                                  Account Holder Name
                                 </p>
+                                <p>{profileuser.bank_info.account_holder_name}</p>
+                              </div> */}
+                              <div>
+                                <p className="text-sm font-medium text-muted-foreground">
+                                  Account Number
+                                </p>
+                                <p>
+                                  {profileuser.bank_info.bank_account_number}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-muted-foreground">
+                                  IFSC Code
+                                </p>
+                                <p>
+                                  {profileuser.bank_info.ifsc_code}
+                                  </p>
+                              </div>
+                              {/* <div>
+                                <p className="text-sm font-medium text-muted-foreground">
+                                  Bank Name
+                                </p>
+                                <p>{profileuser.bank_info.bank_name}</p>
+                              </div> */}
+                              {/* <div>
+                                <p className="text-sm font-medium text-muted-foreground">
+                                  Bank Location
+                                </p>
+                                <p>{profileuser.bank_info.bank_location}</p>
+                              </div> */}
+                              {/* <div>
+                                <p className="text-sm font-medium text-muted-foreground">
+                                  SWIFT Code
+                                </p>
+                                <p>{profileuser.bank_info.swift_code}</p>
+                              </div> */}
                             </div>
-                            {/* <div>
-                              <p className="text-sm font-medium text-muted-foreground">
-                                Bank Name
-                              </p>
-                              <p>{profileuser.bank_info.bank_name}</p>
-                            </div> */}
-                            {/* <div>
-                              <p className="text-sm font-medium text-muted-foreground">
-                                Bank Location
-                              </p>
-                              <p>{profileuser.bank_info.bank_location}</p>
-                            </div> */}
-                            {/* <div>
-                              <p className="text-sm font-medium text-muted-foreground">
-                                SWIFT Code
-                              </p>
-                              <p>{profileuser.bank_info.swift_code}</p>
-                            </div> */}
-                          </div>
+                          )}
                         </>
                       ) : (
                         <div className="rounded-md bg-gray-100 p-3">
