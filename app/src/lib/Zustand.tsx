@@ -27,6 +27,7 @@ interface AuthState {
   login: (token: string, user: UserData) => void;
   logout: () => void;
   checkAuth: () => void;
+  clearAllStorage: () => void;
 }
 
 interface FormData {
@@ -147,8 +148,43 @@ const useStore = create<StoreState>((set) => ({
       user: null,
     });
     if (typeof window !== "undefined") {
+      // Clear all localStorage items
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+      localStorage.removeItem("userId");
+      localStorage.removeItem("bids");
+      localStorage.removeItem("userChats");
+      localStorage.removeItem("postedTasks");
+      localStorage.removeItem("availableTasks");
+      localStorage.removeItem("availableTasksTimestamp");
+      localStorage.removeItem("poster_reviews");
+      
+      // Clear all cached task data
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith("all_jobs_data_") || key.startsWith("task_") || key.startsWith("cache_"))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      // Also clear sessionStorage
+      sessionStorage.clear();
+    }
+  },
+
+  // Clear all localStorage data (useful for debugging or forcing fresh data)
+  clearAllStorage: () => {
+    if (typeof window !== "undefined") {
+      localStorage.clear();
+      sessionStorage.clear();
+      set({
+        userId: null,
+        exp: null,
+        isAuthenticated: false,
+        user: null,
+      });
     }
   },
 

@@ -32,6 +32,7 @@ import {
   X,
   Briefcase,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 import useStore from "../../lib/Zustand";
 import Header from "@/components/Header"; // Import the Header component
@@ -360,6 +361,19 @@ export default function ProfilePage() {
     toast.success("Verification status refreshed");
   };
 
+  const handleClearStorage = () => {
+    if (typeof window !== "undefined") {
+      // Clear all localStorage
+      localStorage.clear();
+      sessionStorage.clear();
+      toast.success("Local storage cleared! Please refresh the page.");
+      // Optionally reload the page
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
+  };
+
   const maskString = (str: string, visibleStart = 0, visibleEnd = 4) => {
     if (!str) return "";
     const start = str.slice(0, visibleStart);
@@ -582,7 +596,29 @@ export default function ProfilePage() {
               )}
               <div>
                 <CardTitle className="text-xl font-semibold tracking-tight">{profileuser.name}</CardTitle>
-                <CardDescription className="text-sm text-muted-foreground">{profileuser.email}</CardDescription>
+                <div className="flex flex-col space-y-2">
+                  <CardDescription className="text-sm text-muted-foreground">{profileuser.email}</CardDescription>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResendVerificationEmail}
+                    disabled={isResendingEmail}
+                    className="w-full sm:w-auto text-xs"
+                  >
+                    {isResendingEmail ? (
+                      <>
+                        <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin mr-1"></div>
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="h-3 w-3 mr-1" />
+                        Resend Verification Email
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
               <Button
                 variant="outline"
@@ -718,7 +754,7 @@ export default function ProfilePage() {
                       <User className="h-4 w-4 text-muted-foreground" />
                       <span>{profileuser.name}</span>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
+                    <div className="flex flex-col space-y-2 text-sm">
                       <div className="flex items-center space-x-2">
                         <Mail className="h-4 w-4 text-muted-foreground" />
                         <span>{profileuser.email}</span>
@@ -729,7 +765,7 @@ export default function ProfilePage() {
                         size="sm"
                         onClick={handleResendVerificationEmail}
                         disabled={isResendingEmail}
-                        className="ml-2"
+                        className="w-full sm:w-auto"
                       >
                         {isResendingEmail ? (
                           <>
@@ -849,6 +885,24 @@ export default function ProfilePage() {
                           </Badge>
                         )}
                       </div>
+                    </div>
+                  </div>
+                  <div className="pt-4 border-t mt-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground mb-1">Clear Cache</h4>
+                        <p className="text-xs text-muted-foreground">Clear all stored data to get fresh information</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleClearStorage}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Clear Storage
+                      </Button>
                     </div>
                   </div>
                 </>
