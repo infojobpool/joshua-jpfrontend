@@ -139,18 +139,61 @@ export default function SignInPage() {
 
     try {
       setIsResending(true);
-      const response = await axiosInstance.post("/resend-verification-email/", {
-        email: formData.email.trim().toLowerCase(),
-      });
+      const email = formData.email.trim().toLowerCase();
+      console.log("📧 Attempting to resend verification email to:", email);
+      
+      // Try POST method first (standard approach)
+      let response;
+      try {
+        response = await axiosInstance.post("/resend-verification-email/", {
+          email: email,
+        });
+        console.log("📧 Resend verification response (POST):", response.data);
+      } catch (postError: any) {
+        // If POST fails with 404 or 405, try PUT with query parameter (like forgot password)
+        if (postError.response?.status === 404 || postError.response?.status === 405) {
+          console.log("📧 POST failed, trying PUT with query parameter...");
+          response = await axiosInstance.put(`/resend-verification-email/?email=${encodeURIComponent(email)}`);
+          console.log("📧 Resend verification response (PUT):", response.data);
+        } else {
+          throw postError; // Re-throw if it's a different error
+        }
+      }
 
       if (response.data.status_code === 200) {
-        toast.success("Verification email sent! Please check your inbox.");
+        toast.success("Verification email sent! Please check your inbox (including spam folder).");
         setShowResendVerification(false);
       } else {
-        toast.error(response.data.message || "Failed to send verification email");
+        const errorMsg = response.data.message || "Failed to send verification email";
+        console.error("❌ Resend verification error:", errorMsg);
+        toast.error(errorMsg);
       }
     } catch (error: any) {
-      const errorMsg = error.response?.data?.message || "Failed to send verification email. Please try again.";
+      console.error("❌ Resend verification API error:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+      });
+      
+      // Try to extract detailed error message
+      let errorMsg = "Failed to send verification email. Please try again.";
+      
+      if (error.response?.data?.message) {
+        errorMsg = error.response.data.message;
+      } else if (error.response?.data?.detail) {
+        errorMsg = typeof error.response.data.detail === 'string' 
+          ? error.response.data.detail 
+          : JSON.stringify(error.response.data.detail);
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      
+      // Check if endpoint doesn't exist (404)
+      if (error.response?.status === 404) {
+        errorMsg = "Verification email service is currently unavailable. Please contact support.";
+      }
+      
       toast.error(errorMsg);
     } finally {
       setIsResending(false);

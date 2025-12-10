@@ -114,21 +114,46 @@ export function MobileSignIn() {
     try {
       setIsResending(true);
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || '/api/v1';
-      const response = await fetch(`${apiBase}/resend-verification-email/`, {
+      const email = formData.email.trim().toLowerCase();
+      console.log("📧 [Mobile] Attempting to resend verification email to:", email);
+      
+      // Try POST method first
+      let response = await fetch(`${apiBase}/resend-verification-email/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: formData.email.trim().toLowerCase() }),
+        body: JSON.stringify({ email: email }),
         credentials: 'omit',
-      }).then(async (r) => ({ status: r.status, data: await r.json() }));
+      });
+      
+      // If POST fails with 404 or 405, try PUT with query parameter
+      if (response.status === 404 || response.status === 405) {
+        console.log("📧 [Mobile] POST failed, trying PUT with query parameter...");
+        response = await fetch(`${apiBase}/resend-verification-email/?email=${encodeURIComponent(email)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'omit',
+        });
+      }
+      
+      const data = await response.json();
+      console.log("📧 [Mobile] Resend verification response:", { status: response.status, data });
 
-      if (response.data.status_code === 200) {
-        toast.success("Verification email sent! Please check your inbox.");
+      if (response.status === 200 && data.status_code === 200) {
+        toast.success("Verification email sent! Please check your inbox (including spam folder).");
         setShowResendVerification(false);
       } else {
-        toast.error(response.data.message || "Failed to send verification email");
+        const errorMsg = data.message || data.detail || "Failed to send verification email";
+        console.error("❌ [Mobile] Resend verification error:", errorMsg);
+        toast.error(errorMsg);
       }
     } catch (error: any) {
-      const errorMsg = error?.response?.data?.message || "Failed to send verification email. Please try again.";
+      console.error("❌ [Mobile] Resend verification API error:", error);
+      let errorMsg = "Failed to send verification email. Please try again.";
+      
+      if (error.message) {
+        errorMsg = error.message;
+      }
+      
       toast.error(errorMsg);
     } finally {
       setIsResending(false);
