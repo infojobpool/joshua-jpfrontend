@@ -31,9 +31,11 @@ import {
   Camera,
   X,
   Briefcase,
+  RefreshCw,
 } from "lucide-react";
 import useStore from "../../lib/Zustand";
 import Header from "@/components/Header"; // Import the Header component
+import { toast } from "sonner";
 
 interface Address {
   id: number;
@@ -110,6 +112,8 @@ export default function ProfilePage() {
   });
 
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
+  const [isRefreshingVerification, setIsRefreshingVerification] = useState(false);
 
   const formatDate = (dateString: string): string => {
     if (!dateString) return "";
@@ -136,15 +140,17 @@ export default function ProfilePage() {
     }
   }, [router]);
 
-  useEffect(() => {
-    if (user) {
-      setVerificationStatus({
-        pan: { completed: user.verification_status >= 1 },
-        aadhar: { completed: user.verification_status >= 2 },
-        bank: { completed: user.verification_status >= 3 },
-      });
-    }
-  }, [user]);
+  // REMOVED: Don't use localStorage user data for verification status
+  // Always fetch fresh from API to avoid stale bypassed data
+  // useEffect(() => {
+  //   if (user) {
+  //     setVerificationStatus({
+  //       pan: { completed: user.verification_status >= 1 },
+  //       aadhar: { completed: user.verification_status >= 2 },
+  //       bank: { completed: user.verification_status >= 3 },
+  //     });
+  //   }
+  // }, [user]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -164,8 +170,14 @@ export default function ProfilePage() {
       }
 
       try {
-        setIsLoading(true);
-        const response = await axiosInstance.get(`/profile?user_id=${effectiveUserId}`);
+        if (forceRefresh) {
+          setIsRefreshingVerification(true);
+        } else {
+          setIsLoading(true);
+        }
+        // Add cache-busting parameter to ensure fresh data from backend
+        const cacheBuster = `?user_id=${effectiveUserId}&_t=${Date.now()}`;
+        const response = await axiosInstance.get(`/profile${cacheBuster}`);
         const data = response.data;
         setProfileUser({
           profile_id: data.profile_id || "",
@@ -219,7 +231,8 @@ export default function ProfilePage() {
             aadhar: { completed: apiVerificationStatus >= 2 },
             bank: { completed: apiVerificationStatus >= 3 },
           });
-          // Also update localStorage user if it exists
+          // Update localStorage user with fresh verification status from API
+          // This ensures localStorage always has the latest status, not stale bypassed data
           try {
             const storedUser = localStorage.getItem("user");
             if (storedUser) {
@@ -227,6 +240,7 @@ export default function ProfilePage() {
               parsedUser.verification_status = apiVerificationStatus;
               localStorage.setItem("user", JSON.stringify(parsedUser));
               setUser(parsedUser);
+              console.log("✅ Updated localStorage verification_status to:", apiVerificationStatus);
             }
           } catch (e) {
             console.warn("Failed to update localStorage user verification status:", e);
@@ -234,60 +248,40 @@ export default function ProfilePage() {
         } else {
           console.warn("⚠️ No valid verification_status found in API response. Value:", apiVerificationStatus);
           
-          // Fallback 1: Check localStorage user object for verification_status
-          try {
-            const storedUser = localStorage.getItem("user");
-            if (storedUser) {
-              const parsedUser = JSON.parse(storedUser);
-              if (parsedUser.verification_status !== null && typeof parsedUser.verification_status === 'number') {
-                console.log("✅ Using localStorage verification_status:", parsedUser.verification_status);
-                setVerificationStatus({
-                  pan: { completed: parsedUser.verification_status >= 1 },
-                  aadhar: { completed: parsedUser.verification_status >= 2 },
-                  bank: { completed: parsedUser.verification_status >= 3 },
-                });
-                return; // Exit early if we found it in localStorage
-              }
-            }
-          } catch (e) {
-            console.warn("Failed to check localStorage for verification_status:", e);
-          }
+          // REMOVED: Don't use localStorage fallback - it may contain stale bypassed data
+          // Always trust API response or default to NOT verified
           
-          // Fallback 2: Check for individual verification fields or data presence in API response
-          const hasPan = data.pan_number || data.pan || data.pan_verified || data.pan_status;
-          const hasAadhar = data.aadhar_number || data.aadhaar_number || data.aadhar || data.aadhar_verified || data.aadhar_status;
-          const hasBank = data.bank_info && data.bank_info.bank_account_number;
+          // Fallback: Only use explicit verification flags from API, don't assume based on data presence
+          // Check for explicit verification status fields if they exist
+          const panVerified = data.pan_verified === true || data.pan_status === 'verified' || data.pan_status === 'approved';
+          const aadharVerified = data.aadhar_verified === true || data.aadhaar_verified === true || data.aadhar_status === 'verified' || data.aadhar_status === 'approved';
+          const bankVerified = data.bank_verified === true || data.bank_status === 'verified' || data.bank_status === 'approved';
           
-          console.log("🔍 Checking individual verification fields in API response:", {
-            hasPan,
-            hasAadhar,
-            hasBank,
-            pan_number: data.pan_number,
-            aadhar_number: data.aadhar_number,
-            bank_info: data.bank_info
+          console.log("🔍 Checking explicit verification flags in API response:", {
+            pan_verified: data.pan_verified,
+            aadhar_verified: data.aadhar_verified,
+            bank_verified: data.bank_verified,
+            pan_status: data.pan_status,
+            aadhar_status: data.aadhar_status,
+            bank_status: data.bank_status,
+            panVerified,
+            aadharVerified,
+            bankVerified
           });
           
-          // If bank is verified, PAN and Aadhar must be verified too (logical requirement)
-          if (hasBank) {
-            console.log("✅ Using fallback: bank_info exists, assuming all verifications complete");
+          // Only set verification status if explicit flags are present
+          if (panVerified || aadharVerified || bankVerified) {
+            console.log("✅ Using explicit verification flags from API");
             setVerificationStatus({
-              pan: { completed: true },
-              aadhar: { completed: true },
-              bank: { completed: true },
+              pan: { completed: panVerified },
+              aadhar: { completed: aadharVerified },
+              bank: { completed: bankVerified },
             });
-          } else if (hasAadhar) {
-            // If Aadhar exists, PAN must be verified too
-            console.log("✅ Using fallback: Aadhar exists, assuming PAN and Aadhar verified");
+          } else {
+            // If no verification status found anywhere, default to NOT verified
+            console.warn("⚠️ No verification status found, defaulting to NOT verified");
             setVerificationStatus({
-              pan: { completed: true },
-              aadhar: { completed: true },
-              bank: { completed: false },
-            });
-          } else if (hasPan) {
-            // Only PAN verified
-            console.log("✅ Using fallback: PAN exists, assuming PAN verified");
-            setVerificationStatus({
-              pan: { completed: true },
+              pan: { completed: false },
               aadhar: { completed: false },
               bank: { completed: false },
             });
@@ -314,9 +308,11 @@ export default function ProfilePage() {
         }
       } finally {
         setIsLoading(false);
+        setIsRefreshingVerification(false);
       }
     };
 
+  useEffect(() => {
     // Run immediately and again when store userId changes
     fetchProfile();
 
@@ -332,6 +328,37 @@ export default function ProfilePage() {
   const handleSignOut = () => {
     logout();
     router.push("/");
+  };
+
+  const handleResendVerificationEmail = async () => {
+    if (!profileuser.email) {
+      toast.error("Email address not found");
+      return;
+    }
+
+    try {
+      setIsResendingEmail(true);
+      const response = await axiosInstance.post("/resend-verification-email/", {
+        email: profileuser.email.trim().toLowerCase(),
+      });
+
+      if (response.data.status_code === 200) {
+        toast.success("Verification email sent! Please check your inbox (including spam folder).");
+      } else {
+        toast.error(response.data.message || "Failed to send verification email");
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || "Failed to send verification email. Please try again.";
+      toast.error(errorMsg);
+    } finally {
+      setIsResendingEmail(false);
+    }
+  };
+
+  const handleRefreshVerification = async () => {
+    // Force refresh verification status from backend
+    await fetchProfile(true);
+    toast.success("Verification status refreshed");
   };
 
   const maskString = (str: string, visibleStart = 0, visibleEnd = 4) => {
@@ -692,9 +719,31 @@ export default function ProfilePage() {
                       <User className="h-4 w-4 text-muted-foreground" />
                       <span>{profileuser.name}</span>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span>{profileuser.email}</span>
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center space-x-2">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <span>{profileuser.email}</span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResendVerificationEmail}
+                        disabled={isResendingEmail}
+                        className="ml-2"
+                      >
+                        {isResendingEmail ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin mr-2"></div>
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="h-3 w-3 mr-1" />
+                            Resend Verification Email
+                          </>
+                        )}
+                      </Button>
                     </div>
                     <div className="flex items-center space-x-2 text-sm">
                       <Phone className="h-4 w-4 text-muted-foreground" />
@@ -730,9 +779,22 @@ export default function ProfilePage() {
                     </div>
                   </div>
                   <div className="pt-4">
-                    <h3 className="mb-2 text-sm font-medium">
-                      Verification Status
-                    </h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-medium">
+                        Verification Status
+                      </h3>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRefreshVerification}
+                        disabled={isRefreshingVerification}
+                        className="h-7 px-2"
+                        title="Refresh verification status"
+                      >
+                        <RefreshCw className={`h-3 w-3 ${isRefreshingVerification ? 'animate-spin' : ''}`} />
+                      </Button>
+                    </div>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-sm">PAN Card</span>
