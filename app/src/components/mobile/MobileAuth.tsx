@@ -188,9 +188,25 @@ export function MobileSignIn() {
                 <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                 <span className="ml-2 text-sm text-gray-600">Remember me</span>
               </label>
-              <Link href="/forgotpassword" className="text-sm text-blue-600 hover:text-blue-800">
-                Forgot password?
-              </Link>
+              <div className="flex flex-col items-end gap-1">
+                <Link href="/forgotpassword" className="text-sm text-blue-600 hover:text-blue-800">
+                  Forgot password?
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (formData.email) {
+                      handleResendVerification();
+                    } else {
+                      toast.error("Please enter your email address first");
+                    }
+                  }}
+                  disabled={isResending || !formData.email}
+                  className="text-xs text-blue-600 hover:text-blue-800 transition-colors disabled:text-gray-400 disabled:cursor-not-allowed"
+                >
+                  {isResending ? "Sending..." : "Resend verification"}
+                </button>
+              </div>
             </div>
 
             {showResendVerification && (
@@ -231,13 +247,27 @@ export function MobileSignIn() {
               )}
             </MobileButton>
 
-            <div className="text-center">
+            <div className="text-center space-y-2">
               <p className="text-sm text-gray-600">
                 Don't have an account?{" "}
                 <Link href="/signup" className="text-blue-600 hover:text-blue-800 font-medium">
                   Sign up
                 </Link>
               </p>
+              <button
+                type="button"
+                onClick={() => {
+                  if (formData.email) {
+                    handleResendVerification();
+                  } else {
+                    toast.error("Please enter your email address first");
+                  }
+                }}
+                disabled={isResending || !formData.email}
+                className="text-xs text-blue-600 hover:text-blue-800 transition-colors disabled:text-gray-400 disabled:cursor-not-allowed underline underline-offset-2"
+              >
+                {isResending ? "Sending verification email..." : "Didn't receive verification email? Resend it"}
+              </button>
             </div>
           </MobileForm>
         </MobileCardContent>

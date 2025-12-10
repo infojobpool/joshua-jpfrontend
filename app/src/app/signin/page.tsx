@@ -213,12 +213,28 @@ export default function SignInPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password</Label>
-                  <Link
-                    href="/forgotpassword"
-                    className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
-                  >
-                    Forgot password?
-                  </Link>
+                  <div className="flex flex-col items-end gap-1">
+                    <Link
+                      href="/forgotpassword"
+                      className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                    >
+                      Forgot password?
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (formData.email) {
+                          handleResendVerification();
+                        } else {
+                          toast.error("Please enter your email address first");
+                        }
+                      }}
+                      disabled={isResending || !formData.email}
+                      className="text-xs text-blue-600 hover:text-blue-700 transition-colors disabled:text-gray-400 disabled:cursor-not-allowed"
+                    >
+                      {isResending ? "Sending..." : "Resend verification email"}
+                    </button>
+                  </div>
                 </div>
                 <Input
                   id="password"
@@ -289,6 +305,23 @@ export default function SignInPage() {
                   Create Account
                 </Button>
               </Link>
+
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (formData.email) {
+                      handleResendVerification();
+                    } else {
+                      toast.error("Please enter your email address first");
+                    }
+                  }}
+                  disabled={isResending || !formData.email}
+                  className="text-sm text-blue-600 hover:text-blue-700 transition-colors disabled:text-gray-400 disabled:cursor-not-allowed underline underline-offset-2"
+                >
+                  {isResending ? "Sending verification email..." : "Didn't receive verification email? Resend it"}
+                </button>
+              </div>
             </CardFooter>
           </form>
         </Card>
