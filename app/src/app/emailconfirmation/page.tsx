@@ -27,19 +27,107 @@ function EmailConfirmationContent() {
           return;
         }
 
-        // Make API call to verify email
-        const response = await axiosInstance.get(`/verify-email/?token=${token}`);
+        console.log("📧 [Email Verification] Attempting to verify email with token:", token.substring(0, 10) + "...");
+
+        // Try GET with query parameter first (standard approach)
+        let response;
+        try {
+          response = await axiosInstance.get(`/verify-email/?token=${encodeURIComponent(token)}`);
+          console.log("📧 [Email Verification] GET response:", response.data);
+        } catch (getError: any) {
+          // If GET fails, try POST with token in body
+          if (getError.response?.status === 404 || getError.response?.status === 405 || getError.code === 'ECONNREFUSED' || getError.code === 'ERR_NETWORK') {
+            console.log("📧 [Email Verification] GET failed, trying POST with token in body...");
+            try {
+              response = await axiosInstance.post(`/verify-email/`, {
+                token: token,
+              });
+              console.log("📧 [Email Verification] POST response:", response.data);
+            } catch (postError: any) {
+              // If POST also fails, try GET with different endpoint format
+              console.log("📧 [Email Verification] POST failed, trying alternative endpoint format...");
+              try {
+                response = await axiosInstance.get(`/verify-email?token=${encodeURIComponent(token)}`);
+                console.log("📧 [Email Verification] Alternative GET response:", response.data);
+              } catch (altError: any) {
+                // Log detailed error information
+                console.error("❌ [Email Verification] All attempts failed:", {
+                  getError: {
+                    status: getError.response?.status,
+                    message: getError.message,
+                    code: getError.code,
+                    data: getError.response?.data,
+                  },
+                  postError: {
+                    status: postError.response?.status,
+                    message: postError.message,
+                    code: postError.code,
+                    data: postError.response?.data,
+                  },
+                  altError: {
+                    status: altError.response?.status,
+                    message: altError.message,
+                    code: altError.code,
+                    data: altError.response?.data,
+                  },
+                });
+                throw altError; // Throw the last error
+              }
+            }
+          } else {
+            throw getError; // Re-throw if it's a different error
+          }
+        }
 
         // Check if the response is successful
-        if (response.data.status_code === 200) {
+        if (response.data.status_code === 200 || response.status === 200) {
           setStatus("success");
           toast.success(response.data.message || "Email verified successfully!");
+          
+          // Update user verification status in localStorage if user is logged in
+          try {
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+              const parsedUser = JSON.parse(storedUser);
+              parsedUser.email_verified = true;
+              localStorage.setItem("user", JSON.stringify(parsedUser));
+            }
+          } catch (e) {
+            console.warn("Failed to update localStorage:", e);
+          }
         } else {
           throw new Error(response.data.message || "Failed to verify email");
         }
       } catch (error: any) {
+        console.error("❌ [Email Verification] Final error:", {
+          message: error?.message,
+          code: error?.code,
+          status: error?.response?.status,
+          statusText: error?.response?.statusText,
+          data: error?.response?.data,
+          url: error?.config?.url,
+        });
+
         setStatus("error");
-        const message = error?.response?.data?.message || error?.message || "An unknown error occurred";
+        
+        // Provide more detailed error messages
+        let message = "Failed to verify email";
+        if (error?.code === 'ECONNREFUSED' || error?.code === 'ERR_NETWORK' || error?.message?.includes('Network Error')) {
+          message = "Failed to connect to the server. Please check your internet connection and try again.";
+        } else if (error?.response?.status === 404) {
+          message = "Verification endpoint not found. Please contact support.";
+        } else if (error?.response?.status === 400) {
+          message = error?.response?.data?.message || "Invalid verification token. The link may have expired.";
+        } else if (error?.response?.status === 401) {
+          message = "Unauthorized. Please try requesting a new verification email.";
+        } else if (error?.response?.status === 500) {
+          message = "Server error. Please try again later or contact support.";
+        } else if (error?.response?.data?.message) {
+          message = error.response.data.message;
+        } else if (error?.message) {
+          message = error.message;
+        }
+        
         setErrorMessage(message);
         toast.error(message);
       }
