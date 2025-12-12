@@ -96,25 +96,94 @@ export default function PostTaskPage() {
   }, []);
 
   useEffect(() => {
-    // Check if user is logged in
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      
-      // Check if user is fully verified (PAN, Aadhar, and Bank)
-      // verification_status: 1 = PAN, 2 = Aadhar, 3 = Bank (fully verified)
-      if (parsedUser.verification_status === undefined || parsedUser.verification_status < 3) {
-        toast.error("Please complete your verification (PAN, Aadhar, and Bank Account) to post tasks");
-        router.push("/verification");
+    const checkVerification = async () => {
+      // Check if user is logged in
+      const storedUser = localStorage.getItem("user");
+      if (!storedUser) {
+        router.push("/signin");
         return;
       }
-    } else {
-      // Redirect to sign in if not logged in
-      router.push("/signin");
-    }
-    setLoading(false);
-  }, [router]);
+
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        
+        // Fetch fresh verification status from API instead of relying on localStorage
+        let effectiveUserId = userId || parsedUser?.id || parsedUser?.userId || parsedUser?.user_id;
+        if (!effectiveUserId) {
+          console.warn("No user ID found, redirecting to signin");
+          router.push("/signin");
+          return;
+        }
+
+        // Fetch profile to get latest verification status
+        const cacheBuster = `?user_id=${effectiveUserId}&_t=${Date.now()}`;
+        const response = await axiosInstance.get(`/profile${cacheBuster}`);
+        const data = response.data;
+        
+        // Check verification status from API
+        const apiVerificationStatus = 
+          data.verification_status ?? 
+          data.verificationStatus ?? 
+          data.data?.verification_status ??
+          null;
+        
+        console.log("🔍 Post Task - Verification Check:", {
+          verification_status: apiVerificationStatus,
+          pan_verified: data.pan_verified,
+          aadhar_verified: data.aadhar_verified,
+        });
+
+        // Check if user has PAN + Aadhar verified (status >= 2)
+        // verification_status: 1 = PAN, 2 = Aadhar, 3 = Bank
+        // For posting tasks, PAN + Aadhar (status >= 2) should be sufficient
+        if (apiVerificationStatus === null || apiVerificationStatus === undefined) {
+          // Check explicit verification flags if verification_status is not available
+          const panVerified = data.pan_verified === true || data.pan_status === 'verified' || data.pan_status === 'approved';
+          const aadharVerified = data.aadhar_verified === true || data.aadhaar_verified === true || data.aadhar_status === 'verified' || data.aadhar_status === 'approved';
+          
+          if (!panVerified || !aadharVerified) {
+            toast.error("Please complete your verification (PAN and Aadhar) to post tasks");
+            router.push("/verification");
+            return;
+          }
+        } else if (typeof apiVerificationStatus === 'number' && apiVerificationStatus < 2) {
+          // Require at least PAN + Aadhar (status >= 2) to post tasks
+          toast.error("Please complete your verification (PAN and Aadhar) to post tasks");
+          router.push("/verification");
+          return;
+        }
+        
+        // Update localStorage with fresh verification status
+        try {
+          parsedUser.verification_status = apiVerificationStatus;
+          localStorage.setItem("user", JSON.stringify(parsedUser));
+        } catch (e) {
+          console.warn("Failed to update localStorage:", e);
+        }
+      } catch (error: any) {
+        console.error("Failed to check verification status:", error);
+        // If API call fails, fall back to localStorage check
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          // Fallback: require at least status 2 (PAN + Aadhar)
+          if (parsedUser.verification_status === undefined || parsedUser.verification_status < 2) {
+            toast.error("Please complete your verification (PAN and Aadhar) to post tasks");
+            router.push("/verification");
+            return;
+          }
+        } else {
+          router.push("/signin");
+          return;
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkVerification();
+  }, [router, userId]);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -207,14 +276,57 @@ export default function PostTaskPage() {
   };
 
   const confirmPostSubmission = async () => {
-    // Double-check verification status before submission
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      if (parsedUser.verification_status === undefined || parsedUser.verification_status < 3) {
-        toast.error("Please complete your verification (PAN, Aadhar, and Bank Account) to post tasks");
-        router.push("/verification");
-        return;
+    // Double-check verification status before submission (fetch fresh from API)
+    try {
+      let effectiveUserId = userId;
+      if (!effectiveUserId) {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          effectiveUserId = parsedUser?.id || parsedUser?.userId || parsedUser?.user_id;
+        }
+      }
+
+      if (effectiveUserId) {
+        // Fetch fresh verification status from API
+        const cacheBuster = `?user_id=${effectiveUserId}&_t=${Date.now()}`;
+        const response = await axiosInstance.get(`/profile${cacheBuster}`);
+        const data = response.data;
+        
+        const apiVerificationStatus = 
+          data.verification_status ?? 
+          data.verificationStatus ?? 
+          data.data?.verification_status ??
+          null;
+
+        // Require at least PAN + Aadhar (status >= 2) to post tasks
+        if (apiVerificationStatus === null || apiVerificationStatus === undefined) {
+          // Check explicit verification flags
+          const panVerified = data.pan_verified === true || data.pan_status === 'verified' || data.pan_status === 'approved';
+          const aadharVerified = data.aadhar_verified === true || data.aadhaar_verified === true || data.aadhar_status === 'verified' || data.aadhar_status === 'approved';
+          
+          if (!panVerified || !aadharVerified) {
+            toast.error("Please complete your verification (PAN and Aadhar) to post tasks");
+            router.push("/verification");
+            return;
+          }
+        } else if (typeof apiVerificationStatus === 'number' && apiVerificationStatus < 2) {
+          toast.error("Please complete your verification (PAN and Aadhar) to post tasks");
+          router.push("/verification");
+          return;
+        }
+      }
+    } catch (error: any) {
+      console.error("Failed to verify status before submission:", error);
+      // Fallback to localStorage check
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        if (parsedUser.verification_status === undefined || parsedUser.verification_status < 2) {
+          toast.error("Please complete your verification (PAN and Aadhar) to post tasks");
+          router.push("/verification");
+          return;
+        }
       }
     }
 
