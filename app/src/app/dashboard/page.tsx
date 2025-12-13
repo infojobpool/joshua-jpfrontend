@@ -1160,45 +1160,82 @@ export default function Dashboard() {
         }
 
         const result = await fetchResponse.json();
-        console.log("📋 Assigned tasks API response:", {
+        console.log("📋 Assigned tasks API response (FULL):", JSON.stringify(result, null, 2));
+        console.log("📋 Assigned tasks API response (SUMMARY):", {
           status_code: result.status_code,
+          status: result.status,
           hasData: !!result.data,
           dataType: typeof result.data,
+          dataKeys: result.data ? Object.keys(result.data) : [],
           jobsType: Array.isArray(result.data?.jobs) ? 'array' : typeof result.data?.jobs,
           jobsLength: Array.isArray(result.data?.jobs) ? result.data.jobs.length : 'N/A',
-          fullResponse: result
+          message: result.message
         });
 
-        // Handle different response formats
+        // Handle different response formats - don't require status_code === 200
         let jobsArray: any[] = [];
         
-        if (result.status_code === 200) {
-          // Try different possible response structures
-          if (Array.isArray(result.data?.jobs)) {
-            jobsArray = result.data.jobs;
-          } else if (Array.isArray(result.data)) {
-            jobsArray = result.data;
-          } else if (Array.isArray(result.jobs)) {
-            jobsArray = result.jobs;
-          } else if (result.data && typeof result.data === 'object' && !Array.isArray(result.data)) {
-            // Check if jobs are nested differently
-            const possibleJobs = result.data.jobs || result.data.assigned_jobs || result.data.assigned_tasks || [];
-            if (Array.isArray(possibleJobs)) {
-              jobsArray = possibleJobs;
+        // Try different possible response structures regardless of status_code
+        if (Array.isArray(result.data?.jobs)) {
+          jobsArray = result.data.jobs;
+          console.log("✅ Found jobs in result.data.jobs:", jobsArray.length);
+        } else if (Array.isArray(result.data)) {
+          jobsArray = result.data;
+          console.log("✅ Found jobs in result.data (direct array):", jobsArray.length);
+        } else if (Array.isArray(result.jobs)) {
+          jobsArray = result.jobs;
+          console.log("✅ Found jobs in result.jobs:", jobsArray.length);
+        } else if (result.data && typeof result.data === 'object' && !Array.isArray(result.data)) {
+          // Check if jobs are nested differently
+          const possibleJobs = result.data.jobs || result.data.assigned_jobs || result.data.assigned_tasks || result.data.assigned_bids || [];
+          if (Array.isArray(possibleJobs)) {
+            jobsArray = possibleJobs;
+            console.log("✅ Found jobs in nested structure:", jobsArray.length);
+          } else {
+            // Try to find any array in the data object
+            for (const key in result.data) {
+              if (Array.isArray(result.data[key])) {
+                console.log(`✅ Found array in result.data.${key}:`, result.data[key].length);
+                jobsArray = result.data[key];
+                break;
+              }
             }
           }
+        } else if (Array.isArray(result)) {
+          // Response might be a direct array
+          jobsArray = result;
+          console.log("✅ Response is direct array:", jobsArray.length);
         }
 
         console.log("📋 Processed jobs array length:", jobsArray.length);
+        
+        // If no jobs found but status_code is 200, log warning
+        if (jobsArray.length === 0 && result.status_code === 200) {
+          console.warn("⚠️ API returned status_code 200 but no jobs found. Full response:", result);
+        }
 
         if (jobsArray.length > 0) {
+          console.log("📋 Processing", jobsArray.length, "jobs from API");
           const tasks: Task[] = jobsArray
             .filter((job: any) => {
-              // Filter out deleted or cancelled tasks
-              const isDeleted = job.deletion_status === true || job.deletion_status === 1;
-              const isCancelled = job.cancel_status === true || job.cancel_status === 1;
+              // Only filter out if explicitly deleted or cancelled (be less aggressive)
+              // Some tasks might not have these fields set, so default to showing them
+              const isDeleted = job.deletion_status === true || job.deletion_status === 1 || job.deleted === true;
+              const isCancelled = job.cancel_status === true || job.cancel_status === 1 || job.cancelled === true;
+              
+              // Log all tasks for debugging
+              console.log("🔍 Checking task:", {
+                job_id: job.job_id || job.id,
+                title: job.job_title || job.title,
+                deletion_status: job.deletion_status,
+                cancel_status: job.cancel_status,
+                isDeleted,
+                isCancelled,
+                willShow: !isDeleted && !isCancelled
+              });
+              
               if (isDeleted || isCancelled) {
-                console.log("⚠️ Filtering out task:", job.job_id, { isDeleted, isCancelled });
+                console.log("⚠️ Filtering out task:", job.job_id || job.id, { isDeleted, isCancelled });
                 return false;
               }
               return true;
@@ -1273,12 +1310,116 @@ export default function Dashboard() {
             console.warn("⚠️ Failed to save to sessionStorage:", e);
           }
         } else {
-          console.warn("⚠️ No assigned tasks found. Response:", {
+          console.warn("⚠️ No assigned tasks found. Response details:", {
             status_code: result.status_code,
+            status: result.status,
             message: result.message,
-            data: result.data
+            hasData: !!result.data,
+            dataType: typeof result.data,
+            dataKeys: result.data ? Object.keys(result.data) : [],
+            fullResponse: result
           });
-          // Clear assigned tasks if API returns empty
+          
+          // Try fallback: use axiosInstance in case fetch has issues
+          console.log("🔄 Trying fallback with axiosInstance...");
+          try {
+            const axiosResponse = await axiosInstance.get(`/get-user-assigned-bids/${targetUserId}/`);
+            const axiosResult = axiosResponse.data;
+            console.log("📋 Axios fallback response:", axiosResult);
+            
+            // Try to extract jobs from axios response
+            let fallbackJobs: any[] = [];
+            if (Array.isArray(axiosResult.data?.jobs)) {
+              fallbackJobs = axiosResult.data.jobs;
+            } else if (Array.isArray(axiosResult.data)) {
+              fallbackJobs = axiosResult.data;
+            } else if (Array.isArray(axiosResult.jobs)) {
+              fallbackJobs = axiosResult.jobs;
+            }
+            
+            if (fallbackJobs.length > 0) {
+              console.log("✅ Found", fallbackJobs.length, "jobs via axios fallback");
+              // Process fallback jobs (reuse the same mapping logic)
+              const fallbackTasks: Task[] = fallbackJobs
+                .filter((job: any) => {
+                  const isDeleted = job.deletion_status === true || job.deletion_status === 1;
+                  const isCancelled = job.cancel_status === true || job.cancel_status === 1;
+                  return !isDeleted && !isCancelled;
+                })
+                .map((job: any) => {
+                  // Use same mapping logic as above
+                  const rawDate = job.created_at || job.timestamp || job.job_due_date || job.updated_at || job.postedAt;
+                  let postedAtFormatted = "Unknown";
+                  let postedAtSortValue = 0;
+                  let postedAtISO = "";
+                  
+                  try {
+                    if (rawDate) {
+                      const dateObj = new Date(rawDate);
+                      if (!isNaN(dateObj.getTime())) {
+                        postedAtFormatted = dateObj.toLocaleDateString("en-GB");
+                        postedAtSortValue = dateObj.getTime();
+                        postedAtISO = dateObj.toISOString();
+                      } else if (typeof rawDate === "string") {
+                        postedAtFormatted = rawDate;
+                      }
+                    }
+                  } catch {
+                    if (typeof rawDate === "string") {
+                      postedAtFormatted = rawDate;
+                    }
+                  }
+
+                  return {
+                    id: job.job_id?.toString() || job.id?.toString() || String(Math.random()),
+                    title: job.job_title || job.title || "Untitled",
+                    description: job.job_description || job.description || "No description provided.",
+                    budget: Number(job.job_budget || job.budget || 0),
+                    location: job.job_location || job.location || "Unknown",
+                    status: job.status ? "in_progress" : "open",
+                    postedAt: postedAtFormatted,
+                    postedAtSortValue: postedAtSortValue,
+                    postedAtISO: postedAtISO,
+                    dueDate: job.job_due_date || job.dueDate
+                      ? new Date(job.job_due_date || job.dueDate).toLocaleDateString("en-GB")
+                      : "Unknown",
+                    offers: job.offers?.length || 0,
+                    posted_by: job.posted_by || job.postedBy || "Unknown",
+                    category: job.job_category || job.category || "general",
+                    job_completion_status: job.job_completion_status?.toString() || job.status?.toString() || undefined,
+                    deletion_status: job.deletion_status || false,
+                    cancel_status: job.cancel_status ?? false,
+                    assignedToMe: true,
+                    images: job.job_images?.urls?.length
+                      ? job.job_images.urls.map((url: string, index: number) => ({
+                          id: `img${index + 1}`,
+                          url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
+                          alt: `Job image ${index + 1}`,
+                        }))
+                      : job.images?.length
+                      ? job.images.map((img: any, index: number) => ({
+                          id: `img${index + 1}`,
+                          url: typeof img === "string" ? img : img.url || "/images/placeholder.svg",
+                          alt: `Job image ${index + 1}`,
+                        }))
+                      : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+                  } as Task;
+                });
+              
+              if (fallbackTasks.length > 0) {
+                console.log("✅ Setting assigned tasks from fallback:", fallbackTasks.length, "tasks");
+                setAssignedTasks(fallbackTasks);
+                try { 
+                  sessionStorage.setItem("assignedTasks", JSON.stringify(fallbackTasks)); 
+                } catch {}
+                return; // Exit early if fallback succeeded
+              }
+            }
+          } catch (fallbackErr) {
+            console.error("❌ Axios fallback also failed:", fallbackErr);
+          }
+          
+          // Clear assigned tasks if API returns empty and fallback failed
           setAssignedTasks([]);
           try { sessionStorage.removeItem("assignedTasks"); } catch {}
         }
