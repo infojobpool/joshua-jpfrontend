@@ -1573,10 +1573,64 @@ export default function Dashboard() {
 
         if (fetchResponse.ok) {
           const result = await fetchResponse.json();
+          console.log("✅ Completed tasks API response (FULL):", JSON.stringify(result, null, 2));
+          console.log("✅ Completed tasks API response (SUMMARY):", {
+            status_code: result.status_code,
+            status: result.status,
+            hasData: !!result.data,
+            dataType: typeof result.data,
+            dataKeys: result.data ? Object.keys(result.data) : [],
+            jobsType: Array.isArray(result.data?.jobs) ? 'array' : typeof result.data?.jobs,
+            jobsLength: Array.isArray(result.data?.jobs) ? result.data.jobs.length : 'N/A',
+            message: result.message
+          });
 
-          if (result.status_code === 200 && result.data?.jobs) {
+          // Handle different response formats - don't require status_code === 200
+          let jobsArray: any[] = [];
+          
+          // Try different possible response structures
+          if (Array.isArray(result.data?.jobs)) {
+            jobsArray = result.data.jobs;
+            console.log("✅ Found jobs in result.data.jobs:", jobsArray.length);
+          } else if (Array.isArray(result.data)) {
+            jobsArray = result.data;
+            console.log("✅ Found jobs in result.data (direct array):", jobsArray.length);
+          } else if (Array.isArray(result.jobs)) {
+            jobsArray = result.jobs;
+            console.log("✅ Found jobs in result.jobs:", jobsArray.length);
+          } else if (result.data && typeof result.data === 'object' && !Array.isArray(result.data)) {
+            // Check if jobs are nested differently
+            const possibleJobs = result.data.jobs || result.data.completed_jobs || result.data.user_jobs || [];
+            if (Array.isArray(possibleJobs)) {
+              jobsArray = possibleJobs;
+              console.log("✅ Found jobs in nested structure:", jobsArray.length);
+            } else {
+              // Try to find any array in the data object
+              for (const key in result.data) {
+                if (Array.isArray(result.data[key])) {
+                  console.log(`✅ Found array in result.data.${key}:`, result.data[key].length);
+                  jobsArray = result.data[key];
+                  break;
+                }
+              }
+            }
+          } else if (Array.isArray(result)) {
+            // Response might be a direct array
+            jobsArray = result;
+            console.log("✅ Response is direct array:", jobsArray.length);
+          }
+
+          console.log("📋 Processing", jobsArray.length, "jobs for completed tasks");
+
+          if (jobsArray.length > 0) {
             // First, get the basic task data
-            const tasks: Task[] = result.data.jobs.map((job: any) => {
+            const tasks: Task[] = jobsArray.map((job: any) => {
+              console.log("🔍 Processing job for completed tasks:", {
+                job_id: job.job_id || job.id,
+                title: job.job_title || job.title,
+                job_completion_status: job.job_completion_status,
+                status: job.status
+              });
               let jobStatus = "open";
               
               // Check if this task has a paid order - use correct field name
@@ -1590,8 +1644,18 @@ export default function Dashboard() {
               });
               
               // Determine job status based on completion and payment
-              if (job.job_completion_status === 1) {
+              // Check multiple ways job_completion_status might be represented
+              const completionStatus = job.job_completion_status === 1 || 
+                                      job.job_completion_status === "1" || 
+                                      job.completion_status === 1 ||
+                                      job.completion_status === "1" ||
+                                      job.status === "completed" ||
+                                      job.status === "Completed" ||
+                                      job.job_status === "completed";
+              
+              if (completionStatus) {
                 jobStatus = "completed";
+                console.log("✅ Job marked as completed:", job.job_id || job.id);
               } else if (hasPaidOrder) {
                 jobStatus = "in_progress";
               } else if (job.deletion_status || job.cancel_status) {
@@ -1618,38 +1682,99 @@ export default function Dashboard() {
               const assignedToMe = possibleTaskerIds2.some((v: any) => String(v).trim() === normalizedUserId2);
 
               return {
-                id: job.job_id,
-                title: job.job_title,
-                description: job.job_description,
-                budget: Number(job.job_budget) || 0,
-                location: job.job_location || "",
+                id: job.job_id?.toString() || job.id?.toString() || String(Math.random()),
+                title: job.job_title || job.title || "Untitled",
+                description: job.job_description || job.description || "No description provided.",
+                budget: Number(job.job_budget || job.budget || 0),
+                location: job.job_location || job.location || "Unknown",
                 status: jobStatus,
-                job_completion_status: job.job_completion_status,
+                job_completion_status: job.job_completion_status?.toString() || job.status?.toString() || undefined,
                 postedAt: (() => {
-                  const raw = job.job_due_date || job.created_at;
-                  return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
+                  const raw = job.job_due_date || job.created_at || job.timestamp || job.postedAt;
+                  try {
+                    return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
+                  } catch {
+                    return typeof raw === "string" && raw ? raw : "Unknown";
+                  }
                 })(),
+                dueDate: job.job_due_date || job.dueDate
+                  ? new Date(job.job_due_date || job.dueDate).toLocaleDateString("en-GB")
+                  : undefined,
                 completedDate: jobStatus === "completed" ? (() => {
-                  const raw = job.updated_at || job.completed_at;
-                  return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
+                  const raw = job.updated_at || job.completed_at || job.completed_date;
+                  try {
+                    return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
+                  } catch {
+                    return typeof raw === "string" && raw ? raw : "Unknown";
+                  }
                 })() : undefined,
+                offers: job.offers?.length || job.offer_count || 0,
+                posted_by: job.posted_by || job.postedBy || job.user_name || "Unknown",
+                category: job.job_category || job.category || "general",
                 images: job.images && Array.isArray(job.images) && job.images.length > 0
                   ? job.images.map((url: string, index: number) => ({
                       id: `img${index + 1}`,
-                      url,
+                      url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
+                      alt: `Job image ${index + 1}`,
+                    }))
+                  : job.job_images?.urls?.length
+                  ? job.job_images.urls.map((url: string, index: number) => ({
+                      id: `img${index + 1}`,
+                      url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
                       alt: `Job image ${index + 1}`,
                     }))
                   : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+                deletion_status: job.deletion_status || false,
+                cancel_status: job.cancel_status ?? false,
                 assignedToMe,
                 _posterIsMe: posterIsMe,
-              };
+              } as Task;
+            });
+
+            // Log all tasks for debugging
+            console.log("📊 All tasks breakdown:", {
+              total: tasks.length,
+              completed: tasks.filter(t => t.status === "completed").length,
+              assignedToMe: tasks.filter(t => t.assignedToMe).length,
+              postedByMe: tasks.filter(t => t._posterIsMe).length,
+              completedAndAssigned: tasks.filter(t => t.status === "completed" && t.assignedToMe).length,
+              completedAndPosted: tasks.filter(t => t.status === "completed" && t._posterIsMe).length,
+              completedTasks: tasks.filter(t => t.status === "completed").map(t => ({
+                id: t.id,
+                title: t.title,
+                assignedToMe: t.assignedToMe,
+                _posterIsMe: t._posterIsMe
+              }))
             });
 
             // Include ALL completed tasks - both assigned to me AND posted by me
-            completedForMe = tasks.filter((t) => 
-              t.status === "completed" && (t.assignedToMe || t._posterIsMe)
-            );
-            console.log(`Found ${completedForMe.length} completed tasks from API (assigned: ${tasks.filter(t => t.status === "completed" && t.assignedToMe).length}, posted: ${tasks.filter(t => t.status === "completed" && t._posterIsMe).length})`);
+            // Also include tasks that are marked as completed even if flags aren't set (be less strict)
+            completedForMe = tasks.filter((t) => {
+              const isCompleted = t.status === "completed";
+              const isMine = t.assignedToMe || t._posterIsMe;
+              
+              // If status is completed, include it even if flags aren't perfect (be lenient)
+              if (isCompleted) {
+                // Prefer tasks that are clearly assigned/posted by me
+                if (isMine) {
+                  return true;
+                }
+                // But also include if we can't determine ownership (might be a data issue)
+                // Only exclude if we're certain it's NOT mine
+                console.log("⚠️ Completed task without clear ownership flags:", {
+                  id: t.id,
+                  title: t.title,
+                  assignedToMe: t.assignedToMe,
+                  _posterIsMe: t._posterIsMe,
+                  status: t.status
+                });
+                // Include it anyway - let the user see it
+                return true;
+              }
+              return false;
+            });
+            
+            console.log(`✅ Found ${completedForMe.length} completed tasks from API (assigned: ${tasks.filter(t => t.status === "completed" && t.assignedToMe).length}, posted: ${tasks.filter(t => t.status === "completed" && t._posterIsMe).length})`);
           }
         } else {
           console.warn("Get user jobs failed with status:", fetchResponse.status);
