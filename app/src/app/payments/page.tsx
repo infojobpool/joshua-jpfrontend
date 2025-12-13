@@ -160,38 +160,123 @@ export default function PaymentPage() {
           razorpay_order_id: string;
           razorpay_signature: string;
         }) {
-          console.log("Razorpay response:", response);
+          console.log("✅ Razorpay payment successful! Response:", response);
+          
+          // Store payment details in case verification fails but payment succeeded
+          const paymentDetails = {
+            postId: orderDetails.postId,
+            payment_id: response.razorpay_payment_id,
+            order_id: response.razorpay_order_id,
+            signature: response.razorpay_signature,
+            tasker_id: taskerId,
+            taskmanager_id: taskPosterId,
+            bid_amount: orderDetails.bid_amount,
+            gst_amount: orderDetails.gst_amount,
+            commission_amount: orderDetails.commission_amount,
+            payable_amount: orderDetails.payable_amount,
+            timestamp: Date.now(),
+          };
+          
+          // Store in localStorage for potential retry
           try {
-            const verifyResponse = await axiosInstance.post("/verify-payment/", {
-              postId: orderDetails.postId,
-              payment_id: response.razorpay_payment_id,
-              order_id: response.razorpay_order_id,
-              signature: response.razorpay_signature,
-              tasker_id: taskerId,
-              taskmanager_id: taskPosterId,
-              bid_amount: orderDetails.bid_amount,
-              gst_amount: orderDetails.gst_amount,
-              commission_amount: orderDetails.commission_amount,
-              payable_amount: orderDetails.payable_amount,
-            });
-            console.log("verify-payment response:", verifyResponse.data);
-            const data = verifyResponse.data;
-            if (data.status_code !== 200) {
-              throw new Error(data.message || "Payment verification failed");
+            localStorage.setItem("pending_payment_verification", JSON.stringify(paymentDetails));
+          } catch (e) {
+            console.warn("Failed to store payment details:", e);
+          }
+
+          // Try to verify payment with retry logic
+          let verificationSuccess = false;
+          let lastError: any = null;
+          const maxRetries = 3;
+          
+          for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+              console.log(`🔄 Verifying payment (attempt ${attempt}/${maxRetries})...`);
+              
+              const verifyResponse = await axiosInstance.post("/verify-payment/", {
+                postId: orderDetails.postId,
+                payment_id: response.razorpay_payment_id,
+                order_id: response.razorpay_order_id,
+                signature: response.razorpay_signature,
+                tasker_id: taskerId,
+                taskmanager_id: taskPosterId,
+                bid_amount: orderDetails.bid_amount,
+                gst_amount: orderDetails.gst_amount,
+                commission_amount: orderDetails.commission_amount,
+                payable_amount: orderDetails.payable_amount,
+              });
+              
+              console.log("✅ verify-payment response:", verifyResponse.data);
+              const data = verifyResponse.data;
+              
+              if (data.status_code !== 200) {
+                throw new Error(data.message || "Payment verification failed");
+              }
+              
+              setPaymentStatus(data.data.payment_status);
+              
+              if (data.data.payment_status === "captured") {
+                console.log("✅ Payment captured successfully");
+                verificationSuccess = true;
+                
+                // Clear stored payment details on success
+                try {
+                  localStorage.removeItem("pending_payment_verification");
+                } catch (e) {
+                  console.warn("Failed to clear payment details:", e);
+                }
+                
+                // Show success message
+                alert("Payment successful!");
+                setShowPaymentModal(false);
+                
+                // Fetch and display task order details
+                await fetchTaskOrderDetails(response.razorpay_order_id);
+                break; // Exit retry loop on success
+              } else {
+                throw new Error(`Payment not captured: ${data.data.payment_status}`);
+              }
+            } catch (err: any) {
+              lastError = err;
+              console.error(`❌ Verification attempt ${attempt} failed:`, {
+                message: err.message,
+                code: err.code,
+                status: err.response?.status,
+                isNetworkError: err.code === 'ECONNREFUSED' || err.code === 'ERR_NETWORK' || err.message?.includes('Network Error'),
+              });
+              
+              // If it's a network error and we have retries left, wait and retry
+              const isNetworkError = err.code === 'ECONNREFUSED' || err.code === 'ERR_NETWORK' || err.message?.includes('Network Error');
+              
+              if (isNetworkError && attempt < maxRetries) {
+                const waitTime = attempt * 2000; // Exponential backoff: 2s, 4s, 6s
+                console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+                continue; // Retry
+              } else {
+                // If it's not a network error or we're out of retries, break
+                break;
+              }
             }
-            setPaymentStatus(data.data.payment_status);
-            if (data.data.payment_status === "captured") {
-              console.log("Payment captured successfully");
-              alert("Payment successful!");
-              setShowPaymentModal(false);
-              // Optionally fetch and display task order details
-              await fetchTaskOrderDetails(response.razorpay_order_id);
+          }
+          
+          // If verification failed after all retries, show appropriate message
+          if (!verificationSuccess) {
+            const isNetworkError = lastError?.code === 'ECONNREFUSED' || lastError?.code === 'ERR_NETWORK' || lastError?.message?.includes('Network Error');
+            
+            if (isNetworkError) {
+              // Payment succeeded on Razorpay but verification API failed
+              console.warn("⚠️ Payment succeeded on Razorpay but verification failed. Payment may still be processed.");
+              setErrorMessage(
+                "Payment was successful, but we couldn't verify it due to a network error. " +
+                "Your payment may still be processed. Please check your payment status or contact support with Payment ID: " +
+                response.razorpay_payment_id
+              );
             } else {
-              throw new Error(`Payment not captured: ${data.data.payment_status}`);
+              // Other verification error
+              setErrorMessage(lastError?.response?.data?.message || lastError?.message || "Payment verification failed");
             }
-          } catch (err: any) {
-            console.error("Verification error:", err);
-            setErrorMessage(err.message || "Payment verification failed");
+            
             setShowPaymentFailed(true);
           }
         },

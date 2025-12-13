@@ -32,27 +32,45 @@ export function PaymentFailed({
           <CardDescription>We couldn't process your payment</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="border rounded-lg p-4 bg-red-50">
-            <div className="text-sm text-red-700">
-              <strong>Error:</strong> {errorMessage}
+          <div className={`border rounded-lg p-4 ${errorMessage?.includes("Payment was successful") || errorMessage?.includes("couldn't verify") ? "bg-yellow-50 border-yellow-200" : "bg-red-50 border-red-200"}`}>
+            <div className={`text-sm ${errorMessage?.includes("Payment was successful") || errorMessage?.includes("couldn't verify") ? "text-yellow-800" : "text-red-700"}`}>
+              <strong>{errorMessage?.includes("Payment was successful") || errorMessage?.includes("couldn't verify") ? "Notice:" : "Error:"}</strong> {errorMessage}
             </div>
           </div>
 
-          <div className="space-y-2 text-sm text-muted-foreground">
-            <p>
-              <strong>Common reasons for payment failure:</strong>
-            </p>
-            <ul className="list-disc list-inside space-y-1 ml-2">
-              <li>Insufficient funds in your account</li>
-              <li>Incorrect card details</li>
-              <li>Card expired or blocked</li>
-              <li>Network connectivity issues</li>
-            </ul>
-          </div>
+          {!(errorMessage?.includes("Payment was successful") || errorMessage?.includes("couldn't verify")) && (
+            <>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  <strong>Common reasons for payment failure:</strong>
+                </p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Insufficient funds in your account</li>
+                  <li>Incorrect card details</li>
+                  <li>Card expired or blocked</li>
+                  <li>Network connectivity issues</li>
+                </ul>
+              </div>
 
-          <div className="text-center text-sm text-muted-foreground">
-            Please check your payment details and try again, or contact support if the issue persists.
-          </div>
+              <div className="text-center text-sm text-muted-foreground">
+                Please check your payment details and try again, or contact support if the issue persists.
+              </div>
+            </>
+          )}
+
+          {(errorMessage?.includes("Payment was successful") || errorMessage?.includes("couldn't verify")) && (
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p className="font-medium text-yellow-800">
+                <strong>What to do:</strong>
+              </p>
+              <ul className="list-disc list-inside space-y-1 ml-2 text-yellow-700">
+                <li>Check your payment status in your dashboard</li>
+                <li>Wait a few minutes and refresh the page</li>
+                <li>Contact support with your Payment ID if the issue persists</li>
+                <li>Your payment may have been processed successfully</li>
+              </ul>
+            </div>
+          )}
         </CardContent>
         <CardFooter className="flex flex-col space-y-2">
           <div className="flex w-full space-x-2">
