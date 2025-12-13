@@ -55,6 +55,8 @@ interface Task {
   location: string;
   status: string;
   postedAt: string;
+  postedAtSortValue?: number; // For sorting by date
+  postedAtISO?: string; // ISO date string
   dueDate?: string;
   completedDate?: string;
   rating?: number;
@@ -1123,13 +1125,22 @@ export default function Dashboard() {
     if (!user || !(userId || effectiveUserId)) return;
 
     const fetchAssignedBids = async () => {
+      const targetUserId = userId || effectiveUserId;
+      if (!targetUserId) {
+        console.warn("⚠️ Cannot fetch assigned tasks: No userId available");
+        return;
+      }
+
       try {
         // Use fetch API directly to bypass axios timeout issues
         const token = localStorage.getItem('token');
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
-        const fetchResponse = await fetch(`${API_BASE}/get-user-assigned-bids/${userId || effectiveUserId}/`, {
+        const url = `${API_BASE}/get-user-assigned-bids/${targetUserId}/`;
+        console.log("📋 Fetching assigned tasks from:", url, "for userId:", targetUserId);
+
+        const fetchResponse = await fetch(url, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -1142,49 +1153,134 @@ export default function Dashboard() {
         clearTimeout(timeoutId);
 
         if (!fetchResponse.ok) {
-          console.warn("Fetch assigned bids failed with status:", fetchResponse.status);
+          console.error("❌ Fetch assigned bids failed with status:", fetchResponse.status, fetchResponse.statusText);
+          const errorText = await fetchResponse.text();
+          console.error("Error response:", errorText);
           return;
         }
 
         const result = await fetchResponse.json();
+        console.log("📋 Assigned tasks API response:", {
+          status_code: result.status_code,
+          hasData: !!result.data,
+          dataType: typeof result.data,
+          jobsType: Array.isArray(result.data?.jobs) ? 'array' : typeof result.data?.jobs,
+          jobsLength: Array.isArray(result.data?.jobs) ? result.data.jobs.length : 'N/A',
+          fullResponse: result
+        });
 
-        if (result.status_code === 200 && Array.isArray(result.data?.jobs)) {
-          const tasks: Task[] = result.data.jobs.map((job: any) => ({
-            id: job.job_id.toString(),
-            title: job.job_title || "Untitled",
-            description: job.job_description || "No description provided.",
-            budget: Number(job.job_budget) || 0,
-            location: job.job_location || "Unknown",
-            // Treat assigned jobs as in_progress in UI
-            status: job.status ? "in_progress" : "open",
-            postedAt: (() => {
-              const raw = job.created_at || job.timestamp || job.job_due_date || job.updated_at;
-              try {
-                return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
-              } catch {
-                return typeof raw === "string" && raw ? raw : "Unknown";
+        // Handle different response formats
+        let jobsArray: any[] = [];
+        
+        if (result.status_code === 200) {
+          // Try different possible response structures
+          if (Array.isArray(result.data?.jobs)) {
+            jobsArray = result.data.jobs;
+          } else if (Array.isArray(result.data)) {
+            jobsArray = result.data;
+          } else if (Array.isArray(result.jobs)) {
+            jobsArray = result.jobs;
+          } else if (result.data && typeof result.data === 'object' && !Array.isArray(result.data)) {
+            // Check if jobs are nested differently
+            const possibleJobs = result.data.jobs || result.data.assigned_jobs || result.data.assigned_tasks || [];
+            if (Array.isArray(possibleJobs)) {
+              jobsArray = possibleJobs;
+            }
+          }
+        }
+
+        console.log("📋 Processed jobs array length:", jobsArray.length);
+
+        if (jobsArray.length > 0) {
+          const tasks: Task[] = jobsArray
+            .filter((job: any) => {
+              // Filter out deleted or cancelled tasks
+              const isDeleted = job.deletion_status === true || job.deletion_status === 1;
+              const isCancelled = job.cancel_status === true || job.cancel_status === 1;
+              if (isDeleted || isCancelled) {
+                console.log("⚠️ Filtering out task:", job.job_id, { isDeleted, isCancelled });
+                return false;
               }
-            })(),
-            dueDate: job.job_due_date
-              ? new Date(job.job_due_date).toLocaleDateString("en-GB")
-              : "Unknown",
-            offers: job.offers?.length || 0,
-            posted_by: job.posted_by || "Unknown",
-            category: job.job_category || "general",
-            deletion_status: job.deletion_status || false,
-            cancel_status: job.cancel_status ?? false,
-            images: job.job_images?.urls?.length
-              ? job.job_images.urls.map((url: string, index: number) => ({
-                  id: `img${index + 1}`,
-                  url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
-                  alt: `Job image ${index + 1}`,
-                }))
-              : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
-          }));
+              return true;
+            })
+            .map((job: any) => {
+              console.log("✅ Processing assigned task:", job.job_id, job.job_title);
+              const rawDate = job.created_at || job.timestamp || job.job_due_date || job.updated_at || job.postedAt;
+              let postedAtFormatted = "Unknown";
+              let postedAtSortValue = 0;
+              let postedAtISO = "";
+              
+              try {
+                if (rawDate) {
+                  const dateObj = new Date(rawDate);
+                  if (!isNaN(dateObj.getTime())) {
+                    postedAtFormatted = dateObj.toLocaleDateString("en-GB");
+                    postedAtSortValue = dateObj.getTime();
+                    postedAtISO = dateObj.toISOString();
+                  } else if (typeof rawDate === "string") {
+                    postedAtFormatted = rawDate;
+                  }
+                }
+              } catch {
+                if (typeof rawDate === "string") {
+                  postedAtFormatted = rawDate;
+                }
+              }
+
+              return {
+                id: job.job_id?.toString() || job.id?.toString() || String(Math.random()),
+                title: job.job_title || job.title || "Untitled",
+                description: job.job_description || job.description || "No description provided.",
+                budget: Number(job.job_budget || job.budget || 0),
+                location: job.job_location || job.location || "Unknown",
+                // Treat assigned jobs as in_progress in UI
+                status: job.status ? "in_progress" : "open",
+                postedAt: postedAtFormatted,
+                postedAtSortValue: postedAtSortValue,
+                postedAtISO: postedAtISO,
+                dueDate: job.job_due_date || job.dueDate
+                  ? new Date(job.job_due_date || job.dueDate).toLocaleDateString("en-GB")
+                  : "Unknown",
+                offers: job.offers?.length || 0,
+                posted_by: job.posted_by || job.postedBy || "Unknown",
+                category: job.job_category || job.category || "general",
+                job_completion_status: job.job_completion_status?.toString() || job.status?.toString() || undefined,
+                deletion_status: job.deletion_status || false,
+                cancel_status: job.cancel_status ?? false,
+                assignedToMe: true, // Mark as assigned to current user
+                images: job.job_images?.urls?.length
+                  ? job.job_images.urls.map((url: string, index: number) => ({
+                      id: `img${index + 1}`,
+                      url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
+                      alt: `Job image ${index + 1}`,
+                    }))
+                  : job.images?.length
+                  ? job.images.map((img: any, index: number) => ({
+                      id: `img${index + 1}`,
+                      url: typeof img === "string" ? img : img.url || "/images/placeholder.svg",
+                      alt: `Job image ${index + 1}`,
+                    }))
+                  : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+              } as Task;
+            });
+          
+          console.log("✅ Setting assigned tasks:", tasks.length, "tasks");
           setAssignedTasks(tasks);
-          try { sessionStorage.setItem("assignedTasks", JSON.stringify(tasks)); } catch {}
+          try { 
+            sessionStorage.setItem("assignedTasks", JSON.stringify(tasks)); 
+            console.log("✅ Saved assigned tasks to sessionStorage");
+          } catch (e) {
+            console.warn("⚠️ Failed to save to sessionStorage:", e);
+          }
         } else {
-          console.warn("No assigned tasks found or API error:", result.message);
+          console.warn("⚠️ No assigned tasks found. Response:", {
+            status_code: result.status_code,
+            message: result.message,
+            data: result.data
+          });
+          // Clear assigned tasks if API returns empty
+          setAssignedTasks([]);
+          try { sessionStorage.removeItem("assignedTasks"); } catch {}
         }
       } catch (err) {
         // Handle AbortError separately (don't show error for timeouts)
@@ -1192,7 +1288,11 @@ export default function Dashboard() {
           console.log("⏰ Fetch assigned bids was aborted (timeout)");
           return;
         }
-        console.error("Failed to fetch assigned tasks:", err);
+        console.error("❌ Failed to fetch assigned tasks:", {
+          error: err,
+          message: (err as any)?.message,
+          stack: (err as any)?.stack
+        });
       }
     };
 
@@ -1484,7 +1584,7 @@ export default function Dashboard() {
           const newCompleted = {
             ...completedTask,
             status: "completed",
-            job_completion_status: 1, // Set completion status to 1
+            job_completion_status: "1", // Set completion status to 1 (as string)
             completedDate: new Date().toLocaleDateString("en-GB"),
             assignedToMe: true,
           } as Task;
@@ -1540,7 +1640,7 @@ export default function Dashboard() {
           const newCompleted = {
             ...completedTask,
             status: "completed",
-            job_completion_status: 1,
+            job_completion_status: "1", // Set completion status to 1 (as string)
             completedDate: new Date().toLocaleDateString("en-GB"),
             _posterIsMe: true, // Mark as posted by me
           } as Task;
@@ -1565,7 +1665,7 @@ export default function Dashboard() {
         setPostedTasks((prev) =>
           prev.map((task) =>
             task.id === jobId
-              ? { ...task, status: "completed", job_completion_status: 1, completedDate: new Date().toLocaleDateString("en-GB") }
+              ? { ...task, status: "completed", job_completion_status: "1", completedDate: new Date().toLocaleDateString("en-GB") }
               : task
           )
         );
