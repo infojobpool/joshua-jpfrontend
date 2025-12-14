@@ -339,6 +339,64 @@ export default function Dashboard() {
       const r = sessionStorage.getItem("requestedTasks");
       if (r) setRequestedTasks(JSON.parse(r));
     } catch {}
+    
+    // Debug: Log all localStorage and sessionStorage contents
+    if (typeof window !== "undefined") {
+      console.log("📦 === LOCALSTORAGE CONTENTS ===");
+      const localStorageData: Record<string, any> = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key) {
+          try {
+            const value = localStorage.getItem(key);
+            if (value) {
+              // Try to parse as JSON, fallback to string
+              try {
+                localStorageData[key] = JSON.parse(value);
+              } catch {
+                localStorageData[key] = value;
+              }
+            }
+          } catch (e) {
+            localStorageData[key] = "Error reading";
+          }
+        }
+      }
+      console.table(localStorageData);
+      console.log("📦 Full localStorage:", localStorageData);
+      
+      console.log("📦 === SESSIONSTORAGE CONTENTS ===");
+      const sessionStorageData: Record<string, any> = {};
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key) {
+          try {
+            const value = sessionStorage.getItem(key);
+            if (value) {
+              // Try to parse as JSON, fallback to string
+              try {
+                sessionStorageData[key] = JSON.parse(value);
+              } catch {
+                sessionStorageData[key] = value;
+              }
+            }
+          } catch (e) {
+            sessionStorageData[key] = "Error reading";
+          }
+        }
+      }
+      console.table(sessionStorageData);
+      console.log("📦 Full sessionStorage:", sessionStorageData);
+      
+      // Show task-related storage specifically
+      console.log("📋 === TASK-RELATED STORAGE ===");
+      console.log("Assigned Tasks (sessionStorage):", sessionStorage.getItem("assignedTasks") ? JSON.parse(sessionStorage.getItem("assignedTasks")!).length + " tasks" : "Empty");
+      console.log("Posted Tasks (sessionStorage):", sessionStorage.getItem("postedTasks") ? JSON.parse(sessionStorage.getItem("postedTasks")!).length + " tasks" : "Empty");
+      console.log("Requested Tasks (sessionStorage):", sessionStorage.getItem("requestedTasks") ? JSON.parse(sessionStorage.getItem("requestedTasks")!).length + " tasks" : "Empty");
+      console.log("Available Tasks (localStorage):", localStorage.getItem("availableTasks") ? JSON.parse(localStorage.getItem("availableTasks")!).length + " tasks" : "Empty");
+      console.log("Posted Tasks (localStorage):", localStorage.getItem("postedTasks") ? JSON.parse(localStorage.getItem("postedTasks")!).length + " tasks" : "Empty");
+      console.log("Bids (localStorage):", localStorage.getItem("bids") ? JSON.parse(localStorage.getItem("bids")!).length + " bids" : "Empty");
+    }
   }, []);
 
   // Ensure categories are loaded when the inline mobile filters are opened (only if not already loaded)
