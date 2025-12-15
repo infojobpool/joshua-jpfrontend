@@ -61,6 +61,14 @@ interface Poster {
   email: string;
 }
 
+interface BankDetails {
+  accountHolder?: string;
+  accountNumber?: string;
+  ifsc?: string;
+  bankName?: string;
+  upiId?: string;
+}
+
 interface Payout {
   id: number;
   tasker: Tasker;
@@ -86,6 +94,10 @@ export default function PayoutsPage() {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [taskerBank, setTaskerBank] = useState<BankDetails | null>(null);
+  const [posterBank, setPosterBank] = useState<BankDetails | null>(null);
+  const [isBankLoading, setIsBankLoading] = useState(false);
+  const [bankError, setBankError] = useState<string | null>(null);
 
   const formatDate = (isoString: string): string => {
     const date = new Date(isoString);
@@ -100,6 +112,66 @@ export default function PayoutsPage() {
     0: "Processing",
     1: "Completed",
     2: "Failed",
+  };
+
+  const normalizeBankInfo = (raw: any | undefined | null): BankDetails | null => {
+    if (!raw || typeof raw !== "object") return null;
+    return {
+      accountHolder:
+        raw.account_holder_name ||
+        raw.accountHolderName ||
+        raw.account_name ||
+        raw.name ||
+        "",
+      accountNumber:
+        raw.bank_account_number ||
+        raw.account_number ||
+        raw.accountNumber ||
+        "",
+      ifsc: raw.ifsc_code || raw.ifsc || "",
+      bankName: raw.bank_name || raw.bank || "",
+      upiId: raw.upi_id || raw.upi || "",
+    };
+  };
+
+  const loadBankDetails = async (payout: Payout) => {
+    try {
+      setIsBankLoading(true);
+      setBankError(null);
+      setTaskerBank(null);
+      setPosterBank(null);
+
+      const [taskerRes, posterRes] = await Promise.allSettled([
+        axiosInstance.get(`/profile?user_id=${payout.tasker.id}`),
+        axiosInstance.get(`/profile?user_id=${payout.poster.id}`),
+      ]);
+
+      if (taskerRes.status === "fulfilled") {
+        const data = taskerRes.value.data;
+        const info =
+          data.bank_info || data.data?.bank_info || data.profile?.bank_info;
+        setTaskerBank(normalizeBankInfo(info));
+      }
+
+      if (posterRes.status === "fulfilled") {
+        const data = posterRes.value.data;
+        const info =
+          data.bank_info || data.data?.bank_info || data.profile?.bank_info;
+        setPosterBank(normalizeBankInfo(info));
+      }
+
+      if (
+        (taskerRes.status === "rejected" || !taskerRes) &&
+        (posterRes.status === "rejected" || !posterRes)
+      ) {
+        setBankError("Failed to load bank details.");
+      }
+    } catch (err) {
+      console.error("Failed to load bank/UPI details:", err);
+      setBankError("Failed to load bank details.");
+    } finally {
+      setIsBankLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -554,6 +626,7 @@ export default function PayoutsPage() {
                                 onClick={() => {
                                   setSelectedPayout(payout);
                                   setIsDetailsDialogOpen(true);
+                                  loadBankDetails(payout);
                                 }}
                               >
                                 View Details
@@ -694,6 +767,81 @@ export default function PayoutsPage() {
                                     </div>
                                   </div>
                                 </div>
+                                <div className="grid grid-cols-2 gap-4 border-t pt-4 mt-2">
+                                  <div>
+                                    <Label>Tasker Bank / UPI</Label>
+                                    <div className="mt-1 text-sm text-muted-foreground space-y-1">
+                                      {isBankLoading && <div>Loading...</div>}
+                                      {!isBankLoading && taskerBank && (
+                                        <>
+                                          {taskerBank.bankName && (
+                                            <div>Bank: {taskerBank.bankName}</div>
+                                          )}
+                                          {taskerBank.accountNumber && (
+                                            <div>
+                                              A/C: ****
+                                              {taskerBank.accountNumber.slice(-4)}
+                                            </div>
+                                          )}
+                                          {taskerBank.ifsc && (
+                                            <div>IFSC: {taskerBank.ifsc}</div>
+                                          )}
+                                          {taskerBank.upiId && (
+                                            <div>UPI: {taskerBank.upiId}</div>
+                                          )}
+                                          {!taskerBank.bankName &&
+                                            !taskerBank.accountNumber &&
+                                            !taskerBank.ifsc &&
+                                            !taskerBank.upiId && (
+                                              <div>No bank details available.</div>
+                                            )}
+                                        </>
+                                      )}
+                                      {!isBankLoading && !taskerBank && (
+                                        <div>No bank details available.</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <Label>Poster Bank / UPI</Label>
+                                    <div className="mt-1 text-sm text-muted-foreground space-y-1">
+                                      {isBankLoading && <div>Loading...</div>}
+                                      {!isBankLoading && posterBank && (
+                                        <>
+                                          {posterBank.bankName && (
+                                            <div>Bank: {posterBank.bankName}</div>
+                                          )}
+                                          {posterBank.accountNumber && (
+                                            <div>
+                                              A/C: ****
+                                              {posterBank.accountNumber.slice(-4)}
+                                            </div>
+                                          )}
+                                          {posterBank.ifsc && (
+                                            <div>IFSC: {posterBank.ifsc}</div>
+                                          )}
+                                          {posterBank.upiId && (
+                                            <div>UPI: {posterBank.upiId}</div>
+                                          )}
+                                          {!posterBank.bankName &&
+                                            !posterBank.accountNumber &&
+                                            !posterBank.ifsc &&
+                                            !posterBank.upiId && (
+                                              <div>No bank details available.</div>
+                                            )}
+                                        </>
+                                      )}
+                                      {!isBankLoading && !posterBank && (
+                                        <div>No bank details available.</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                {bankError && (
+                                  <div className="text-sm text-red-500">
+                                    {bankError}
+                                  </div>
+                                )}
                               </div>
                             )}
                             <DialogFooter>
