@@ -1039,7 +1039,8 @@ interface Payout {
 export default function PayoutsPage() {
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  // Default to showing only Processing payouts so completed ones are hidden by default
+  const [statusFilter, setStatusFilter] = useState("processing");
   const [methodFilter, setMethodFilter] = useState("all");
   const [selectedPayout, setSelectedPayout] = useState<Payout | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
