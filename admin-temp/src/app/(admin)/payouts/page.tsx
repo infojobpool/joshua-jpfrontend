@@ -85,6 +85,8 @@ interface Payout {
   completedDate: string | null;
   processingDate?: string | null;
   deadlineDate?: string | null;
+  taskerBankInfo?: BankDetails | null;
+  posterBankInfo?: BankDetails | null;
 }
 
 export default function PayoutsPage() {
@@ -100,7 +102,6 @@ export default function PayoutsPage() {
   const [taskerBank, setTaskerBank] = useState<BankDetails | null>(null);
   const [posterBank, setPosterBank] = useState<BankDetails | null>(null);
   const [isBankLoading, setIsBankLoading] = useState(false);
-  const [bankMap, setBankMap] = useState<Record<string, BankDetails | null>>({});
 
   const formatDate = (isoString: string): string => {
     const date = new Date(isoString);
@@ -187,26 +188,11 @@ export default function PayoutsPage() {
     };
   };
 
-  const loadBankDetails = async (payout: Payout) => {
+  const loadBankDetails = (payout: Payout) => {
+    // Bank info is now provided directly on each task_order from backend
     setIsBankLoading(true);
-    setTaskerBank(null);
-    setPosterBank(null);
-
-    const taskerKey = String(payout.tasker.id);
-    const posterKey = String(payout.poster.id);
-
-    const taskerInfo = bankMap[taskerKey] || null;
-    const posterInfo = bankMap[posterKey] || null;
-
-    if (!taskerInfo && !posterInfo) {
-      console.warn("No bank/UPI info found in customer map for payout.", {
-        tasker: taskerKey,
-        poster: posterKey,
-      });
-    }
-
-    setTaskerBank(taskerInfo);
-    setPosterBank(posterInfo);
+    setTaskerBank(payout.taskerBankInfo || null);
+    setPosterBank(payout.posterBankInfo || null);
     setIsBankLoading(false);
   };
 
@@ -233,6 +219,13 @@ export default function PayoutsPage() {
                 ? addDays(processingDate, 3)
                 : null;
 
+            const taskerBankInfo = normalizeBankInfo(
+              order.tasker_bank_info || order.taskerBankInfo
+            );
+            const posterBankInfo = normalizeBankInfo(
+              order.poster_bank_info || order.posterBankInfo
+            );
+
             return {
               id: order.order_id,
               tasker: {
@@ -258,6 +251,8 @@ export default function PayoutsPage() {
               completedDate: order.completed_at || null,
               processingDate,
               deadlineDate,
+              taskerBankInfo,
+              posterBankInfo,
             };
           }
         );
@@ -270,25 +265,7 @@ export default function PayoutsPage() {
       }
     };
 
-    const fetchBankInfo = async () => {
-      try {
-        // Use admin customers endpoint to preload bank_info for all users.
-        const res = await axiosInstance.get("all-user-details/");
-        const map: Record<string, BankDetails | null> = {};
-        if (Array.isArray(res.data)) {
-          res.data.forEach((customer: any) => {
-            const key = String(customer.user_id);
-            map[key] = normalizeBankInfo(customer.bank_info);
-          });
-        }
-        setBankMap(map);
-      } catch (err) {
-        console.error("Failed to fetch customer bank info for payouts:", err);
-      }
-    };
-
     fetchPayouts();
-    fetchBankInfo();
   }, []);
 
   const handleStatusChange = async (payoutId: number, newStatus: string) => {
