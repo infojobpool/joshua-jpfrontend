@@ -9,6 +9,9 @@ import {
   XCircle,
   Clock,
   AlertCircle,
+  Eye,
+  EyeOff,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +69,7 @@ interface BankDetails {
   accountNumber?: string;
   ifsc?: string;
   bankName?: string;
+  branchName?: string;
   upiId?: string;
 }
 
@@ -184,6 +188,11 @@ export default function PayoutsPage() {
         "",
       ifsc: raw.ifsc_code || raw.ifsc || "",
       bankName: raw.bank_name || raw.bank || "",
+      branchName:
+        raw.branch_name ||
+        raw.bank_branch ||
+        raw.branch ||
+        "",
       upiId: raw.upi_id || raw.upi || "",
     };
   };
@@ -886,7 +895,49 @@ export default function PayoutsPage() {
                                 </div>
                                 <div className="grid grid-cols-2 gap-4 border-t pt-4 mt-2">
                                   <div>
-                                    <Label>Tasker Bank / UPI</Label>
+                                    <div className="flex items-center justify-between">
+                                      <Label>Tasker Bank / UPI</Label>
+                                      {taskerBank?.accountNumber && (
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                          <button
+                                            type="button"
+                                            className="inline-flex items-center rounded px-1 py-0.5 hover:bg-muted"
+                                            onClick={() => {
+                                              const el = document.getElementById(
+                                                "tasker-account-display"
+                                              );
+                                              if (!el) return;
+                                              const isMasked =
+                                                el.getAttribute("data-masked") ===
+                                                "true";
+                                              el.setAttribute(
+                                                "data-masked",
+                                                (!isMasked).toString()
+                                              );
+                                              const acct = taskerBank.accountNumber || "";
+                                              el.textContent = isMasked
+                                                ? acct
+                                                : `****${acct.slice(-4)}`;
+                                            }}
+                                          >
+                                            <Eye className="h-3 w-3 mr-0.5" />
+                                            Show
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="inline-flex items-center rounded px-1 py-0.5 hover:bg-muted"
+                                            onClick={() => {
+                                              navigator.clipboard.writeText(
+                                                taskerBank.accountNumber || ""
+                                              );
+                                            }}
+                                          >
+                                            <Copy className="h-3 w-3 mr-0.5" />
+                                            Copy
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
                                     <div className="mt-1 text-sm text-muted-foreground space-y-1">
                                       {isBankLoading && <div>Loading...</div>}
                                       {!isBankLoading && taskerBank && (
@@ -894,17 +945,51 @@ export default function PayoutsPage() {
                                           {taskerBank.bankName && (
                                             <div>Bank: {taskerBank.bankName}</div>
                                           )}
+                                          {taskerBank.branchName && (
+                                            <div>Branch: {taskerBank.branchName}</div>
+                                          )}
                                           {taskerBank.accountNumber && (
-                                            <div>
+                                            <div
+                                              id="tasker-account-display"
+                                              data-masked="true"
+                                            >
                                               A/C: ****
                                               {taskerBank.accountNumber.slice(-4)}
                                             </div>
                                           )}
                                           {taskerBank.ifsc && (
-                                            <div>IFSC: {taskerBank.ifsc}</div>
+                                            <div className="flex items-center gap-2">
+                                              <span>IFSC: {taskerBank.ifsc}</span>
+                                              <button
+                                                type="button"
+                                                className="inline-flex items-center rounded px-1 py-0.5 hover:bg-muted text-xs"
+                                                onClick={() =>
+                                                  navigator.clipboard.writeText(
+                                                    taskerBank.ifsc || ""
+                                                  )
+                                                }
+                                              >
+                                                <Copy className="h-3 w-3 mr-0.5" />
+                                                Copy
+                                              </button>
+                                            </div>
                                           )}
                                           {taskerBank.upiId && (
-                                            <div>UPI: {taskerBank.upiId}</div>
+                                            <div className="flex items-center gap-2">
+                                              <span>UPI: {taskerBank.upiId}</span>
+                                              <button
+                                                type="button"
+                                                className="inline-flex items-center rounded px-1 py-0.5 hover:bg-muted text-xs"
+                                                onClick={() =>
+                                                  navigator.clipboard.writeText(
+                                                    taskerBank.upiId || ""
+                                                  )
+                                                }
+                                              >
+                                                <Copy className="h-3 w-3 mr-0.5" />
+                                                Copy
+                                              </button>
+                                            </div>
                                           )}
                                           {!taskerBank.bankName &&
                                             !taskerBank.accountNumber &&
@@ -920,7 +1005,49 @@ export default function PayoutsPage() {
                                     </div>
                                   </div>
                                   <div>
-                                    <Label>Poster Bank / UPI</Label>
+                                    <div className="flex items-center justify-between">
+                                      <Label>Poster Bank / UPI</Label>
+                                      {posterBank?.accountNumber && (
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                          <button
+                                            type="button"
+                                            className="inline-flex items-center rounded px-1 py-0.5 hover:bg-muted"
+                                            onClick={() => {
+                                              const el = document.getElementById(
+                                                "poster-account-display"
+                                              );
+                                              if (!el) return;
+                                              const isMasked =
+                                                el.getAttribute("data-masked") ===
+                                                "true";
+                                              el.setAttribute(
+                                                "data-masked",
+                                                (!isMasked).toString()
+                                              );
+                                              const acct = posterBank.accountNumber || "";
+                                              el.textContent = isMasked
+                                                ? acct
+                                                : `****${acct.slice(-4)}`;
+                                            }}
+                                          >
+                                            <Eye className="h-3 w-3 mr-0.5" />
+                                            Show
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="inline-flex items-center rounded px-1 py-0.5 hover:bg-muted"
+                                            onClick={() => {
+                                              navigator.clipboard.writeText(
+                                                posterBank.accountNumber || ""
+                                              );
+                                            }}
+                                          >
+                                            <Copy className="h-3 w-3 mr-0.5" />
+                                            Copy
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
                                     <div className="mt-1 text-sm text-muted-foreground space-y-1">
                                       {isBankLoading && <div>Loading...</div>}
                                       {!isBankLoading && posterBank && (
@@ -928,17 +1055,51 @@ export default function PayoutsPage() {
                                           {posterBank.bankName && (
                                             <div>Bank: {posterBank.bankName}</div>
                                           )}
+                                          {posterBank.branchName && (
+                                            <div>Branch: {posterBank.branchName}</div>
+                                          )}
                                           {posterBank.accountNumber && (
-                                            <div>
+                                            <div
+                                              id="poster-account-display"
+                                              data-masked="true"
+                                            >
                                               A/C: ****
                                               {posterBank.accountNumber.slice(-4)}
                                             </div>
                                           )}
                                           {posterBank.ifsc && (
-                                            <div>IFSC: {posterBank.ifsc}</div>
+                                            <div className="flex items-center gap-2">
+                                              <span>IFSC: {posterBank.ifsc}</span>
+                                              <button
+                                                type="button"
+                                                className="inline-flex items-center rounded px-1 py-0.5 hover:bg-muted text-xs"
+                                                onClick={() =>
+                                                  navigator.clipboard.writeText(
+                                                    posterBank.ifsc || ""
+                                                  )
+                                                }
+                                              >
+                                                <Copy className="h-3 w-3 mr-0.5" />
+                                                Copy
+                                              </button>
+                                            </div>
                                           )}
                                           {posterBank.upiId && (
-                                            <div>UPI: {posterBank.upiId}</div>
+                                            <div className="flex items-center gap-2">
+                                              <span>UPI: {posterBank.upiId}</span>
+                                              <button
+                                                type="button"
+                                                className="inline-flex items-center rounded px-1 py-0.5 hover:bg-muted text-xs"
+                                                onClick={() =>
+                                                  navigator.clipboard.writeText(
+                                                    posterBank.upiId || ""
+                                                  )
+                                                }
+                                              >
+                                                <Copy className="h-3 w-3 mr-0.5" />
+                                                Copy
+                                              </button>
+                                            </div>
                                           )}
                                           {!posterBank.bankName &&
                                             !posterBank.accountNumber &&
