@@ -958,7 +958,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Search,
   Download,
@@ -1023,6 +1023,9 @@ interface Payout {
   id: number;
   tasker: Tasker;
   poster: Poster;
+  // Task context so repeated names are easier to understand
+  jobId?: number;
+  taskTitle?: string;
   amount: number;
   fee: number;
   netAmount: number;
@@ -1167,6 +1170,9 @@ export default function PayoutsPage() {
             tasker_name: string;
             poster_id: string;
             poster_name: string;
+            job_id?: number;
+            job_title?: string;
+            task_title?: string;
             bid_amount: string;
             gst: string;
             commission: string;
@@ -1188,6 +1194,8 @@ export default function PayoutsPage() {
               name: `${order.poster_name}`, // Fallback name
               email: `tasker${order.poster_id}@example.com`, // Fallback email
             },
+            jobId: order.job_id,
+            taskTitle: order.job_title || order.task_title || "",
             amount: parseFloat(order.bid_amount) || 0,
             fee:
               (parseFloat(order.gst) || 0) +
@@ -1266,6 +1274,52 @@ export default function PayoutsPage() {
     .reduce((sum, p) => sum + p.amount, 0)
     .toFixed(2);
 
+  // Aggregate payouts by tasker to make it easy to see totals per person
+  const taskerSummary = useMemo(() => {
+    const map: Record<
+      string,
+      {
+        id: number;
+        name: string;
+        totalAmount: number;
+        totalNet: number;
+        count: number;
+      }
+    > = {};
+
+    payouts.forEach((p) => {
+      const key = String(p.tasker.id);
+      if (!map[key]) {
+        map[key] = {
+          id: p.tasker.id,
+          name: p.tasker.name,
+          totalAmount: 0,
+          totalNet: 0,
+          count: 0,
+        };
+      }
+      map[key].totalAmount += p.amount;
+      map[key].totalNet += p.netAmount;
+      map[key].count += 1;
+    });
+
+    return Object.values(map).sort((a, b) => b.totalAmount - a.totalAmount);
+  }, [payouts]);
+
+  // Sort filtered payouts by tasker name, then newest date first
+  const sortedPayouts = useMemo(() => {
+    const copy = [...filteredPayouts];
+    copy.sort((a, b) => {
+      const nameCmp = a.tasker.name.localeCompare(b.tasker.name);
+      if (nameCmp !== 0) return nameCmp;
+      // Fallback: sort by date desc
+      const aDate = new Date(a.date).getTime();
+      const bDate = new Date(b.date).getTime();
+      return bDate - aDate;
+    });
+    return copy;
+  }, [filteredPayouts]);
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -1294,6 +1348,61 @@ export default function PayoutsPage() {
         <div className="text-center py-8 text-destructive">{error}</div>
       ) : (
         <>
+          {/* Summary by tasker so repeated names are easier to understand */}
+          {taskerSummary.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Payouts by Tasker
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-muted-foreground">
+                      <th className="text-left py-1 pr-4 font-normal">
+                        Tasker
+                      </th>
+                      <th className="text-right py-1 pr-4 font-normal">
+                        Payouts
+                      </th>
+                      <th className="text-right py-1 pr-4 font-normal">
+                        Total Amount
+                      </th>
+                      <th className="text-right py-1 font-normal">
+                        Total Net
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {taskerSummary.map((t) => (
+                      <tr key={t.id} className="border-t">
+                        <td className="py-1 pr-4">
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                              {t.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")}
+                            </div>
+                            <span className="font-medium">{t.name}</span>
+                          </div>
+                        </td>
+                        <td className="py-1 pr-4 text-right">{t.count}</td>
+                        <td className="py-1 pr-4 text-right">
+                          INR {t.totalAmount.toFixed(2)}
+                        </td>
+                        <td className="py-1 text-right">
+                          INR {t.totalNet.toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -1378,6 +1487,7 @@ export default function PayoutsPage() {
                 <TableRow>
                   <TableHead>Tasker</TableHead>
                   <TableHead>Poster</TableHead>
+                  <TableHead>Task</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="hidden md:table-cell">Method</TableHead>
@@ -1386,7 +1496,7 @@ export default function PayoutsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPayouts.length === 0 ? (
+                {sortedPayouts.length === 0 ? (
                   <TableRow>
                     <TableCell
                       colSpan={6}
@@ -1396,7 +1506,7 @@ export default function PayoutsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredPayouts.map((payout) => (
+                  sortedPayouts.map((payout) => (
                     <TableRow key={payout.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -1432,6 +1542,18 @@ export default function PayoutsPage() {
                             </div>
                             {/* <div className="text-sm text-muted-foreground">{payout.tasker.email}</div> */}
                           </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium line-clamp-1">
+                            {payout.taskTitle || "Task"}
+                          </span>
+                          {payout.jobId && (
+                            <span className="text-xs text-muted-foreground">
+                              Job #{payout.jobId}
+                            </span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -1514,6 +1636,29 @@ export default function PayoutsPage() {
                                     }
                                   >
                                     Cancel Payout
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              {payout.status === "Processing" && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleStatusChange(
+                                        payout.id,
+                                        "Completed"
+                                      )
+                                    }
+                                  >
+                                    Mark as Completed
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() =>
+                                      handleStatusChange(payout.id, "Failed")
+                                    }
+                                  >
+                                    Mark as Failed
                                   </DropdownMenuItem>
                                 </>
                               )}
@@ -1660,6 +1805,21 @@ export default function PayoutsPage() {
                               </div>
                             )}
                             <DialogFooter>
+                              {selectedPayout?.status === "Processing" && (
+                                <Button
+                                  onClick={() => {
+                                    if (!selectedPayout) return;
+                                    handleStatusChange(
+                                      selectedPayout.id,
+                                      "Completed"
+                                    );
+                                    setIsDetailsDialogOpen(false);
+                                  }}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  Mark as Completed
+                                </Button>
+                              )}
                               <Button
                                 variant="outline"
                                 onClick={() => setIsDetailsDialogOpen(false)}
