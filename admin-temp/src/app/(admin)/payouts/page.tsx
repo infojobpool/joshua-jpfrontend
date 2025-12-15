@@ -192,19 +192,37 @@ export default function PayoutsPage() {
       setTaskerBank(null);
       setPosterBank(null);
 
-      const [taskerRes, posterRes] = await Promise.allSettled([
-        axiosInstance.get(`/profile?user_id=${payout.tasker.id}`),
-        axiosInstance.get(`/profile?user_id=${payout.poster.id}`),
-      ]);
+      const taskerId =
+        typeof payout.tasker.id === "number" && Number.isFinite(payout.tasker.id)
+          ? payout.tasker.id
+          : null;
+      const posterId =
+        typeof payout.poster.id === "number" && Number.isFinite(payout.poster.id)
+          ? payout.poster.id
+          : null;
 
-      if (taskerRes.status === "fulfilled") {
+      const requests: Promise<any>[] = [];
+      if (taskerId !== null) {
+        requests.push(axiosInstance.get(`/profile?user_id=${taskerId}`));
+      } else {
+        console.warn("Skipping tasker bank lookup – invalid tasker id", payout.tasker.id);
+      }
+      if (posterId !== null) {
+        requests.push(axiosInstance.get(`/profile?user_id=${posterId}`));
+      } else {
+        console.warn("Skipping poster bank lookup – invalid poster id", payout.poster.id);
+      }
+
+      const [taskerRes, posterRes] = await Promise.allSettled(requests);
+
+      if (taskerRes && taskerRes.status === "fulfilled") {
         const data = taskerRes.value.data;
         const info =
           data.bank_info || data.data?.bank_info || data.profile?.bank_info;
         setTaskerBank(normalizeBankInfo(info));
       }
 
-      if (posterRes.status === "fulfilled") {
+      if (posterRes && posterRes.status === "fulfilled") {
         const data = posterRes.value.data;
         const info =
           data.bank_info || data.data?.bank_info || data.profile?.bank_info;
@@ -212,12 +230,12 @@ export default function PayoutsPage() {
       }
 
       if (
-        (taskerRes.status === "rejected" || !taskerRes) &&
-        (posterRes.status === "rejected" || !posterRes)
+        (!taskerRes || taskerRes.status === "rejected") &&
+        (!posterRes || posterRes.status === "rejected")
       ) {
         console.warn("Bank/UPI details could not be loaded for this payout.", {
-          tasker: payout.tasker.id,
-          poster: payout.poster.id,
+          tasker: taskerId,
+          poster: posterId,
         });
       }
     } catch (err) {
