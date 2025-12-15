@@ -34,24 +34,51 @@ export default function PanVerification({ onComplete }: PanVerificationProps) {
     }
 
     try {
-      const response = await axiosInstance.post(`/verify-pan/?user_id=${userId}&pan=${panNumber}`);
+      console.log("🧾 [PAN] Verifying PAN", { userId, panNumber });
 
-      const data = response.data
+      let response;
+      // Try POST with query params (current backend expectation)
+      try {
+        response = await axiosInstance.post(`/verify-pan/?user_id=${userId}&pan=${panNumber}`);
+      } catch (postError: any) {
+        // If POST fails with 404/405, try POST with JSON body
+        if (postError.response?.status === 404 || postError.response?.status === 405) {
+          console.log("🧾 [PAN] POST with query failed, trying POST with JSON body");
+          response = await axiosInstance.post(`/verify-pan/`, {
+            user_id: userId,
+            pan: panNumber,
+          });
+        } else {
+          throw postError;
+        }
+      }
+
+      const data = response.data;
+      console.log("🧾 [PAN] Verification response:", data);
 
       setIsVerifying(false)
 
-      if (data.status_code === 200 && data.data.valid) {
+      if (data.status_code === 200 && data.data?.valid) {
         setIsVerified(true)
         setPanName(data.data.registered_name || "Name not provided") 
 
         localStorage.setItem("registered_name", data.data.registered_name || "Name not provided")
       } else {
-        setError(data.message || "Unable to verify PAN. Please check the number and try again.")
+        setError(data.message || data.detail || "Unable to verify PAN. Please check the number and try again.")
       }
     } catch (err: any) {
+      console.error("❌ [PAN] Verification error:", {
+        message: err.message,
+        status: err.response?.status,
+        data: err.response?.data,
+        url: err.config?.url,
+      });
       setIsVerifying(false)
       setError(
-        err.response?.data?.message || "Failed to connect to the server. Please try again later."
+        err.response?.data?.message ||
+        err.response?.data?.detail ||
+        err.message ||
+        "Failed to connect to the server. Please try again later."
       )
     }
   }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { MobileDashboard } from "../../components/mobile/MobileDashboard";

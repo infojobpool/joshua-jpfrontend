@@ -31,12 +31,9 @@ import {
   Camera,
   X,
   Briefcase,
-  RefreshCw,
-  Trash2,
 } from "lucide-react";
 import useStore from "../../lib/Zustand";
 import Header from "@/components/Header"; // Import the Header component
-import { toast } from "sonner";
 
 interface Address {
   id: number;
@@ -113,8 +110,6 @@ export default function ProfilePage() {
   });
 
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [isResendingEmail, setIsResendingEmail] = useState(false);
-  const [isRefreshingVerification, setIsRefreshingVerification] = useState(false);
 
   const formatDate = (dateString: string): string => {
     if (!dateString) return "";
@@ -141,19 +136,18 @@ export default function ProfilePage() {
     }
   }, [router]);
 
-  // REMOVED: Don't use localStorage user data for verification status
-  // Always fetch fresh from API to avoid stale bypassed data
-  // useEffect(() => {
-  //   if (user) {
-  //     setVerificationStatus({
-  //       pan: { completed: user.verification_status >= 1 },
-  //       aadhar: { completed: user.verification_status >= 2 },
-  //       bank: { completed: user.verification_status >= 3 },
-  //     });
-  //   }
-  // }, [user]);
+  useEffect(() => {
+    if (user) {
+      setVerificationStatus({
+        pan: { completed: user.verification_status >= 1 },
+        aadhar: { completed: user.verification_status >= 2 },
+        bank: { completed: user.verification_status >= 3 },
+      });
+    }
+  }, [user]);
 
-  const fetchProfile = async (forceRefresh = false) => {
+  useEffect(() => {
+    const fetchProfile = async () => {
       // Derive userId from localStorage as a fallback for slow hydration
       let effectiveUserId = userId as any;
       if (!effectiveUserId) {
@@ -170,14 +164,8 @@ export default function ProfilePage() {
       }
 
       try {
-        if (forceRefresh) {
-          setIsRefreshingVerification(true);
-        } else {
-          setIsLoading(true);
-        }
-        // Add cache-busting parameter to ensure fresh data from backend
-        const cacheBuster = `?user_id=${effectiveUserId}&_t=${Date.now()}`;
-        const response = await axiosInstance.get(`/profile${cacheBuster}`);
+        setIsLoading(true);
+        const response = await axiosInstance.get(`/profile?user_id=${effectiveUserId}`);
         const data = response.data;
         setProfileUser({
           profile_id: data.profile_id || "",
@@ -207,87 +195,6 @@ export default function ProfilePage() {
           job_title: data.job_title || "",
         });
 
-        // Update verification status from API response - check multiple possible locations
-        const apiVerificationStatus = 
-          data.verification_status ?? 
-          data.verificationStatus ?? 
-          data.data?.verification_status ??
-          null;
-        
-        console.log("🔍 Profile API Response:", {
-          fullResponse: response.data,
-          data: data,
-          verification_status: data.verification_status,
-          verificationStatus: data.verificationStatus,
-          nested: data.data?.verification_status,
-          finalValue: apiVerificationStatus,
-          type: typeof apiVerificationStatus
-        });
-        
-        if (apiVerificationStatus !== null && typeof apiVerificationStatus === 'number') {
-          console.log("✅ Setting verification status from API:", apiVerificationStatus);
-          setVerificationStatus({
-            pan: { completed: apiVerificationStatus >= 1 },
-            aadhar: { completed: apiVerificationStatus >= 2 },
-            bank: { completed: apiVerificationStatus >= 3 },
-          });
-          // Update localStorage user with fresh verification status from API
-          // This ensures localStorage always has the latest status, not stale bypassed data
-          try {
-            const storedUser = localStorage.getItem("user");
-            if (storedUser) {
-              const parsedUser = JSON.parse(storedUser);
-              parsedUser.verification_status = apiVerificationStatus;
-              localStorage.setItem("user", JSON.stringify(parsedUser));
-              setUser(parsedUser);
-              console.log("✅ Updated localStorage verification_status to:", apiVerificationStatus);
-            }
-          } catch (e) {
-            console.warn("Failed to update localStorage user verification status:", e);
-          }
-        } else {
-          console.warn("⚠️ No valid verification_status found in API response. Value:", apiVerificationStatus);
-          
-          // REMOVED: Don't use localStorage fallback - it may contain stale bypassed data
-          // Always trust API response or default to NOT verified
-          
-          // Fallback: Only use explicit verification flags from API, don't assume based on data presence
-          // Check for explicit verification status fields if they exist
-          const panVerified = data.pan_verified === true || data.pan_status === 'verified' || data.pan_status === 'approved';
-          const aadharVerified = data.aadhar_verified === true || data.aadhaar_verified === true || data.aadhar_status === 'verified' || data.aadhar_status === 'approved';
-          const bankVerified = data.bank_verified === true || data.bank_status === 'verified' || data.bank_status === 'approved';
-          
-          console.log("🔍 Checking explicit verification flags in API response:", {
-            pan_verified: data.pan_verified,
-            aadhar_verified: data.aadhar_verified,
-            bank_verified: data.bank_verified,
-            pan_status: data.pan_status,
-            aadhar_status: data.aadhar_status,
-            bank_status: data.bank_status,
-            panVerified,
-            aadharVerified,
-            bankVerified
-          });
-          
-          // Only set verification status if explicit flags are present
-          if (panVerified || aadharVerified || bankVerified) {
-            console.log("✅ Using explicit verification flags from API");
-            setVerificationStatus({
-              pan: { completed: panVerified },
-              aadhar: { completed: aadharVerified },
-              bank: { completed: bankVerified },
-            });
-          } else {
-            // If no verification status found anywhere, default to NOT verified
-            console.warn("⚠️ No verification status found, defaulting to NOT verified");
-            setVerificationStatus({
-              pan: { completed: false },
-              aadhar: { completed: false },
-              bank: { completed: false },
-            });
-          }
-        }
-
         if (Array.isArray(data.reviews)) {
           setReviews(
             data.reviews.map((review: any, index: number) => ({
@@ -308,11 +215,9 @@ export default function ProfilePage() {
         }
       } finally {
         setIsLoading(false);
-        setIsRefreshingVerification(false);
       }
-  };
+    };
 
-  useEffect(() => {
     // Run immediately and again when store userId changes
     fetchProfile();
 
@@ -328,89 +233,6 @@ export default function ProfilePage() {
   const handleSignOut = () => {
     logout();
     router.push("/");
-  };
-
-  const handleResendVerificationEmail = async () => {
-    if (!profileuser.email) {
-      toast.error("Email address not found");
-      return;
-    }
-
-    try {
-      setIsResendingEmail(true);
-      const email = profileuser.email.trim().toLowerCase();
-      console.log("📧 [Profile] Attempting to resend verification email to:", email);
-      
-      // Try POST method first (standard approach)
-      let response;
-      try {
-        response = await axiosInstance.post("/resend-verification-email/", {
-          email: email,
-        });
-        console.log("📧 [Profile] Resend verification response (POST):", response.data);
-      } catch (postError: any) {
-        // If POST fails with 404 or 405, try PUT with query parameter (like forgot password)
-        if (postError.response?.status === 404 || postError.response?.status === 405) {
-          console.log("📧 [Profile] POST failed, trying PUT with query parameter...");
-          response = await axiosInstance.put(`/resend-verification-email/?email=${encodeURIComponent(email)}`);
-          console.log("📧 [Profile] Resend verification response (PUT):", response.data);
-        } else {
-          throw postError; // Re-throw if it's a different error
-        }
-      }
-
-      if (response.data.status_code === 200) {
-        toast.success("Verification email sent! Please check your inbox (including spam folder).");
-      } else {
-        const errorMsg = response.data.message || response.data.detail || "Failed to send verification email";
-        console.error("❌ [Profile] Resend verification error:", errorMsg);
-        toast.error(errorMsg);
-      }
-    } catch (error: any) {
-      console.error("❌ [Profile] Resend verification API error:", {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-      });
-      
-      let errorMsg = "Failed to send verification email. Please try again.";
-      if (error.response?.data?.message) {
-        errorMsg = error.response.data.message;
-      } else if (error.response?.data?.detail) {
-        errorMsg = typeof error.response.data.detail === 'string' 
-          ? error.response.data.detail 
-          : JSON.stringify(error.response.data.detail);
-      } else if (error.message) {
-        errorMsg = error.message;
-      }
-      
-      if (error.response?.status === 404) {
-        errorMsg = "Verification email service is currently unavailable. Please contact support.";
-      }
-      
-      toast.error(errorMsg);
-    } finally {
-      setIsResendingEmail(false);
-    }
-  };
-
-  const handleRefreshVerification = async () => {
-    // Force refresh verification status from backend
-    await fetchProfile(true);
-    toast.success("Verification status refreshed");
-  };
-
-  const handleClearStorage = () => {
-    if (typeof window !== "undefined") {
-      // Clear all localStorage
-      localStorage.clear();
-      sessionStorage.clear();
-      toast.success("Local storage cleared! Please refresh the page.");
-      // Optionally reload the page
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
-    }
   };
 
   const maskString = (str: string, visibleStart = 0, visibleEnd = 4) => {
@@ -635,29 +457,7 @@ export default function ProfilePage() {
               )}
               <div>
                 <CardTitle className="text-xl font-semibold tracking-tight">{profileuser.name}</CardTitle>
-                <div className="flex flex-col space-y-2">
-                  <CardDescription className="text-sm text-muted-foreground">{profileuser.email}</CardDescription>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleResendVerificationEmail}
-                    disabled={isResendingEmail}
-                    className="w-full sm:w-auto text-xs"
-                  >
-                    {isResendingEmail ? (
-                      <>
-                        <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin mr-1"></div>
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <Mail className="h-3 w-3 mr-1" />
-                        Resend Verification Email
-                      </>
-                    )}
-                  </Button>
-                </div>
+                <CardDescription className="text-sm text-muted-foreground">{profileuser.email}</CardDescription>
               </div>
               <Button
                 variant="outline"
@@ -793,31 +593,9 @@ export default function ProfilePage() {
                       <User className="h-4 w-4 text-muted-foreground" />
                       <span>{profileuser.name}</span>
                     </div>
-                    <div className="flex flex-col space-y-2 text-sm">
-                      <div className="flex items-center space-x-2">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        <span>{profileuser.email}</span>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleResendVerificationEmail}
-                        disabled={isResendingEmail}
-                        className="w-full sm:w-auto"
-                      >
-                        {isResendingEmail ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin mr-2"></div>
-                            Sending...
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="h-3 w-3 mr-1" />
-                            Resend Verification Email
-                          </>
-                        )}
-                      </Button>
+                    <div className="flex items-center space-x-2 text-sm">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span>{profileuser.email}</span>
                     </div>
                     <div className="flex items-center space-x-2 text-sm">
                       <Phone className="h-4 w-4 text-muted-foreground" />
@@ -853,22 +631,9 @@ export default function ProfilePage() {
                     </div>
                   </div>
                   <div className="pt-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-medium">
-                        Verification Status
-                      </h3>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleRefreshVerification}
-                        disabled={isRefreshingVerification}
-                        className="h-7 px-2"
-                        title="Refresh verification status"
-                      >
-                        <RefreshCw className={`h-3 w-3 ${isRefreshingVerification ? 'animate-spin' : ''}`} />
-                      </Button>
-                    </div>
+                    <h3 className="mb-2 text-sm font-medium">
+                      Verification Status
+                    </h3>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-sm">PAN Card</span>
@@ -926,24 +691,6 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   </div>
-                  <div className="pt-4 border-t mt-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-sm font-medium text-muted-foreground mb-1">Clear Cache</h4>
-                        <p className="text-xs text-muted-foreground">Clear all stored data to get fresh information</p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleClearStorage}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Clear Storage
-                      </Button>
-                    </div>
-                  </div>
                 </>
               )}
             </CardContent>
@@ -971,7 +718,8 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     <div className="w-full space-y-4 md:w-2/3">
-                      {verificationStatus.bank.completed ? (
+                      {verificationStatus.bank.completed &&
+                      profileuser.bank_info ? (
                         <>
                           <div className="rounded-md bg-green-50 p-3 text-green-700">
                             <div className="flex items-center">
@@ -983,50 +731,48 @@ export default function ProfilePage() {
                               </div>
                             </div>
                           </div>
-                          {profileuser.bank_info && (
-                            <div className="grid gap-4 md:grid-cols-2">
-                              {/* <div>
-                                <p className="text-sm font-medium text-muted-foreground">
-                                  Account Holder Name
-                                </p>
-                                <p>{profileuser.bank_info.account_holder_name}</p>
-                              </div> */}
-                              <div>
-                                <p className="text-sm font-medium text-muted-foreground">
-                                  Account Number
-                                </p>
-                                <p>
-                                  {profileuser.bank_info.bank_account_number}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-muted-foreground">
-                                  IFSC Code
-                                </p>
-                                <p>
-                                  {profileuser.bank_info.ifsc_code}
-                                  </p>
-                              </div>
-                              {/* <div>
-                                <p className="text-sm font-medium text-muted-foreground">
-                                  Bank Name
-                                </p>
-                                <p>{profileuser.bank_info.bank_name}</p>
-                              </div> */}
-                              {/* <div>
-                                <p className="text-sm font-medium text-muted-foreground">
-                                  Bank Location
-                                </p>
-                                <p>{profileuser.bank_info.bank_location}</p>
-                              </div> */}
-                              {/* <div>
-                                <p className="text-sm font-medium text-muted-foreground">
-                                  SWIFT Code
-                                </p>
-                                <p>{profileuser.bank_info.swift_code}</p>
-                              </div> */}
+                          <div className="grid gap-4 md:grid-cols-2">
+                            {/* <div>
+                              <p className="text-sm font-medium text-muted-foreground">
+                                Account Holder Name
+                              </p>
+                              <p>{profileuser.bank_info.account_holder_name}</p>
+                            </div> */}
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">
+                                Account Number
+                              </p>
+                              <p>
+                                {profileuser.bank_info.bank_account_number}
+                              </p>
                             </div>
-                          )}
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">
+                                IFSC Code
+                              </p>
+                              <p>
+                                {profileuser.bank_info.ifsc_code}
+                                </p>
+                            </div>
+                            {/* <div>
+                              <p className="text-sm font-medium text-muted-foreground">
+                                Bank Name
+                              </p>
+                              <p>{profileuser.bank_info.bank_name}</p>
+                            </div> */}
+                            {/* <div>
+                              <p className="text-sm font-medium text-muted-foreground">
+                                Bank Location
+                              </p>
+                              <p>{profileuser.bank_info.bank_location}</p>
+                            </div> */}
+                            {/* <div>
+                              <p className="text-sm font-medium text-muted-foreground">
+                                SWIFT Code
+                              </p>
+                              <p>{profileuser.bank_info.swift_code}</p>
+                            </div> */}
+                          </div>
                         </>
                       ) : (
                         <div className="rounded-md bg-gray-100 p-3">

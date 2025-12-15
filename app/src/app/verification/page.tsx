@@ -399,16 +399,16 @@ export default function VerificationFlow() {
   }
 
   const handleComplete = async (step: "pan" | "aadhar") => {
+    console.log(`✅ Verification step completed: ${step}`);
     setVerificationStatus((prev) => ({
       ...prev,
       [step]: { completed: true, skipped: false },
     }))
 
-    setIsWaiting(true)
-    setTimer(30)
-    
-    // Refresh verification status from API after completion
-    setTimeout(async () => {
+    // For Aadhaar, move to completion step immediately (no waiting)
+    if (step === "aadhar") {
+      console.log("✅ Aadhaar verified - moving to completion step");
+      // Refresh verification status from API first
       try {
         let effectiveUserId = userId as any;
         if (!effectiveUserId) {
@@ -433,7 +433,45 @@ export default function VerificationFlow() {
       } catch (error) {
         console.error("Failed to refresh verification status:", error);
       }
-    }, 2000); // Wait 2 seconds for backend to process
+      
+      // Move to completion step immediately
+      setTimeout(() => {
+        console.log("✅ Moving to completion step (step 3)");
+        setCurrentStep(3);
+      }, 1000); // Short 1 second delay to show success message
+    } else {
+      // For PAN, show waiting timer
+      setIsWaiting(true)
+      setTimer(30)
+      
+      // Refresh verification status from API after completion
+      setTimeout(async () => {
+        try {
+          let effectiveUserId = userId as any;
+          if (!effectiveUserId) {
+            const local = localStorage.getItem("user");
+            if (local) {
+              const parsed = JSON.parse(local);
+              effectiveUserId = parsed?.id || parsed?.userId || parsed?.user_id;
+            }
+          }
+          if (effectiveUserId) {
+            const cacheBuster = `?user_id=${effectiveUserId}&_t=${Date.now()}`;
+            const response = await axiosInstance.get(`/profile${cacheBuster}`);
+            const data = response.data;
+            const apiVerificationStatus = data.verification_status ?? data.verificationStatus ?? null;
+            if (apiVerificationStatus !== null && typeof apiVerificationStatus === 'number') {
+              setVerificationStatus({
+                pan: { completed: apiVerificationStatus >= 1, skipped: false },
+                aadhar: { completed: apiVerificationStatus >= 2, skipped: false },
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Failed to refresh verification status:", error);
+        }
+      }, 2000); // Wait 2 seconds for backend to process
+    }
   }
 
   // Countdown effect

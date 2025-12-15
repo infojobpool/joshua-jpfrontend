@@ -362,10 +362,27 @@ export default function AadharVerification({
 
       setIsVerifying(false);
 
-      if (data.status_code === 200 && data.data?.valid) {
+      // Check multiple success conditions - API might return success in different formats
+      const isSuccess = 
+        (data.status_code === 200 && data.data?.valid === true) ||
+        (data.status_code === 200 && data.data?.valid === "true") ||
+        (data.status_code === 200 && data.valid === true) ||
+        (data.status_code === 200 && data.message?.toLowerCase().includes("success")) ||
+        (data.status_code === 200 && data.message?.toLowerCase().includes("verified")) ||
+        (response.status === 200 && data.status_code === 200);
+
+      if (isSuccess) {
+        console.log("✅ Aadhaar verification successful, setting verified state");
         setIsVerified(true);
         setOtp(""); // Clear OTP input after successful verification
+        
+        // Automatically proceed to next step after a short delay
+        setTimeout(() => {
+          console.log("✅ Auto-proceeding to next step after Aadhaar verification");
+          handleNext();
+        }, 1500); // 1.5 second delay to show success message
       } else {
+        console.warn("⚠️ Verification response doesn't indicate success:", data);
         setError(data.message || data.detail || "Invalid OTP. Please try again.");
       }
     } catch (err: any) {
@@ -566,8 +583,14 @@ export default function AadharVerification({
               </div>
             </div>
 
-            <Button className="w-full" onClick={handleNext}>
-              Completed Go to Next Step
+            <Button 
+              className="w-full" 
+              onClick={() => {
+                console.log("✅ User clicked 'Go to Next Step' after Aadhaar verification");
+                handleNext();
+              }}
+            >
+              Continue to Next Step
             </Button>
           </>
         )}
