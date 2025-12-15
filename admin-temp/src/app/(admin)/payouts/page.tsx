@@ -157,9 +157,14 @@ export default function PayoutsPage() {
         Failed: 2,
       };
       const statusCode = reverseStatusMap[newStatus];
-      await axiosInstance.patch(`/task-order/${payoutId}/status`, {
-        status: statusCode,
-      });
+      // Backend expects status as query param (?status=1), not JSON body.
+      await axiosInstance.patch(
+        `/task-order/${payoutId}/status`,
+        null,
+        {
+          params: { status: statusCode },
+        }
+      );
       setPayouts((prev) =>
         prev.map((p) => (p.id === payoutId ? { ...p, status: newStatus } : p))
       );
