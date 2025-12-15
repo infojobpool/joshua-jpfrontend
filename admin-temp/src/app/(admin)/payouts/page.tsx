@@ -100,6 +100,7 @@ export default function PayoutsPage() {
   const [taskerBank, setTaskerBank] = useState<BankDetails | null>(null);
   const [posterBank, setPosterBank] = useState<BankDetails | null>(null);
   const [isBankLoading, setIsBankLoading] = useState(false);
+  const [bankMap, setBankMap] = useState<Record<string, BankDetails | null>>({});
 
   const formatDate = (isoString: string): string => {
     const date = new Date(isoString);
@@ -187,62 +188,26 @@ export default function PayoutsPage() {
   };
 
   const loadBankDetails = async (payout: Payout) => {
-    try {
-      setIsBankLoading(true);
-      setTaskerBank(null);
-      setPosterBank(null);
+    setIsBankLoading(true);
+    setTaskerBank(null);
+    setPosterBank(null);
 
-      const taskerId =
-        typeof payout.tasker.id === "number" && Number.isFinite(payout.tasker.id)
-          ? payout.tasker.id
-          : null;
-      const posterId =
-        typeof payout.poster.id === "number" && Number.isFinite(payout.poster.id)
-          ? payout.poster.id
-          : null;
+    const taskerKey = String(payout.tasker.id);
+    const posterKey = String(payout.poster.id);
 
-      const requests: Promise<any>[] = [];
-      if (taskerId !== null) {
-        requests.push(axiosInstance.get(`/profile?user_id=${taskerId}`));
-      } else {
-        console.warn("Skipping tasker bank lookup – invalid tasker id", payout.tasker.id);
-      }
-      if (posterId !== null) {
-        requests.push(axiosInstance.get(`/profile?user_id=${posterId}`));
-      } else {
-        console.warn("Skipping poster bank lookup – invalid poster id", payout.poster.id);
-      }
+    const taskerInfo = bankMap[taskerKey] || null;
+    const posterInfo = bankMap[posterKey] || null;
 
-      const [taskerRes, posterRes] = await Promise.allSettled(requests);
-
-      if (taskerRes && taskerRes.status === "fulfilled") {
-        const data = taskerRes.value.data;
-        const info =
-          data.bank_info || data.data?.bank_info || data.profile?.bank_info;
-        setTaskerBank(normalizeBankInfo(info));
-      }
-
-      if (posterRes && posterRes.status === "fulfilled") {
-        const data = posterRes.value.data;
-        const info =
-          data.bank_info || data.data?.bank_info || data.profile?.bank_info;
-        setPosterBank(normalizeBankInfo(info));
-      }
-
-      if (
-        (!taskerRes || taskerRes.status === "rejected") &&
-        (!posterRes || posterRes.status === "rejected")
-      ) {
-        console.warn("Bank/UPI details could not be loaded for this payout.", {
-          tasker: taskerId,
-          poster: posterId,
-        });
-      }
-    } catch (err) {
-      console.error("Failed to load bank/UPI details:", err);
-    } finally {
-      setIsBankLoading(false);
+    if (!taskerInfo && !posterInfo) {
+      console.warn("No bank/UPI info found in customer map for payout.", {
+        tasker: taskerKey,
+        poster: posterKey,
+      });
     }
+
+    setTaskerBank(taskerInfo);
+    setPosterBank(posterInfo);
+    setIsBankLoading(false);
   };
 
   useEffect(() => {
@@ -304,7 +269,26 @@ export default function PayoutsPage() {
         setIsLoading(false);
       }
     };
+
+    const fetchBankInfo = async () => {
+      try {
+        // Use admin customers endpoint to preload bank_info for all users.
+        const res = await axiosInstance.get("all-user-details/");
+        const map: Record<string, BankDetails | null> = {};
+        if (Array.isArray(res.data)) {
+          res.data.forEach((customer: any) => {
+            const key = String(customer.user_id);
+            map[key] = normalizeBankInfo(customer.bank_info);
+          });
+        }
+        setBankMap(map);
+      } catch (err) {
+        console.error("Failed to fetch customer bank info for payouts:", err);
+      }
+    };
+
     fetchPayouts();
+    fetchBankInfo();
   }, []);
 
   const handleStatusChange = async (payoutId: number, newStatus: string) => {
