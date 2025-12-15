@@ -2,12 +2,10 @@
 
 import axios from 'axios';
 
-// Use the same backend as the main app so payouts and admin see the same data
-// Falls back to the new Render API if env is not set
+// Admin backend: point to legacy API on api.jobpool.in
+// This matches how the admin was originally configured.
 const axiosInstance = axios.create({
-  baseURL:
-    process.env.NEXT_PUBLIC_API_BASE_URL ||
-    'https://jobpoolbackend.onrender.com/api/v1',
+  baseURL: 'https://api.jobpool.in/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
