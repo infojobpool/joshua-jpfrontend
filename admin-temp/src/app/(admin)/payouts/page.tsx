@@ -100,7 +100,6 @@ export default function PayoutsPage() {
   const [taskerBank, setTaskerBank] = useState<BankDetails | null>(null);
   const [posterBank, setPosterBank] = useState<BankDetails | null>(null);
   const [isBankLoading, setIsBankLoading] = useState(false);
-  const [bankError, setBankError] = useState<string | null>(null);
 
   const formatDate = (isoString: string): string => {
     const date = new Date(isoString);
@@ -190,7 +189,6 @@ export default function PayoutsPage() {
   const loadBankDetails = async (payout: Payout) => {
     try {
       setIsBankLoading(true);
-      setBankError(null);
       setTaskerBank(null);
       setPosterBank(null);
 
@@ -217,11 +215,13 @@ export default function PayoutsPage() {
         (taskerRes.status === "rejected" || !taskerRes) &&
         (posterRes.status === "rejected" || !posterRes)
       ) {
-        setBankError("Failed to load bank details.");
+        console.warn("Bank/UPI details could not be loaded for this payout.", {
+          tasker: payout.tasker.id,
+          poster: payout.poster.id,
+        });
       }
     } catch (err) {
       console.error("Failed to load bank/UPI details:", err);
-      setBankError("Failed to load bank details.");
     } finally {
       setIsBankLoading(false);
     }
@@ -975,11 +975,6 @@ export default function PayoutsPage() {
                                     </div>
                                   </div>
                                 </div>
-                                {bankError && (
-                                  <div className="text-sm text-red-500">
-                                    {bankError}
-                                  </div>
-                                )}
                               </div>
                             )}
                             <DialogFooter>
