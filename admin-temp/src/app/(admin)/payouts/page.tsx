@@ -83,6 +83,8 @@ interface Payout {
   reference: string;
   date: string;
   completedDate: string | null;
+  processingDate?: string | null;
+  deadlineDate?: string | null;
 }
 
 export default function PayoutsPage() {
@@ -90,6 +92,7 @@ export default function PayoutsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("processing");
   const [methodFilter, setMethodFilter] = useState("all");
+  const [deadlineFilter, setDeadlineFilter] = useState("all");
   const [selectedPayout, setSelectedPayout] = useState<Payout | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -112,6 +115,56 @@ export default function PayoutsPage() {
     0: "Processing",
     1: "Completed",
     2: "Failed",
+  };
+
+  const addDays = (isoString: string, days: number): string => {
+    const d = new Date(isoString);
+    d.setDate(d.getDate() + days);
+    return d.toISOString();
+  };
+
+  const getDeadlineInfo = (payout: Payout) => {
+    if (!payout.deadlineDate) return { label: "N/A", variant: "outline" as const, overdue: false, dueSoon: false };
+    const now = new Date();
+    const deadline = new Date(payout.deadlineDate);
+
+    // Completed / Failed: just show date, no warning
+    if (payout.status === "Completed" || payout.status === "Failed") {
+      return {
+        label: formatDate(payout.deadlineDate),
+        variant: "outline" as const,
+        overdue: false,
+        dueSoon: false,
+      };
+    }
+
+    const diffMs = deadline.getTime() - now.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+    if (diffDays < 0) {
+      return {
+        label: `${formatDate(payout.deadlineDate)} (Overdue)`,
+        variant: "destructive" as const,
+        overdue: true,
+        dueSoon: false,
+      };
+    }
+
+    if (diffDays <= 1) {
+      return {
+        label: `${formatDate(payout.deadlineDate)} (Due soon)`,
+        variant: "secondary" as const,
+        overdue: false,
+        dueSoon: true,
+      };
+    }
+
+    return {
+      label: formatDate(payout.deadlineDate),
+      variant: "outline" as const,
+      overdue: false,
+      dueSoon: false,
+    };
   };
 
   const normalizeBankInfo = (raw: any | undefined | null): BankDetails | null => {
@@ -184,30 +237,46 @@ export default function PayoutsPage() {
           throw new Error(response.data.message || "Failed to fetch payouts");
         }
         const fetched: Payout[] = response.data.data.task_orders.map(
-          (order: any) => ({
-            id: order.order_id,
-            tasker: {
-              id: Number(order.tasker_id),
-              name: order.tasker_name || `Tasker ${order.tasker_id}`,
-              email: order.tasker_email || "",
-            },
-            poster: {
-              id: Number(order.poster_id),
-              name: order.poster_name || `Poster ${order.poster_id}`,
-              email: order.poster_email || "",
-            },
-            jobId: order.job_id,
-            taskTitle: order.job_title || order.task_title || "",
-            amount: Number(order.bid_amount) || 0,
-            fee:
-              (Number(order.gst) || 0) + (Number(order.commission) || 0),
-            netAmount: Number(order.payable_amount) || 0,
-            status: statusMap[order.status] || "Unknown",
-            method: order.method || "Bank Transfer",
-            reference: order.payment_id || `REF-${order.order_id}`,
-            date: order.created_at || new Date().toISOString(),
-            completedDate: order.completed_at || null,
-          })
+          (order: any) => {
+            const baseDate = order.created_at || new Date().toISOString();
+            // If backend provides a specific timestamp for when it entered processing, prefer that.
+            const processingDate =
+              order.processing_date ||
+              order.status_updated_at ||
+              order.updated_at ||
+              baseDate;
+            const deadlineDate =
+              processingDate && typeof processingDate === "string"
+                ? addDays(processingDate, 3)
+                : null;
+
+            return {
+              id: order.order_id,
+              tasker: {
+                id: Number(order.tasker_id),
+                name: order.tasker_name || `Tasker ${order.tasker_id}`,
+                email: order.tasker_email || "",
+              },
+              poster: {
+                id: Number(order.poster_id),
+                name: order.poster_name || `Poster ${order.poster_id}`,
+                email: order.poster_email || "",
+              },
+              jobId: order.job_id,
+              taskTitle: order.job_title || order.task_title || "",
+              amount: Number(order.bid_amount) || 0,
+              fee:
+                (Number(order.gst) || 0) + (Number(order.commission) || 0),
+              netAmount: Number(order.payable_amount) || 0,
+              status: statusMap[order.status] || "Unknown",
+              method: order.method || "Bank Transfer",
+              reference: order.payment_id || `REF-${order.order_id}`,
+              date: baseDate,
+              completedDate: order.completed_at || null,
+              processingDate,
+              deadlineDate,
+            };
+          }
         );
         setPayouts(fetched);
       } catch (err) {
@@ -260,7 +329,13 @@ export default function PayoutsPage() {
       methodFilter === "all" ||
       payout.method.toLowerCase() === methodFilter.toLowerCase();
 
-    return matchesSearch && matchesStatus && matchesMethod;
+    const deadlineInfo = getDeadlineInfo(payout);
+    const matchesDeadline =
+      deadlineFilter === "all" ||
+      (deadlineFilter === "overdue" && deadlineInfo.overdue) ||
+      (deadlineFilter === "dueSoon" && deadlineInfo.dueSoon);
+
+    return matchesSearch && matchesStatus && matchesMethod && matchesDeadline;
   });
 
   const totalPending = payouts
@@ -305,12 +380,12 @@ export default function PayoutsPage() {
 
   const sortedPayouts = useMemo(() => {
     const copy = [...filteredPayouts];
+    // Sort by date descending (latest first). If same date, newest ID first.
     copy.sort((a, b) => {
-      const nameCmp = a.tasker.name.localeCompare(b.tasker.name);
-      if (nameCmp !== 0) return nameCmp;
       const aDate = new Date(a.date).getTime();
       const bDate = new Date(b.date).getTime();
-      return bDate - aDate;
+      if (bDate !== aDate) return bDate - aDate;
+      return b.id - a.id;
     });
     return copy;
   }, [filteredPayouts]);
@@ -487,6 +562,16 @@ export default function PayoutsPage() {
                   <SelectItem value="failed">Failed</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={deadlineFilter} onValueChange={setDeadlineFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by deadline" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Deadlines</SelectItem>
+                  <SelectItem value="dueSoon">Due in &lt;= 1 day</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                </SelectContent>
+              </Select>
               <Select value={methodFilter} onValueChange={setMethodFilter}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Filter by method" />
@@ -511,6 +596,7 @@ export default function PayoutsPage() {
                   <TableHead>Status</TableHead>
                   <TableHead className="hidden md:table-cell">Method</TableHead>
                   <TableHead className="hidden md:table-cell">Date</TableHead>
+                  <TableHead className="hidden md:table-cell">Deadline</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -518,15 +604,26 @@ export default function PayoutsPage() {
                 {sortedPayouts.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={8}
                       className="text-center py-8 text-muted-foreground"
                     >
                       No payouts found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  sortedPayouts.map((payout) => (
-                    <TableRow key={payout.id}>
+                  sortedPayouts.map((payout) => {
+                    const deadlineInfo = getDeadlineInfo(payout);
+                    return (
+                    <TableRow
+                      key={payout.id}
+                      className={
+                        deadlineInfo.overdue
+                          ? "bg-red-50"
+                          : deadlineInfo.dueSoon
+                          ? "bg-amber-50"
+                          : undefined
+                      }
+                    >
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar>
@@ -601,6 +698,17 @@ export default function PayoutsPage() {
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         {formatDate(payout.date)}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {payout.deadlineDate ? (
+                          <Badge variant={deadlineInfo.variant}>
+                            {deadlineInfo.label}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            N/A
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <Dialog
@@ -689,6 +797,36 @@ export default function PayoutsPage() {
                                   </DropdownMenuItem>
                                 </>
                               )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={async () => {
+                                  if (
+                                    confirm(
+                                      "Are you sure you want to delete this payout record?"
+                                    )
+                                  ) {
+                                    try {
+                                      await axiosInstance.delete(
+                                        `/task-order/${payout.id}`
+                                      );
+                                      setPayouts((prev) =>
+                                        prev.filter((p) => p.id !== payout.id)
+                                      );
+                                    } catch (err) {
+                                      console.error(
+                                        "Failed to delete payout:",
+                                        err
+                                      );
+                                      setError(
+                                        "Failed to delete payout. Please try again."
+                                      );
+                                    }
+                                  }
+                                }}
+                              >
+                                Delete Payout
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                           <DialogContent className="sm:max-w-[800px]">
@@ -856,7 +994,7 @@ export default function PayoutsPage() {
                         </Dialog>
                       </TableCell>
                     </TableRow>
-                  ))
+                  )})
                 )}
               </TableBody>
             </Table>
