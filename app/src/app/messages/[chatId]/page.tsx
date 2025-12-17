@@ -573,9 +573,9 @@ export default function ChatPage() {
     <div className="flex min-h-[100dvh] flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 overflow-hidden fixed inset-0 z-50">
       <Toaster position="top-right" />
       
-      {/* Ultra Premium Chat Header */}
-      <header className="bg-white/95 backdrop-blur-xl border-b border-gray-200/30 flex-shrink-0 shadow-lg">
-        <div className="flex h-14 md:h-20 items-center px-4 md:px-8">
+      {/* Chat Header - Simplified for Mobile */}
+      <header className="bg-white/95 backdrop-blur-xl border-b border-gray-200/30 flex-shrink-0 shadow-sm">
+        <div className="flex h-14 md:h-20 items-center px-3 md:px-8 gap-3">
           <Button
             variant="ghost"
             size="sm"
@@ -590,54 +590,45 @@ export default function ChatPage() {
               } catch {}
               router.push('/messages')
             }}
-            className="mr-6 hover:bg-gray-100/80 p-3 rounded-full transition-all duration-200 group"
+            className="hover:bg-gray-100/80 p-2 md:p-3 rounded-full transition-all duration-200 group touch-manipulation flex-shrink-0"
           >
-            <ArrowLeft className="h-6 w-6 text-gray-600 group-hover:text-blue-600 transition-colors" />
+            <ArrowLeft className="h-5 w-5 md:h-6 md:w-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
           </Button>
-          <div className="flex items-center gap-5 flex-1 min-w-0">
+          
+          <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
             <div className="relative flex-shrink-0">
-              <Avatar className="h-14 w-14 ring-4 ring-white/50 shadow-xl">
-                <AvatarFallback className="bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 text-white font-bold text-xl">
+              <Avatar className="h-10 w-10 md:h-14 md:w-14 ring-2 md:ring-4 ring-white/50 shadow-lg">
+                <AvatarFallback className="bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 text-white font-bold text-base md:text-xl">
                   {otherUserName?.charAt(0)?.toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 border-4 border-white rounded-full shadow-lg">
-                <div className="w-full h-full bg-emerald-400 rounded-full animate-pulse"></div>
-              </div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 md:w-4 md:h-4 bg-emerald-500 border-2 md:border-3 border-white rounded-full"></div>
             </div>
+            
             <div className="flex-1 min-w-0">
-              <h2 className="font-bold text-gray-900 text-2xl tracking-tight truncate">
+              <h2 className="font-bold text-gray-900 text-base md:text-xl truncate">
                 {otherUserName || chatInfo?.otherUser?.name || "Unknown User"}
               </h2>
-              {taskTitle && (
-                <div className="mt-1 text-sm text-gray-600 flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-medium">Task</span>
-                  <Link href={taskId ? `/tasks/${taskId}` : '#'} className="hover:text-blue-700 truncate max-w-md">
+              {taskTitle ? (
+                <div className="text-xs md:text-sm text-gray-600 flex items-center gap-1.5 truncate">
+                  <span className="px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-medium text-xs">Task</span>
+                  <Link href={taskId ? `/tasks/${taskId}` : '#'} className="hover:text-blue-700 truncate">
                     {taskTitle}
                   </Link>
                 </div>
+              ) : (
+                <p className="text-xs md:text-sm text-emerald-600 flex items-center gap-1.5 font-medium">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                  Active now
+                </p>
               )}
-              <p className="text-sm text-emerald-600 flex items-center gap-2 font-semibold">
-                <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></div>
-                Active now
-              </p>
             </div>
           </div>
-          <div className="hidden md:flex items-center gap-4 flex-shrink-0">
-            <Link href="/dashboard" className="text-sm font-semibold text-blue-700 hover:text-blue-800">Dashboard</Link>
-            <Link href="/profile" className="text-sm font-semibold text-gray-700 hover:text-gray-900">Profile</Link>
-            <Button variant="ghost" size="sm" className="p-4 hover:bg-blue-50 rounded-full transition-all duration-200 group">
-              <svg className="h-6 w-6 text-gray-600 group-hover:text-blue-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-            </Button>
-            <Button variant="ghost" size="sm" className="p-4 hover:bg-blue-50 rounded-full transition-all duration-200 group">
-              <svg className="h-6 w-6 text-gray-600 group-hover:text-blue-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-            </Button>
-            <Button variant="ghost" size="sm" className="p-4 hover:bg-blue-50 rounded-full transition-all duration-200 group">
-              <MoreVertical className="h-6 w-6 text-gray-600 group-hover:text-blue-600 transition-colors" />
+
+          {/* Desktop Only Actions */}
+          <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+            <Button variant="ghost" size="sm" className="p-3 hover:bg-gray-100 rounded-full transition-all duration-200">
+              <MoreVertical className="h-5 w-5 text-gray-600" />
             </Button>
           </div>
         </div>
