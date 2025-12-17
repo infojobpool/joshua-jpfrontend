@@ -85,26 +85,35 @@ export function MobileMessages() {
     return (
       <div className="bg-gray-50 flex flex-col fixed inset-0 overscroll-contain">
         {/* Chat Header */}
-        <div className="bg-white shadow-sm border-b border-gray-200 flex-shrink-0 z-10">
-          <div className="px-4 py-3">
-            <div className="flex items-center space-x-3">
+        <div className="bg-white shadow-md border-b border-gray-200 flex-shrink-0 z-10">
+          <div className="px-4 py-3 safe-area-top">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => setSelectedChat(null)}
-                className="p-2 rounded-full hover:bg-gray-100"
+                className="p-2.5 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors touch-manipulation"
+                aria-label="Back"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-5 w-5 text-gray-700" />
               </button>
-              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
-                {chat?.avatar}
+              <div className="relative">
+                <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full flex items-center justify-center text-white font-bold shadow-sm">
+                  {chat?.avatar}
+                </div>
+                {chat?.online && (
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white"></div>
+                )}
               </div>
-              <div className="flex-1">
-                <h2 className="font-semibold text-gray-900">{chat?.name}</h2>
-                <p className="text-sm text-gray-500">
-                  {chat?.online ? "Online" : "Last seen recently"}
+              <div className="flex-1 min-w-0">
+                <h2 className="font-bold text-gray-900 truncate">{chat?.name}</h2>
+                <p className={`text-sm font-medium ${chat?.online ? "text-green-600" : "text-gray-500"}`}>
+                  {chat?.online ? "Active now" : "Last seen recently"}
                 </p>
               </div>
-              <button className="p-2 rounded-full hover:bg-gray-100">
-                <MoreVertical className="h-5 w-5" />
+              <button 
+                className="p-2.5 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors touch-manipulation"
+                aria-label="More options"
+              >
+                <MoreVertical className="h-5 w-5 text-gray-700" />
               </button>
             </div>
           </div>
@@ -112,23 +121,23 @@ export function MobileMessages() {
 
         {/* Messages */}
         <div
-          className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-24"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 96px)" }}
+          className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 140px)" }} // Space for input + nav
         >
           {messages.map((msg) => (
             <div
               key={msg.id}
-              className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}
+              className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-2 duration-200`}
             >
               <div
-                className={`max-w-xs px-4 py-2 rounded-2xl ${
+                className={`max-w-[75%] px-4 py-3 rounded-2xl shadow-sm ${
                   msg.sender === "me"
-                    ? "bg-blue-600 text-white"
-                    : "bg-white text-gray-900 shadow-sm"
+                    ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white"
+                    : "bg-white text-gray-900 border border-gray-100"
                 }`}
               >
-                <p className="text-sm">{msg.text}</p>
-                <p className={`text-xs mt-1 ${
+                <p className="text-base leading-relaxed">{msg.text}</p>
+                <p className={`text-xs mt-1.5 ${
                   msg.sender === "me" ? "text-blue-100" : "text-gray-500"
                 }`}>
                   {msg.time}
@@ -139,15 +148,21 @@ export function MobileMessages() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Message Input - Fixed at bottom */}
+        {/* Message Input - Fixed above bottom nav */}
         <div
-          className="bg-white border-t border-gray-200 p-3 fixed bottom-0 left-0 right-0 z-20"
+          className="bg-white border-t border-gray-200 p-3 fixed left-0 right-0 shadow-lg"
           style={{
-            paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)'
+            bottom: 'calc(env(safe-area-inset-bottom) + 60px)', // 60px = bottom nav height
+            paddingBottom: '8px',
+            zIndex: 51 // Above bottom nav (z-50)
           }}
         >
-          <div className="flex items-center space-x-2 max-w-screen-xl mx-auto">
-            <button className="p-2 rounded-full hover:bg-gray-100 flex-shrink-0">
+          <div className="flex items-center gap-2 max-w-screen-xl mx-auto">
+            <button 
+              type="button"
+              className="p-3 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors flex-shrink-0 touch-manipulation"
+              aria-label="Attach file"
+            >
               <Paperclip className="h-5 w-5 text-gray-600" />
             </button>
             <div className="flex-1 relative min-w-0">
@@ -160,17 +175,23 @@ export function MobileMessages() {
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
                 inputMode="text"
                 enterKeyHint="send"
-                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all text-base placeholder:text-gray-400"
                 style={{ fontSize: '16px' }} // Prevents zoom on iOS
               />
             </div>
-            <button className="p-2 rounded-full hover:bg-gray-100 flex-shrink-0">
+            <button 
+              type="button"
+              className="p-3 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors flex-shrink-0 touch-manipulation"
+              aria-label="Add emoji"
+            >
               <Smile className="h-5 w-5 text-gray-600" />
             </button>
             <button
+              type="button"
               onClick={handleSendMessage}
               disabled={!message.trim()}
-              className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+              className="p-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:from-gray-300 disabled:to-gray-400 flex-shrink-0 transition-all shadow-lg active:scale-95 touch-manipulation"
+              aria-label="Send message"
             >
               <Send className="h-5 w-5" />
             </button>

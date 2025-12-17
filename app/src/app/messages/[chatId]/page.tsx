@@ -645,7 +645,7 @@ export default function ChatPage() {
 
       {/* Ultra Premium Messages Area */}
       <ScrollArea className="flex-1 bg-gradient-to-b from-slate-50 via-blue-50/20 to-white min-h-0">
-        <div className="px-4 md:px-8 py-4 md:py-6 space-y-4 h-full max-w-4xl mx-auto pb-28 md:pb-6">
+        <div className="px-4 md:px-8 py-4 md:py-6 space-y-4 h-full max-w-4xl mx-auto pb-40 md:pb-6">
           
           {messages.length === 0 && (
             <div className="text-center py-12 space-y-4">
@@ -728,7 +728,14 @@ export default function ChatPage() {
       </ScrollArea>
 
       {/* Ultra Premium Message Input */}
-      <div className="bg-white/95 backdrop-blur-xl border-t border-gray-200/30 p-3 md:p-6 flex-shrink-0 shadow-2xl fixed bottom-0 left-0 right-0 z-10 pb-[calc(env(safe-area-inset-bottom)+8px)]">
+      <div 
+        className="bg-white/95 backdrop-blur-xl border-t border-gray-200/30 p-3 md:p-6 flex-shrink-0 shadow-2xl fixed left-0 right-0 md:sticky md:bottom-0"
+        style={{
+          bottom: 'calc(env(safe-area-inset-bottom) + 60px)', // Mobile: above nav bar
+          zIndex: 51, // Above bottom nav
+          paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)'
+        }}
+      >
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-3 md:gap-5">
             <Button variant="ghost" size="sm" className="p-4 hover:bg-blue-50 rounded-full transition-all duration-200 group">
