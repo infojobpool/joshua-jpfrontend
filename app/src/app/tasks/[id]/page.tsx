@@ -441,12 +441,30 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         // Status determination for individual task page – use same logic as dashboard
         let jobStatus = "open";
 
-        if (job.job_completion_status === 1) {
+        // Check cancellation status FIRST (for both pre-payment and post-payment)
+        // Backend may return cancel_status as boolean, string, or in status field
+        const isCancelled = 
+          job.cancel_status === true || 
+          job.cancel_status === "true" || 
+          job.cancel_status === 1 ||
+          job.status === "cancelled" || 
+          job.status === "Cancelled" ||
+          job.status === "canceled" ||
+          job.status === "Canceled" ||
+          job.cancelled === true ||
+          job.cancelled === "true";
+        
+        if (isCancelled) {
+          jobStatus = "canceled";
+          console.log(`✅ Task ${job.job_id} marked as cancelled (pre or post payment):`, {
+            cancel_status: job.cancel_status,
+            status: job.status,
+            cancelled: job.cancelled
+          });
+        } else if (job.job_completion_status === 1) {
           jobStatus = "completed";
         } else if (job.deletion_status) {
           jobStatus = "deleted";
-        } else if (job.cancel_status) {
-          jobStatus = "canceled";
         } else if (job.status === "in_progress" || job.status === "working" || job.status === "assigned" || 
                   job.status === "accepted" || job.status === "paid" || job.status === "active" ||
                   job.status === true) {
@@ -1427,7 +1445,54 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                     toast.success(`Task cancelled successfully! ${cancellationFee ? `Fee: ${cancellationFee}. ` : ''}${refundMessage}`);
                     setShowCancelDialog(false);
                     setCancelReason("");
-                    setTask((prev) => (prev ? { ...prev, status: "canceled" } : prev));
+                    
+                    // Clear cache to force fresh data
+                    const cacheKey = `task_${id}`;
+                    localStorage.removeItem(cacheKey);
+                    
+                    // Update local state immediately (optimistic update)
+                    setTask((prev) => (prev ? { ...prev, status: "canceled", cancel_status: true } : prev));
+                    
+                    // Refresh task data from backend after a short delay
+                    setTimeout(async () => {
+                      try {
+                        const token = localStorage.getItem('token');
+                        const response = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
+                          method: 'GET',
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                          },
+                          credentials: 'omit',
+                        });
+                        
+                        if (response.ok) {
+                          const data = await response.json();
+                          if (data.status_code === 200 && data.data) {
+                            const job = data.data;
+                            let jobStatus = "open";
+                            if (job.job_completion_status === 1) {
+                              jobStatus = "completed";
+                            } else if (job.deletion_status) {
+                              jobStatus = "deleted";
+                            } else if (job.cancel_status) {
+                              jobStatus = "canceled";
+                            } else if (job.status === "in_progress" || job.status === "working" || job.status === "assigned") {
+                              jobStatus = "in_progress";
+                            }
+                            
+                            // Update task with fresh data from backend
+                            setTask((prev) => prev ? {
+                              ...prev,
+                              status: jobStatus,
+                              cancel_status: job.cancel_status ?? false,
+                            } : prev);
+                          }
+                        }
+                      } catch (refreshError) {
+                        console.error("Error refreshing task after cancellation:", refreshError);
+                      }
+                    }, 1000); // Wait 1 second for backend to process
                   } else {
                     toast.error(resp.data?.message || "Failed to cancel task");
                   }

@@ -761,12 +761,30 @@ export default function Dashboard() {
               finalStatus: hasPaidOrder ? "in_progress" : "open"
             });
             
-            if (job.job_completion_status === 1) {
+            // Check cancellation status FIRST (for both pre-payment and post-payment)
+            // Backend may return cancel_status as boolean, string, or in status field
+            const isCancelled = 
+              job.cancel_status === true || 
+              job.cancel_status === "true" || 
+              job.cancel_status === 1 ||
+              job.status === "cancelled" || 
+              job.status === "Cancelled" ||
+              job.status === "canceled" ||
+              job.status === "Canceled" ||
+              job.cancelled === true ||
+              job.cancelled === "true";
+            
+            if (isCancelled) {
+              jobStatus = "canceled";
+              console.log(`✅ Task ${job.job_id} marked as cancelled (pre or post payment):`, {
+                cancel_status: job.cancel_status,
+                status: job.status,
+                cancelled: job.cancelled
+              });
+            } else if (job.job_completion_status === 1) {
               jobStatus = "completed";
             } else if (job.deletion_status) {
               jobStatus = "deleted";
-            } else if (job.cancel_status) {
-              jobStatus = "canceled";
             } else if (job.status === "in_progress" || job.status === "working" || job.status === "assigned" || 
                       job.status === "accepted" || job.status === "paid" || job.status === "active" ||
                       job.status === true) {
@@ -844,7 +862,7 @@ export default function Dashboard() {
               category: job.job_category || "general",
               job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
               deletion_status: job.deletion_status || false,
-              cancel_status: job.cancel_status ?? false,
+              cancel_status: isCancelled || (job.cancel_status ?? false), // Use comprehensive cancellation check
               images: job.job_images?.urls?.length
                 ? job.job_images.urls.map((url: string, index: number) => ({
                     id: `img${index + 1}`,
@@ -2142,16 +2160,141 @@ export default function Dashboard() {
       
       if (response.data.status_code === 200 || response.status === 200) {
         const refundMessage = response.data.refund_message || "";
+        const cancellationData = response.data.data || {};
+        
+        console.log("✅ Cancellation successful:", {
+          jobId: selectedJobId,
+          refundMessage,
+          cancellationData,
+          responseData: response.data
+        });
+        
         toast.success(`Task canceled successfully! ${refundMessage}`);
         
-        // Remove from posted tasks list
-        setPostedTasks((prev) =>
-          prev.map((task) =>
-            task.id === selectedJobId
-              ? { ...task, cancel_status: true }
-              : task
-          )
-        );
+        // Clear cache to force fresh data fetch
+        const cacheKey = `user_tasks_${currentUserId}`;
+        localStorage.removeItem(cacheKey);
+        try { sessionStorage.removeItem("postedTasks"); } catch {}
+        
+        // Update local state immediately (optimistic update)
+        // For both pre-payment and post-payment cancellations
+        setPostedTasks((prev) => {
+          const updated = prev.map((task) => {
+            if (task.id === selectedJobId) {
+              return { 
+                ...task, 
+                cancel_status: true, 
+                status: "canceled",
+                // Ensure it's marked as cancelled regardless of payment status
+                cancelled: true,
+                cancellation_reason: cancellationData.cancellation_reason || cancellationReason.trim(),
+                cancelled_at: cancellationData.cancelled_at || new Date().toISOString(),
+                cancelled_by_role: "taskmaster"
+              };
+            }
+            return task;
+          });
+          console.log("📝 Updated posted tasks after cancellation:", updated.filter(t => t.id === selectedJobId));
+          return updated;
+        });
+        
+        // Refresh tasks from backend after a short delay to ensure backend has processed
+        setTimeout(async () => {
+          try {
+            const token = localStorage.getItem('token');
+            const fetchResponse = await fetch(`${API_BASE}/get-user-jobs/${currentUserId}/`, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              credentials: 'omit',
+            });
+
+            if (fetchResponse.ok) {
+              const result = await fetchResponse.json();
+              if (result.status_code === 200 && result.data?.jobs) {
+                const userJobs = result.data.jobs.filter((job: any) => {
+                  const jobUserId = job.user_ref_id || job.posted_by_id || job.user_id;
+                  return jobUserId === currentUserId?.toString();
+                });
+                
+                const tasks: Task[] = userJobs.map((job: any) => {
+                  let jobStatus = "open";
+                  
+                  // Check cancellation status FIRST (for both pre-payment and post-payment)
+                  // Backend may return cancel_status as boolean, string, or in status field
+                  const isCancelled = 
+                    job.cancel_status === true || 
+                    job.cancel_status === "true" || 
+                    job.cancel_status === 1 ||
+                    job.status === "cancelled" || 
+                    job.status === "Cancelled" ||
+                    job.status === "canceled" ||
+                    job.status === "Canceled" ||
+                    job.cancelled === true ||
+                    job.cancelled === "true";
+                  
+                  if (isCancelled) {
+                    jobStatus = "canceled";
+                    console.log(`✅ Task ${job.job_id} marked as cancelled (pre or post payment):`, {
+                      cancel_status: job.cancel_status,
+                      status: job.status,
+                      cancelled: job.cancelled
+                    });
+                  } else if (job.job_completion_status === 1) {
+                    jobStatus = "completed";
+                  } else if (job.deletion_status) {
+                    jobStatus = "deleted";
+                  } else if (job.status === "in_progress" || job.status === "working" || job.status === "assigned") {
+                    jobStatus = "in_progress";
+                  }
+                  
+                  return {
+                    id: job.job_id.toString(),
+                    title: job.job_title || "Untitled",
+                    description: job.job_description || "No description provided.",
+                    budget: Number(job.job_budget) || 0,
+                    location: job.job_location || "Unknown",
+                    status: jobStatus,
+                    postedAt: job.job_due_date
+                      ? new Date(job.job_due_date).toLocaleDateString("en-GB")
+                      : "Unknown",
+                    offers: job.offers || 0,
+                    posted_by: job.posted_by || "Unknown",
+                    category: job.job_category || "general",
+                    job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
+                    deletion_status: job.deletion_status || false,
+                    cancel_status: isCancelled || (job.cancel_status ?? false), // Ensure it's set correctly
+                    images: job.job_images?.urls?.length
+                      ? job.job_images.urls.map((url: string, index: number) => ({
+                          id: `img${index + 1}`,
+                          url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
+                          alt: `Job image ${index + 1}`,
+                        }))
+                      : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+                    assignedToMe: false,
+                  };
+                });
+                
+                console.log("🔄 Refreshed tasks after cancellation:", {
+                  totalTasks: tasks.length,
+                  cancelledTasks: tasks.filter(t => t.status === "canceled" || t.cancel_status).length,
+                  cancelledTaskIds: tasks.filter(t => t.status === "canceled" || t.cancel_status).map(t => t.id)
+                });
+                
+                setPostedTasks(tasks);
+                try { sessionStorage.setItem("postedTasks", JSON.stringify(tasks)); } catch {}
+                localStorage.setItem(cacheKey, JSON.stringify({
+                  tasks: tasks,
+                  timestamp: Date.now()
+                }));
+              }
+            }
+          } catch (refreshError) {
+            console.error("Error refreshing tasks after cancellation:", refreshError);
+          }
+        }, 1000); // Wait 1 second for backend to process
       } else {
         toast.error(response.data.message || "Failed to cancel task");
       }
