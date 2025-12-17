@@ -83,9 +83,9 @@ export function MobileMessages() {
   if (selectedChat) {
     const chat = chats.find(c => c.id === selectedChat);
     return (
-      <div className="bg-gray-50 flex flex-col overscroll-contain" style={{height: '100dvh', minHeight: '100dvh'}}>
+      <div className="bg-gray-50 flex flex-col fixed inset-0 overscroll-contain">
         {/* Chat Header */}
-        <div className="bg-white shadow-sm border-b border-gray-200 flex-shrink-0">
+        <div className="bg-white shadow-sm border-b border-gray-200 flex-shrink-0 z-10">
           <div className="px-4 py-3">
             <div className="flex items-center space-x-3">
               <button
@@ -112,8 +112,8 @@ export function MobileMessages() {
 
         {/* Messages */}
         <div
-          className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 88px)" }}
+          className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-24"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 96px)" }}
         >
           {messages.map((msg) => (
             <div
@@ -139,38 +139,38 @@ export function MobileMessages() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Message Input */}
+        {/* Message Input - Fixed at bottom */}
         <div
-          className="bg-white border-t border-gray-200 p-3 flex-shrink-0"
+          className="bg-white border-t border-gray-200 p-3 fixed bottom-0 left-0 right-0 z-20"
           style={{
-            position: 'sticky',
-            bottom: 0,
             paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)'
           }}
         >
-          <div className="flex items-center space-x-3">
-            <button className="p-2 rounded-full hover:bg-gray-100">
+          <div className="flex items-center space-x-2 max-w-screen-xl mx-auto">
+            <button className="p-2 rounded-full hover:bg-gray-100 flex-shrink-0">
               <Paperclip className="h-5 w-5 text-gray-600" />
             </button>
-            <div className="flex-1 relative">
+            <div className="flex-1 relative min-w-0">
               <input
                 ref={inputRef}
                 type="text"
                 placeholder="Type a message..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
                 inputMode="text"
                 enterKeyHint="send"
-                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                style={{ fontSize: '16px' }} // Prevents zoom on iOS
               />
             </div>
-            <button className="p-2 rounded-full hover:bg-gray-100">
+            <button className="p-2 rounded-full hover:bg-gray-100 flex-shrink-0">
               <Smile className="h-5 w-5 text-gray-600" />
             </button>
             <button
               onClick={handleSendMessage}
-              className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700"
+              disabled={!message.trim()}
+              className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
             >
               <Send className="h-5 w-5" />
             </button>

@@ -728,7 +728,7 @@ export default function ChatPage() {
       </ScrollArea>
 
       {/* Ultra Premium Message Input */}
-      <div className="bg-white/95 backdrop-blur-xl border-t border-gray-200/30 p-3 md:p-6 flex-shrink-0 shadow-2xl relative z-10 sticky bottom-0 left-0 right-0 pb-[calc(env(safe-area-inset-bottom)+8px)]">
+      <div className="bg-white/95 backdrop-blur-xl border-t border-gray-200/30 p-3 md:p-6 flex-shrink-0 shadow-2xl fixed bottom-0 left-0 right-0 z-10 pb-[calc(env(safe-area-inset-bottom)+8px)]">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-3 md:gap-5">
             <Button variant="ghost" size="sm" className="p-4 hover:bg-blue-50 rounded-full transition-all duration-200 group">
@@ -743,13 +743,14 @@ export default function ChatPage() {
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 onFocus={() => {
-                  // Ensure the input is visible when the keyboard opens on mobile
+                  // Scroll to bottom on focus (mobile keyboard opens)
                   setTimeout(() => {
-                    inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                  }, 50)
+                    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+                  }, 100)
                 }}
                 ref={inputRef}
                 className="w-full border-2 border-gray-200/50 focus:border-blue-500 rounded-3xl px-4 md:px-6 py-3 md:py-5 bg-gray-50/60 focus:bg-white pr-16 md:pr-20 text-base md:text-lg font-medium shadow-xl transition-all duration-200 backdrop-blur-sm"
+                style={{ fontSize: '16px' }} // Prevents zoom on iOS
                 disabled={sending}
               />
               <div className="absolute right-3 md:right-5 top-1/2 transform -translate-y-1/2 flex items-center gap-2 md:gap-3">
