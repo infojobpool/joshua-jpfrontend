@@ -5,11 +5,8 @@ import { useRouter, useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, ArrowLeft, MoreVertical } from "lucide-react"
+import { Send, ArrowLeft } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import axiosInstance from "@/lib/axiosInstance"
 import useStore from "@/lib/Zustand"
@@ -570,15 +567,13 @@ export default function ChatPage() {
   const taskId = searchParams?.get('task_id') || chatInfo?.task?.id || ''
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 overflow-hidden fixed inset-0 z-50">
+    <div className="flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 overflow-hidden fixed inset-0 z-50">
       <Toaster position="top-right" />
       
-      {/* Chat Header - Simplified for Mobile */}
+      {/* Chat Header - Clean Mobile Design */}
       <header className="bg-white/95 backdrop-blur-xl border-b border-gray-200/30 flex-shrink-0 shadow-sm">
-        <div className="flex h-14 md:h-20 items-center px-3 md:px-8 gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
+        <div className="flex h-14 items-center px-4 gap-3">
+          <button
             onClick={() => {
               const backTaskId = searchParams?.get('task_id') || chatInfo?.task?.id || ''
               if (backTaskId) {
@@ -590,53 +585,45 @@ export default function ChatPage() {
               } catch {}
               router.push('/messages')
             }}
-            className="hover:bg-gray-100/80 p-2 md:p-3 rounded-full transition-all duration-200 group touch-manipulation flex-shrink-0"
+            className="p-2.5 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors touch-manipulation flex-shrink-0"
+            aria-label="Back to messages"
           >
-            <ArrowLeft className="h-5 w-5 md:h-6 md:w-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
-          </Button>
+            <ArrowLeft className="h-5 w-5 text-gray-700" />
+          </button>
           
-          <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="relative flex-shrink-0">
-              <Avatar className="h-10 w-10 md:h-14 md:w-14 ring-2 md:ring-4 ring-white/50 shadow-lg">
-                <AvatarFallback className="bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 text-white font-bold text-base md:text-xl">
-                  {otherUserName?.charAt(0)?.toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 md:w-4 md:h-4 bg-emerald-500 border-2 md:border-3 border-white rounded-full"></div>
+              <div className="h-10 w-10 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 rounded-full flex items-center justify-center text-white font-bold text-base shadow-sm">
+                {otherUserName?.charAt(0)?.toUpperCase() || "U"}
+              </div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></div>
             </div>
             
             <div className="flex-1 min-w-0">
-              <h2 className="font-bold text-gray-900 text-base md:text-xl truncate">
+              <h2 className="font-bold text-gray-900 text-base truncate">
                 {otherUserName || chatInfo?.otherUser?.name || "Unknown User"}
               </h2>
               {taskTitle ? (
-                <div className="text-xs md:text-sm text-gray-600 flex items-center gap-1.5 truncate">
+                <div className="text-xs text-gray-600 flex items-center gap-1.5 truncate">
                   <span className="px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-medium text-xs">Task</span>
                   <Link href={taskId ? `/tasks/${taskId}` : '#'} className="hover:text-blue-700 truncate">
                     {taskTitle}
                   </Link>
                 </div>
               ) : (
-                <p className="text-xs md:text-sm text-emerald-600 flex items-center gap-1.5 font-medium">
+                <p className="text-xs text-emerald-600 flex items-center gap-1.5 font-medium">
                   <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
                   Active now
                 </p>
               )}
             </div>
           </div>
-
-          {/* Desktop Only Actions */}
-          <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-            <Button variant="ghost" size="sm" className="p-3 hover:bg-gray-100 rounded-full transition-all duration-200">
-              <MoreVertical className="h-5 w-5 text-gray-600" />
-            </Button>
-          </div>
         </div>
       </header>
 
-      {/* Ultra Premium Messages Area */}
+      {/* Messages Area - Mobile Optimized */}
       <ScrollArea className="flex-1 bg-gradient-to-b from-slate-50 via-blue-50/20 to-white min-h-0">
-        <div className="px-4 md:px-8 py-4 md:py-6 space-y-4 h-full max-w-4xl mx-auto pb-40 md:pb-6">
+        <div className="px-4 py-4 space-y-4 h-full max-w-4xl mx-auto" style={{ paddingBottom: '140px' }}>
           
           {messages.length === 0 && (
             <div className="text-center py-12 space-y-4">
@@ -671,43 +658,31 @@ export default function ChatPage() {
             return (
               <div
                 key={msg.id || msg.messagesid || `msg-${index}`}
-                className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} items-end gap-4 mb-6`}
+                className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} items-end gap-2 mb-4`}
               >
                 {!isOwnMessage && (
-                  <Avatar className="h-10 w-10 flex-shrink-0 ring-3 ring-white/50 shadow-lg">
-                    <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-base font-bold">
-                      {senderName?.charAt(0)?.toUpperCase() || "U"}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="h-8 w-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                    {senderName?.charAt(0)?.toUpperCase() || "U"}
+                  </div>
                 )}
-                <div className={`max-w-sm lg:max-w-lg ${isOwnMessage ? 'order-1' : 'order-2'}`}>
+                <div className={`max-w-[75%] ${isOwnMessage ? 'order-1' : 'order-2'}`}>
                   <div
-                    className={`rounded-3xl px-5 py-4 shadow-lg ${
+                    className={`rounded-2xl px-4 py-3 ${
                       isOwnMessage
-                        ? 'bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 text-white rounded-br-lg'
-                        : 'bg-white text-gray-900 border border-gray-200/50 rounded-bl-lg shadow-xl backdrop-blur-sm'
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                        : 'bg-white text-gray-900 border border-gray-200 shadow-sm'
                     }`}
                   >
-                    <p className="text-base leading-relaxed font-medium">{msg.description}</p>
+                    <p className="text-sm leading-relaxed">{msg.description}</p>
                   </div>
-                  <div className={`flex items-center gap-2 mt-2 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-                    <p className="text-xs text-gray-500 font-semibold">
+                  <div className={`flex items-center gap-1.5 mt-1.5 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+                    <p className="text-xs text-gray-500">
                       {new Date(msg.tstamp).toLocaleTimeString('en-US', { 
                         hour: 'numeric',
                         minute: '2-digit',
                         hour12: true
                       })}
                     </p>
-                    {isOwnMessage && (
-                      <div className="flex items-center">
-                        <svg className="h-3.5 w-3.5 text-blue-200" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        <svg className="h-3.5 w-3.5 text-blue-200 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -718,63 +693,46 @@ export default function ChatPage() {
         </div>
       </ScrollArea>
 
-      {/* Ultra Premium Message Input */}
+      {/* Clean Message Input - Mobile Optimized */}
       <div 
-        className="bg-white/95 backdrop-blur-xl border-t border-gray-200/30 p-3 md:p-6 flex-shrink-0 shadow-2xl fixed left-0 right-0 md:sticky md:bottom-0"
+        className="bg-white/95 backdrop-blur-xl border-t border-gray-200/30 p-3 flex-shrink-0 shadow-2xl fixed left-0 right-0"
         style={{
-          bottom: 'calc(env(safe-area-inset-bottom) + 60px)', // Mobile: above nav bar
+          bottom: 'calc(env(safe-area-inset-bottom) + 60px)', // Above bottom nav
           zIndex: 51, // Above bottom nav
-          paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)'
         }}
       >
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-3 md:gap-5">
-            <Button variant="ghost" size="sm" className="p-4 hover:bg-blue-50 rounded-full transition-all duration-200 group">
-              <svg className="h-6 w-6 text-gray-500 group-hover:text-blue-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </Button>
+          <div className="flex items-center gap-3">
             <div className="flex-1 relative">
-              <Input
+              <input
+                type="text"
                 placeholder="Type your message..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 onFocus={() => {
-                  // Scroll to bottom on focus (mobile keyboard opens)
                   setTimeout(() => {
                     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
                   }, 100)
                 }}
                 ref={inputRef}
-                className="w-full border-2 border-gray-200/50 focus:border-blue-500 rounded-3xl px-4 md:px-6 py-3 md:py-5 bg-gray-50/60 focus:bg-white pr-16 md:pr-20 text-base md:text-lg font-medium shadow-xl transition-all duration-200 backdrop-blur-sm"
+                className="w-full px-4 py-3 border-2 border-gray-200/50 focus:border-blue-500 rounded-full bg-gray-50/60 focus:bg-white text-base font-medium shadow-sm transition-all duration-200"
                 style={{ fontSize: '16px' }} // Prevents zoom on iOS
                 disabled={sending}
               />
-              <div className="absolute right-3 md:right-5 top-1/2 transform -translate-y-1/2 flex items-center gap-2 md:gap-3">
-                <Button variant="ghost" size="sm" className="p-3 hover:bg-blue-50 rounded-full transition-all duration-200 group">
-                  <svg className="h-5 w-5 text-gray-500 group-hover:text-blue-600 transition-colors" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 100-2 1 1 0 000 2zm7-1a1 1 0 11-2 0 1 1 0 012 0zm-.464 5.535a1 1 0 10-1.415-1.414 3 3 0 01-4.242 0 1 1 0 00-1.415 1.414 5 5 0 007.072 0z" clipRule="evenodd" />
-                  </svg>
-                </Button>
-                <Button variant="ghost" size="sm" className="p-3 hover:bg-blue-50 rounded-full transition-all duration-200 group">
-                  <svg className="h-5 w-5 text-gray-500 group-hover:text-blue-600 transition-colors" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                  </svg>
-                </Button>
-              </div>
             </div>
-            <Button 
-              onClick={sendMessage} 
+            <button
+              onClick={sendMessage}
               disabled={!message.trim() || sending}
-              className="p-4 md:p-5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-800 text-white rounded-3xl disabled:opacity-50 shadow-2xl transition-all duration-200 transform hover:scale-105"
+              className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full disabled:opacity-50 shadow-lg transition-all duration-200 active:scale-95 touch-manipulation flex-shrink-0"
+              aria-label="Send message"
             >
               {sending ? (
-                <div className="h-5 w-5 md:h-6 md:w-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
-                <Send className="h-5 w-5 md:h-6 md:w-6" />
+                <Send className="h-5 w-5" />
               )}
-            </Button>
+            </button>
           </div>
         </div>
       </div>
