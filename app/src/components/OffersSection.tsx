@@ -666,8 +666,10 @@ export function OffersSection({
                     size="sm"
                     className="w-full sm:w-auto"
                     onClick={() => handleMessageUser(offer.tasker.id)}
+                    disabled={isPaymentPending && selectedFromSession === offer.tasker.id}
+                    title={isPaymentPending && selectedFromSession === offer.tasker.id ? "Complete payment to enable messaging" : ""}
                   >
-                    Message
+                    {isPaymentPending && selectedFromSession === offer.tasker.id ? "🔒 Message (Payment Required)" : "Message"}
                   </Button>
                 </div>
               )}

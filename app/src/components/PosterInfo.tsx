@@ -123,9 +123,10 @@ interface PosterInfoProps {
   poster: User;
   isTaskPoster: boolean;
   handleMessageUser: (receiverId?: string) => void;
+  isPaymentPending?: boolean; // New prop to disable messaging when payment is pending
 }
 
-export function PosterInfo({ poster, isTaskPoster, handleMessageUser }: PosterInfoProps) {
+export function PosterInfo({ poster, isTaskPoster, handleMessageUser, isPaymentPending = false }: PosterInfoProps) {
   return (
     <div className="bg-white/90 backdrop-blur-sm border-0 shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 rounded-xl overflow-hidden">
       {/* Header */}
@@ -212,13 +213,26 @@ export function PosterInfo({ poster, isTaskPoster, handleMessageUser }: PosterIn
               console.log('Messaging poster:', { posterId: poster.id });
               handleMessageUser(poster.id);
             }}
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 text-sm"
+            disabled={isPaymentPending}
+            title={isPaymentPending ? "Complete payment to enable messaging" : ""}
+            className={`w-full font-semibold py-2 rounded-lg shadow-md transition-all duration-200 text-sm ${
+              isPaymentPending 
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
+                : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white hover:shadow-lg"
+            }`}
           >
             <div className="flex items-center gap-1.5">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              Message Poster
+              {isPaymentPending && (
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              )}
+              {!isPaymentPending && (
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              )}
+              {isPaymentPending ? "🔒 Message (Payment Required)" : "Message Poster"}
             </div>
           </Button>
         )}

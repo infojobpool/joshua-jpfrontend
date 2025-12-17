@@ -62,6 +62,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
   const [isVerified, setIsVerified] = useState<boolean>(false);
   const [verificationChecked, setVerificationChecked] = useState<boolean>(false);
+  const [isPaymentPending, setIsPaymentPending] = useState<boolean>(false);
   const taskerId = offers.length > 0 ? offers[0].tasker.id : null;
 
   // Debug: Log verification state changes
@@ -1155,6 +1156,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           // If payment data exists for this task but no verification happened
           if (data.taskId === id) {
             console.warn("⚠️ Payment was not completed for task:", id);
+            setIsPaymentPending(true); // Set state to disable messaging
             toast.error("⚠️ Payment was not completed. Please complete payment to confirm the assignment.", {
               duration: 6000,
               action: {
@@ -1165,10 +1167,15 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
             
             // Don't clear immediately - let user complete payment
             // The payment page will clear these on successful payment
+          } else {
+            setIsPaymentPending(false);
           }
+        } else {
+          setIsPaymentPending(false);
         }
       } catch (e) {
         console.error("Error checking pending payment:", e);
+        setIsPaymentPending(false);
       }
     };
     
@@ -1338,6 +1345,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               poster={task.poster}
               isTaskPoster={isTaskPoster}
               handleMessageUser={handleMessageUser}
+              isPaymentPending={isPaymentPending}
             />
             <SafetyTips />
           </div>
