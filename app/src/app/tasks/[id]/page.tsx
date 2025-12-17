@@ -1140,6 +1140,43 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     router.push("/");
   };
 
+  // Check if user accepted an offer but didn't complete payment
+  useEffect(() => {
+    if (!id || !userId) return;
+    
+    const checkPendingPayment = () => {
+      try {
+        const paymentData = sessionStorage.getItem("paymentData");
+        const paymentPageVisited = sessionStorage.getItem("payment_page_visited");
+        const pendingVerification = localStorage.getItem("pending_payment_verification");
+        
+        if (paymentData && paymentPageVisited && !pendingVerification) {
+          const data = JSON.parse(paymentData);
+          // If payment data exists for this task but no verification happened
+          if (data.taskId === id) {
+            console.warn("⚠️ Payment was not completed for task:", id);
+            toast.error("⚠️ Payment was not completed. Please complete payment to confirm the assignment.", {
+              duration: 6000,
+              action: {
+                label: "Complete Payment",
+                onClick: () => router.push("/payments"),
+              },
+            });
+            
+            // Don't clear immediately - let user complete payment
+            // The payment page will clear these on successful payment
+          }
+        }
+      } catch (e) {
+        console.error("Error checking pending payment:", e);
+      }
+    };
+    
+    // Run check after a short delay to ensure page is loaded
+    const timeoutId = setTimeout(checkPendingPayment, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [id, userId, router]);
+
   if (authLoading) {
     return (
       <div className="flex h-screen items-center justify-center text-sm text-muted-foreground">

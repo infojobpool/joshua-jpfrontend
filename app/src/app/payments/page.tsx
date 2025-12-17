@@ -74,7 +74,24 @@ export default function PaymentPage() {
       setErrorMessage("Payment data not found");
       setShowPaymentFailed(true);
     }
+    
+    // Mark that user has entered the payment page
+    sessionStorage.setItem("payment_page_visited", "true");
   }, []);
+
+  // Warn user before leaving page without completing payment
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (showPaymentModal && !paymentStatus) {
+        e.preventDefault();
+        e.returnValue = "Payment is not complete. Are you sure you want to leave?";
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [showPaymentModal, paymentStatus]);
 
   // Check if Razorpay is loaded
   useEffect(() => {

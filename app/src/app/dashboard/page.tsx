@@ -326,6 +326,37 @@ export default function Dashboard() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [profileDropdownOpen]);
 
+  // Check if user accepted an offer but didn't complete payment
+  useEffect(() => {
+    if (!effectiveUserId) return;
+    
+    const checkPendingPayment = () => {
+      try {
+        const paymentData = sessionStorage.getItem("paymentData");
+        const paymentPageVisited = sessionStorage.getItem("payment_page_visited");
+        const pendingVerification = localStorage.getItem("pending_payment_verification");
+        
+        if (paymentData && paymentPageVisited && !pendingVerification) {
+          const data = JSON.parse(paymentData);
+          console.warn("⚠️ Payment was not completed for task:", data.taskId);
+          toast.error("⚠️ Payment pending! Please complete payment to confirm the task assignment.", {
+            duration: 6000,
+            action: {
+              label: "Complete Payment",
+              onClick: () => router.push("/payments"),
+            },
+          });
+        }
+      } catch (e) {
+        console.error("Error checking pending payment:", e);
+      }
+    };
+    
+    // Run check after a short delay
+    const timeoutId = setTimeout(checkPendingPayment, 1500);
+    return () => clearTimeout(timeoutId);
+  }, [effectiveUserId, router]);
+
   useEffect(() => {
     // Hydrate from session to reduce flicker on tab switches
     try {
