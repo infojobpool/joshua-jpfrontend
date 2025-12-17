@@ -315,7 +315,6 @@ export default function TasksPage() {
   const cancelledTasks = tasks.filter((t) => t.status === "Cancelled").length;
   const inProgressTasks = tasks.filter((t) => t.status === "In Progress").length;
   const completedTasks = tasks.filter((t) => t.status === "Completed").length;
-  const cancelledTasks = tasks.filter((t) => t.status === "Cancelled").length;
   const totalBudget = tasks.reduce((sum, t) => sum + t.budget, 0);
 
   const handleUpdateTaskStatus = async (
