@@ -747,6 +747,14 @@ export default function TasksPage() {
                           Refund: {task.refundStatus}
                         </Badge>
                       )}
+                      {task.status === "Cancelled" && !task.refundStatus && task.cancelledByRole && task.cancelledByRole !== "admin" && (
+                        <Badge
+                          variant="outline"
+                          className="text-xs w-fit text-muted-foreground"
+                        >
+                          No refund (before payment)
+                        </Badge>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
@@ -1112,6 +1120,17 @@ export default function TasksPage() {
                                               {selectedTask.refundStatus === "approved" && "✓ "}
                                               {selectedTask.refundStatus === "denied" && "✗ "}
                                               {selectedTask.refundStatus}
+                                            </Badge>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {!selectedTask.refundStatus && selectedTask.cancelledByRole && selectedTask.cancelledByRole !== "admin" && (
+                                        <div>
+                                          <Label>Refund Status</Label>
+                                          <div className="mt-1">
+                                            <Badge variant="outline" className="text-muted-foreground">
+                                              No refund needed (cancelled before payment)
                                             </Badge>
                                           </div>
                                         </div>
