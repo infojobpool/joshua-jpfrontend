@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import useStore from "@/lib/Zustand";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,13 +29,27 @@ import {
 } from "@/lib/cacheUtils";
 import Header from "@/components/Header";
 
+// Force dynamic rendering (don't pre-render at build time)
+export const dynamic = 'force-dynamic';
+
 export default function SettingsPage() {
   const router = useRouter();
+  const { isAuthenticated, userId } = useStore();
   const [isClearing, setIsClearing] = useState(false);
   const [cacheStats, setCacheStats] = useState<CacheStats | null>(null);
   const [lastCleared, setLastCleared] = useState<string[]>([]);
+  const [mounted, setMounted] = useState(false);
+
+  // Check authentication
+  useEffect(() => {
+    setMounted(true);
+    if (!isAuthenticated && !userId) {
+      router.push("/signin?redirect=/settings");
+    }
+  }, [isAuthenticated, userId, router]);
 
   const updateStats = () => {
+    if (typeof window === 'undefined') return;
     const stats = getCacheStats();
     setCacheStats(stats);
   };
@@ -128,9 +143,23 @@ export default function SettingsPage() {
   };
 
   // Load stats on mount
-  useState(() => {
-    updateStats();
-  });
+  useEffect(() => {
+    if (mounted) {
+      updateStats();
+    }
+  }, [mounted]);
+
+  // Show loading state until mounted (prevents SSR issues)
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
+          <p className="text-gray-600">Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
