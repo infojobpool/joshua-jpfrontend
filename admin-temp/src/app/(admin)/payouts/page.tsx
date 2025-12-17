@@ -236,28 +236,28 @@ export default function PayoutsPage() {
             );
 
             return {
-              id: order.order_id,
-              tasker: {
+            id: order.order_id,
+            tasker: {
                 id: Number(order.tasker_id),
                 name: order.tasker_name || `Tasker ${order.tasker_id}`,
                 email: order.tasker_email || "",
-              },
-              poster: {
+            },
+            poster: {
                 id: Number(order.poster_id),
                 name: order.poster_name || `Poster ${order.poster_id}`,
                 email: order.poster_email || "",
-              },
-              jobId: order.job_id,
-              taskTitle: order.job_title || order.task_title || "",
+            },
+            jobId: order.job_id,
+            taskTitle: order.job_title || order.task_title || "",
               amount: Number(order.bid_amount) || 0,
-              fee:
+            fee:
                 (Number(order.gst) || 0) + (Number(order.commission) || 0),
               netAmount: Number(order.payable_amount) || 0,
-              status: statusMap[order.status] || "Unknown",
-              method: order.method || "Bank Transfer",
-              reference: order.payment_id || `REF-${order.order_id}`,
+            status: statusMap[order.status] || "Unknown",
+            method: order.method || "Bank Transfer",
+            reference: order.payment_id || `REF-${order.order_id}`,
               date: baseDate,
-              completedDate: order.completed_at || null,
+            completedDate: order.completed_at || null,
               processingDate,
               deadlineDate,
               taskerBankInfo,
@@ -935,9 +935,9 @@ export default function PayoutsPage() {
                                             <Copy className="h-3 w-3 mr-0.5" />
                                             Copy
                                           </button>
-                                        </div>
+                                  </div>
                                       )}
-                                    </div>
+                                        </div>
                                     <div className="mt-1 text-sm text-muted-foreground space-y-1">
                                       {isBankLoading && <div>Loading...</div>}
                                       {!isBankLoading && taskerBank && (
@@ -955,7 +955,7 @@ export default function PayoutsPage() {
                                             >
                                               A/C: ****
                                               {taskerBank.accountNumber.slice(-4)}
-                                            </div>
+                                  </div>
                                           )}
                                           {taskerBank.ifsc && (
                                             <div className="flex items-center gap-2">
@@ -972,7 +972,7 @@ export default function PayoutsPage() {
                                                 <Copy className="h-3 w-3 mr-0.5" />
                                                 Copy
                                               </button>
-                                            </div>
+                                </div>
                                           )}
                                           {taskerBank.upiId && (
                                             <div className="flex items-center gap-2">
@@ -989,8 +989,8 @@ export default function PayoutsPage() {
                                                 <Copy className="h-3 w-3 mr-0.5" />
                                                 Copy
                                               </button>
-                                            </div>
-                                          )}
+                              </div>
+                            )}
                                           {!taskerBank.bankName &&
                                             !taskerBank.accountNumber &&
                                             !taskerBank.ifsc &&
@@ -1012,7 +1012,7 @@ export default function PayoutsPage() {
                                           <button
                                             type="button"
                                             className="inline-flex items-center rounded px-1 py-0.5 hover:bg-muted"
-                                            onClick={() => {
+                                  onClick={() => {
                                               const el = document.getElementById(
                                                 "poster-account-display"
                                               );
@@ -1111,7 +1111,7 @@ export default function PayoutsPage() {
                                       )}
                                       {!isBankLoading && !posterBank && (
                                         <div>No bank details available.</div>
-                                      )}
+                              )}
                                     </div>
                                   </div>
                                 </div>

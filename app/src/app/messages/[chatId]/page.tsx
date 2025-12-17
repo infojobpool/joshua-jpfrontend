@@ -575,18 +575,33 @@ export default function ChatPage() {
         <div className="flex h-14 items-center px-4 gap-3">
           <button
             onClick={() => {
+              // Check if we came from a task page
               const backTaskId = searchParams?.get('task_id') || chatInfo?.task?.id || ''
               if (backTaskId) {
                 router.push(`/tasks/${backTaskId}`)
                 return
               }
+              
+              // Check if we have a return path in sessionStorage
               try {
-                sessionStorage.setItem('messagesReturnFromChat', '1')
+                const returnPath = sessionStorage.getItem('chatReturnPath')
+                if (returnPath) {
+                  sessionStorage.removeItem('chatReturnPath')
+                  router.push(returnPath)
+                  return
+                }
               } catch {}
-              router.push('/messages')
+              
+              // Default: go back in history (smart back navigation)
+              if (window.history.length > 1) {
+                router.back()
+              } else {
+                // Fallback: go to messages list
+                router.push('/messages')
+              }
             }}
             className="p-2.5 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors touch-manipulation flex-shrink-0"
-            aria-label="Back to messages"
+            aria-label="Back"
           >
             <ArrowLeft className="h-5 w-5 text-gray-700" />
           </button>

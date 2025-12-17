@@ -214,9 +214,9 @@ export function MobileSignIn() {
                 <span className="ml-2 text-sm text-gray-600">Remember me</span>
               </label>
               <div className="flex flex-col items-end gap-1">
-                <Link href="/forgotpassword" className="text-sm text-blue-600 hover:text-blue-800">
-                  Forgot password?
-                </Link>
+              <Link href="/forgotpassword" className="text-sm text-blue-600 hover:text-blue-800">
+                Forgot password?
+              </Link>
                 <button
                   type="button"
                   onClick={() => {

@@ -257,12 +257,12 @@ export default function SignInPage() {
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password</Label>
                   <div className="flex flex-col items-end gap-1">
-                    <Link
-                      href="/forgotpassword"
-                      className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
-                    >
-                      Forgot password?
-                    </Link>
+                  <Link
+                    href="/forgotpassword"
+                    className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                  >
+                    Forgot password?
+                  </Link>
                     <button
                       type="button"
                       onClick={() => {

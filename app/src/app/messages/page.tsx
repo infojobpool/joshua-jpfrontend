@@ -64,6 +64,7 @@ export default function MessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [chats, setChats] = useState<ChatSummary[]>([])
+  const fetchChatsRef = useRef<(() => Promise<void>) | null>(null)
 
   useEffect(() => {
     if (!userId) {
@@ -146,7 +147,38 @@ export default function MessagesPage() {
       }
     };
 
-    fetchChats();
+    // Store fetchChats in ref so it can be accessed by event handlers
+    fetchChatsRef.current = fetchChats;
+    
+    // Check if we're returning from a chat and need to refresh
+    try {
+      const shouldRefresh = sessionStorage.getItem('messagesReturnFromChat');
+      if (shouldRefresh === '1') {
+        sessionStorage.removeItem('messagesReturnFromChat');
+        // Small delay to ensure page is ready
+        setTimeout(() => fetchChats(), 100);
+      } else {
+        fetchChats();
+      }
+    } catch {
+      fetchChats();
+    }
+    
+    // Refresh when page becomes visible (user returns from chat)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && fetchChatsRef.current) {
+        try {
+          const shouldRefresh = sessionStorage.getItem('messagesReturnFromChat');
+          if (shouldRefresh === '1') {
+            sessionStorage.removeItem('messagesReturnFromChat');
+            fetchChatsRef.current(); // Refresh the chat list
+          }
+        } catch {}
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
     // Restore scroll position if available
     try {
       const y = sessionStorage.getItem('messagesScrollY');
@@ -156,6 +188,10 @@ export default function MessagesPage() {
         }, 0);
       }
     } catch {}
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [userId, router]);
 
   const handleSignOut = () => {
