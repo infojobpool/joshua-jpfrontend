@@ -420,6 +420,25 @@ export function OffersSection({
     }
   };
 
+  // Check if payment is pending for this task
+  const checkPaymentPending = () => {
+    try {
+      const paymentData = sessionStorage.getItem("paymentData");
+      const paymentPageVisited = sessionStorage.getItem("payment_page_visited");
+      const pendingVerification = localStorage.getItem("pending_payment_verification");
+      
+      if (paymentData && paymentPageVisited && !pendingVerification) {
+        const data = JSON.parse(paymentData);
+        return data.taskId === task.id;
+      }
+    } catch (e) {
+      console.error("Error checking payment pending:", e);
+    }
+    return false;
+  };
+
+  const isPaymentPending = checkPaymentPending();
+
   // Show all offers to all users
   const visibleOffers = offers;
 
@@ -428,9 +447,9 @@ export function OffersSection({
   const hasLocalAccepted = selectedFromSession && currentUserId && selectedFromSession === String(currentUserId);
   const shouldBlockSubmit =
     task.status === "completed" ||
-    task.status === "in_progress" ||
-    isAssignedToMe ||
-    !!hasLocalAccepted ||
+    (task.status === "in_progress" && !isPaymentPending) || // Don't block if payment is pending
+    (isAssignedToMe && !isPaymentPending) || // Don't block if payment is pending
+    (!!hasLocalAccepted && !isPaymentPending) || // Don't block if payment is pending
     blockSubmitInitial;
 
 
@@ -609,7 +628,21 @@ export function OffersSection({
                 <p className="text-sm text-gray-700">{offer.message}</p>
                 {(offer.status === "accepted" || (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) || (selectedFromSession && selectedFromSession === offer.tasker.id)) && (
                   <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-green-100 text-green-700 px-3 py-1 text-xs font-medium">Selected</span>
+                    {isPaymentPending && selectedFromSession === offer.tasker.id ? (
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="rounded-full bg-yellow-100 text-yellow-700 px-3 py-1 text-xs font-medium border border-yellow-300">
+                          ⏳ Pending Payment
+                        </span>
+                        <button
+                          onClick={() => router.push("/payments")}
+                          className="text-xs text-blue-600 hover:text-blue-800 underline"
+                        >
+                          Complete Payment
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="rounded-full bg-green-100 text-green-700 px-3 py-1 text-xs font-medium">✓ Selected</span>
+                    )}
                   </div>
                 )}
               </div>
