@@ -2092,12 +2092,28 @@ export default function Dashboard() {
   const handleConfirmCancel = async () => {
     if (!selectedJobId) return;
 
+    // Check if cancellation reason is provided
+    if (!cancellationReason.trim()) {
+      toast.error("Please provide a reason for cancellation");
+      return;
+    }
+
     setCancelConfirmOpen(false);
 
     try {
-      const response = await axiosInstance.put(`/cancel-job/${selectedJobId}/`);
-      if (response.data.status_code === 200) {
-        toast.success("Task canceled successfully!");
+      // Use the new user-cancel endpoint with query parameters
+      const currentUserId = user?.id || userId;
+      const reason = encodeURIComponent(cancellationReason.trim());
+      
+      const response = await axiosInstance.put(
+        `/user-cancel-job/${selectedJobId}/?user_id=${currentUserId}&role=taskmaster&cancellation_reason=${reason}`
+      );
+      
+      if (response.data.status_code === 200 || response.status === 200) {
+        const refundMessage = response.data.refund_message || "";
+        toast.success(`Task canceled successfully! ${refundMessage}`);
+        
+        // Remove from posted tasks list
         setPostedTasks((prev) =>
           prev.map((task) =>
             task.id === selectedJobId
@@ -2108,10 +2124,13 @@ export default function Dashboard() {
       } else {
         toast.error(response.data.message || "Failed to cancel task");
       }
-    } catch (error) {
-      toast.error("An error occurred while canceling the task");
+    } catch (error: any) {
+      console.error("Taskmaster cancel error:", error);
+      const errMsg = error.response?.data?.detail || error.response?.data?.message || "An error occurred while canceling the task";
+      toast.error(errMsg);
     } finally {
       setSelectedJobId(null);
+      setCancellationReason(""); // Reset reason
     }
   };
 
@@ -2132,46 +2151,30 @@ export default function Dashboard() {
     
     setAssignedCancelOpen(false);
     
-    // Store cancellation reason in localStorage first (regardless of API success)
-    const cancellationData = {
-      taskId: selectedAssignedId,
-      reason: cancellationReason.trim(),
-      taskerName: user?.name || "Unknown",
-      cancelledAt: new Date().toISOString(),
-      timestamp: Date.now()
-    };
-    
     try {
-      const existingCancellations = JSON.parse(localStorage.getItem('taskerCancellations') || '[]');
-      existingCancellations.push(cancellationData);
-      localStorage.setItem('taskerCancellations', JSON.stringify(existingCancellations));
-      console.log("✅ Cancellation reason stored locally:", cancellationData);
-    } catch (error) {
-      console.error("Failed to store cancellation reason:", error);
-    }
-    
-    // Try to cancel via API (but don't fail if it doesn't work)
-    try {
-      let response;
-      try {
-        // Try the PUT endpoint first (more likely to work)
-        response = await axiosInstance.put(`/cancel-job/${selectedAssignedId}/`);
-      } catch (err) {
-        // If PUT fails, try POST
-        response = await axiosInstance.post(`/request-cancel-job/${selectedAssignedId}/`);
-      }
+      // Use the new user-cancel endpoint with query parameters
+      const currentUserId = user?.id || userId;
+      const reason = encodeURIComponent(cancellationReason.trim());
       
-      if (response.data.status_code === 200) {
-        toast.success("Task cancelled successfully with reason recorded");
+      const response = await axiosInstance.put(
+        `/user-cancel-job/${selectedAssignedId}/?user_id=${currentUserId}&role=tasker&cancellation_reason=${reason}`
+      );
+      
+      if (response.data.status_code === 200 || response.status === 200) {
+        const refundMessage = response.data.refund_message || "";
+        const cancellationFee = response.data.cancellation_fee || "";
+        
+        toast.success(`Task cancelled successfully! ${cancellationFee ? `Fee: ${cancellationFee}. ` : ''}${refundMessage}`);
+        
+        // Remove from assigned tasks list
         setAssignedTasks((prev) => prev.filter((t) => t.id !== selectedAssignedId));
       } else {
-        toast.success("Cancellation reason recorded. Task cancellation may need admin approval.");
-        setAssignedTasks((prev) => prev.filter((t) => t.id !== selectedAssignedId));
+        toast.error(response.data.message || "Failed to cancel task");
       }
-    } catch (error) {
-      console.error("API cancellation failed, but reason is saved locally:", error);
-      toast.success("Cancellation reason recorded. Task cancellation may need admin approval.");
-      setAssignedTasks((prev) => prev.filter((t) => t.id !== selectedAssignedId));
+    } catch (error: any) {
+      console.error("Tasker cancel error:", error);
+      const errMsg = error.response?.data?.detail || error.response?.data?.message || "An error occurred while canceling the task";
+      toast.error(errMsg);
     } finally {
       setSelectedAssignedId(null);
       setCancellationReason(""); // Reset the reason
@@ -3667,15 +3670,48 @@ export default function Dashboard() {
           confirmText="Delete"
           cancelText="Cancel"
         />
-        <ConfirmDialog
-          open={cancelConfirmOpen}
-          onOpenChange={setCancelConfirmOpen}
-          onConfirm={handleConfirmCancel}
-          title="Cancel Task"
-          description="Canceling this task will incur an 8% cancellation fee. Are you sure you want to proceed?"
-          confirmText="Yes, Cancel"
-          cancelText="No"
-        />
+        <Dialog open={cancelConfirmOpen} onOpenChange={setCancelConfirmOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Cancel Posted Task</DialogTitle>
+              <DialogDescription>
+                Canceling this task may incur an 8% cancellation fee (if payment was made). Please provide a reason for cancellation.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <label htmlFor="taskmaster-cancellation-reason" className="text-sm font-medium">
+                  Cancellation Reason *
+                </label>
+                <Textarea
+                  id="taskmaster-cancellation-reason"
+                  placeholder="Please explain why you need to cancel this task..."
+                  value={cancellationReason}
+                  onChange={(e) => setCancellationReason(e.target.value)}
+                  className="min-h-[100px]"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setCancelConfirmOpen(false);
+                  setCancellationReason("");
+                  setSelectedJobId(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleConfirmCancel}
+                variant="destructive"
+              >
+                Submit Cancellation
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <Dialog open={assignedCancelOpen} onOpenChange={setAssignedCancelOpen}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>

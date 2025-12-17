@@ -1350,28 +1350,46 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               onClick={async () => {
                 try {
                   setIsCancelling(true);
-                  // Try preferred endpoint first; fallback to existing cancel-job
-                  let resp;
-                  try {
-                    resp = await axiosInstance.post(`/request-cancel-job/${id}/`, {
-                      reason: cancelReason || "",
-                      requester_id: userId,
-                    });
-                  } catch (err) {
-                    resp = await axiosInstance.put(`/cancel-job/${id}/`, {
-                      reason: cancelReason || "",
-                    });
+                  
+                  // Check if cancellation reason is provided
+                  if (!cancelReason.trim()) {
+                    toast.error("Please provide a reason for cancellation");
+                    setIsCancelling(false);
+                    return;
                   }
-                  if (resp.data?.status_code === 200) {
-                    toast.success("Cancel request sent to admin");
+                  
+                  // Determine user role: taskmaster (poster) or tasker (assigned)
+                  const isTaskMaster = task?.poster?.id === userId;
+                  const isTasker = task?.assignedTasker?.id === userId;
+                  const role = isTaskMaster ? "taskmaster" : isTasker ? "tasker" : "unknown";
+                  
+                  if (role === "unknown") {
+                    toast.error("Unable to determine your role for this task");
+                    setIsCancelling(false);
+                    return;
+                  }
+                  
+                  // Use the new user-cancel endpoint
+                  const reason = encodeURIComponent(cancelReason.trim());
+                  const resp = await axiosInstance.put(
+                    `/user-cancel-job/${id}/?user_id=${userId}&role=${role}&cancellation_reason=${reason}`
+                  );
+                  
+                  if (resp.data?.status_code === 200 || resp.status === 200) {
+                    const refundMessage = resp.data.refund_message || "";
+                    const cancellationFee = resp.data.cancellation_fee || "";
+                    
+                    toast.success(`Task cancelled successfully! ${cancellationFee ? `Fee: ${cancellationFee}. ` : ''}${refundMessage}`);
                     setShowCancelDialog(false);
                     setCancelReason("");
                     setTask((prev) => (prev ? { ...prev, status: "canceled" } : prev));
                   } else {
-                    toast.error(resp.data?.message || "Failed to send cancel request");
+                    toast.error(resp.data?.message || "Failed to cancel task");
                   }
                 } catch (e: any) {
-                  toast.error(e?.response?.data?.message || "Failed to send cancel request");
+                  console.error("Task cancel error:", e);
+                  const errMsg = e?.response?.data?.detail || e?.response?.data?.message || "Failed to cancel task";
+                  toast.error(errMsg);
                 } finally {
                   setIsCancelling(false);
                 }
