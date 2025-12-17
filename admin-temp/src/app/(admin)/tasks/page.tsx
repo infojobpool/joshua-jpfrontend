@@ -76,6 +76,12 @@ interface Job {
   status: boolean;
   deletion_status: boolean;
   job_completion_status: number;
+  cancelled_by_user_id?: string;
+  cancelled_by_role?: string;
+  cancellation_reason?: string;
+  cancelled_at?: string;
+  refund_status?: string;
+  refund_date?: string;
 }
 
 interface Task {
@@ -96,6 +102,10 @@ interface Task {
   completedAt?: string;
   cancelledAt?: string;
   cancellationReason?: string;
+  cancelledByUserId?: string;
+  cancelledByRole?: string;
+  refundStatus?: string;
+  refundDate?: string;
   deletion_status: boolean;
 }
 
@@ -171,13 +181,16 @@ export default function TasksPage() {
             : null,
           offers: 0,
           completedAt: job.job_completion_status === 1 ? new Date().toISOString() : undefined,
-          cancelledAt: job.status ? new Date().toISOString() : undefined,
-          cancellationReason: undefined,
+          cancelledAt: job.cancelled_at || (job.status ? new Date().toISOString() : undefined),
+          cancellationReason: job.cancellation_reason,
+          cancelledByUserId: job.cancelled_by_user_id,
+          cancelledByRole: job.cancelled_by_role,
+          refundStatus: job.refund_status,
+          refundDate: job.refund_date,
           deletion_status: job.deletion_status || false,
         }));
-        // Exclude cancelled tasks from the main Tasks list (shown in separate page)
-        const visibleTasks = mappedTasks.filter((t) => t.status !== "Cancelled");
-        setTasks(visibleTasks);
+        // Show all tasks including cancelled ones
+        setTasks(mappedTasks);
         // Fetch bid counts for each task (non-blocking for initial render)
         // Limit to first 20 tasks to reduce API load
         try {
@@ -247,8 +260,12 @@ export default function TasksPage() {
                 : null,
               offers: 0,
               completedAt: job.job_completion_status === 1 ? new Date().toISOString() : undefined,
-              cancelledAt: job.status ? new Date().toISOString() : undefined,
-              cancellationReason: undefined,
+              cancelledAt: job.cancelled_at || (job.status ? new Date().toISOString() : undefined),
+              cancellationReason: job.cancellation_reason,
+              cancelledByUserId: job.cancelled_by_user_id,
+              cancelledByRole: job.cancelled_by_role,
+              refundStatus: job.refund_status,
+              refundDate: job.refund_date,
               deletion_status: job.deletion_status || false,
             };
             setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
@@ -280,8 +297,22 @@ export default function TasksPage() {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
+  // Refund management handler
+  const handleRefund = async (taskId: string, refundStatus: "approved" | "denied") => {
+    try {
+      await axiosInstance.patch(`/job-refund-status/${taskId}/?refund_status=${refundStatus}`);
+      toast.success(`Refund ${refundStatus === "approved" ? "approved" : "denied"} successfully`);
+      // Refresh tasks
+      await fetchTasks();
+    } catch (error: any) {
+      console.error("Failed to update refund status:", error);
+      toast.error(error.response?.data?.message || "Failed to update refund status");
+    }
+  };
+
   // Calculate statistics
   const openTasks = tasks.filter((t) => t.status === "Open").length;
+  const cancelledTasks = tasks.filter((t) => t.status === "Cancelled").length;
   const inProgressTasks = tasks.filter((t) => t.status === "In Progress").length;
   const completedTasks = tasks.filter((t) => t.status === "Completed").length;
   const cancelledTasks = tasks.filter((t) => t.status === "Cancelled").length;
@@ -485,8 +516,12 @@ export default function TasksPage() {
                 : null,
               offers: 0,
               completedAt: job.job_completion_status === 1 ? new Date().toISOString() : undefined,
-              cancelledAt: job.status ? new Date().toISOString() : undefined,
-              cancellationReason: undefined,
+              cancelledAt: job.cancelled_at || (job.status ? new Date().toISOString() : undefined),
+              cancellationReason: job.cancellation_reason,
+              cancelledByUserId: job.cancelled_by_user_id,
+              cancelledByRole: job.cancelled_by_role,
+              refundStatus: job.refund_status,
+              refundDate: job.refund_date,
               deletion_status: job.deletion_status || false,
             };
             setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
@@ -691,13 +726,29 @@ export default function TasksPage() {
                     <Badge variant="outline">{task.category}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant={getStatusBadgeVariant(task.status)}
-                      className="flex items-center w-fit"
-                    >
-                      {getStatusIcon(task.status)}
-                      {task.status}
-                    </Badge>
+                    <div className="flex flex-col gap-1">
+                      <Badge
+                        variant={getStatusBadgeVariant(task.status)}
+                        className="flex items-center w-fit"
+                      >
+                        {getStatusIcon(task.status)}
+                        {task.status}
+                      </Badge>
+                      {task.status === "Cancelled" && task.refundStatus && (
+                        <Badge
+                          variant={
+                            task.refundStatus === "approved"
+                              ? "default"
+                              : task.refundStatus === "denied"
+                              ? "destructive"
+                              : "secondary"
+                          }
+                          className="text-xs capitalize w-fit"
+                        >
+                          Refund: {task.refundStatus}
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
                     <div className="flex items-center gap-2">
@@ -839,6 +890,22 @@ export default function TasksPage() {
                                 Cancel Task
                               </DropdownMenuItem>
                             )}
+                          {task.status === "Cancelled" && task.refundStatus === "pending" && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleRefund(task.id, "approved")}
+                              >
+                                ✓ Approve Refund
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => handleRefund(task.id, "denied")}
+                              >
+                                ✗ Deny Refund
+                              </DropdownMenuItem>
+                            </>
+                          )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive"
@@ -995,16 +1062,88 @@ export default function TasksPage() {
 
                                 {selectedTask.status === "Cancelled" &&
                                   selectedTask.cancelledAt && (
-                                    <div>
-                                      <Label>Cancelled On</Label>
-                                      <div className="flex items-center gap-2 mt-2">
-                                        <AlertCircle className="h-4 w-4 text-red-500" />
-                                        <span>{selectedTask.cancelledAt}</span>
+                                    <div className="space-y-3 p-4 border rounded-md bg-red-50">
+                                      <div>
+                                        <Label>Cancelled On</Label>
+                                        <div className="flex items-center gap-2 mt-1">
+                                          <AlertCircle className="h-4 w-4 text-red-500" />
+                                          <span className="text-sm">{formatDate(selectedTask.cancelledAt)}</span>
+                                        </div>
                                       </div>
+
+                                      {selectedTask.cancelledByRole && (
+                                        <div>
+                                          <Label>Cancelled By</Label>
+                                          <div className="mt-1">
+                                            <Badge variant="outline" className="capitalize">
+                                              {selectedTask.cancelledByRole}
+                                            </Badge>
+                                            {selectedTask.cancelledByUserId && (
+                                              <span className="text-xs text-muted-foreground ml-2">
+                                                ID: {selectedTask.cancelledByUserId}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+
                                       {selectedTask.cancellationReason && (
-                                        <div className="mt-1 text-sm text-muted-foreground">
-                                          Reason:{" "}
-                                          {selectedTask.cancellationReason}
+                                        <div>
+                                          <Label>Cancellation Reason</Label>
+                                          <div className="mt-1 text-sm p-2 bg-white rounded border">
+                                            {selectedTask.cancellationReason}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {selectedTask.refundStatus && (
+                                        <div>
+                                          <Label>Refund Status</Label>
+                                          <div className="mt-1">
+                                            <Badge
+                                              variant={
+                                                selectedTask.refundStatus === "approved"
+                                                  ? "default"
+                                                  : selectedTask.refundStatus === "denied"
+                                                  ? "destructive"
+                                                  : "secondary"
+                                              }
+                                              className="capitalize"
+                                            >
+                                              {selectedTask.refundStatus === "approved" && "✓ "}
+                                              {selectedTask.refundStatus === "denied" && "✗ "}
+                                              {selectedTask.refundStatus}
+                                            </Badge>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {selectedTask.refundDate && (
+                                        <div>
+                                          <Label>Refund Decision Date</Label>
+                                          <div className="mt-1 text-sm">
+                                            {formatDate(selectedTask.refundDate)}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {selectedTask.refundStatus === "pending" && (
+                                        <div className="flex gap-2 pt-2">
+                                          <Button
+                                            size="sm"
+                                            onClick={() => handleRefund(selectedTask.id, "approved")}
+                                            disabled={isLoading}
+                                          >
+                                            ✓ Approve Refund
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            onClick={() => handleRefund(selectedTask.id, "denied")}
+                                            disabled={isLoading}
+                                          >
+                                            ✗ Deny Refund
+                                          </Button>
                                         </div>
                                       )}
                                     </div>
