@@ -211,6 +211,31 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
   const [images, setImages] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [minDate, setMinDate] = useState("");
+
+  // Check if payment is pending for this task
+  const checkPaymentPending = () => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const paymentData = sessionStorage.getItem("paymentData");
+      const paymentPageVisited = sessionStorage.getItem("payment_page_visited");
+      const pendingVerification = localStorage.getItem("pending_payment_verification");
+      
+      if (paymentData && paymentPageVisited && !pendingVerification) {
+        const data = JSON.parse(paymentData);
+        return data.taskId === task.id;
+      }
+    } catch (e) {
+      console.error("Error checking payment pending:", e);
+    }
+    return false;
+  };
+
+  const isPaymentPending = checkPaymentPending();
+  
+  // Override status display if payment is pending
+  const displayStatus = isPaymentPending && task.status === "in_progress" 
+    ? "pending_payment" 
+    : task.status;
   
     useEffect(() => {
       const today = new Date();
@@ -315,7 +340,7 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
                 {task.title}
               </CardTitle>
             )}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-1.5 text-gray-600">
                 <div className="p-1 rounded-full bg-blue-100">
                   <Clock className="h-3 w-3 text-blue-600" />
@@ -323,33 +348,47 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
                 <span className="text-sm font-medium">Posted {task.postedAt}</span>
               </div>
               <Badge 
-                variant={task.status === "in_progress" ? "default" : "outline"}
+                variant={displayStatus === "in_progress" ? "default" : "outline"}
                 className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                  task.status === "in_progress"
+                  displayStatus === "pending_payment"
+                    ? "bg-gradient-to-r from-yellow-400 to-amber-500 text-white shadow-md border border-yellow-300"
+                    : displayStatus === "in_progress"
                     ? "bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md"
-                    : task.status === "completed"
+                    : displayStatus === "completed"
                     ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md"
-                    : task.status === "deleted"
+                    : displayStatus === "deleted"
                     ? "bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md"
-                    : task.status === "canceled"
+                    : displayStatus === "canceled"
                     ? "bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-md"
-                    : task.status === "requested"
+                    : displayStatus === "requested"
                     ? "bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-md"
                     : "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border-blue-200"
                 }`}
               >
-                {task.status === "in_progress" 
+                {displayStatus === "pending_payment"
+                  ? "⏳ Pending Payment"
+                  : displayStatus === "in_progress" 
                   ? "🚀 In Progress" 
-                  : task.status === "completed"
+                  : displayStatus === "completed"
                   ? "✅ Completed"
-                  : task.status === "deleted"
+                  : displayStatus === "deleted"
                   ? "🗑️ Deleted"
-                  : task.status === "canceled"
+                  : displayStatus === "canceled"
                   ? "❌ Canceled"
-                  : task.status === "requested"
+                  : displayStatus === "requested"
                   ? "📝 Requested"
                   : "📋 Open"}
               </Badge>
+              {isPaymentPending && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push("/payments")}
+                  className="h-6 px-3 text-xs bg-yellow-50 border-yellow-300 hover:bg-yellow-100 text-yellow-700 font-semibold"
+                >
+                  💳 Complete Payment
+                </Button>
+              )}
             </div>
           </div>
           {isTaskPoster && !isEditing && (
