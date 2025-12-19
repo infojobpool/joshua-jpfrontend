@@ -67,22 +67,16 @@ export default function SignInPage() {
 
     try {
       setIsLoading(true);
-      // Send JSON as backend expects; CORS should be allowed now
-      const r = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || '/api/v1'}/login/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email.trim().toLowerCase(),
-          password: formData.password,
-        }),
-        credentials: 'omit',
-        redirect: 'follow',
+      
+      // Use axiosInstance which has timeout configured (60s)
+      const response = await axiosInstance.post('/login/', {
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
       });
-      const response = { data: await r.json(), status: r.status } as any;
 
       if (response.data.status_code === 200 && response.data.data) {
         const { token, user } = response.data.data;
-        console.log(user);
+        console.log("✅ Login successful, user data:", user);
 
         if (!token || !user) {
           throw new Error("Invalid response: Missing token or user data");
@@ -105,10 +99,26 @@ export default function SignInPage() {
         toast.error(errorMessage);
       }
     } catch (err: unknown) {
+      console.error("❌ Login error:", err);
+      
       if (axios.isAxiosError(err)) {
         const axiosError = err as AxiosError<{ message?: string }>;
         const status = axiosError.response?.status;
         const errorMessage = axiosError.response?.data?.message || "";
+        
+        // Handle timeout errors
+        if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+          toast.error("Request timed out. The server may be slow. Please try again.");
+          setIsLoading(false);
+          return;
+        }
+        
+        // Handle network errors
+        if (!err.response) {
+          toast.error("Network error. Please check your internet connection and try again.");
+          setIsLoading(false);
+          return;
+        }
 
         if (status === 404) {
           toast.error(errorMessage || "User not found.");
@@ -119,12 +129,19 @@ export default function SignInPage() {
               errorMessage.toLowerCase().includes("email") && errorMessage.toLowerCase().includes("not")) {
             setShowResendVerification(true);
           }
-          toast.error(errorMessage || "An error occurred while logging in");
+          toast.error(errorMessage || "Invalid email or password");
+        } else if (status >= 500) {
+          toast.error("Server error. Please try again later.");
         } else {
           toast.error(errorMessage || "An error occurred while logging in");
         }
       } else {
-        toast.error("Something went wrong");
+        const error = err as Error;
+        if (error.message?.includes('timeout') || error.message?.includes('aborted')) {
+          toast.error("Request timed out. Please try again.");
+        } else {
+          toast.error(error.message || "Something went wrong. Please try again.");
+        }
       }
     } finally {
       setIsLoading(false);

@@ -7,7 +7,7 @@ import { useIsMobile } from "./MobileWrapper";
 import { MobileForm, MobileInput, MobileButton } from "./MobileForm";
 import { MobileCard, MobileCardHeader, MobileCardContent } from "./MobileCard";
 import useStore from "@/lib/Zustand";
-import mobileAxiosInstance from "@/lib/mobileAxiosInstance";
+import axiosInstance from "@/lib/axiosInstance";
 import { toast, Toaster } from "sonner";
 
 export function MobileSignIn() {
@@ -28,15 +28,11 @@ export function MobileSignIn() {
     
     try {
       const normalizedEmail = (formData.email || "").trim().toLowerCase();
-      // Align mobile payload with desktop (JSON) and use absolute HTTPS base if provided
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || '/api/v1';
-      const response = await fetch(`${apiBase}/login/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: normalizedEmail, password: formData.password }),
-        credentials: 'omit',
-        redirect: 'follow'
-      }).then(async (r) => ({ status: r.status, data: await r.json() }));
+      // Use axiosInstance which has timeout configured (60s)
+      const response = await axiosInstance.post('/login/', {
+        email: normalizedEmail,
+        password: formData.password,
+      });
       
       if (response.data && response.data.status_code === 200 && response.data.data) {
         const { token, user } = response.data.data;
@@ -64,17 +60,29 @@ export function MobileSignIn() {
         toast.error(errorMessage);
       }
     } catch (error: any) {
-      // Surface actionable debug info in dev for mobile
+      console.error('[mobile][login] error:', error);
+      
+      // Handle timeout errors
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        toast.error("Request timed out. The server may be slow. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+      
+      // Handle network errors
+      if (!error.response) {
+        toast.error("Network error. Please check your internet connection and try again.");
+        setIsLoading(false);
+        return;
+      }
+      
       try {
         const status = error?.response?.status;
         const dataMsg = error?.response?.data?.message;
         const networkMsg = error?.message;
-        const url = (error?.config?.baseURL || "") + (error?.config?.url || "");
         const detail = status
           ? `Status ${status}${dataMsg ? `: ${dataMsg}` : ''}`
           : networkMsg || 'Unknown error';
-        // eslint-disable-next-line no-console
-        console.error('[mobile][login] error', { status, url, data: error?.response?.data, networkMsg });
         
         // Check if error is related to email verification
         if (status === 403 || status === 401 || (dataMsg && (
@@ -85,7 +93,13 @@ export function MobileSignIn() {
           setShowResendVerification(true);
         }
         
-        toast.error(detail);
+        if (status === 404) {
+          toast.error(dataMsg || "User not found.");
+        } else if (status >= 500) {
+          toast.error("Server error. Please try again later.");
+        } else {
+          toast.error(detail);
+        }
       } catch (_) {
         toast.error('Login failed. Please try again.');
       }
