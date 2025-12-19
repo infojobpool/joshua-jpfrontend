@@ -227,7 +227,7 @@ export default function Dashboard() {
       // Use fetch API directly to bypass axios timeout issues
       const token = localStorage.getItem('token');
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout (Render.com can be slow)
 
       const fetchResponse = await fetch(`${API_BASE}/get-all-task-orders/`, {
         method: 'GET',
@@ -263,7 +263,8 @@ export default function Dashboard() {
     } catch (error) {
       // Handle AbortError separately (don't show error for timeouts)
       if ((error as any)?.name === 'AbortError') {
-        console.log("⏰ Fetch task orders was aborted (timeout)");
+        console.log("⏰ Fetch task orders was aborted (timeout after 90s) - backend may be slow");
+        // Don't show error to user - this is expected for slow backends
         return;
       }
       console.error("Failed to fetch task orders:", error);
@@ -445,7 +446,7 @@ export default function Dashboard() {
           return;
         }
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000);
+        const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout
         const res = await fetch(`${API_BASE}/get-all-categories/`, {
           method: 'GET',
           headers: {
@@ -594,7 +595,7 @@ export default function Dashboard() {
         
         // Fallback to fetch API
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout // 20 second timeout
 
         const fetchResponse = await fetch(`${API_BASE}/get-all-categories/`, {
           method: 'GET',
@@ -642,7 +643,7 @@ export default function Dashboard() {
       } catch (error: any) {
         // Handle AbortError separately (don't show error for timeouts)
         if (error?.name === 'AbortError') {
-          console.log("⏰ Fetch categories was aborted (timeout)");
+          console.log("⏰ Fetch categories was aborted (timeout after 90s) - backend may be slow");
         } else {
           console.error("Failed to fetch categories:", error);
           console.error("Error details:", error.response?.data || error.message);
@@ -678,7 +679,7 @@ export default function Dashboard() {
         // Use the faster get-all-jobs-admin API with better filtering
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout
 
         const fetchResponse = await fetch(`${API_BASE}/get-user-jobs/${userId || effectiveUserId}/`, {
           method: 'GET',
