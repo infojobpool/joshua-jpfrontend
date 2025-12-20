@@ -637,18 +637,19 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               ok: true,
               json: () => Promise.resolve(axiosResponse.data)
             } as any;
-          } catch (error) {
-            console.warn("Failed to fetch task bids, falling back to user bids:", error);
-            // Fallback to user bids if task bids endpoint fails
-            response = await fetch(`https://api.jobpool.in/api/v1/get-user-bids/${userId}/`, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-              },
-              credentials: 'omit',
-              signal: controller.signal
+          } catch (error: any) {
+            console.error("❌ Failed to fetch task bids endpoint /get-bids/:", {
+              error: error.message,
+              status: error.response?.status,
+              url: `/get-bids/${id}/`
             });
+            // DON'T fallback to user bids for poster - that would show their own bids
+            // Instead, set empty bids and show error
+            console.warn("⚠️ Cannot fetch task bids - endpoint not available. Showing empty bids.");
+            setOffers([]);
+            setBids([]);
+            setBidsLoading(false);
+            return; // Exit early - don't process user bids
           }
         } else {
           // Non-poster: try to fetch all bids for this task (amounts hidden in UI)
@@ -691,12 +692,21 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
         let taskBids: Bid[] = [];
         if (isTaskPoster) {
-          // For task poster, use all bids directly (or filter if fallback was used)
-          taskBids = data.data;
+          // For task poster, use all bids directly from the task bids endpoint
+          // The data structure might be data.data.bids or data.data
+          if (Array.isArray(data.data?.bids)) {
+            taskBids = data.data.bids;
+          } else if (Array.isArray(data.data)) {
+            taskBids = data.data;
+          } else if (Array.isArray(data.bids)) {
+            taskBids = data.bids;
+          } else {
+            taskBids = [];
+          }
           console.log("Fetched all task bids for poster:", taskBids);
         } else {
           // For non-poster, filter user's bids for this task
-          const allUserBids: Bid[] = data.data;
+          const allUserBids: Bid[] = Array.isArray(data.data) ? data.data : [];
           taskBids = allUserBids.filter((bid) => bid.job_id === id);
           console.log("Filtered user's task bids:", taskBids);
         }
@@ -719,7 +729,35 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         }
 
         // Map all task bids to offers
-        const newOffers: Offer[] = (taskBids || []).map((bid: Bid, index: number) => ({
+        // Filter out bids where the bidder is the same as the poster (users can't bid on their own tasks)
+        const posterId = task?.poster?.id;
+        const validBids = (taskBids || []).filter((bid: Bid) => {
+          const bidderId = String(bid.bidder_id || "").trim();
+          const posterIdStr = String(posterId || "").trim();
+          
+          // Log bid details for debugging
+          console.log("🔍 Bid mapping:", {
+            bid_id: bid.bid_id || bid.id,
+            bidder_id: bid.bidder_id,
+            bidder_name: bid.bidder_name,
+            poster_id: posterId,
+            is_same: bidderId === posterIdStr,
+            task_id: id
+          });
+          
+          // Exclude bids where bidder is the poster
+          if (bidderId && posterIdStr && bidderId === posterIdStr) {
+            console.warn("⚠️ Excluding bid: bidder is the same as poster", {
+              bidder_id: bidderId,
+              bidder_name: bid.bidder_name,
+              poster_id: posterIdStr
+            });
+            return false;
+          }
+          return true;
+        });
+        
+        const newOffers: Offer[] = validBids.map((bid: Bid, index: number) => ({
           id: `bid${index + 1}`,
           tasker: {
             id: bid.bidder_id,
@@ -735,6 +773,17 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           createdAt: bid.created_at || new Date().toISOString(),
           status: bid.status || "pending",
         }));
+        
+        console.log("✅ Mapped offers (after filtering):", {
+          total_bids: taskBids?.length || 0,
+          filtered_bids: validBids.length,
+          offers: newOffers.map(o => ({
+            id: o.id,
+            tasker_id: o.tasker.id,
+            tasker_name: o.tasker.name,
+            amount: o.amount
+          }))
+        });
 
         setOffers(newOffers);
         setBids(taskBids);

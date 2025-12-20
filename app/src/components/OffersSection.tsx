@@ -465,8 +465,38 @@ export function OffersSection({
 
   const isPaymentPending = checkPaymentPending();
 
-  // Show all offers to all users
-  const visibleOffers = offers;
+  // Deduplicate offers: If same user has multiple offers, keep only the most recent one
+  // This prevents showing duplicate offers from the same tasker
+  const deduplicatedOffers = offers.reduce((acc: Offer[], current: Offer) => {
+    const existingIndex = acc.findIndex(
+      (offer) => offer.tasker.id === current.tasker.id
+    );
+    
+    if (existingIndex === -1) {
+      // First offer from this user - add it
+      acc.push(current);
+    } else {
+      // User already has an offer - keep the most recent one (or accepted one)
+      const existing = acc[existingIndex];
+      
+      // Priority: accepted > most recent
+      if (current.status === "accepted" && existing.status !== "accepted") {
+        acc[existingIndex] = current; // Replace with accepted one
+      } else if (existing.status !== "accepted") {
+        // If neither is accepted, keep the most recent one
+        const currentDate = new Date(current.createdAt).getTime();
+        const existingDate = new Date(existing.createdAt).getTime();
+        if (currentDate > existingDate) {
+          acc[existingIndex] = current; // Replace with more recent one
+        }
+      }
+    }
+    
+    return acc;
+  }, []);
+
+  // Show all offers to all users (after deduplication)
+  const visibleOffers = deduplicatedOffers;
 
   // Prevent brief flicker of the submit form on assigned/in-progress tasks
   const isAssignedToMe = !!(currentUserId && task.assignedTasker && task.assignedTasker.id === currentUserId);
