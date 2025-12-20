@@ -1448,31 +1448,31 @@ export default function Dashboard() {
                 postedAtISO: postedAtISO,
                 dueDate: job.job_due_date || job.dueDate
                   ? new Date(job.job_due_date || job.dueDate).toLocaleDateString("en-GB")
-                  : "Unknown",
-                offers: job.offers?.length || 0,
+              : "Unknown",
+            offers: job.offers?.length || 0,
                 posted_by: job.posted_by || job.postedBy || "Unknown",
                 category: job.job_category || job.category || "general",
                 job_completion_status: job.job_completion_status?.toString() || job.status?.toString() || undefined,
-                deletion_status: job.deletion_status || false,
+            deletion_status: job.deletion_status || false,
                 cancel_status: isCancelled || (job.cancel_status ?? false),
                 cancelled_by_role: job.cancelled_by_role || job.cancelled_by || undefined,
                 cancellation_reason: job.cancellation_reason || job.cancellationReason || undefined,
                 cancelled_at: job.cancelled_at || job.cancelledAt || undefined,
                 cancelled: isCancelled,
                 assignedToMe: true, // Mark as assigned to current user
-                images: job.job_images?.urls?.length
-                  ? job.job_images.urls.map((url: string, index: number) => ({
-                      id: `img${index + 1}`,
-                      url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
-                      alt: `Job image ${index + 1}`,
-                    }))
+            images: job.job_images?.urls?.length
+              ? job.job_images.urls.map((url: string, index: number) => ({
+                  id: `img${index + 1}`,
+                  url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
+                  alt: `Job image ${index + 1}`,
+                }))
                   : job.images?.length
                   ? job.images.map((img: any, index: number) => ({
                       id: `img${index + 1}`,
                       url: typeof img === "string" ? img : img.url || "/images/placeholder.svg",
                       alt: `Job image ${index + 1}`,
                     }))
-                  : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+              : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
               } as Task;
             });
           
@@ -1874,7 +1874,7 @@ export default function Dashboard() {
                 postedAt: (() => {
                   const raw = job.job_due_date || job.created_at || job.timestamp || job.postedAt;
                   try {
-                    return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
+                  return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
                   } catch {
                     return typeof raw === "string" && raw ? raw : "Unknown";
                   }
@@ -1885,7 +1885,7 @@ export default function Dashboard() {
                 completedDate: jobStatus === "completed" ? (() => {
                   const raw = job.updated_at || job.completed_at || job.completed_date;
                   try {
-                    return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
+                  return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
                   } catch {
                     return typeof raw === "string" && raw ? raw : "Unknown";
                   }
@@ -1931,29 +1931,18 @@ export default function Dashboard() {
 
             // Include ONLY completed tasks that were assigned to me (tasker completed tasks)
             // Exclude tasks posted by me (taskmaster tasks) - those belong in "My Tasks" tab
+            // Use lenient filter: include all completed tasks EXCEPT those definitely posted by me
             completedForMe = tasks.filter((t) => {
               const isCompleted = t.status === "completed";
               
-              // Only include if:
-              // 1. Task is completed
-              // 2. Task was assigned to me (assignedToMe === true)
-              // 3. Task was NOT posted by me (exclude taskmaster's own tasks)
-              if (isCompleted && t.assignedToMe && !t._posterIsMe) {
-                return true;
+              if (!isCompleted) {
+                return false;
               }
               
-              // Log excluded tasks for debugging
-              if (isCompleted && !t.assignedToMe) {
-                console.log("⚠️ Excluding completed task (not assigned to me):", {
-                  id: t.id,
-                  title: t.title,
-                  assignedToMe: t.assignedToMe,
-                  _posterIsMe: t._posterIsMe,
-                  status: t.status
-                });
-              }
-              
-              if (isCompleted && t._posterIsMe) {
+              // Exclude ONLY tasks that were definitely posted by me (taskmaster tasks)
+              // Include everything else (even if assignedToMe flag is missing)
+              // This ensures we don't lose valid completed tasks due to missing flags
+              if (t._posterIsMe === true) {
                 console.log("⚠️ Excluding completed task (posted by me - belongs in My Tasks):", {
                   id: t.id,
                   title: t.title,
@@ -1961,9 +1950,11 @@ export default function Dashboard() {
                   _posterIsMe: t._posterIsMe,
                   status: t.status
                 });
+                return false;
               }
               
-              return false;
+              // Include all other completed tasks (assigned to me, or flags unclear)
+              return true;
             });
             
             console.log(`✅ Found ${completedForMe.length} completed tasks from API (assigned: ${tasks.filter(t => t.status === "completed" && t.assignedToMe).length}, posted: ${tasks.filter(t => t.status === "completed" && t._posterIsMe).length})`);
@@ -3706,9 +3697,9 @@ export default function Dashboard() {
                           </div>
                         </div>
                         {!isCancelled ? (
-                          <Badge className="bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs px-2 py-1">
-                            🚀 In Progress
-                          </Badge>
+                        <Badge className="bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs px-2 py-1">
+                          🚀 In Progress
+                        </Badge>
                         ) : (
                           <Badge variant="outline" className="border-gray-400 text-gray-600 font-semibold text-xs px-2 py-1">
                             ❌ Cancelled
@@ -3772,34 +3763,34 @@ export default function Dashboard() {
                           </>
                         ) : (
                           <>
-                            <Link href={`/tasks/${task.id}`} className="shrink-0" onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); } catch {} }}>
-                              <Button variant="outline" className={`w-auto border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-lg">👁️</span>
-                                  <span>View Details</span>
-                                </div>
-                              </Button>
-                            </Link>
-                            <Button
-                              variant="outline"
-                              className={`shrink-0 w-auto border-2 border-red-300 hover:border-red-400 text-red-600 hover:text-red-700 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}
-                              onClick={() => handleAssignedCancelClick(task.id)}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="text-lg">❌</span>
-                                <span>Cancel</span>
-                              </div>
-                            </Button>
-                            <Button
-                              className={`shrink-0 w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}
-                              onClick={() => handleComplete(task.id)}
-                              disabled={completingTaskId === task.id}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="text-lg">✅</span>
-                                <span>Mark as Complete</span>
-                              </div>
-                            </Button>
+                        <Link href={`/tasks/${task.id}`} className="shrink-0" onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); } catch {} }}>
+                          <Button variant="outline" className={`w-auto border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}>
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">👁️</span>
+                              <span>View Details</span>
+                            </div>
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="outline"
+                          className={`shrink-0 w-auto border-2 border-red-300 hover:border-red-400 text-red-600 hover:text-red-700 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}
+                          onClick={() => handleAssignedCancelClick(task.id)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">❌</span>
+                            <span>Cancel</span>
+                          </div>
+                        </Button>
+                        <Button
+                          className={`shrink-0 w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}
+                          onClick={() => handleComplete(task.id)}
+                          disabled={completingTaskId === task.id}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">✅</span>
+                            <span>Mark as Complete</span>
+                          </div>
+                        </Button>
                           </>
                         )}
                       </div>
