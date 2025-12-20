@@ -1163,28 +1163,42 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   useEffect(() => {
     if (!id || !userId) return;
     
-    const checkPendingPayment = () => {
+    const checkPendingPayment = async () => {
       try {
         const paymentData = sessionStorage.getItem("paymentData");
         const paymentPageVisited = sessionStorage.getItem("payment_page_visited");
         const pendingVerification = localStorage.getItem("pending_payment_verification");
         
-        if (paymentData && paymentPageVisited && !pendingVerification) {
+        if (paymentData && paymentPageVisited) {
           const data = JSON.parse(paymentData);
-          // If payment data exists for this task but no verification happened
+          // If payment data exists for this task
           if (data.taskId === id) {
-            console.warn("⚠️ Payment was not completed for task:", id);
-            setIsPaymentPending(true); // Set state to disable messaging
-            toast.error("⚠️ Payment was not completed. Please complete payment to confirm the assignment.", {
-              duration: 6000,
-              action: {
-                label: "Complete Payment",
-                onClick: () => router.push("/payments"),
-              },
-            });
+            // Check if payment is actually pending by verifying task status
+            // If task is in_progress or has assignedTasker, payment was completed
+            if (task?.status === "in_progress" || task?.assignedTasker) {
+              // Payment was completed - clear the flags
+              console.log("✅ Payment completed for task:", id, "- clearing flags");
+              sessionStorage.removeItem("paymentData");
+              sessionStorage.removeItem("payment_page_visited");
+              localStorage.removeItem("pending_payment_verification");
+              setIsPaymentPending(false);
+              return; // Don't show toast
+            }
             
-            // Don't clear immediately - let user complete payment
-            // The payment page will clear these on successful payment
+            // Only show warning if pendingVerification exists (payment not verified)
+            if (pendingVerification) {
+              console.warn("⚠️ Payment verification pending for task:", id);
+              setIsPaymentPending(true); // Set state to disable messaging
+              toast.error("⚠️ Payment was not completed. Please complete payment to confirm the assignment.", {
+                duration: 6000,
+                action: {
+                  label: "Complete Payment",
+                  onClick: () => router.push("/payments"),
+                },
+              });
+            } else {
+              setIsPaymentPending(false);
+            }
           } else {
             setIsPaymentPending(false);
           }

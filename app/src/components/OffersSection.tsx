@@ -423,13 +423,39 @@ export function OffersSection({
   // Check if payment is pending for this task
   const checkPaymentPending = () => {
     try {
+      // If task is already in_progress, payment was completed - don't show pending
+      if (task.status === "in_progress" || task.assignedTasker) {
+        // Clear old payment flags since payment is complete
+        try {
+          const paymentData = sessionStorage.getItem("paymentData");
+          if (paymentData) {
+            const data = JSON.parse(paymentData);
+            if (data.taskId === task.id) {
+              sessionStorage.removeItem("paymentData");
+              sessionStorage.removeItem("payment_page_visited");
+              localStorage.removeItem("pending_payment_verification");
+            }
+          }
+        } catch {}
+        return false; // Payment is complete
+      }
+      
       const paymentData = sessionStorage.getItem("paymentData");
       const paymentPageVisited = sessionStorage.getItem("payment_page_visited");
       const pendingVerification = localStorage.getItem("pending_payment_verification");
       
-      if (paymentData && paymentPageVisited && !pendingVerification) {
+      // Payment is pending if:
+      // 1. paymentData exists for this task
+      // 2. payment_page_visited flag exists
+      // 3. pending_payment_verification exists (payment not verified yet)
+      // AND task is not yet in_progress
+      if (paymentData && paymentPageVisited) {
         const data = JSON.parse(paymentData);
-        return data.taskId === task.id;
+        if (data.taskId === task.id) {
+          // If pendingVerification exists, payment is still pending
+          // If task is in_progress, payment is complete
+          return !!pendingVerification && task.status !== "in_progress";
+        }
       }
     } catch (e) {
       console.error("Error checking payment pending:", e);

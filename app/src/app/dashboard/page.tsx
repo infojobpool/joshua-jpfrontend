@@ -335,22 +335,75 @@ export default function Dashboard() {
   useEffect(() => {
     if (!effectiveUserId) return;
     
-    const checkPendingPayment = () => {
+    const checkPendingPayment = async () => {
       try {
         const paymentData = sessionStorage.getItem("paymentData");
         const paymentPageVisited = sessionStorage.getItem("payment_page_visited");
         const pendingVerification = localStorage.getItem("pending_payment_verification");
         
-        if (paymentData && paymentPageVisited && !pendingVerification) {
+        if (paymentData && paymentPageVisited) {
           const data = JSON.parse(paymentData);
-          console.warn("⚠️ Payment was not completed for task:", data.taskId);
-          toast.error("⚠️ Payment pending! Please complete payment to confirm the task assignment.", {
-            duration: 6000,
-            action: {
-              label: "Complete Payment",
-              onClick: () => router.push("/payments"),
-            },
-          });
+          
+          // First check local task state (faster)
+          const taskInState = [...postedTasks, ...assignedTasks].find(t => t.id === data.taskId);
+          if (taskInState && taskInState.status === "in_progress") {
+            // Payment was completed - clear the flags
+            console.log("✅ Payment completed for task:", data.taskId, "- clearing flags (from local state)");
+            sessionStorage.removeItem("paymentData");
+            sessionStorage.removeItem("payment_page_visited");
+            localStorage.removeItem("pending_payment_verification");
+            return; // Don't show toast
+          }
+          
+          // If not found in local state, check backend
+          try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE}/get-job/${data.taskId}/`, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              credentials: 'omit',
+            });
+            
+            if (response.ok) {
+              const result = await response.json();
+              if (result.status_code === 200 && result.data) {
+                const job = result.data;
+                // If task is in_progress or has assigned_tasker_id, payment was completed
+                const isInProgress = job.status === "in_progress" || 
+                                   job.assigned_tasker_id || 
+                                   job.accepted_bidder_id ||
+                                   job.bid_accepted === true;
+                
+                if (isInProgress) {
+                  // Payment was completed - clear the flags
+                  console.log("✅ Payment completed for task:", data.taskId, "- clearing flags (from backend)");
+                  sessionStorage.removeItem("paymentData");
+                  sessionStorage.removeItem("payment_page_visited");
+                  localStorage.removeItem("pending_payment_verification");
+                  return; // Don't show toast
+                }
+              }
+            }
+          } catch (fetchError) {
+            console.warn("Could not verify payment status from backend:", fetchError);
+            // Continue with local check
+          }
+          
+          // Only show warning if pendingVerification exists (payment not verified) 
+          // AND we couldn't confirm payment completion from backend
+          if (pendingVerification) {
+            console.warn("⚠️ Payment verification pending for task:", data.taskId);
+            toast.error("⚠️ Payment pending! Please complete payment to confirm the task assignment.", {
+              duration: 6000,
+              action: {
+                label: "Complete Payment",
+                onClick: () => router.push("/payments"),
+              },
+            });
+          }
         }
       } catch (e) {
         console.error("Error checking pending payment:", e);
