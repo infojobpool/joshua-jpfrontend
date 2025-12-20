@@ -2363,6 +2363,23 @@ export default function Dashboard() {
                                   apiTask?.status === "Completed" ||
                                   apiTask?.job_completion_status === "1";
             if (apiIsCompleted) {
+              // API says completed, but check if it passed the filter
+              // If API version has role="poster" but optimistic has assignedToMe=true, keep optimistic
+              const apiRoleIsPoster = apiTask?.role === "poster" || apiTask?.role === "Poster";
+              const optimisticIsTasker = existingTask.assignedToMe === true && existingTask._posterIsMe === false;
+              
+              if (apiRoleIsPoster && optimisticIsTasker) {
+                // API incorrectly says poster, but we know user is tasker - keep optimistic version
+                console.log("⚠️ API returned task as poster but user is tasker, keeping optimistic version:", {
+                  taskId,
+                  apiRole: apiTask?.role,
+                  optimisticAssignedToMe: existingTask.assignedToMe,
+                  optimisticPosterIsMe: existingTask._posterIsMe
+                });
+                return true; // Keep optimistic version
+              }
+              
+              // API version passed filter and is completed - use it
               return false; // Will be replaced by API version
             } else {
               // API says not completed, but we have it as completed - keep our version
@@ -2474,6 +2491,8 @@ export default function Dashboard() {
             completedDate: new Date().toLocaleDateString("en-GB"),
             assignedToMe: true, // Ensure this is set
             _posterIsMe: false, // Explicitly set to false to ensure it passes the filter
+            confirmed_bid_id: userId, // Set confirmed_bid_id to user ID so it passes the filter
+            role: "tasker", // Set role to "tasker" so it passes the filter
           } as Task;
           
           console.log("✅ Adding optimistic completed task:", {
