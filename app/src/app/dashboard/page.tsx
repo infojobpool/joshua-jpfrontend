@@ -1954,6 +1954,13 @@ export default function Dashboard() {
               }
               
               // Include all other completed tasks (assigned to me, or flags unclear)
+              console.log("✅ Including completed task:", {
+                id: t.id,
+                title: t.title,
+                assignedToMe: t.assignedToMe,
+                _posterIsMe: t._posterIsMe,
+                status: t.status
+              });
               return true;
             });
             
@@ -1975,9 +1982,62 @@ export default function Dashboard() {
         }
       }
 
-      // Use API data directly - no cache merging
-      const mergedWithReviews = applyLocalPosterReviews(completedForMe);
-      setCompletedTasks(mergedWithReviews);
+      // Merge API data with existing completed tasks to preserve optimistic updates
+      // This ensures tasks don't disappear if API hasn't updated yet
+      setCompletedTasks((prevCompletedTasks) => {
+        const mergedWithReviews = applyLocalPosterReviews(completedForMe);
+        
+        // Create a map of API tasks by ID for quick lookup
+        const apiTaskMap = new Map(mergedWithReviews.map(t => [String(t.id), t]));
+        
+        // Keep existing tasks that aren't in API response (optimistic updates)
+        // Only if they were completed recently (within last 5 minutes)
+        const now = Date.now();
+        const fiveMinutesAgo = now - (5 * 60 * 1000);
+        
+        const existingTasksToKeep = prevCompletedTasks.filter((existingTask) => {
+          const taskId = String(existingTask.id);
+          const isInApiResponse = apiTaskMap.has(taskId);
+          
+          // If task is in API response, use API version (more up-to-date)
+          if (isInApiResponse) {
+            return false; // Will be replaced by API version
+          }
+          
+          // If task is not in API response, keep it if:
+          // 1. It's marked as completed
+          // 2. It was assigned to me (tasker task)
+          // 3. It's not posted by me
+          if (existingTask.status === "completed" && 
+              existingTask.assignedToMe && 
+              !existingTask._posterIsMe) {
+            console.log("📌 Keeping optimistic completed task (not yet in API):", {
+              id: existingTask.id,
+              title: existingTask.title,
+              status: existingTask.status
+            });
+            return true;
+          }
+          
+          return false;
+        });
+        
+        // Combine API tasks with kept optimistic tasks
+        const allTasks = [...mergedWithReviews, ...existingTasksToKeep];
+        
+        // Remove duplicates (in case API now includes a task we kept optimistically)
+        const uniqueTasks = Array.from(
+          new Map(allTasks.map(t => [String(t.id), t])).values()
+        );
+        
+        console.log("📊 Merged completed tasks:", {
+          fromApi: mergedWithReviews.length,
+          keptOptimistic: existingTasksToKeep.length,
+          total: uniqueTasks.length
+        });
+        
+        return uniqueTasks;
+      });
       
     } catch (err) {
       console.error("Failed to fetch completed tasks:", err);
@@ -2035,18 +2095,33 @@ export default function Dashboard() {
             status: "completed",
             job_completion_status: "1", // Set completion status to 1 (as string)
             completedDate: new Date().toLocaleDateString("en-GB"),
-            assignedToMe: true,
+            assignedToMe: true, // Ensure this is set
+            _posterIsMe: false, // Explicitly set to false to ensure it passes the filter
           } as Task;
-          setCompletedTasks((prev) => [
-            ...prev,
-            newCompleted,
-          ]);
+          
+          console.log("✅ Adding optimistic completed task:", {
+            id: newCompleted.id,
+            title: newCompleted.title,
+            assignedToMe: newCompleted.assignedToMe,
+            _posterIsMe: newCompleted._posterIsMe,
+            status: newCompleted.status
+          });
+          
+          setCompletedTasks((prev) => {
+            // Check if task already exists (avoid duplicates)
+            const exists = prev.some(t => String(t.id) === String(jobId));
+            if (exists) {
+              console.log("⚠️ Task already in completed list, updating:", jobId);
+              return prev.map(t => String(t.id) === String(jobId) ? newCompleted : t);
+            }
+            return [...prev, newCompleted];
+          });
           
           // Refresh completed tasks from API after marking as complete
-          // No local cache - rely on backend
+          // This will merge with the optimistic update
           setTimeout(() => {
             fetchCompletedTasks();
-          }, 1000);
+          }, 2000); // Increased delay to give backend time to update
         }
         
         // Switch to Completed tab
