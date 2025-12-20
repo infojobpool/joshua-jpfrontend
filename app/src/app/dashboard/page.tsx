@@ -1992,9 +1992,24 @@ export default function Dashboard() {
             // So if a task is in the response, user is involved - show it unless we're CERTAIN it's only a poster task
             console.log("🔍 DEBUG: Showing all tasks from endpoint (temporary for debugging)");
             
+            // DEBUGGING: REMOVED ALL FILTERS - Show ALL completed tasks from endpoint
+            console.log("🔍 DEBUG: NO FILTERS - Showing ALL completed tasks from endpoint");
+            console.log("🔍 Total tasks from API:", tasks.length);
+            console.log("🔍 All tasks details:", tasks.map(t => ({
+              id: t.id,
+              title: t.title,
+              status: t.status,
+              job_completion_status: t.job_completion_status,
+              confirmed_bid_id: t.confirmed_bid_id,
+              user_ref_id: t.user_ref_id,
+              role: t.role,
+              assignedToMe: t.assignedToMe,
+              _posterIsMe: t._posterIsMe
+            })));
+            
+            // NO FILTERING - Show everything the endpoint returns (only check if completed)
             completedForMe = tasks.filter((t) => {
-              // Since endpoint returns only completed tasks, all should be completed
-              // But check to be safe
+              // Only check if task is completed - no other filters
               const isCompleted = 
                 t.status === "completed" || 
                 t.status === "Completed" ||
@@ -2011,139 +2026,15 @@ export default function Dashboard() {
                 return false;
               }
               
-              // Since this endpoint returns tasks where user is EITHER poster OR tasker,
-              // we should prioritize tasker identification
-              // Strategy: Check confirmed_bid_id FIRST (most reliable), then use flags
-              
-              const normalizedUserId = userId != null ? String(userId).trim() : "";
-              
-              // STANDARD SOLUTION: Check confirmed_bid_id FIRST (most reliable field)
-              // confirmed_bid_id is set by backend when tasker is assigned - it's the source of truth
-              // If confirmed_bid_id == user_id, user is the tasker - definitely include
-              const isTaskerByConfirmedBid = t.confirmed_bid_id && String(t.confirmed_bid_id).trim() === normalizedUserId;
-              
-              if (isTaskerByConfirmedBid) {
-                console.log("✅ Including completed task (confirmed_bid_id matches - user is tasker):", {
-                  id: t.id,
-                  title: t.title,
-                  confirmed_bid_id: t.confirmed_bid_id,
-                  userId: normalizedUserId,
-                  role: t.role // Log role for debugging
-                });
-                return true; // User is tasker - include it regardless of role field
-              }
-              
-              // STEP 2: Check API role field (secondary check - may be incorrect)
-              // If role == "tasker", user is the tasker - include it
-              if (t.role === "tasker" || t.role === "Tasker") {
-                console.log("✅ Including completed task (role=tasker from API - user is tasker):", {
-                  id: t.id,
-                  title: t.title,
-                  role: t.role,
-                  confirmed_bid_id: t.confirmed_bid_id,
-                  userId: normalizedUserId
-                });
-                return true;
-              }
-              
-              // STEP 3: If role == "poster" AND confirmed_bid_id doesn't match, user is only poster - exclude
-              // Only exclude if we're CERTAIN user is NOT the tasker
-              if ((t.role === "poster" || t.role === "Poster") && !isTaskerByConfirmedBid) {
-                console.log("⚠️ Excluding completed task (role=poster and confirmed_bid_id doesn't match - belongs in My Tasks):", {
-                  id: t.id,
-                  title: t.title,
-                  role: t.role,
-                  user_ref_id: t.user_ref_id,
-                  confirmed_bid_id: t.confirmed_bid_id,
-                  userId: normalizedUserId
-                });
-                return false;
-              }
-              
-              // STEP 4: If user_ref_id == user_id but confirmed_bid_id doesn't match, user is only poster - exclude
-              const isPosterOnly = t.user_ref_id && String(t.user_ref_id).trim() === normalizedUserId && !isTaskerByConfirmedBid;
-              
-              if (isPosterOnly) {
-                console.log("⚠️ Excluding completed task (user is only poster, not tasker - belongs in My Tasks):", {
-                  id: t.id,
-                  title: t.title,
-                  user_ref_id: t.user_ref_id,
-                  confirmed_bid_id: t.confirmed_bid_id,
-                  userId: normalizedUserId
-                });
-                return false;
-              }
-              
-              // STEP 3: If assignedToMe is true (user is tasker), always include it
-              if (t.assignedToMe === true) {
-                console.log("✅ Including completed task (user is tasker - assignedToMe=true):", {
-                  id: t.id,
-                  title: t.title,
-                  assignedToMe: t.assignedToMe,
-                  _posterIsMe: t._posterIsMe
-                });
-                return true;
-              }
-              
-              // STEP 4: Since endpoint returns tasks where user is tasker OR poster,
-              // if _posterIsMe is false, user must be the tasker - include it
-              if (t._posterIsMe === false) {
-                console.log("✅ Including completed task (not posted by me - must be tasker task):", {
-                  id: t.id,
-                  title: t.title,
-                  assignedToMe: t.assignedToMe,
-                  _posterIsMe: t._posterIsMe
-                });
-                return true;
-              }
-              
-              // STEP 5: If assignedToMe is undefined/null but _posterIsMe is also undefined/null, include it
-              // (endpoint returned it, so user must be involved somehow - better to show than hide)
-              if (t.assignedToMe === undefined && t._posterIsMe === undefined) {
-                console.log("✅ Including completed task (flags unclear but endpoint returned it - showing to be safe):", {
-                  id: t.id,
-                  title: t.title,
-                  assignedToMe: t.assignedToMe,
-                  _posterIsMe: t._posterIsMe
-                });
-                return true;
-              }
-              
-              // STEP 6: If _posterIsMe is true but assignedToMe is undefined (not explicitly false),
-              // user might be both poster AND tasker - include it to be safe
-              if (t._posterIsMe === true && t.assignedToMe !== false) {
-                console.log("✅ Including completed task (posted by me but assignedToMe unclear - might be both):", {
-                  id: t.id,
-                  title: t.title,
-                  assignedToMe: t.assignedToMe,
-                  _posterIsMe: t._posterIsMe
-                });
-                return true;
-              }
-              
-              // STEP 7: If we can't determine from confirmed_bid_id/user_ref_id, use the flags
-              // But be lenient - if endpoint returned it, show it (might be tasker but identification failed)
-              if (t._posterIsMe === true && t.assignedToMe === false) {
-                console.log("⚠️ Task posted by me with assignedToMe=false, but can't confirm from IDs - showing to be safe:", {
-                  id: t.id,
-                  title: t.title,
-                  assignedToMe: t.assignedToMe,
-                  _posterIsMe: t._posterIsMe,
-                  confirmed_bid_id: t.confirmed_bid_id,
-                  user_ref_id: t.user_ref_id,
-                  note: "Endpoint returned it, so user is involved - showing to be safe"
-                });
-                return true; // Show it to be safe
-              }
-              
-              // Default: Include it (better to show than hide)
-              console.log("✅ Including completed task (default - showing to be safe):", {
+              // Include ALL completed tasks - no filtering by role, confirmed_bid_id, etc.
+              console.log("✅ Including completed task (NO FILTERS - showing all):", {
                 id: t.id,
                 title: t.title,
+                confirmed_bid_id: t.confirmed_bid_id,
+                user_ref_id: t.user_ref_id,
+                role: t.role,
                 assignedToMe: t.assignedToMe,
-                _posterIsMe: t._posterIsMe,
-                status: t.status,
-                job_completion_status: t.job_completion_status
+                _posterIsMe: t._posterIsMe
               });
               return true;
             });
