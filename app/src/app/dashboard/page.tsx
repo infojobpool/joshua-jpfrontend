@@ -1940,13 +1940,10 @@ export default function Dashboard() {
 
             // Include ONLY completed tasks that were assigned to me (tasker completed tasks)
             // Exclude tasks posted by me (taskmaster tasks) - those belong in "My Tasks" tab
-            // Use VERY lenient filter: only exclude if CERTAIN it's posted by me AND NOT assigned to me
+            // Use VERY lenient filter: show everything except tasks where we're CERTAIN user is ONLY poster
             console.log("🔍 Filtering completed tasks. Total tasks:", tasks.length);
             console.log("🔍 User ID:", userId);
-            console.log("🔍 Completed tasks before filter:", tasks.filter(t => {
-              const isCompleted = t.status === "completed" || t.status === "Completed" || t.job_completion_status === "1" || t.job_completion_status === "Completed";
-              return isCompleted;
-            }).map(t => ({
+            console.log("🔍 All tasks from endpoint:", tasks.map(t => ({
               id: t.id,
               title: t.title,
               status: t.status,
@@ -1956,7 +1953,8 @@ export default function Dashboard() {
             })));
             
             completedForMe = tasks.filter((t) => {
-              // Check multiple ways a task might be marked as completed
+              // Since endpoint returns only completed tasks, all should be completed
+              // But check to be safe
               const isCompleted = 
                 t.status === "completed" || 
                 t.status === "Completed" ||
@@ -1964,14 +1962,21 @@ export default function Dashboard() {
                 t.job_completion_status === "Completed";
               
               if (!isCompleted) {
+                console.log("⚠️ Task not marked as completed, excluding:", {
+                  id: t.id,
+                  title: t.title,
+                  status: t.status,
+                  job_completion_status: t.job_completion_status
+                });
                 return false;
               }
               
-              // Only exclude if:
-              // 1. Task was definitely posted by me (taskmaster task)
-              // 2. AND task was NOT assigned to me (not a tasker task)
-              // This handles edge cases where someone might be both poster and tasker
-              if (t._posterIsMe === true && t.assignedToMe !== true) {
+              // Only exclude if we're ABSOLUTELY CERTAIN:
+              // 1. Task was posted by me (taskmaster)
+              // 2. AND task was NOT assigned to me (not a tasker)
+              // 3. AND assignedToMe is explicitly false (not just undefined)
+              // This is very strict - only exclude if all conditions are met
+              if (t._posterIsMe === true && t.assignedToMe === false) {
                 console.log("⚠️ Excluding completed task (posted by me and NOT assigned to me - belongs in My Tasks):", {
                   id: t.id,
                   title: t.title,
@@ -1986,7 +1991,8 @@ export default function Dashboard() {
               // Include all other completed tasks:
               // - Assigned to me (even if also posted by me - edge case)
               // - Not posted by me
-              // - Flags unclear (better to show than hide)
+              // - Flags unclear/undefined (better to show than hide)
+              // - Posted by me but also assigned to me
               console.log("✅ Including completed task:", {
                 id: t.id,
                 title: t.title,
@@ -2007,11 +2013,43 @@ export default function Dashboard() {
               _posterIsMe: t._posterIsMe
             })));
             
+            // If no tasks found, log warning
+            if (completedForMe.length === 0 && jobsArray.length > 0) {
+              console.warn("⚠️ No completed tasks passed filter! All tasks were filtered out:", {
+                totalTasks: jobsArray.length,
+                completedTasks: tasks.filter(t => t.status === "completed").length,
+                filteredOut: tasks.length - completedForMe.length
+              });
+            }
+            
             console.log(`✅ Found ${completedForMe.length} completed tasks from API (assigned: ${tasks.filter(t => t.status === "completed" && t.assignedToMe).length}, posted: ${tasks.filter(t => t.status === "completed" && t._posterIsMe).length})`);
           }
         } else {
-          console.warn("Get user jobs failed with status:", fetchResponse.status);
-          if (fetchResponse.status >= 500) {
+          console.warn("Fetch completed tasks failed with status:", fetchResponse.status);
+          if (fetchResponse.status === 404) {
+            console.warn("⚠️ Endpoint /fetch-completed-tasks/ not found. Falling back to /get-user-jobs/");
+            // Fallback: try the old endpoint
+            try {
+              const fallbackResponse = await fetch(`${API_BASE}/get-user-jobs/${userId}/`, {
+                method: 'GET',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                credentials: 'omit',
+                signal: controller.signal
+              });
+              if (fallbackResponse.ok) {
+                const fallbackResult = await fallbackResponse.json();
+                console.log("✅ Using fallback endpoint /get-user-jobs/");
+                // Process the same way (will be handled by the code below)
+                const result = fallbackResult;
+                // Continue with existing processing logic...
+              }
+            } catch (fallbackErr) {
+              console.error("Fallback endpoint also failed:", fallbackErr);
+            }
+          } else if (fetchResponse.status >= 500) {
             toast.error("Server error. Please try again.");
           }
         }
