@@ -80,6 +80,7 @@ interface Task {
   // Store confirmed_bid_id for direct tasker identification
   confirmed_bid_id?: string | number;
   user_ref_id?: string | number;
+  role?: string; // API role field: "poster" or "tasker"
 }
 
 interface Bid {
@@ -1876,10 +1877,13 @@ export default function Dashboard() {
               // For /fetch-completed-tasks/ endpoint:
               // If confirmed_bid_id == user_id, user is the tasker
               // If user_ref_id == user_id, user is the poster
-              // Priority: If user is tasker (confirmed_bid_id), they should see it in Completed Tasks
+              // The API also returns a "role" field: "poster" or "tasker"
+              // Priority: If user is tasker (confirmed_bid_id OR role == "tasker"), they should see it in Completed Tasks
               const isTasker = job.confirmed_bid_id && String(job.confirmed_bid_id).trim() === normalizedUserId2;
+              const isTaskerByRole = job.role === "tasker" || job.role === "Tasker";
               const posterIsMe = possiblePosterIds.some((v: any) => String(v).trim() === normalizedUserId2);
-              const assignedToMe = isTasker || possibleTaskerIds2.some((v: any) => String(v).trim() === normalizedUserId2);
+              const isPosterByRole = job.role === "poster" || job.role === "Poster";
+              const assignedToMe = isTasker || isTaskerByRole || possibleTaskerIds2.some((v: any) => String(v).trim() === normalizedUserId2);
               
               console.log("🔍 Task identification (DETAILED):", {
                 job_id: job.job_id,
@@ -1889,9 +1893,12 @@ export default function Dashboard() {
                 accepted_bidder_id: job.accepted_bidder_id,
                 user_ref_id: job.user_ref_id,
                 posted_by_id: job.posted_by_id,
+                role: job.role, // API provides role field
                 userId: normalizedUserId2,
                 isTasker: isTasker,
+                isTaskerByRole: isTaskerByRole,
                 posterIsMe: posterIsMe,
+                isPosterByRole: isPosterByRole,
                 assignedToMe: assignedToMe,
                 possiblePosterIds: possiblePosterIds,
                 possibleTaskerIds: possibleTaskerIds2
@@ -1946,6 +1953,7 @@ export default function Dashboard() {
                 _posterIsMe: posterIsMe,
                 confirmed_bid_id: job.confirmed_bid_id, // Store for direct check in filter
                 user_ref_id: job.user_ref_id, // Store for direct check in filter
+                role: job.role, // Store API role field ("poster" or "tasker")
               } as Task;
             });
 
@@ -2009,7 +2017,32 @@ export default function Dashboard() {
               
               const normalizedUserId = userId != null ? String(userId).trim() : "";
               
-              // STEP 1: Check confirmed_bid_id directly FIRST (this is what the endpoint uses)
+              // STEP 1: Check API role field FIRST (most reliable - comes directly from backend)
+              // If role == "tasker", user is the tasker - definitely include
+              if (t.role === "tasker" || t.role === "Tasker") {
+                console.log("✅ Including completed task (role=tasker from API - user is tasker):", {
+                  id: t.id,
+                  title: t.title,
+                  role: t.role,
+                  confirmed_bid_id: t.confirmed_bid_id,
+                  userId: normalizedUserId
+                });
+                return true;
+              }
+              
+              // STEP 2: If role == "poster", user is only poster - exclude
+              if (t.role === "poster" || t.role === "Poster") {
+                console.log("⚠️ Excluding completed task (role=poster from API - belongs in My Tasks):", {
+                  id: t.id,
+                  title: t.title,
+                  role: t.role,
+                  user_ref_id: t.user_ref_id,
+                  confirmed_bid_id: t.confirmed_bid_id
+                });
+                return false;
+              }
+              
+              // STEP 3: Check confirmed_bid_id directly (this is what the endpoint uses)
               // If confirmed_bid_id == user_id, user is the tasker - definitely include
               const isTaskerByConfirmedBid = t.confirmed_bid_id && String(t.confirmed_bid_id).trim() === normalizedUserId;
               
@@ -2023,7 +2056,7 @@ export default function Dashboard() {
                 return true;
               }
               
-              // STEP 2: If user_ref_id == user_id but confirmed_bid_id doesn't match, user is only poster - exclude
+              // STEP 4: If user_ref_id == user_id but confirmed_bid_id doesn't match, user is only poster - exclude
               const isPosterOnly = t.user_ref_id && String(t.user_ref_id).trim() === normalizedUserId && !isTaskerByConfirmedBid;
               
               if (isPosterOnly) {
