@@ -1878,15 +1878,20 @@ export default function Dashboard() {
               const posterIsMe = possiblePosterIds.some((v: any) => String(v).trim() === normalizedUserId2);
               const assignedToMe = isTasker || possibleTaskerIds2.some((v: any) => String(v).trim() === normalizedUserId2);
               
-              console.log("🔍 Task identification:", {
+              console.log("🔍 Task identification (DETAILED):", {
                 job_id: job.job_id,
                 title: job.job_title,
                 confirmed_bid_id: job.confirmed_bid_id,
+                assigned_tasker_id: job.assigned_tasker_id,
+                accepted_bidder_id: job.accepted_bidder_id,
                 user_ref_id: job.user_ref_id,
+                posted_by_id: job.posted_by_id,
                 userId: normalizedUserId2,
                 isTasker: isTasker,
                 posterIsMe: posterIsMe,
-                assignedToMe: assignedToMe
+                assignedToMe: assignedToMe,
+                possiblePosterIds: possiblePosterIds,
+                possibleTaskerIds: possibleTaskerIds2
               });
 
               return {
@@ -1960,13 +1965,15 @@ export default function Dashboard() {
             // Use VERY lenient filter: show everything except tasks where we're CERTAIN user is ONLY poster
             console.log("🔍 Filtering completed tasks. Total tasks:", tasks.length);
             console.log("🔍 User ID:", userId);
-            console.log("🔍 All tasks from endpoint:", tasks.map(t => ({
+            console.log("🔍 All tasks from endpoint with full details:", tasks.map(t => ({
               id: t.id,
               title: t.title,
               status: t.status,
               job_completion_status: t.job_completion_status,
               assignedToMe: t.assignedToMe,
-              _posterIsMe: t._posterIsMe
+              _posterIsMe: t._posterIsMe,
+              // Include raw task data for debugging
+              rawTask: tasks.find(tt => tt.id === t.id)
             })));
             
             completedForMe = tasks.filter((t) => {
@@ -1990,15 +1997,12 @@ export default function Dashboard() {
               
               // Since this endpoint returns tasks where user is EITHER poster OR tasker,
               // we should prioritize tasker identification
-              // Only exclude if:
-              // 1. Task was posted by me (taskmaster)
-              // 2. AND task was NOT assigned to me (not a tasker)
-              // 3. AND assignedToMe is explicitly false (not just undefined)
-              // This is very strict - only exclude if all conditions are met
+              // Strategy: Show ALL completed tasks UNLESS we're absolutely certain user is ONLY the poster
+              
               // IMPORTANT: If assignedToMe is true (user is tasker), always include it
               if (t.assignedToMe === true) {
                 // User is the tasker - definitely include
-                console.log("✅ Including completed task (user is tasker):", {
+                console.log("✅ Including completed task (user is tasker - assignedToMe=true):", {
                   id: t.id,
                   title: t.title,
                   assignedToMe: t.assignedToMe,
@@ -2007,7 +2011,44 @@ export default function Dashboard() {
                 return true;
               }
               
-              // Only exclude if user is ONLY the poster (not the tasker)
+              // CRITICAL: Since endpoint returns tasks where user is tasker OR poster,
+              // if _posterIsMe is false, user must be the tasker - include it
+              if (t._posterIsMe === false) {
+                console.log("✅ Including completed task (not posted by me - must be tasker task):", {
+                  id: t.id,
+                  title: t.title,
+                  assignedToMe: t.assignedToMe,
+                  _posterIsMe: t._posterIsMe
+                });
+                return true;
+              }
+              
+              // If assignedToMe is undefined/null but _posterIsMe is also undefined/null, include it
+              // (endpoint returned it, so user must be involved somehow - better to show than hide)
+              if (t.assignedToMe === undefined && t._posterIsMe === undefined) {
+                console.log("✅ Including completed task (flags unclear but endpoint returned it - showing to be safe):", {
+                  id: t.id,
+                  title: t.title,
+                  assignedToMe: t.assignedToMe,
+                  _posterIsMe: t._posterIsMe
+                });
+                return true;
+              }
+              
+              // If _posterIsMe is true but assignedToMe is undefined (not explicitly false),
+              // user might be both poster AND tasker - include it to be safe
+              if (t._posterIsMe === true && t.assignedToMe !== false) {
+                console.log("✅ Including completed task (posted by me but assignedToMe unclear - might be both):", {
+                  id: t.id,
+                  title: t.title,
+                  assignedToMe: t.assignedToMe,
+                  _posterIsMe: t._posterIsMe
+                });
+                return true;
+              }
+              
+              // Only exclude if user is DEFINITELY ONLY the poster (not the tasker)
+              // This means: _posterIsMe === true AND assignedToMe === false (explicitly false)
               if (t._posterIsMe === true && t.assignedToMe === false) {
                 console.log("⚠️ Excluding completed task (posted by me and NOT assigned to me - belongs in My Tasks):", {
                   id: t.id,
@@ -2020,12 +2061,8 @@ export default function Dashboard() {
                 return false;
               }
               
-              // Include all other completed tasks:
-              // - Assigned to me (even if also posted by me - edge case)
-              // - Not posted by me
-              // - Flags unclear/undefined (better to show than hide)
-              // - Posted by me but also assigned to me
-              console.log("✅ Including completed task:", {
+              // Default: Include it (better to show than hide)
+              console.log("✅ Including completed task (default - showing to be safe):", {
                 id: t.id,
                 title: t.title,
                 assignedToMe: t.assignedToMe,
