@@ -2005,59 +2005,12 @@ export default function Dashboard() {
               
               // Since this endpoint returns tasks where user is EITHER poster OR tasker,
               // we should prioritize tasker identification
-              // Strategy: Show ALL completed tasks UNLESS we're absolutely certain user is ONLY the poster
+              // Strategy: Check confirmed_bid_id FIRST (most reliable), then use flags
               
-              // IMPORTANT: If assignedToMe is true (user is tasker), always include it
-              if (t.assignedToMe === true) {
-                // User is the tasker - definitely include
-                console.log("✅ Including completed task (user is tasker - assignedToMe=true):", {
-                  id: t.id,
-                  title: t.title,
-                  assignedToMe: t.assignedToMe,
-                  _posterIsMe: t._posterIsMe
-                });
-                return true;
-              }
-              
-              // CRITICAL: Since endpoint returns tasks where user is tasker OR poster,
-              // if _posterIsMe is false, user must be the tasker - include it
-              if (t._posterIsMe === false) {
-                console.log("✅ Including completed task (not posted by me - must be tasker task):", {
-                  id: t.id,
-                  title: t.title,
-                  assignedToMe: t.assignedToMe,
-                  _posterIsMe: t._posterIsMe
-                });
-                return true;
-              }
-              
-              // If assignedToMe is undefined/null but _posterIsMe is also undefined/null, include it
-              // (endpoint returned it, so user must be involved somehow - better to show than hide)
-              if (t.assignedToMe === undefined && t._posterIsMe === undefined) {
-                console.log("✅ Including completed task (flags unclear but endpoint returned it - showing to be safe):", {
-                  id: t.id,
-                  title: t.title,
-                  assignedToMe: t.assignedToMe,
-                  _posterIsMe: t._posterIsMe
-                });
-                return true;
-              }
-              
-              // If _posterIsMe is true but assignedToMe is undefined (not explicitly false),
-              // user might be both poster AND tasker - include it to be safe
-              if (t._posterIsMe === true && t.assignedToMe !== false) {
-                console.log("✅ Including completed task (posted by me but assignedToMe unclear - might be both):", {
-                  id: t.id,
-                  title: t.title,
-                  assignedToMe: t.assignedToMe,
-                  _posterIsMe: t._posterIsMe
-                });
-                return true;
-              }
-              
-              // CRITICAL FIX: Check confirmed_bid_id directly (this is what the endpoint uses)
-              // If confirmed_bid_id == user_id, user is the tasker - definitely include
               const normalizedUserId = userId != null ? String(userId).trim() : "";
+              
+              // STEP 1: Check confirmed_bid_id directly FIRST (this is what the endpoint uses)
+              // If confirmed_bid_id == user_id, user is the tasker - definitely include
               const isTaskerByConfirmedBid = t.confirmed_bid_id && String(t.confirmed_bid_id).trim() === normalizedUserId;
               
               if (isTaskerByConfirmedBid) {
@@ -2070,7 +2023,7 @@ export default function Dashboard() {
                 return true;
               }
               
-              // If user_ref_id == user_id but confirmed_bid_id doesn't match, user is only poster - exclude
+              // STEP 2: If user_ref_id == user_id but confirmed_bid_id doesn't match, user is only poster - exclude
               const isPosterOnly = t.user_ref_id && String(t.user_ref_id).trim() === normalizedUserId && !isTaskerByConfirmedBid;
               
               if (isPosterOnly) {
@@ -2084,8 +2037,55 @@ export default function Dashboard() {
                 return false;
               }
               
-              // If we can't determine from confirmed_bid_id/user_ref_id, use the flags
-              // But be lenient - if endpoint returned it, show it
+              // STEP 3: If assignedToMe is true (user is tasker), always include it
+              if (t.assignedToMe === true) {
+                console.log("✅ Including completed task (user is tasker - assignedToMe=true):", {
+                  id: t.id,
+                  title: t.title,
+                  assignedToMe: t.assignedToMe,
+                  _posterIsMe: t._posterIsMe
+                });
+                return true;
+              }
+              
+              // STEP 4: Since endpoint returns tasks where user is tasker OR poster,
+              // if _posterIsMe is false, user must be the tasker - include it
+              if (t._posterIsMe === false) {
+                console.log("✅ Including completed task (not posted by me - must be tasker task):", {
+                  id: t.id,
+                  title: t.title,
+                  assignedToMe: t.assignedToMe,
+                  _posterIsMe: t._posterIsMe
+                });
+                return true;
+              }
+              
+              // STEP 5: If assignedToMe is undefined/null but _posterIsMe is also undefined/null, include it
+              // (endpoint returned it, so user must be involved somehow - better to show than hide)
+              if (t.assignedToMe === undefined && t._posterIsMe === undefined) {
+                console.log("✅ Including completed task (flags unclear but endpoint returned it - showing to be safe):", {
+                  id: t.id,
+                  title: t.title,
+                  assignedToMe: t.assignedToMe,
+                  _posterIsMe: t._posterIsMe
+                });
+                return true;
+              }
+              
+              // STEP 6: If _posterIsMe is true but assignedToMe is undefined (not explicitly false),
+              // user might be both poster AND tasker - include it to be safe
+              if (t._posterIsMe === true && t.assignedToMe !== false) {
+                console.log("✅ Including completed task (posted by me but assignedToMe unclear - might be both):", {
+                  id: t.id,
+                  title: t.title,
+                  assignedToMe: t.assignedToMe,
+                  _posterIsMe: t._posterIsMe
+                });
+                return true;
+              }
+              
+              // STEP 7: If we can't determine from confirmed_bid_id/user_ref_id, use the flags
+              // But be lenient - if endpoint returned it, show it (might be tasker but identification failed)
               if (t._posterIsMe === true && t.assignedToMe === false) {
                 console.log("⚠️ Task posted by me with assignedToMe=false, but can't confirm from IDs - showing to be safe:", {
                   id: t.id,
@@ -2093,7 +2093,8 @@ export default function Dashboard() {
                   assignedToMe: t.assignedToMe,
                   _posterIsMe: t._posterIsMe,
                   confirmed_bid_id: t.confirmed_bid_id,
-                  user_ref_id: t.user_ref_id
+                  user_ref_id: t.user_ref_id,
+                  note: "Endpoint returned it, so user is involved - showing to be safe"
                 });
                 return true; // Show it to be safe
               }
