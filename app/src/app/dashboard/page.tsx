@@ -1931,38 +1931,72 @@ export default function Dashboard() {
 
             // Include ONLY completed tasks that were assigned to me (tasker completed tasks)
             // Exclude tasks posted by me (taskmaster tasks) - those belong in "My Tasks" tab
-            // Use lenient filter: include all completed tasks EXCEPT those definitely posted by me
+            // Use VERY lenient filter: only exclude if CERTAIN it's posted by me AND NOT assigned to me
+            console.log("🔍 Filtering completed tasks. Total tasks:", tasks.length);
+            console.log("🔍 User ID:", userId);
+            console.log("🔍 Completed tasks before filter:", tasks.filter(t => {
+              const isCompleted = t.status === "completed" || t.status === "Completed" || t.job_completion_status === "1" || t.job_completion_status === "Completed";
+              return isCompleted;
+            }).map(t => ({
+              id: t.id,
+              title: t.title,
+              status: t.status,
+              job_completion_status: t.job_completion_status,
+              assignedToMe: t.assignedToMe,
+              _posterIsMe: t._posterIsMe
+            })));
+            
             completedForMe = tasks.filter((t) => {
-              const isCompleted = t.status === "completed";
+              // Check multiple ways a task might be marked as completed
+              const isCompleted = 
+                t.status === "completed" || 
+                t.status === "Completed" ||
+                t.job_completion_status === "1" ||
+                t.job_completion_status === "Completed";
               
               if (!isCompleted) {
                 return false;
               }
               
-              // Exclude ONLY tasks that were definitely posted by me (taskmaster tasks)
-              // Include everything else (even if assignedToMe flag is missing)
-              // This ensures we don't lose valid completed tasks due to missing flags
-              if (t._posterIsMe === true) {
-                console.log("⚠️ Excluding completed task (posted by me - belongs in My Tasks):", {
+              // Only exclude if:
+              // 1. Task was definitely posted by me (taskmaster task)
+              // 2. AND task was NOT assigned to me (not a tasker task)
+              // This handles edge cases where someone might be both poster and tasker
+              if (t._posterIsMe === true && t.assignedToMe !== true) {
+                console.log("⚠️ Excluding completed task (posted by me and NOT assigned to me - belongs in My Tasks):", {
                   id: t.id,
                   title: t.title,
                   assignedToMe: t.assignedToMe,
                   _posterIsMe: t._posterIsMe,
-                  status: t.status
+                  status: t.status,
+                  job_completion_status: t.job_completion_status
                 });
                 return false;
               }
               
-              // Include all other completed tasks (assigned to me, or flags unclear)
+              // Include all other completed tasks:
+              // - Assigned to me (even if also posted by me - edge case)
+              // - Not posted by me
+              // - Flags unclear (better to show than hide)
               console.log("✅ Including completed task:", {
                 id: t.id,
                 title: t.title,
                 assignedToMe: t.assignedToMe,
                 _posterIsMe: t._posterIsMe,
-                status: t.status
+                status: t.status,
+                job_completion_status: t.job_completion_status
               });
               return true;
             });
+            
+            console.log("📊 Completed tasks after filter:", completedForMe.length);
+            console.log("📊 Completed tasks details:", completedForMe.map(t => ({
+              id: t.id,
+              title: t.title,
+              status: t.status,
+              assignedToMe: t.assignedToMe,
+              _posterIsMe: t._posterIsMe
+            })));
             
             console.log(`✅ Found ${completedForMe.length} completed tasks from API (assigned: ${tasks.filter(t => t.status === "completed" && t.assignedToMe).length}, posted: ${tasks.filter(t => t.status === "completed" && t._posterIsMe).length})`);
           }
@@ -2001,22 +2035,43 @@ export default function Dashboard() {
           
           // If task is in API response, use API version (more up-to-date)
           if (isInApiResponse) {
-            return false; // Will be replaced by API version
+            const apiTask = apiTaskMap.get(taskId);
+            // Double-check API task is actually completed
+            const apiIsCompleted = apiTask?.status === "completed" || 
+                                  apiTask?.status === "Completed" ||
+                                  apiTask?.job_completion_status === "1";
+            if (apiIsCompleted) {
+              return false; // Will be replaced by API version
+            } else {
+              // API says not completed, but we have it as completed - keep our version
+              console.log("⚠️ API task not marked as completed, keeping optimistic version:", taskId);
+              return true;
+            }
           }
           
           // If task is not in API response, keep it if:
-          // 1. It's marked as completed
-          // 2. It was assigned to me (tasker task)
-          // 3. It's not posted by me
-          if (existingTask.status === "completed" && 
-              existingTask.assignedToMe && 
-              !existingTask._posterIsMe) {
-            console.log("📌 Keeping optimistic completed task (not yet in API):", {
-              id: existingTask.id,
-              title: existingTask.title,
-              status: existingTask.status
-            });
-            return true;
+          // 1. It's marked as completed (any form)
+          // 2. It was assigned to me (tasker task) OR flags are unclear
+          // 3. It's not posted by me (or unclear)
+          const isCompleted = existingTask.status === "completed" || 
+                             existingTask.status === "Completed" ||
+                             existingTask.job_completion_status === "1";
+          
+          if (isCompleted) {
+            // Keep if assigned to me, or if flags are unclear (better to show than hide)
+            const shouldKeep = (existingTask.assignedToMe === true) || 
+                              (existingTask.assignedToMe !== false && existingTask._posterIsMe !== true);
+            
+            if (shouldKeep) {
+              console.log("📌 Keeping optimistic completed task (not yet in API):", {
+                id: existingTask.id,
+                title: existingTask.title,
+                status: existingTask.status,
+                assignedToMe: existingTask.assignedToMe,
+                _posterIsMe: existingTask._posterIsMe
+              });
+              return true;
+            }
           }
           
           return false;
