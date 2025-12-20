@@ -2017,8 +2017,24 @@ export default function Dashboard() {
               
               const normalizedUserId = userId != null ? String(userId).trim() : "";
               
-              // STEP 1: Check API role field FIRST (most reliable - comes directly from backend)
-              // If role == "tasker", user is the tasker - definitely include
+              // STANDARD SOLUTION: Check confirmed_bid_id FIRST (most reliable field)
+              // confirmed_bid_id is set by backend when tasker is assigned - it's the source of truth
+              // If confirmed_bid_id == user_id, user is the tasker - definitely include
+              const isTaskerByConfirmedBid = t.confirmed_bid_id && String(t.confirmed_bid_id).trim() === normalizedUserId;
+              
+              if (isTaskerByConfirmedBid) {
+                console.log("✅ Including completed task (confirmed_bid_id matches - user is tasker):", {
+                  id: t.id,
+                  title: t.title,
+                  confirmed_bid_id: t.confirmed_bid_id,
+                  userId: normalizedUserId,
+                  role: t.role // Log role for debugging
+                });
+                return true; // User is tasker - include it regardless of role field
+              }
+              
+              // STEP 2: Check API role field (secondary check - may be incorrect)
+              // If role == "tasker", user is the tasker - include it
               if (t.role === "tasker" || t.role === "Tasker") {
                 console.log("✅ Including completed task (role=tasker from API - user is tasker):", {
                   id: t.id,
@@ -2030,42 +2046,18 @@ export default function Dashboard() {
                 return true;
               }
               
-              // STEP 2: If role == "poster", user is only poster - exclude
-              // BUT: If confirmed_bid_id also matches, user might be both - include it
-              if (t.role === "poster" || t.role === "Poster") {
-                // Check if user is also the tasker (edge case)
-                const isAlsoTasker = t.confirmed_bid_id && String(t.confirmed_bid_id).trim() === normalizedUserId;
-                if (isAlsoTasker) {
-                  console.log("✅ Including completed task (role=poster but also tasker - showing):", {
-                    id: t.id,
-                    title: t.title,
-                    role: t.role,
-                    confirmed_bid_id: t.confirmed_bid_id
-                  });
-                  return true;
-                }
-                console.log("⚠️ Excluding completed task (role=poster from API - belongs in My Tasks):", {
+              // STEP 3: If role == "poster" AND confirmed_bid_id doesn't match, user is only poster - exclude
+              // Only exclude if we're CERTAIN user is NOT the tasker
+              if ((t.role === "poster" || t.role === "Poster") && !isTaskerByConfirmedBid) {
+                console.log("⚠️ Excluding completed task (role=poster and confirmed_bid_id doesn't match - belongs in My Tasks):", {
                   id: t.id,
                   title: t.title,
                   role: t.role,
                   user_ref_id: t.user_ref_id,
-                  confirmed_bid_id: t.confirmed_bid_id
-                });
-                return false;
-              }
-              
-              // STEP 3: Check confirmed_bid_id directly (this is what the endpoint uses)
-              // If confirmed_bid_id == user_id, user is the tasker - definitely include
-              const isTaskerByConfirmedBid = t.confirmed_bid_id && String(t.confirmed_bid_id).trim() === normalizedUserId;
-              
-              if (isTaskerByConfirmedBid) {
-                console.log("✅ Including completed task (confirmed_bid_id matches - user is tasker):", {
-                  id: t.id,
-                  title: t.title,
                   confirmed_bid_id: t.confirmed_bid_id,
                   userId: normalizedUserId
                 });
-                return true;
+                return false;
               }
               
               // STEP 4: If user_ref_id == user_id but confirmed_bid_id doesn't match, user is only poster - exclude
