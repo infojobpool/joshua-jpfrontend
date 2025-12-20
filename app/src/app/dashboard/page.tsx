@@ -1929,30 +1929,40 @@ export default function Dashboard() {
               }))
             });
 
-            // Include ALL completed tasks - both assigned to me AND posted by me
-            // Also include tasks that are marked as completed even if flags aren't set (be less strict)
+            // Include ONLY completed tasks that were assigned to me (tasker completed tasks)
+            // Exclude tasks posted by me (taskmaster tasks) - those belong in "My Tasks" tab
             completedForMe = tasks.filter((t) => {
               const isCompleted = t.status === "completed";
-              const isMine = t.assignedToMe || t._posterIsMe;
               
-              // If status is completed, include it even if flags aren't perfect (be lenient)
-              if (isCompleted) {
-                // Prefer tasks that are clearly assigned/posted by me
-                if (isMine) {
-                  return true;
-                }
-                // But also include if we can't determine ownership (might be a data issue)
-                // Only exclude if we're certain it's NOT mine
-                console.log("⚠️ Completed task without clear ownership flags:", {
+              // Only include if:
+              // 1. Task is completed
+              // 2. Task was assigned to me (assignedToMe === true)
+              // 3. Task was NOT posted by me (exclude taskmaster's own tasks)
+              if (isCompleted && t.assignedToMe && !t._posterIsMe) {
+                return true;
+              }
+              
+              // Log excluded tasks for debugging
+              if (isCompleted && !t.assignedToMe) {
+                console.log("⚠️ Excluding completed task (not assigned to me):", {
                   id: t.id,
                   title: t.title,
                   assignedToMe: t.assignedToMe,
                   _posterIsMe: t._posterIsMe,
                   status: t.status
                 });
-                // Include it anyway - let the user see it
-                return true;
               }
+              
+              if (isCompleted && t._posterIsMe) {
+                console.log("⚠️ Excluding completed task (posted by me - belongs in My Tasks):", {
+                  id: t.id,
+                  title: t.title,
+                  assignedToMe: t.assignedToMe,
+                  _posterIsMe: t._posterIsMe,
+                  status: t.status
+                });
+              }
+              
               return false;
             });
             
@@ -3802,7 +3812,7 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="completed" forceMount className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-green-200 pb-2">Completed</h2>
+            <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-green-200 pb-2">Tasks Completed by You (As Tasker)</h2>
             {completedTasksLoading ? (
               <div className="min-h-[400px] flex items-center justify-center">
                 <div className="text-center">
