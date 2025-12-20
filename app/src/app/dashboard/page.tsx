@@ -1884,7 +1884,7 @@ export default function Dashboard() {
               const posterIsMe = possiblePosterIds.some((v: any) => String(v).trim() === normalizedUserId2);
               const isPosterByRole = job.role === "poster" || job.role === "Poster";
               const assignedToMe = isTasker || isTaskerByRole || possibleTaskerIds2.some((v: any) => String(v).trim() === normalizedUserId2);
-              
+
               console.log("🔍 Task identification (DETAILED):", {
                 job_id: job.job_id,
                 title: job.job_title,
@@ -2031,7 +2031,19 @@ export default function Dashboard() {
               }
               
               // STEP 2: If role == "poster", user is only poster - exclude
+              // BUT: If confirmed_bid_id also matches, user might be both - include it
               if (t.role === "poster" || t.role === "Poster") {
+                // Check if user is also the tasker (edge case)
+                const isAlsoTasker = t.confirmed_bid_id && String(t.confirmed_bid_id).trim() === normalizedUserId;
+                if (isAlsoTasker) {
+                  console.log("✅ Including completed task (role=poster but also tasker - showing):", {
+                    id: t.id,
+                    title: t.title,
+                    role: t.role,
+                    confirmed_bid_id: t.confirmed_bid_id
+                  });
+                  return true;
+                }
                 console.log("⚠️ Excluding completed task (role=poster from API - belongs in My Tasks):", {
                   id: t.id,
                   title: t.title,
@@ -2185,7 +2197,7 @@ export default function Dashboard() {
             })));
             console.log("📊 ====================================================");
             
-            // If no tasks found, log warning
+            // If no tasks found, log warning and try fallback
             if (completedForMe.length === 0 && jobsArray.length > 0) {
               console.warn("⚠️ No completed tasks passed filter! All tasks were filtered out:", {
                 totalTasks: jobsArray.length,
@@ -2198,12 +2210,90 @@ export default function Dashboard() {
                 tasksDetails: tasks.map(t => ({
                   id: t.id,
                   title: t.title,
+                  role: t.role,
                   confirmed_bid_id: t.confirmed_bid_id,
                   user_ref_id: t.user_ref_id,
                   assignedToMe: t.assignedToMe,
                   _posterIsMe: t._posterIsMe
                 }))
               });
+            }
+            
+            // FALLBACK: If endpoint returned 0 tasks OR only poster tasks, try to find old tasker completed tasks
+            // by checking assigned tasks that are completed
+            if (completedForMe.length === 0) {
+              console.log("🔄 Trying fallback: checking assigned tasks for old completed ones...");
+              try {
+                const fallbackToken = localStorage.getItem('token');
+                const fallbackController = new AbortController();
+                const fallbackTimeout = setTimeout(() => fallbackController.abort(), 30000);
+                
+                const fallbackResponse = await fetch(`${API_BASE}/get-user-assigned-bids/${userId}/`, {
+                  method: 'GET',
+                  headers: {
+                    'Authorization': `Bearer ${fallbackToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  credentials: 'omit',
+                  signal: fallbackController.signal
+                });
+                
+                clearTimeout(fallbackTimeout);
+                
+                if (fallbackResponse.ok) {
+                  const fallbackResult = await fallbackResponse.json();
+                  console.log("📋 Fallback assigned tasks response:", fallbackResult);
+                  
+                  // Process fallback response to find completed tasks where user is tasker
+                  if (fallbackResult.data?.jobs || fallbackResult.jobs || Array.isArray(fallbackResult.data)) {
+                    const fallbackJobs = fallbackResult.data?.jobs || fallbackResult.jobs || fallbackResult.data || [];
+                    console.log(`📋 Found ${fallbackJobs.length} assigned tasks in fallback`);
+                    
+                    const fallbackCompleted = fallbackJobs
+                      .filter((job: any) => {
+                        const isCompleted = 
+                          job.job_completion_status === "1" || 
+                          job.job_completion_status === "Completed" ||
+                          job.status === "completed" ||
+                          job.status === "Completed";
+                        const isTasker = job.confirmed_bid_id && String(job.confirmed_bid_id).trim() === String(userId).trim();
+                        return isCompleted && isTasker;
+                      })
+                      .map((job: any) => {
+                        // Map to Task format
+                        return {
+                          id: job.job_id?.toString() || job.id?.toString() || String(Math.random()),
+                          title: job.job_title || job.title || "Untitled",
+                          description: job.job_description || job.description || "",
+                          budget: Number(job.job_budget || job.budget || 0),
+                          location: job.job_location || job.location || "Unknown",
+                          status: "completed",
+                          postedAt: job.created_at || job.posted_at || new Date().toISOString(),
+                          postedAtSortValue: job.created_at ? new Date(job.created_at).getTime() : Date.now(),
+                          postedAtISO: job.created_at || new Date().toISOString(),
+                          offers: 0,
+                          posted_by: job.posted_by || "Unknown",
+                          category: job.job_category_name || job.category || "Uncategorized",
+                          job_completion_status: "1",
+                          assignedToMe: true,
+                          _posterIsMe: false,
+                          confirmed_bid_id: job.confirmed_bid_id,
+                          user_ref_id: job.user_ref_id,
+                          role: "tasker", // Mark as tasker for filter
+                        } as Task;
+                      });
+                    
+                    if (fallbackCompleted.length > 0) {
+                      console.log(`✅ Found ${fallbackCompleted.length} old completed tasker tasks from fallback!`);
+                      completedForMe = [...completedForMe, ...fallbackCompleted];
+                    }
+                  }
+                }
+              } catch (fallbackErr: any) {
+                if (fallbackErr?.name !== 'AbortError') {
+                  console.warn("Fallback check failed:", fallbackErr);
+                }
+              }
             }
             
             console.log(`✅ Found ${completedForMe.length} completed tasks from API (assigned: ${tasks.filter(t => t.status === "completed" && t.assignedToMe).length}, posted: ${tasks.filter(t => t.status === "completed" && t._posterIsMe).length})`);
