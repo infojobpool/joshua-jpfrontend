@@ -1470,8 +1470,8 @@ export default function Dashboard() {
                   ? job.images.map((img: any, index: number) => ({
                       id: `img${index + 1}`,
                       url: typeof img === "string" ? img : img.url || "/images/placeholder.svg",
-                      alt: `Job image ${index + 1}`,
-                    }))
+                  alt: `Job image ${index + 1}`,
+                }))
               : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
               } as Task;
             });
@@ -1732,6 +1732,12 @@ export default function Dashboard() {
   // - User is poster (user_ref_id == user_id) OR tasker (confirmed_bid_id == user_id)
   const fetchCompletedTasks = async () => {
     if (!userId) return;
+    
+    // Prevent multiple simultaneous calls
+    if (completedTasksLoading) {
+      console.log("⏸️ Fetch completed tasks already in progress, skipping...");
+      return;
+    }
 
     try {
       setCompletedTasksLoading(true);
@@ -1739,7 +1745,7 @@ export default function Dashboard() {
       // Fetch directly from API - no caching
       const token = localStorage.getItem('token');
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout (Render.com can be slow)
 
       console.log("Fetching completed tasks from dedicated endpoint...");
       let completedForMe: Task[] = [];
@@ -1843,7 +1849,7 @@ export default function Dashboard() {
                                       job.job_status === "completed";
               
               // All tasks from this endpoint should be completed
-              jobStatus = "completed";
+                jobStatus = "completed";
               console.log("✅ Job from completed tasks endpoint:", job.job_id || job.id);
               
               // Normalize poster and tasker ids based on API field variations
@@ -2011,8 +2017,9 @@ export default function Dashboard() {
         }
       } catch (fetchErr: any) {
         if (fetchErr?.name === 'AbortError') {
-          console.log("⏰ Fetch completed tasks was aborted (timeout)");
-          toast.error("Request timed out. Please try again.");
+          // Handle AbortError separately (don't show error for timeouts)
+          console.log("⏰ Fetch completed tasks was aborted (timeout after 90s) - backend may be slow");
+          // Don't show toast - just log it. The user can still see their existing completed tasks.
         } else {
           console.error("Failed to fetch completed tasks:", fetchErr);
           toast.error("Failed to load completed tasks. Please try again.");
@@ -2022,7 +2029,7 @@ export default function Dashboard() {
       // Merge API data with existing completed tasks to preserve optimistic updates
       // This ensures tasks don't disappear if API hasn't updated yet
       setCompletedTasks((prevCompletedTasks) => {
-        const mergedWithReviews = applyLocalPosterReviews(completedForMe);
+      const mergedWithReviews = applyLocalPosterReviews(completedForMe);
         
         // Create a map of API tasks by ID for quick lookup
         const apiTaskMap = new Map(mergedWithReviews.map(t => [String(t.id), t]));
