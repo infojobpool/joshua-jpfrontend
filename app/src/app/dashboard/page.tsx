@@ -77,6 +77,9 @@ interface Task {
   assignedToMe?: boolean;
   // Derived flags for filtering completed lists
   _posterIsMe?: boolean;
+  // Store confirmed_bid_id for direct tasker identification
+  confirmed_bid_id?: string | number;
+  user_ref_id?: string | number;
 }
 
 interface Bid {
@@ -1941,6 +1944,8 @@ export default function Dashboard() {
                 cancel_status: job.cancel_status ?? false,
                 assignedToMe,
                 _posterIsMe: posterIsMe,
+                confirmed_bid_id: job.confirmed_bid_id, // Store for direct check in filter
+                user_ref_id: job.user_ref_id, // Store for direct check in filter
               } as Task;
             });
 
@@ -1971,10 +1976,13 @@ export default function Dashboard() {
               status: t.status,
               job_completion_status: t.job_completion_status,
               assignedToMe: t.assignedToMe,
-              _posterIsMe: t._posterIsMe,
-              // Include raw task data for debugging
-              rawTask: tasks.find(tt => tt.id === t.id)
+              _posterIsMe: t._posterIsMe
             })));
+            
+            // TEMPORARY: Show ALL completed tasks from endpoint to debug
+            // The endpoint /fetch-completed-tasks/ returns tasks where user is poster OR tasker
+            // So if a task is in the response, user is involved - show it unless we're CERTAIN it's only a poster task
+            console.log("🔍 DEBUG: Showing all tasks from endpoint (temporary for debugging)");
             
             completedForMe = tasks.filter((t) => {
               // Since endpoint returns only completed tasks, all should be completed
@@ -2047,18 +2055,47 @@ export default function Dashboard() {
                 return true;
               }
               
-              // Only exclude if user is DEFINITELY ONLY the poster (not the tasker)
-              // This means: _posterIsMe === true AND assignedToMe === false (explicitly false)
+              // CRITICAL FIX: Check confirmed_bid_id directly (this is what the endpoint uses)
+              // If confirmed_bid_id == user_id, user is the tasker - definitely include
+              const normalizedUserId = userId != null ? String(userId).trim() : "";
+              const isTaskerByConfirmedBid = t.confirmed_bid_id && String(t.confirmed_bid_id).trim() === normalizedUserId;
+              
+              if (isTaskerByConfirmedBid) {
+                console.log("✅ Including completed task (confirmed_bid_id matches - user is tasker):", {
+                  id: t.id,
+                  title: t.title,
+                  confirmed_bid_id: t.confirmed_bid_id,
+                  userId: normalizedUserId
+                });
+                return true;
+              }
+              
+              // If user_ref_id == user_id but confirmed_bid_id doesn't match, user is only poster - exclude
+              const isPosterOnly = t.user_ref_id && String(t.user_ref_id).trim() === normalizedUserId && !isTaskerByConfirmedBid;
+              
+              if (isPosterOnly) {
+                console.log("⚠️ Excluding completed task (user is only poster, not tasker - belongs in My Tasks):", {
+                  id: t.id,
+                  title: t.title,
+                  user_ref_id: t.user_ref_id,
+                  confirmed_bid_id: t.confirmed_bid_id,
+                  userId: normalizedUserId
+                });
+                return false;
+              }
+              
+              // If we can't determine from confirmed_bid_id/user_ref_id, use the flags
+              // But be lenient - if endpoint returned it, show it
               if (t._posterIsMe === true && t.assignedToMe === false) {
-                console.log("⚠️ Excluding completed task (posted by me and NOT assigned to me - belongs in My Tasks):", {
+                console.log("⚠️ Task posted by me with assignedToMe=false, but can't confirm from IDs - showing to be safe:", {
                   id: t.id,
                   title: t.title,
                   assignedToMe: t.assignedToMe,
                   _posterIsMe: t._posterIsMe,
-                  status: t.status,
-                  job_completion_status: t.job_completion_status
+                  confirmed_bid_id: t.confirmed_bid_id,
+                  user_ref_id: t.user_ref_id
                 });
-                return false;
+                return true; // Show it to be safe
               }
               
               // Default: Include it (better to show than hide)
@@ -2073,21 +2110,65 @@ export default function Dashboard() {
               return true;
             });
             
-            console.log("📊 Completed tasks after filter:", completedForMe.length);
-            console.log("📊 Completed tasks details:", completedForMe.map(t => ({
+            console.log("📊 ========== COMPLETED TASKS FILTER SUMMARY ==========");
+            console.log("📊 User:", userId);
+            console.log("📊 Total tasks from API:", jobsArray.length);
+            console.log("📊 Tasks marked as completed:", tasks.filter(t => {
+              const isCompleted = t.status === "completed" || t.status === "Completed" || t.job_completion_status === "1" || t.job_completion_status === "Completed";
+              return isCompleted;
+            }).length);
+            console.log("📊 Tasks after filter:", completedForMe.length);
+            console.log("📊 Tasks included:", completedForMe.map(t => ({
               id: t.id,
               title: t.title,
               status: t.status,
+              confirmed_bid_id: t.confirmed_bid_id,
+              user_ref_id: t.user_ref_id,
               assignedToMe: t.assignedToMe,
-              _posterIsMe: t._posterIsMe
+              _posterIsMe: t._posterIsMe,
+              reason: t.confirmed_bid_id && String(t.confirmed_bid_id).trim() === String(userId).trim() 
+                ? "confirmed_bid_id matches (tasker)" 
+                : t.assignedToMe === true 
+                ? "assignedToMe=true (tasker)" 
+                : t._posterIsMe === false 
+                ? "not posted by me (tasker)" 
+                : "other reason"
             })));
+            console.log("📊 Tasks excluded:", tasks.filter(t => {
+              const isCompleted = t.status === "completed" || t.status === "Completed" || t.job_completion_status === "1" || t.job_completion_status === "Completed";
+              if (!isCompleted) return false;
+              return !completedForMe.some(ct => ct.id === t.id);
+            }).map(t => ({
+              id: t.id,
+              title: t.title,
+              confirmed_bid_id: t.confirmed_bid_id,
+              user_ref_id: t.user_ref_id,
+              assignedToMe: t.assignedToMe,
+              _posterIsMe: t._posterIsMe,
+              reason: t.user_ref_id && String(t.user_ref_id).trim() === String(userId).trim() && !(t.confirmed_bid_id && String(t.confirmed_bid_id).trim() === String(userId).trim())
+                ? "only poster (not tasker)"
+                : "unknown reason"
+            })));
+            console.log("📊 ====================================================");
             
             // If no tasks found, log warning
             if (completedForMe.length === 0 && jobsArray.length > 0) {
               console.warn("⚠️ No completed tasks passed filter! All tasks were filtered out:", {
                 totalTasks: jobsArray.length,
-                completedTasks: tasks.filter(t => t.status === "completed").length,
-                filteredOut: tasks.length - completedForMe.length
+                completedTasks: tasks.filter(t => {
+                  const isCompleted = t.status === "completed" || t.status === "Completed" || t.job_completion_status === "1" || t.job_completion_status === "Completed";
+                  return isCompleted;
+                }).length,
+                filteredOut: tasks.length - completedForMe.length,
+                userId: userId,
+                tasksDetails: tasks.map(t => ({
+                  id: t.id,
+                  title: t.title,
+                  confirmed_bid_id: t.confirmed_bid_id,
+                  user_ref_id: t.user_ref_id,
+                  assignedToMe: t.assignedToMe,
+                  _posterIsMe: t._posterIsMe
+                }))
               });
             }
             
