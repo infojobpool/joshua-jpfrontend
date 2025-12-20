@@ -1992,9 +1992,12 @@ export default function Dashboard() {
             // So if a task is in the response, user is involved - show it unless we're CERTAIN it's only a poster task
             console.log("🔍 DEBUG: Showing all tasks from endpoint (temporary for debugging)");
             
-            // DEBUGGING: REMOVED ALL FILTERS - Show ALL completed tasks from endpoint
-            console.log("🔍 DEBUG: NO FILTERS - Showing ALL completed tasks from endpoint");
+            // Filter: Show only tasks where user is the TASKER (not poster)
+            // The endpoint returns tasks where user is EITHER poster OR tasker
+            // We only want tasks where confirmed_bid_id === user_id (user is tasker)
+            console.log("🔍 Filtering completed tasks - showing only tasker tasks");
             console.log("🔍 Total tasks from API:", tasks.length);
+            console.log("🔍 User ID:", userId);
             console.log("🔍 All tasks details:", tasks.map(t => ({
               id: t.id,
               title: t.title,
@@ -2007,9 +2010,10 @@ export default function Dashboard() {
               _posterIsMe: t._posterIsMe
             })));
             
-            // NO FILTERING - Show everything the endpoint returns (only check if completed)
+            const normalizedUserId = userId != null ? String(userId).trim() : "";
+            
             completedForMe = tasks.filter((t) => {
-              // Only check if task is completed - no other filters
+              // Check if task is completed
               const isCompleted = 
                 t.status === "completed" || 
                 t.status === "Completed" ||
@@ -2026,17 +2030,33 @@ export default function Dashboard() {
                 return false;
               }
               
-              // Include ALL completed tasks - no filtering by role, confirmed_bid_id, etc.
-              console.log("✅ Including completed task (NO FILTERS - showing all):", {
+              // STANDARD FILTER: Only show tasks where user is the TASKER
+              // Check confirmed_bid_id - if it matches user_id, user is the tasker
+              const isTasker = t.confirmed_bid_id && String(t.confirmed_bid_id).trim() === normalizedUserId;
+              
+              if (isTasker) {
+                console.log("✅ Including completed task (user is tasker - confirmed_bid_id matches):", {
+                  id: t.id,
+                  title: t.title,
+                  confirmed_bid_id: t.confirmed_bid_id,
+                  user_ref_id: t.user_ref_id,
+                  role: t.role,
+                  userId: normalizedUserId
+                });
+                return true;
+              }
+              
+              // Exclude tasks where user is only the poster (not tasker)
+              console.log("⚠️ Excluding completed task (user is only poster, not tasker):", {
                 id: t.id,
                 title: t.title,
                 confirmed_bid_id: t.confirmed_bid_id,
                 user_ref_id: t.user_ref_id,
                 role: t.role,
-                assignedToMe: t.assignedToMe,
-                _posterIsMe: t._posterIsMe
+                userId: normalizedUserId,
+                reason: "confirmed_bid_id doesn't match - user is poster, not tasker"
               });
-              return true;
+              return false;
             });
             
             console.log("📊 ========== COMPLETED TASKS FILTER SUMMARY ==========");
