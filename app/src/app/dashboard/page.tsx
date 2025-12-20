@@ -1864,13 +1864,30 @@ export default function Dashboard() {
                 job.assigned_user_id,
                 job.assigned_to,
                 job.accepted_bidder_id,
-                job.confirmed_bid_id, // Endpoint uses this to identify tasker
+                job.confirmed_bid_id, // Endpoint uses this to identify tasker - CHECK THIS FIRST
                 job.tasker_id,
                 job.executor_id,
               ].filter((v: any) => v !== undefined && v !== null);
               const normalizedUserId2 = userId != null ? String(userId).trim() : "";
+              
+              // For /fetch-completed-tasks/ endpoint:
+              // If confirmed_bid_id == user_id, user is the tasker
+              // If user_ref_id == user_id, user is the poster
+              // Priority: If user is tasker (confirmed_bid_id), they should see it in Completed Tasks
+              const isTasker = job.confirmed_bid_id && String(job.confirmed_bid_id).trim() === normalizedUserId2;
               const posterIsMe = possiblePosterIds.some((v: any) => String(v).trim() === normalizedUserId2);
-              const assignedToMe = possibleTaskerIds2.some((v: any) => String(v).trim() === normalizedUserId2);
+              const assignedToMe = isTasker || possibleTaskerIds2.some((v: any) => String(v).trim() === normalizedUserId2);
+              
+              console.log("🔍 Task identification:", {
+                job_id: job.job_id,
+                title: job.job_title,
+                confirmed_bid_id: job.confirmed_bid_id,
+                user_ref_id: job.user_ref_id,
+                userId: normalizedUserId2,
+                isTasker: isTasker,
+                posterIsMe: posterIsMe,
+                assignedToMe: assignedToMe
+              });
 
               return {
                 id: job.job_id?.toString() || job.id?.toString() || String(Math.random()),
@@ -1971,11 +1988,26 @@ export default function Dashboard() {
                 return false;
               }
               
-              // Only exclude if we're ABSOLUTELY CERTAIN:
+              // Since this endpoint returns tasks where user is EITHER poster OR tasker,
+              // we should prioritize tasker identification
+              // Only exclude if:
               // 1. Task was posted by me (taskmaster)
               // 2. AND task was NOT assigned to me (not a tasker)
               // 3. AND assignedToMe is explicitly false (not just undefined)
               // This is very strict - only exclude if all conditions are met
+              // IMPORTANT: If assignedToMe is true (user is tasker), always include it
+              if (t.assignedToMe === true) {
+                // User is the tasker - definitely include
+                console.log("✅ Including completed task (user is tasker):", {
+                  id: t.id,
+                  title: t.title,
+                  assignedToMe: t.assignedToMe,
+                  _posterIsMe: t._posterIsMe
+                });
+                return true;
+              }
+              
+              // Only exclude if user is ONLY the poster (not the tasker)
               if (t._posterIsMe === true && t.assignedToMe === false) {
                 console.log("⚠️ Excluding completed task (posted by me and NOT assigned to me - belongs in My Tasks):", {
                   id: t.id,
