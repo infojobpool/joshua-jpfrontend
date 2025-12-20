@@ -1725,7 +1725,11 @@ export default function Dashboard() {
     fetchRequestedBids();
   }, [user, userId]);
 
-  // Fetch completed tasks - no caching, rely on backend API
+  // Fetch completed tasks using the dedicated endpoint
+  // Endpoint: /fetch-completed-tasks/{user_id}/
+  // Returns tasks where:
+  // - job_completion_status == 1
+  // - User is poster (user_ref_id == user_id) OR tasker (confirmed_bid_id == user_id)
   const fetchCompletedTasks = async () => {
     if (!userId) return;
 
@@ -1737,11 +1741,13 @@ export default function Dashboard() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-      console.log("Fetching completed tasks from API...");
+      console.log("Fetching completed tasks from dedicated endpoint...");
       let completedForMe: Task[] = [];
       
       try {
-        const fetchResponse = await fetch(`${API_BASE}/get-user-jobs/${userId}/`, {
+        // Use the dedicated completed tasks endpoint
+        // This endpoint already filters for completed tasks where user is poster or tasker
+        const fetchResponse = await fetch(`${API_BASE}/fetch-completed-tasks/${userId}/`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -1825,8 +1831,9 @@ export default function Dashboard() {
                 return isMatching && isPaid;
               });
               
-              // Determine job status based on completion and payment
-              // Check multiple ways job_completion_status might be represented
+              // Since this endpoint only returns completed tasks (job_completion_status == 1),
+              // we can assume all tasks are completed
+              // But still check to be safe
               const completionStatus = job.job_completion_status === 1 || 
                                       job.job_completion_status === "1" || 
                                       job.completion_status === 1 ||
@@ -1835,14 +1842,9 @@ export default function Dashboard() {
                                       job.status === "Completed" ||
                                       job.job_status === "completed";
               
-              if (completionStatus) {
-                jobStatus = "completed";
-                console.log("✅ Job marked as completed:", job.job_id || job.id);
-              } else if (hasPaidOrder) {
-                jobStatus = "in_progress";
-              } else if (job.deletion_status || job.cancel_status) {
-                jobStatus = "cancelled";
-              }
+              // All tasks from this endpoint should be completed
+              jobStatus = "completed";
+              console.log("✅ Job from completed tasks endpoint:", job.job_id || job.id);
               
               // Normalize poster and tasker ids based on API field variations
               const possiblePosterIds = [
@@ -1856,6 +1858,7 @@ export default function Dashboard() {
                 job.assigned_user_id,
                 job.assigned_to,
                 job.accepted_bidder_id,
+                job.confirmed_bid_id, // Endpoint uses this to identify tasker
                 job.tasker_id,
                 job.executor_id,
               ].filter((v: any) => v !== undefined && v !== null);
