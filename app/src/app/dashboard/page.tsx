@@ -69,6 +69,10 @@ interface Task {
   images?: Image[];
   deletion_status?: boolean;
   cancel_status?: boolean;
+  cancelled_by_role?: "tasker" | "taskmaster" | "admin";
+  cancellation_reason?: string;
+  cancelled_at?: string;
+  cancelled?: boolean;
   // New: flag to indicate this job is assigned to the current user (tasker)
   assignedToMe?: boolean;
   // Derived flags for filtering completed lists
@@ -864,6 +868,10 @@ export default function Dashboard() {
               job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
               deletion_status: job.deletion_status || false,
               cancel_status: isCancelled || (job.cancel_status ?? false), // Use comprehensive cancellation check
+              cancelled_by_role: job.cancelled_by_role || job.cancelled_by || undefined,
+              cancellation_reason: job.cancellation_reason || job.cancellationReason || undefined,
+              cancelled_at: job.cancelled_at || job.cancelledAt || undefined,
+              cancelled: isCancelled,
               images: job.job_images?.urls?.length
                 ? job.job_images.urls.map((url: string, index: number) => ({
                     id: `img${index + 1}`,
@@ -1327,27 +1335,25 @@ export default function Dashboard() {
           console.log("📋 Processing", jobsArray.length, "jobs from API");
           const tasks: Task[] = jobsArray
             .filter((job: any) => {
-              // Only filter out if explicitly deleted or cancelled (be less aggressive)
-              // Some tasks might not have these fields set, so default to showing them
+              // Only filter out if explicitly deleted (keep cancelled tasks visible)
               const isDeleted = job.deletion_status === true || job.deletion_status === 1 || job.deleted === true;
-              const isCancelled = job.cancel_status === true || job.cancel_status === 1 || job.cancelled === true;
               
               // Log all tasks for debugging
-              console.log("🔍 Checking task:", {
+              console.log("🔍 Checking assigned task:", {
                 job_id: job.job_id || job.id,
                 title: job.job_title || job.title,
                 deletion_status: job.deletion_status,
                 cancel_status: job.cancel_status,
+                cancelled_by_role: job.cancelled_by_role,
                 isDeleted,
-                isCancelled,
-                willShow: !isDeleted && !isCancelled
+                willShow: !isDeleted
               });
               
-              if (isDeleted || isCancelled) {
-                console.log("⚠️ Filtering out task:", job.job_id || job.id, { isDeleted, isCancelled });
+              if (isDeleted) {
+                console.log("⚠️ Filtering out deleted task:", job.job_id || job.id);
                 return false;
               }
-              return true;
+              return true; // Show cancelled tasks too
             })
             .map((job: any) => {
               console.log("✅ Processing assigned task:", job.job_id, job.job_title);
@@ -1373,14 +1379,17 @@ export default function Dashboard() {
                 }
               }
 
+              // Check if cancelled
+              const isCancelled = job.cancel_status === true || job.cancel_status === 1 || job.cancelled === true;
+              
               return {
                 id: job.job_id?.toString() || job.id?.toString() || String(Math.random()),
                 title: job.job_title || job.title || "Untitled",
                 description: job.job_description || job.description || "No description provided.",
                 budget: Number(job.job_budget || job.budget || 0),
                 location: job.job_location || job.location || "Unknown",
-                // Treat assigned jobs as in_progress in UI
-                status: job.status ? "in_progress" : "open",
+                // Set status based on cancellation
+                status: isCancelled ? "canceled" : (job.status ? "in_progress" : "open"),
                 postedAt: postedAtFormatted,
                 postedAtSortValue: postedAtSortValue,
                 postedAtISO: postedAtISO,
@@ -1392,7 +1401,11 @@ export default function Dashboard() {
                 category: job.job_category || job.category || "general",
                 job_completion_status: job.job_completion_status?.toString() || job.status?.toString() || undefined,
                 deletion_status: job.deletion_status || false,
-                cancel_status: job.cancel_status ?? false,
+                cancel_status: isCancelled || (job.cancel_status ?? false),
+                cancelled_by_role: job.cancelled_by_role || job.cancelled_by || undefined,
+                cancellation_reason: job.cancellation_reason || job.cancellationReason || undefined,
+                cancelled_at: job.cancelled_at || job.cancelledAt || undefined,
+                cancelled: isCancelled,
                 assignedToMe: true, // Mark as assigned to current user
                 images: job.job_images?.urls?.length
                   ? job.job_images.urls.map((url: string, index: number) => ({
@@ -1451,9 +1464,9 @@ export default function Dashboard() {
               // Process fallback jobs (reuse the same mapping logic)
               const fallbackTasks: Task[] = fallbackJobs
                 .filter((job: any) => {
+                  // Only filter out deleted tasks (keep cancelled tasks visible)
                   const isDeleted = job.deletion_status === true || job.deletion_status === 1;
-                  const isCancelled = job.cancel_status === true || job.cancel_status === 1;
-                  return !isDeleted && !isCancelled;
+                  return !isDeleted;
                 })
                 .map((job: any) => {
                   // Use same mapping logic as above
@@ -1479,13 +1492,16 @@ export default function Dashboard() {
                     }
                   }
 
+                  // Check if cancelled
+                  const isCancelled = job.cancel_status === true || job.cancel_status === 1 || job.cancelled === true;
+
                   return {
                     id: job.job_id?.toString() || job.id?.toString() || String(Math.random()),
                     title: job.job_title || job.title || "Untitled",
                     description: job.job_description || job.description || "No description provided.",
                     budget: Number(job.job_budget || job.budget || 0),
                     location: job.job_location || job.location || "Unknown",
-                    status: job.status ? "in_progress" : "open",
+                    status: isCancelled ? "canceled" : (job.status ? "in_progress" : "open"),
                     postedAt: postedAtFormatted,
                     postedAtSortValue: postedAtSortValue,
                     postedAtISO: postedAtISO,
@@ -1497,7 +1513,11 @@ export default function Dashboard() {
                     category: job.job_category || job.category || "general",
                     job_completion_status: job.job_completion_status?.toString() || job.status?.toString() || undefined,
                     deletion_status: job.deletion_status || false,
-                    cancel_status: job.cancel_status ?? false,
+                    cancel_status: isCancelled || (job.cancel_status ?? false),
+                    cancelled_by_role: job.cancelled_by_role || job.cancelled_by || undefined,
+                    cancellation_reason: job.cancellation_reason || job.cancellationReason || undefined,
+                    cancelled_at: job.cancelled_at || job.cancelledAt || undefined,
+                    cancelled: isCancelled,
                     assignedToMe: true,
                     images: job.job_images?.urls?.length
                       ? job.job_images.urls.map((url: string, index: number) => ({
@@ -2190,7 +2210,7 @@ export default function Dashboard() {
                 cancelled: true,
                 cancellation_reason: cancellationData.cancellation_reason || cancellationReason.trim(),
                 cancelled_at: cancellationData.cancelled_at || new Date().toISOString(),
-                cancelled_by_role: "taskmaster"
+                cancelled_by_role: "taskmaster" as const
               };
             }
             return task;
@@ -2267,6 +2287,10 @@ export default function Dashboard() {
                     job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
                     deletion_status: job.deletion_status || false,
                     cancel_status: isCancelled || (job.cancel_status ?? false), // Ensure it's set correctly
+                    cancelled_by_role: job.cancelled_by_role || job.cancelled_by || undefined,
+                    cancellation_reason: job.cancellation_reason || job.cancellationReason || undefined,
+                    cancelled_at: job.cancelled_at || job.cancelledAt || undefined,
+                    cancelled: isCancelled,
                     images: job.job_images?.urls?.length
                       ? job.job_images.urls.map((url: string, index: number) => ({
                           id: `img${index + 1}`,
@@ -2338,11 +2362,26 @@ export default function Dashboard() {
       if (response.data.status_code === 200 || response.status === 200) {
         const refundMessage = response.data.refund_message || "";
         const cancellationFee = response.data.cancellation_fee || "";
+        const cancellationData = response.data.data || {};
         
         toast.success(`Task cancelled successfully! ${cancellationFee ? `Fee: ${cancellationFee}. ` : ''}${refundMessage}`);
         
-        // Remove from assigned tasks list
-        setAssignedTasks((prev) => prev.filter((t) => t.id !== selectedAssignedId));
+        // Update task in assigned tasks list - mark as cancelled but keep it visible
+        setAssignedTasks((prev) =>
+          prev.map((task) =>
+            task.id === selectedAssignedId
+              ? {
+                  ...task,
+                  cancel_status: true,
+                  status: "canceled",
+                  cancelled: true,
+                  cancelled_by_role: "tasker" as const,
+                  cancellation_reason: cancellationData.cancellation_reason || cancellationReason.trim(),
+                  cancelled_at: cancellationData.cancelled_at || new Date().toISOString(),
+                }
+              : task
+          )
+        );
       } else {
         toast.error(response.data.message || "Failed to cancel task");
       }
@@ -3088,30 +3127,39 @@ export default function Dashboard() {
                       }`}
                     >
                       {/* In Progress Task Banner */}
-                      {task.status === "in_progress" && (
+                      {task.status === "in_progress" && !task.cancel_status && (
                         <div className="w-full bg-emerald-700 text-white text-center py-1.5 px-3 font-semibold text-xs">
                           🚀 In Progress — Bid Accepted
                         </div>
                       )}
                       
+                      {/* Tasker Cancellation Banner */}
+                      {task.cancel_status && task.cancelled_by_role === "tasker" && (
+                        <div className="w-full bg-orange-600 text-white text-center py-2 px-3 font-semibold text-xs">
+                          ⚠️ Tasker Cancelled This Task
+                        </div>
+                      )}
+                      
                       {/* Mobile-optimized layout */}
-                      <div className={isMobile ? "p-4" : "p-6"}>
+                      <div className={`${isMobile ? "p-4" : "p-6"} ${task.cancel_status && task.cancelled_by_role === "tasker" ? "opacity-70" : ""}`}>
                         {/* Header with title and status */}
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex-1 min-w-0">
-                            <h3 className={`font-semibold text-gray-900 line-clamp-2 ${isMobile ? "text-base" : "text-lg"}`}>
+                            <h3 className={`font-semibold ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-500" : "text-gray-900"} line-clamp-2 ${isMobile ? "text-base" : "text-lg"}`}>
                               {task.title}
                             </h3>
                             <div className="flex items-center gap-2 mt-1">
                               <Clock className="h-3 w-3 text-gray-400" />
-                              <span className="text-xs text-gray-500">{task.postedAt}</span>
+                              <span className={`text-xs ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-400" : "text-gray-500"}`}>{task.postedAt}</span>
                             </div>
                           </div>
                           <div className="flex flex-col items-end gap-2 ml-3">
                             <Badge
                               variant="outline"
                               className={`font-medium text-xs px-2 py-1 rounded-full ${
-                                task.cancel_status
+                                task.cancel_status && task.cancelled_by_role === "tasker"
+                                  ? "border-orange-300 text-orange-700 bg-orange-50"
+                                  : task.cancel_status
                                   ? "border-red-200 text-red-600 bg-red-50"
                                   : task.deletion_status
                                   ? "border-red-200 text-red-600 bg-red-50"
@@ -3122,7 +3170,9 @@ export default function Dashboard() {
                                   : "border-gray-300 text-gray-600 bg-gray-50"
                               }`}
                             >
-                              {task.cancel_status
+                              {task.cancel_status && task.cancelled_by_role === "tasker"
+                                ? "⚠️ Tasker Cancelled"
+                                : task.cancel_status
                                 ? "❌ Canceled"
                                 : task.deletion_status
                                 ? "🗑️ Deleted"
@@ -3160,18 +3210,38 @@ export default function Dashboard() {
                         </div>
 
                         {/* Description */}
-                        <p className="text-sm text-gray-600 line-clamp-2 mb-3">
+                        <p className={`text-sm ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-400" : "text-gray-600"} line-clamp-2 mb-3`}>
                           {task.description}
                         </p>
+
+                        {/* Tasker Cancellation Message */}
+                        {task.cancel_status && task.cancelled_by_role === "tasker" && (
+                          <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                            <p className="text-sm text-orange-800 font-medium mb-1">
+                              ⚠️ Tasker cancelled this task
+                            </p>
+                            <p className="text-xs text-orange-700">
+                              {task.cancellation_reason && (
+                                <span className="block mb-1"><strong>Reason:</strong> {task.cancellation_reason}</span>
+                              )}
+                              Please repost the task to find a new tasker. You will receive a refund if payment was made, otherwise no refund is needed.
+                            </p>
+                            <Link href="/post-task" className="mt-2 inline-block">
+                              <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white text-xs">
+                                Repost Task
+                              </Button>
+                            </Link>
+                          </div>
+                        )}
 
                         {/* Mobile-optimized info row */}
                         <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"}`}>
                           <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1 bg-blue-100 px-2 py-1 rounded-lg">
-                              <IndianRupee className="h-4 w-4 text-blue-600 font-bold" />
-                              <span className="font-bold text-blue-800">{task.budget}</span>
+                            <div className={`flex items-center gap-1 ${task.cancel_status && task.cancelled_by_role === "tasker" ? "bg-gray-200" : "bg-blue-100"} px-2 py-1 rounded-lg`}>
+                              <IndianRupee className={`h-4 w-4 ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-500" : "text-blue-600"} font-bold`} />
+                              <span className={`font-bold ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-500" : "text-blue-800"}`}>{task.budget}</span>
                             </div>
-                            <div className="flex items-center gap-1 text-gray-500">
+                            <div className={`flex items-center gap-1 ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-400" : "text-gray-500"}`}>
                               <MapPin className="h-3 w-3" />
                               <span className="text-xs">{task.location}</span>
                             </div>
@@ -3180,7 +3250,22 @@ export default function Dashboard() {
 
                         {/* Action buttons */}
                         <div className={`flex gap-2 mt-4 ${isMobile ? "flex-col" : "flex-row"}`}>
-                          {task.deletion_status || task.cancel_status ? (
+                          {task.cancel_status && task.cancelled_by_role === "tasker" ? (
+                            <div className="flex gap-2 w-full">
+                              <Link href="/post-task" className="flex-1">
+                                <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white">
+                                  Repost Task
+                                </Button>
+                              </Link>
+                              <Button
+                                variant="destructive"
+                                className="flex-1"
+                                onClick={() => handlePermanentDelete(task.id)}
+                              >
+                                Delete Permanently
+                              </Button>
+                            </div>
+                          ) : task.deletion_status || task.cancel_status ? (
                             <div className="flex gap-2 w-full">
                               <Button
                                 variant="outline"
@@ -3534,44 +3619,65 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className={`grid gap-4 ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
-                {assignedTasks.map((task) => (
-                  <Card key={task.id} className="bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 border-l-4 border-l-amber-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
+                {assignedTasks.map((task) => {
+                  const isCancelled = task.cancel_status && task.cancelled_by_role === "tasker";
+                  
+                  return (
+                  <Card key={task.id} className={`${isCancelled ? 'opacity-60 bg-gray-100 border-l-4 border-l-gray-400' : 'bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 border-l-4 border-l-amber-500'} shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden`}>
                     {/* Mobile-optimized layout */}
                     <div className={isMobile ? "p-4" : "p-6"}>
                       {/* Header with title and status */}
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1 min-w-0">
-                          <h3 className={`font-semibold text-gray-900 line-clamp-2 ${isMobile ? "text-base" : "text-lg"}`}>
+                          <h3 className={`font-semibold ${isCancelled ? 'text-gray-500 line-through' : 'text-gray-900'} line-clamp-2 ${isMobile ? "text-base" : "text-lg"}`}>
                             {task.title}
                           </h3>
                           <div className="flex items-center gap-2 mt-1">
-                            <Clock className="h-3 w-3 text-gray-400" />
-                            <span className="text-xs text-gray-500">{task.postedAt}</span>
+                            <Clock className={`h-3 w-3 ${isCancelled ? 'text-gray-400' : 'text-gray-400'}`} />
+                            <span className={`text-xs ${isCancelled ? 'text-gray-400' : 'text-gray-500'}`}>{task.postedAt}</span>
+                            {isCancelled && (
+                              <Badge variant="outline" className="text-xs border-gray-400 text-gray-600">
+                                ❌ Cancelled by you
+                              </Badge>
+                            )}
                           </div>
                         </div>
-                        <Badge className="bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs px-2 py-1">
-                          🚀 In Progress
-                        </Badge>
+                        {!isCancelled ? (
+                          <Badge className="bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs px-2 py-1">
+                            🚀 In Progress
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="border-gray-400 text-gray-600 font-semibold text-xs px-2 py-1">
+                            ❌ Cancelled
+                          </Badge>
+                        )}
                       </div>
 
                       {/* Description */}
-                      <p className="text-sm text-gray-600 line-clamp-2 mb-3">
+                      <p className={`text-sm ${isCancelled ? 'text-gray-400 line-through' : 'text-gray-600'} line-clamp-2 mb-3`}>
                         {task.description}
                       </p>
+
+                      {/* Cancellation reason if cancelled */}
+                      {isCancelled && task.cancellation_reason && (
+                        <div className="mb-3 p-2 bg-gray-200 rounded text-xs text-gray-600">
+                          <strong>Reason:</strong> {task.cancellation_reason}
+                        </div>
+                      )}
 
                       {/* Mobile-optimized info row */}
                       <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"}`}>
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1 bg-orange-100 px-2 py-1 rounded-lg">
-                            <IndianRupee className="h-4 w-4 text-orange-600 font-bold" />
-                            <span className="font-bold text-orange-800">{task.budget}</span>
+                          <div className={`flex items-center gap-1 ${isCancelled ? 'bg-gray-200' : 'bg-orange-100'} px-2 py-1 rounded-lg`}>
+                            <IndianRupee className={`h-4 w-4 ${isCancelled ? 'text-gray-500' : 'text-orange-600'} font-bold`} />
+                            <span className={`font-bold ${isCancelled ? 'text-gray-500' : 'text-orange-800'}`}>{task.budget}</span>
                           </div>
-                          <div className="flex items-center gap-1 text-gray-500">
+                          <div className={`flex items-center gap-1 ${isCancelled ? 'text-gray-400' : 'text-gray-500'}`}>
                             <MapPin className="h-3 w-3" />
                             <span className="text-xs">{task.location}</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 text-gray-500">
+                        <div className={`flex items-center gap-1 ${isCancelled ? 'text-gray-400' : 'text-gray-500'}`}>
                           <Avatar className="h-4 w-4">
                             <AvatarFallback className="text-xs">
                               {task.posted_by?.charAt(0) || "?"}
@@ -3583,38 +3689,61 @@ export default function Dashboard() {
 
                       {/* Action buttons */}
                       <div className={`flex flex-wrap items-center gap-2 mt-4`}>
-                        <Link href={`/tasks/${task.id}`} className="shrink-0" onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); } catch {} }}>
-                          <Button variant="outline" className={`w-auto border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}>
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">👁️</span>
-                              <span>View Details</span>
-                            </div>
-                          </Button>
-                        </Link>
-                        <Button
-                          variant="outline"
-                          className={`shrink-0 w-auto border-2 border-red-300 hover:border-red-400 text-red-600 hover:text-red-700 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}
-                          onClick={() => handleAssignedCancelClick(task.id)}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">❌</span>
-                            <span>Cancel</span>
-                          </div>
-                        </Button>
-                        <Button
-                          className={`shrink-0 w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}
-                          onClick={() => handleComplete(task.id)}
-                          disabled={completingTaskId === task.id}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">✅</span>
-                            <span>Mark as Complete</span>
-                          </div>
-                        </Button>
+                        {isCancelled ? (
+                          <>
+                            <Button
+                              variant="destructive"
+                              className={`shrink-0 w-auto border-2 border-red-500 hover:border-red-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}
+                              onClick={() => {
+                                if (confirm('⚠️ Are you sure you want to permanently delete this cancelled task? This action cannot be undone.')) {
+                                  setAssignedTasks((prev) => prev.filter((t) => t.id !== task.id));
+                                  toast.success("Task removed from your list");
+                                }
+                              }}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">🗑️</span>
+                                <span>Delete Permanently</span>
+                              </div>
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Link href={`/tasks/${task.id}`} className="shrink-0" onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); } catch {} }}>
+                              <Button variant="outline" className={`w-auto border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg">👁️</span>
+                                  <span>View Details</span>
+                                </div>
+                              </Button>
+                            </Link>
+                            <Button
+                              variant="outline"
+                              className={`shrink-0 w-auto border-2 border-red-300 hover:border-red-400 text-red-600 hover:text-red-700 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}
+                              onClick={() => handleAssignedCancelClick(task.id)}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">❌</span>
+                                <span>Cancel</span>
+                              </div>
+                            </Button>
+                            <Button
+                              className={`shrink-0 w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}
+                              onClick={() => handleComplete(task.id)}
+                              disabled={completingTaskId === task.id}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">✅</span>
+                                <span>Mark as Complete</span>
+                              </div>
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
             )}
           </TabsContent>
