@@ -1622,7 +1622,11 @@ export default function Dashboard() {
                     job.status === "canceled" ||
                     job.status === "Canceled" ||
                     job.cancelled === true ||
-                    job.cancelled === "true";
+                    job.cancelled === "true" ||
+                    // Check if cancelled_by_role exists (indicates cancellation even if other fields are undefined)
+                    (job.cancelled_by_role !== undefined && job.cancelled_by_role !== null) ||
+                    // Check if cancellation_reason exists (indicates cancellation)
+                    (job.cancellation_reason !== undefined && job.cancellation_reason !== null && job.cancellation_reason !== "");
 
                   return {
                     id: job.job_id?.toString() || job.id?.toString() || String(Math.random()),
