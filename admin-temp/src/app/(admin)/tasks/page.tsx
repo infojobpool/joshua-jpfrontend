@@ -96,6 +96,7 @@ interface Task {
   dueDate: string;
   budget: number;
   paidAmount?: number;
+  razorpayPaymentAmount?: number;
   remote: boolean;
   createdAt: string;
   tasker_name?: string;
