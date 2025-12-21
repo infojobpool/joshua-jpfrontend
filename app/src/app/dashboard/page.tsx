@@ -1390,7 +1390,7 @@ export default function Dashboard() {
 
         if (jobsArray.length > 0) {
           console.log("📋 Processing", jobsArray.length, "jobs from API");
-          const tasks: Task[] = jobsArray
+          const taskPromises = jobsArray
             .filter((job: any) => {
               // Only filter out if explicitly deleted (keep cancelled tasks visible)
               const isDeleted = job.deletion_status === true || job.deletion_status === 1 || job.deleted === true;
@@ -1481,6 +1481,7 @@ export default function Dashboard() {
               }
 
               // Check if cancelled - comprehensive check (same as in rendering)
+              // Also check if cancelled_by_role or cancellation_reason exists (indicates cancellation)
               const isCancelled = 
                 cancellationInfo.cancel_status === true || 
                 cancellationInfo.cancel_status === "true" || 
@@ -1490,16 +1491,24 @@ export default function Dashboard() {
                 job.status === "canceled" ||
                 job.status === "Canceled" ||
                 cancellationInfo.cancelled === true ||
-                cancellationInfo.cancelled === "true";
+                cancellationInfo.cancelled === "true" ||
+                // Check if cancelled_by_role exists (indicates cancellation even if other fields are undefined)
+                (cancellationInfo.cancelled_by_role !== undefined && cancellationInfo.cancelled_by_role !== null) ||
+                // Check if cancellation_reason exists (indicates cancellation)
+                (cancellationInfo.cancellation_reason !== undefined && cancellationInfo.cancellation_reason !== null && cancellationInfo.cancellation_reason !== "");
               
               console.log(`🔍 Assigned Task ${job.job_id} cancellation check:`, {
                 job_id: job.job_id,
                 cancel_status: cancellationInfo.cancel_status,
                 status: job.status,
+                status_type: typeof job.status,
                 cancelled: cancellationInfo.cancelled,
                 cancelled_by_role: cancellationInfo.cancelled_by_role,
+                cancellation_reason: cancellationInfo.cancellation_reason,
                 isCancelled,
-                willShowAsCancelled: isCancelled
+                willShowAsCancelled: isCancelled,
+                fullJob: job, // Log full job object to see all available fields
+                cancellationInfo: cancellationInfo
               });
               
               return {
