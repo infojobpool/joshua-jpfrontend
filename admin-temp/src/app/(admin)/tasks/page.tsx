@@ -126,6 +126,7 @@ export default function TasksPage() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState<boolean>(false);
   const [taskToReset, setTaskToReset] = useState<string | null>(null);
+  const [isLoadingPayment, setIsLoadingPayment] = useState<boolean>(false);
 
   const formatDate = (isoString: string): string => {
     const date = new Date(isoString);
@@ -830,9 +831,32 @@ export default function TasksPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem
-                            onClick={() => {
+                            onClick={async () => {
                               setSelectedTask(task);
                               setIsDetailsDialogOpen(true);
+                              // Fetch payment information when opening task details
+                              if (task.id && task.refundStatus) {
+                                try {
+                                  setIsLoadingPayment(true);
+                                  const paymentResponse = await axiosInstance.get("/get-all-task-orders/");
+                                  if (paymentResponse.data.status_code === 200) {
+                                    const taskOrder = paymentResponse.data.data.task_orders.find(
+                                      (order: any) => order.job_id === task.id
+                                    );
+                                    if (taskOrder) {
+                                      // payable_amount is the total amount paid through Razorpay
+                                      const razorpayAmount = Number(taskOrder.payable_amount) || Number(taskOrder.bid_amount) || 0;
+                                      setSelectedTask((prev) => 
+                                        prev ? { ...prev, razorpayPaymentAmount: razorpayAmount } : prev
+                                      );
+                                    }
+                                  }
+                                } catch (error) {
+                                  console.error("Failed to fetch payment amount:", error);
+                                } finally {
+                                  setIsLoadingPayment(false);
+                                }
+                              }
                             }}
                           >
                             View Details
@@ -1121,11 +1145,40 @@ export default function TasksPage() {
                                       {selectedTask.refundStatus && selectedTask.refundStatus !== "denied" && (
                                         <div className="mt-4 p-4 bg-white rounded-lg border-2 border-green-200 shadow-sm">
                                           <Label className="text-sm font-semibold text-gray-800 mb-3 block">Refund Amount Calculation</Label>
-                                          {selectedTask.paidAmount ? (
+                                          {isLoadingPayment ? (
+                                            <div className="p-3 text-center">
+                                              <div className="inline-block h-4 w-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+                                              <p className="text-xs text-gray-600 mt-2">Loading payment information...</p>
+                                            </div>
+                                          ) : selectedTask.razorpayPaymentAmount ? (
+                                            <div className="space-y-2 text-sm">
+                                              <div className="flex justify-between items-center py-1">
+                                                <span className="text-gray-600">Amount Paid (Razorpay):</span>
+                                                <span className="font-semibold">₹{selectedTask.razorpayPaymentAmount.toFixed(2)}</span>
+                                              </div>
+                                              <div className="flex justify-between items-center py-1 border-t border-gray-100">
+                                                <span className="text-gray-600">Cancellation Fee (4%):</span>
+                                                <span className="font-medium text-orange-600">-₹{(selectedTask.razorpayPaymentAmount * 0.04).toFixed(2)}</span>
+                                              </div>
+                                              <div className="flex justify-between items-center py-1">
+                                                <span className="text-gray-600">GST (18% on fee):</span>
+                                                <span className="font-medium text-orange-600">-₹{(selectedTask.razorpayPaymentAmount * 0.04 * 0.18).toFixed(2)}</span>
+                                              </div>
+                                              <div className="flex justify-between items-center py-2 mt-2 pt-2 border-t-2 border-green-300">
+                                                <span className="font-semibold text-gray-800">Total Refund Amount:</span>
+                                                <span className="font-bold text-lg text-green-600">
+                                                  ₹{(selectedTask.razorpayPaymentAmount - (selectedTask.razorpayPaymentAmount * 0.04) - (selectedTask.razorpayPaymentAmount * 0.04 * 0.18)).toFixed(2)}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          ) : selectedTask.paidAmount ? (
                                             <div className="space-y-2 text-sm">
                                               <div className="flex justify-between items-center py-1">
                                                 <span className="text-gray-600">Paid Amount (Confirmed Bid):</span>
                                                 <span className="font-semibold">₹{selectedTask.paidAmount.toFixed(2)}</span>
+                                              </div>
+                                              <div className="text-xs text-amber-600 italic py-1">
+                                                Note: Using confirmed bid amount. Razorpay payment amount not available.
                                               </div>
                                               <div className="flex justify-between items-center py-1 border-t border-gray-100">
                                                 <span className="text-gray-600">Cancellation Fee (4%):</span>
@@ -1145,10 +1198,10 @@ export default function TasksPage() {
                                           ) : (
                                             <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
                                               <p className="text-sm text-amber-800 font-medium">
-                                                ⚠️ Paid amount (confirmed bid) not available. Cannot calculate refund amount.
+                                                ⚠️ Payment amount not available. Cannot calculate refund amount.
                                               </p>
                                               <p className="text-xs text-amber-700 mt-1">
-                                                The refund calculation requires the actual paid amount (accepted bid amount), not the task budget.
+                                                The refund calculation requires the actual Razorpay payment amount or confirmed bid amount.
                                               </p>
                                             </div>
                                           )}
