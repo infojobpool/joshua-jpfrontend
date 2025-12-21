@@ -930,7 +930,7 @@ export default function TasksPage() {
                           </DialogDescription>
                         </DialogHeader>
                         {selectedTask && (
-                          <div className="grid gap-6 py-4 space-y-6">
+                          <div className="space-y-6 py-4">
                             <div className="flex justify-between items-start">
                               <div>
                                 <h2 className="text-xl font-semibold mb-1">
@@ -969,7 +969,7 @@ export default function TasksPage() {
                               </div>
                             </div>
 
-                            <div className="grid md:grid-cols-2 gap-6">
+                            <div className="grid md:grid-cols-2 gap-6 mb-6">
                               <div className="space-y-4">
                                 <div>
                                   <Label>Taskmaster</Label>
@@ -1066,9 +1066,11 @@ export default function TasksPage() {
                                       </div>
                                     </div>
                                   )}
+                              </div>
+                            </div>
 
-                                {selectedTask.status === "Cancelled" &&
-                                  selectedTask.cancelledAt && (
+                            {selectedTask.status === "Cancelled" &&
+                              selectedTask.cancelledAt && (
                                     <div className="space-y-4 p-5 border-2 border-red-200 rounded-lg bg-gradient-to-br from-red-50 to-orange-50">
                                       <div className="flex items-center gap-2 pb-3 border-b border-red-200">
                                         <AlertCircle className="h-5 w-5 text-red-600" />
