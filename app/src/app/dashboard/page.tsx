@@ -4048,7 +4048,9 @@ export default function Dashboard() {
             ) : (
               <div className={`grid gap-4 ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
                 {assignedTasks.map((task) => {
-                  const isCancelled = task.cancel_status && task.cancelled_by_role === "tasker";
+                  const isCancelled = task.cancel_status || task.cancelled || task.status === "canceled" || task.status === "cancelled";
+                  const cancelledByTasker = task.cancelled_by_role === "tasker";
+                  const cancelledByTaskmaster = task.cancelled_by_role === "taskmaster";
                   
                   return (
                   <Card key={task.id} className={`${isCancelled ? 'opacity-60 bg-gray-100 border-l-4 border-l-gray-400' : 'bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 border-l-4 border-l-amber-500'} shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden`}>
@@ -4063,9 +4065,19 @@ export default function Dashboard() {
                           <div className="flex items-center gap-2 mt-1">
                             <Clock className={`h-3 w-3 ${isCancelled ? 'text-gray-400' : 'text-gray-400'}`} />
                             <span className={`text-xs ${isCancelled ? 'text-gray-400' : 'text-gray-500'}`}>{task.postedAt}</span>
-                            {isCancelled && (
+                            {isCancelled && cancelledByTasker && (
                               <Badge variant="outline" className="text-xs border-gray-400 text-gray-600">
                                 ❌ Cancelled by you
+                              </Badge>
+                            )}
+                            {isCancelled && cancelledByTaskmaster && (
+                              <Badge variant="outline" className="text-xs border-orange-400 text-orange-600 bg-orange-50">
+                                ⚠️ Cancelled by Taskmaster
+                              </Badge>
+                            )}
+                            {isCancelled && !cancelledByTasker && !cancelledByTaskmaster && (
+                              <Badge variant="outline" className="text-xs border-gray-400 text-gray-600">
+                                ❌ Cancelled
                               </Badge>
                             )}
                           </div>
@@ -4088,8 +4100,8 @@ export default function Dashboard() {
 
                       {/* Cancellation reason if cancelled */}
                       {isCancelled && task.cancellation_reason && (
-                        <div className="mb-3 p-2 bg-gray-200 rounded text-xs text-gray-600">
-                          <strong>Reason:</strong> {task.cancellation_reason}
+                        <div className={`mb-3 p-2 rounded text-xs ${cancelledByTaskmaster ? 'bg-orange-100 border border-orange-300 text-orange-800' : 'bg-gray-200 text-gray-600'}`}>
+                          <strong>{cancelledByTaskmaster ? 'Taskmaster\'s Reason:' : cancelledByTasker ? 'Your Reason:' : 'Reason:'}</strong> {task.cancellation_reason}
                         </div>
                       )}
 
