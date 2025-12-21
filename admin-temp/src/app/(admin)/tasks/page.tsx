@@ -1173,12 +1173,12 @@ export default function TasksPage() {
                                       )}
 
                                       {selectedTask.refundStatus === "pending" && (
-                                        <div className="flex gap-3 pt-3 border-t border-red-200">
+                                        <div className="flex flex-col sm:flex-row gap-3 pt-4 mt-4 border-t-2 border-red-300">
                                           <Button
                                             size="sm"
                                             onClick={() => handleRefund(selectedTask.id, "approved")}
                                             disabled={isLoading}
-                                            className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium"
+                                            className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium h-10"
                                           >
                                             ✓ Approve Refund
                                           </Button>
@@ -1187,7 +1187,7 @@ export default function TasksPage() {
                                             variant="destructive"
                                             onClick={() => handleRefund(selectedTask.id, "denied")}
                                             disabled={isLoading}
-                                            className="flex-1"
+                                            className="flex-1 h-10"
                                           >
                                             ✗ Deny Refund
                                           </Button>
