@@ -4407,7 +4407,7 @@ export default function Dashboard() {
             <DialogHeader>
               <DialogTitle>Cancel Posted Task</DialogTitle>
               <DialogDescription>
-                Canceling this task may incur an 8% cancellation fee (if payment was made). Please provide a reason for cancellation.
+                Canceling this task may incur a 4% cancellation fee (if payment was made). Please provide a reason for cancellation.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
