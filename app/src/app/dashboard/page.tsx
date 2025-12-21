@@ -4110,15 +4110,27 @@ export default function Dashboard() {
                             )}
                           </div>
                         </div>
-                        {!isCancelled ? (
-                        <Badge className="bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs px-2 py-1">
-                          🚀 In Progress
-                        </Badge>
-                        ) : (
-                          <Badge variant="outline" className="border-gray-400 text-gray-600 font-semibold text-xs px-2 py-1">
-                            ❌ Cancelled
-                          </Badge>
-                        )}
+                        {(() => {
+                          // Debug logging
+                          if (isCancelled) {
+                            console.log(`🔍 Task ${task.id} is cancelled:`, {
+                              cancel_status: task.cancel_status,
+                              cancelled: task.cancelled,
+                              status: task.status,
+                              cancelled_by_role: task.cancelled_by_role,
+                              isCancelled
+                            });
+                          }
+                          return !isCancelled ? (
+                            <Badge className="bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs px-2 py-1">
+                              🚀 In Progress
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-gray-400 text-gray-600 font-semibold text-xs px-2 py-1">
+                              ❌ Cancelled
+                            </Badge>
+                          );
+                        })()}
                       </div>
 
                       {/* Description */}
