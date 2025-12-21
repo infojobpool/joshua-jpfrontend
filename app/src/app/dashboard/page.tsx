@@ -1436,8 +1436,27 @@ export default function Dashboard() {
                 }
               }
 
-              // Check if cancelled
-              const isCancelled = job.cancel_status === true || job.cancel_status === 1 || job.cancelled === true;
+              // Check if cancelled - comprehensive check (same as in rendering)
+              const isCancelled = 
+                job.cancel_status === true || 
+                job.cancel_status === "true" || 
+                job.cancel_status === 1 ||
+                job.status === "cancelled" || 
+                job.status === "Cancelled" ||
+                job.status === "canceled" ||
+                job.status === "Canceled" ||
+                job.cancelled === true ||
+                job.cancelled === "true";
+              
+              console.log(`🔍 Assigned Task ${job.job_id} cancellation check:`, {
+                job_id: job.job_id,
+                cancel_status: job.cancel_status,
+                status: job.status,
+                cancelled: job.cancelled,
+                cancelled_by_role: job.cancelled_by_role,
+                isCancelled,
+                willShowAsCancelled: isCancelled
+              });
               
               return {
                 id: job.job_id?.toString() || job.id?.toString() || String(Math.random()),
@@ -1549,8 +1568,17 @@ export default function Dashboard() {
                     }
                   }
 
-                  // Check if cancelled
-                  const isCancelled = job.cancel_status === true || job.cancel_status === 1 || job.cancelled === true;
+                  // Check if cancelled - comprehensive check (same as above)
+                  const isCancelled = 
+                    job.cancel_status === true || 
+                    job.cancel_status === "true" || 
+                    job.cancel_status === 1 ||
+                    job.status === "cancelled" || 
+                    job.status === "Cancelled" ||
+                    job.status === "canceled" ||
+                    job.status === "Canceled" ||
+                    job.cancelled === true ||
+                    job.cancelled === "true";
 
                   return {
                     id: job.job_id?.toString() || job.id?.toString() || String(Math.random()),
