@@ -70,6 +70,8 @@ interface Job {
   tasker_id?: string;
   tasker_name?: string;
   job_budget: number;
+  confirmed_bid_amount?: number;
+  bid_amount?: number;
   job_location: string;
   job_due_date: string;
   job_images: { urls: string[] };
@@ -93,6 +95,7 @@ interface Task {
   location: string;
   dueDate: string;
   budget: number;
+  paidAmount?: number;
   remote: boolean;
   createdAt: string;
   tasker_name?: string;
@@ -165,6 +168,7 @@ export default function TasksPage() {
           location: job.job_location,
           dueDate: job.job_due_date,
           budget: job.job_budget,
+          paidAmount: job.confirmed_bid_amount || job.bid_amount || undefined,
           remote: false,
           createdAt: new Date().toISOString(),
           taskmaster: {
@@ -1117,24 +1121,52 @@ export default function TasksPage() {
                                         <div className="mt-4 p-4 bg-white rounded-lg border-2 border-green-200 shadow-sm">
                                           <Label className="text-sm font-semibold text-gray-800 mb-3 block">Refund Amount Calculation</Label>
                                           <div className="space-y-2 text-sm">
-                                            <div className="flex justify-between items-center py-1">
-                                              <span className="text-gray-600">Task Budget:</span>
-                                              <span className="font-semibold">₹{selectedTask.budget.toFixed(2)}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center py-1 border-t border-gray-100">
-                                              <span className="text-gray-600">Cancellation Fee (4%):</span>
-                                              <span className="font-medium text-orange-600">-₹{(selectedTask.budget * 0.04).toFixed(2)}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center py-1">
-                                              <span className="text-gray-600">GST (18% on fee):</span>
-                                              <span className="font-medium text-orange-600">-₹{(selectedTask.budget * 0.04 * 0.18).toFixed(2)}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center py-2 mt-2 pt-2 border-t-2 border-green-300">
-                                              <span className="font-semibold text-gray-800">Total Refund Amount:</span>
-                                              <span className="font-bold text-lg text-green-600">
-                                                ₹{(selectedTask.budget - (selectedTask.budget * 0.04) - (selectedTask.budget * 0.04 * 0.18)).toFixed(2)}
-                                              </span>
-                                            </div>
+                                            {selectedTask.paidAmount ? (
+                                              <>
+                                                <div className="flex justify-between items-center py-1">
+                                                  <span className="text-gray-600">Paid Amount (Confirmed Bid):</span>
+                                                  <span className="font-semibold">₹{selectedTask.paidAmount.toFixed(2)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center py-1 border-t border-gray-100">
+                                                  <span className="text-gray-600">Cancellation Fee (4%):</span>
+                                                  <span className="font-medium text-orange-600">-₹{(selectedTask.paidAmount * 0.04).toFixed(2)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center py-1">
+                                                  <span className="text-gray-600">GST (18% on fee):</span>
+                                                  <span className="font-medium text-orange-600">-₹{(selectedTask.paidAmount * 0.04 * 0.18).toFixed(2)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center py-2 mt-2 pt-2 border-t-2 border-green-300">
+                                                  <span className="font-semibold text-gray-800">Total Refund Amount:</span>
+                                                  <span className="font-bold text-lg text-green-600">
+                                                    ₹{(selectedTask.paidAmount - (selectedTask.paidAmount * 0.04) - (selectedTask.paidAmount * 0.04 * 0.18)).toFixed(2)}
+                                                  </span>
+                                                </div>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <div className="flex justify-between items-center py-1">
+                                                  <span className="text-gray-600">Task Budget:</span>
+                                                  <span className="font-semibold">₹{selectedTask.budget.toFixed(2)}</span>
+                                                </div>
+                                                <div className="text-xs text-amber-600 italic py-1">
+                                                  Note: Paid amount not available, using task budget for calculation
+                                                </div>
+                                                <div className="flex justify-between items-center py-1 border-t border-gray-100">
+                                                  <span className="text-gray-600">Cancellation Fee (4%):</span>
+                                                  <span className="font-medium text-orange-600">-₹{(selectedTask.budget * 0.04).toFixed(2)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center py-1">
+                                                  <span className="text-gray-600">GST (18% on fee):</span>
+                                                  <span className="font-medium text-orange-600">-₹{(selectedTask.budget * 0.04 * 0.18).toFixed(2)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center py-2 mt-2 pt-2 border-t-2 border-green-300">
+                                                  <span className="font-semibold text-gray-800">Total Refund Amount:</span>
+                                                  <span className="font-bold text-lg text-green-600">
+                                                    ₹{(selectedTask.budget - (selectedTask.budget * 0.04) - (selectedTask.budget * 0.04 * 0.18)).toFixed(2)}
+                                                  </span>
+                                                </div>
+                                              </>
+                                            )}
                                           </div>
                                         </div>
                                       )}
