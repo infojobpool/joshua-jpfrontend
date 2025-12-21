@@ -1412,8 +1412,52 @@ export default function Dashboard() {
               }
               return true; // Show cancelled tasks too
             })
-            .map((job: any) => {
+            .map(async (job: any) => {
               console.log("✅ Processing assigned task:", job.job_id, job.job_title);
+              
+              // If cancellation fields are missing, try to fetch full task details
+              let cancellationInfo = {
+                cancel_status: job.cancel_status,
+                cancelled_by_role: job.cancelled_by_role,
+                cancellation_reason: job.cancellation_reason,
+                cancelled_at: job.cancelled_at,
+                cancelled: job.cancelled
+              };
+              
+              // If cancellation info is missing, try to fetch from get-all-jobs-admin or get-user-jobs
+              if (!job.cancel_status && !job.cancelled_by_role && !job.cancelled) {
+                try {
+                  const token = localStorage.getItem('token');
+                  const fullTaskResponse = await fetch(`${API_BASE}/get-all-jobs-admin/`, {
+                    method: 'GET',
+                    headers: {
+                      'Authorization': `Bearer ${token}`,
+                      'Content-Type': 'application/json',
+                    },
+                    credentials: 'omit'
+                  });
+                  
+                  if (fullTaskResponse.ok) {
+                    const fullTaskResult = await fullTaskResponse.json();
+                    if (fullTaskResult.status_code === 200 && fullTaskResult.data?.jobs) {
+                      const fullTask = fullTaskResult.data.jobs.find((t: any) => t.job_id === job.job_id);
+                      if (fullTask) {
+                        cancellationInfo = {
+                          cancel_status: fullTask.cancel_status,
+                          cancelled_by_role: fullTask.cancelled_by_role,
+                          cancellation_reason: fullTask.cancellation_reason,
+                          cancelled_at: fullTask.cancelled_at,
+                          cancelled: fullTask.cancelled
+                        };
+                        console.log(`✅ Found cancellation info for ${job.job_id}:`, cancellationInfo);
+                      }
+                    }
+                  }
+                } catch (err) {
+                  console.warn(`⚠️ Failed to fetch full task details for ${job.job_id}:`, err);
+                }
+              }
+              
               const rawDate = job.created_at || job.timestamp || job.job_due_date || job.updated_at || job.postedAt;
               let postedAtFormatted = "Unknown";
               let postedAtSortValue = 0;
@@ -1438,22 +1482,22 @@ export default function Dashboard() {
 
               // Check if cancelled - comprehensive check (same as in rendering)
               const isCancelled = 
-                job.cancel_status === true || 
-                job.cancel_status === "true" || 
-                job.cancel_status === 1 ||
+                cancellationInfo.cancel_status === true || 
+                cancellationInfo.cancel_status === "true" || 
+                cancellationInfo.cancel_status === 1 ||
                 job.status === "cancelled" || 
                 job.status === "Cancelled" ||
                 job.status === "canceled" ||
                 job.status === "Canceled" ||
-                job.cancelled === true ||
-                job.cancelled === "true";
+                cancellationInfo.cancelled === true ||
+                cancellationInfo.cancelled === "true";
               
               console.log(`🔍 Assigned Task ${job.job_id} cancellation check:`, {
                 job_id: job.job_id,
-                cancel_status: job.cancel_status,
+                cancel_status: cancellationInfo.cancel_status,
                 status: job.status,
-                cancelled: job.cancelled,
-                cancelled_by_role: job.cancelled_by_role,
+                cancelled: cancellationInfo.cancelled,
+                cancelled_by_role: cancellationInfo.cancelled_by_role,
                 isCancelled,
                 willShowAsCancelled: isCancelled
               });
@@ -1477,10 +1521,10 @@ export default function Dashboard() {
                 category: job.job_category || job.category || "general",
                 job_completion_status: job.job_completion_status?.toString() || job.status?.toString() || undefined,
             deletion_status: job.deletion_status || false,
-                cancel_status: isCancelled || (job.cancel_status ?? false),
-                cancelled_by_role: job.cancelled_by_role || job.cancelled_by || undefined,
-                cancellation_reason: job.cancellation_reason || job.cancellationReason || undefined,
-                cancelled_at: job.cancelled_at || job.cancelledAt || undefined,
+                cancel_status: isCancelled || (cancellationInfo.cancel_status ?? false),
+                cancelled_by_role: cancellationInfo.cancelled_by_role || job.cancelled_by || undefined,
+                cancellation_reason: cancellationInfo.cancellation_reason || job.cancellationReason || undefined,
+                cancelled_at: cancellationInfo.cancelled_at || job.cancelledAt || undefined,
                 cancelled: isCancelled,
                 assignedToMe: true, // Mark as assigned to current user
             images: job.job_images?.urls?.length
@@ -4122,9 +4166,9 @@ export default function Dashboard() {
                             });
                           }
                           return !isCancelled ? (
-                            <Badge className="bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs px-2 py-1">
-                              🚀 In Progress
-                            </Badge>
+                        <Badge className="bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs px-2 py-1">
+                          🚀 In Progress
+                        </Badge>
                           ) : (
                             <Badge variant="outline" className="border-gray-400 text-gray-600 font-semibold text-xs px-2 py-1">
                               ❌ Cancelled
