@@ -922,7 +922,7 @@ export default function TasksPage() {
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                      <DialogContent className="max-w-3xl">
+                      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>Task Details</DialogTitle>
                           <DialogDescription>
@@ -930,7 +930,7 @@ export default function TasksPage() {
                           </DialogDescription>
                         </DialogHeader>
                         {selectedTask && (
-                          <div className="grid gap-6 py-4">
+                          <div className="grid gap-6 py-4 space-y-6">
                             <div className="flex justify-between items-start">
                               <div>
                                 <h2 className="text-xl font-semibold mb-1">
