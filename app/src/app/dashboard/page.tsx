@@ -1552,10 +1552,13 @@ export default function Dashboard() {
               } as Task;
             });
           
-          console.log("✅ Setting assigned tasks:", tasks.length, "tasks");
-          setAssignedTasks(tasks);
+          // Wait for all async operations to complete
+          const resolvedTasks: Task[] = await Promise.all(taskPromises);
+          
+          console.log("✅ Setting assigned tasks:", resolvedTasks.length, "tasks");
+          setAssignedTasks(resolvedTasks);
           try { 
-            sessionStorage.setItem("assignedTasks", JSON.stringify(tasks)); 
+            sessionStorage.setItem("assignedTasks", JSON.stringify(resolvedTasks)); 
             console.log("✅ Saved assigned tasks to sessionStorage");
           } catch (e) {
             console.warn("⚠️ Failed to save to sessionStorage:", e);
