@@ -1069,88 +1069,114 @@ export default function TasksPage() {
 
                                 {selectedTask.status === "Cancelled" &&
                                   selectedTask.cancelledAt && (
-                                    <div className="space-y-3 p-4 border rounded-md bg-red-50">
-                                      <div>
-                                        <Label>Cancelled On</Label>
-                                        <div className="flex items-center gap-2 mt-1">
-                                          <AlertCircle className="h-4 w-4 text-red-500" />
-                                          <span className="text-sm">{formatDate(selectedTask.cancelledAt)}</span>
-                                        </div>
+                                    <div className="space-y-4 p-5 border-2 border-red-200 rounded-lg bg-gradient-to-br from-red-50 to-orange-50">
+                                      <div className="flex items-center gap-2 pb-3 border-b border-red-200">
+                                        <AlertCircle className="h-5 w-5 text-red-600" />
+                                        <Label className="text-base font-semibold text-red-900">Cancellation Details</Label>
                                       </div>
 
-                                      {selectedTask.cancelledByRole && (
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                          <Label>Cancelled By</Label>
-                                          <div className="mt-1">
-                                            <Badge variant="outline" className="capitalize">
-                                              {selectedTask.cancelledByRole}
-                                            </Badge>
-                                            {selectedTask.cancelledByUserId && (
-                                              <span className="text-xs text-muted-foreground ml-2">
-                                                ID: {selectedTask.cancelledByUserId}
-                                              </span>
-                                            )}
+                                          <Label className="text-sm font-medium text-gray-700">Cancelled On</Label>
+                                          <div className="flex items-center gap-2 mt-1.5">
+                                            <Calendar className="h-4 w-4 text-gray-500" />
+                                            <span className="text-sm font-medium">{formatDate(selectedTask.cancelledAt)}</span>
                                           </div>
                                         </div>
-                                      )}
+
+                                        {selectedTask.cancelledByRole && (
+                                          <div>
+                                            <Label className="text-sm font-medium text-gray-700">Cancelled By</Label>
+                                            <div className="mt-1.5 flex items-center gap-2">
+                                              <Badge variant="outline" className="capitalize font-medium">
+                                                {selectedTask.cancelledByRole}
+                                              </Badge>
+                                              {selectedTask.cancelledByUserId && (
+                                                <span className="text-xs text-gray-600">
+                                                  ID: {selectedTask.cancelledByUserId}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
 
                                       {selectedTask.cancellationReason && (
                                         <div>
-                                          <Label>Cancellation Reason</Label>
-                                          <div className="mt-1 text-sm p-2 bg-white rounded border">
+                                          <Label className="text-sm font-medium text-gray-700">Cancellation Reason</Label>
+                                          <div className="mt-1.5 text-sm p-3 bg-white rounded-md border border-gray-200 shadow-sm">
                                             {selectedTask.cancellationReason}
                                           </div>
                                         </div>
                                       )}
 
-                                      {selectedTask.refundStatus && (
-                                        <div>
-                                          <Label>Refund Status</Label>
-                                          <div className="mt-1">
-                                            <Badge
-                                              variant={
-                                                selectedTask.refundStatus === "approved"
-                                                  ? "default"
-                                                  : selectedTask.refundStatus === "denied"
-                                                  ? "destructive"
-                                                  : "secondary"
-                                              }
-                                              className="capitalize"
-                                            >
-                                              {selectedTask.refundStatus === "approved" && "✓ "}
-                                              {selectedTask.refundStatus === "denied" && "✗ "}
-                                              {selectedTask.refundStatus}
-                                            </Badge>
+                                      {/* Refund Amount Calculation */}
+                                      {selectedTask.refundStatus && selectedTask.refundStatus !== "denied" && (
+                                        <div className="mt-4 p-4 bg-white rounded-lg border-2 border-green-200 shadow-sm">
+                                          <Label className="text-sm font-semibold text-gray-800 mb-3 block">Refund Amount Calculation</Label>
+                                          <div className="space-y-2 text-sm">
+                                            <div className="flex justify-between items-center py-1">
+                                              <span className="text-gray-600">Task Budget:</span>
+                                              <span className="font-semibold">₹{selectedTask.budget.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center py-1 border-t border-gray-100">
+                                              <span className="text-gray-600">Cancellation Fee (4%):</span>
+                                              <span className="font-medium text-orange-600">-₹{(selectedTask.budget * 0.04).toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center py-1">
+                                              <span className="text-gray-600">GST (18% on fee):</span>
+                                              <span className="font-medium text-orange-600">-₹{(selectedTask.budget * 0.04 * 0.18).toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center py-2 mt-2 pt-2 border-t-2 border-green-300">
+                                              <span className="font-semibold text-gray-800">Total Refund Amount:</span>
+                                              <span className="font-bold text-lg text-green-600">
+                                                ₹{(selectedTask.budget - (selectedTask.budget * 0.04) - (selectedTask.budget * 0.04 * 0.18)).toFixed(2)}
+                                              </span>
+                                            </div>
                                           </div>
                                         </div>
                                       )}
 
-                                      {!selectedTask.refundStatus && selectedTask.cancelledByRole && selectedTask.cancelledByRole !== "admin" && (
-                                        <div>
-                                          <Label>Refund Status</Label>
-                                          <div className="mt-1">
-                                            <Badge variant="outline" className="text-muted-foreground">
-                                              No refund needed (cancelled before payment)
-                                            </Badge>
-                                          </div>
-                                        </div>
-                                      )}
+                                      <div className="flex items-center gap-3 pt-2 border-t border-red-200">
+                                        <Label className="text-sm font-medium text-gray-700">Refund Status:</Label>
+                                        {selectedTask.refundStatus ? (
+                                          <Badge
+                                            variant={
+                                              selectedTask.refundStatus === "approved"
+                                                ? "default"
+                                                : selectedTask.refundStatus === "denied"
+                                                ? "destructive"
+                                                : "secondary"
+                                            }
+                                            className="capitalize font-medium"
+                                          >
+                                            {selectedTask.refundStatus === "approved" && "✓ "}
+                                            {selectedTask.refundStatus === "denied" && "✗ "}
+                                            {selectedTask.refundStatus}
+                                          </Badge>
+                                        ) : selectedTask.cancelledByRole && selectedTask.cancelledByRole !== "admin" ? (
+                                          <Badge variant="outline" className="text-muted-foreground">
+                                            No refund needed (cancelled before payment)
+                                          </Badge>
+                                        ) : null}
+                                      </div>
 
                                       {selectedTask.refundDate && (
                                         <div>
-                                          <Label>Refund Decision Date</Label>
-                                          <div className="mt-1 text-sm">
+                                          <Label className="text-sm font-medium text-gray-700">Refund Decision Date</Label>
+                                          <div className="mt-1.5 text-sm font-medium">
                                             {formatDate(selectedTask.refundDate)}
                                           </div>
                                         </div>
                                       )}
 
                                       {selectedTask.refundStatus === "pending" && (
-                                        <div className="flex gap-2 pt-2">
+                                        <div className="flex gap-3 pt-3 border-t border-red-200">
                                           <Button
                                             size="sm"
                                             onClick={() => handleRefund(selectedTask.id, "approved")}
                                             disabled={isLoading}
+                                            className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium"
                                           >
                                             ✓ Approve Refund
                                           </Button>
@@ -1159,6 +1185,7 @@ export default function TasksPage() {
                                             variant="destructive"
                                             onClick={() => handleRefund(selectedTask.id, "denied")}
                                             disabled={isLoading}
+                                            className="flex-1"
                                           >
                                             ✗ Deny Refund
                                           </Button>
