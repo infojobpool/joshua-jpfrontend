@@ -32,16 +32,6 @@ const sidebarNavItems = [
     icon: CheckSquare,
   },
   {
-    title: "Cancelled Tasks",
-    href: "/tasks-cancelled",
-    icon: Ban,
-  },
-  {
-    title: "Tasker Cancellations",
-    href: "/tasker-cancellations",
-    icon: MessageSquare,
-  },
-  {
     title: "Customers",
     href: "/customers",
     icon: Users,
