@@ -74,6 +74,9 @@ interface Job {
   bid_amount?: number;
   job_location: string;
   job_due_date: string;
+  // Prefer backend timestamps when available so we can sort/filter by recency
+  created_at?: string;
+  updated_at?: string;
   job_images: { urls: string[] };
   status: boolean;
   deletion_status: boolean;
@@ -118,6 +121,11 @@ export default function TasksPage() {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<"all" | "this_week" | "custom">(
+    "all"
+  );
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] =
     useState<boolean>(false);
@@ -172,7 +180,12 @@ export default function TasksPage() {
           budget: job.job_budget,
           paidAmount: job.confirmed_bid_amount || job.bid_amount || undefined,
           remote: false,
-          createdAt: new Date().toISOString(),
+          // Use backend timestamps when available so "recent" filters work correctly
+          createdAt:
+            job.updated_at ||
+            job.created_at ||
+            job.job_due_date ||
+            new Date().toISOString(),
           taskmaster: {
             id: job.user_ref_id,
             name: job.posted_by,
@@ -286,7 +299,7 @@ export default function TasksPage() {
   // Get unique categories for filter
   const categories = Array.from(new Set(tasks.map((task) => task.category)));
 
-  // Filter tasks based on search term and filters
+  // Filter tasks based on search term, filters and date range
   const filteredTasks = tasks.filter((task: Task) => {
     const matchesSearch =
       task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -300,7 +313,51 @@ export default function TasksPage() {
     const matchesStatus =
       statusFilter === "all" || task.status === statusFilter;
 
-    return matchesSearch && matchesCategory && matchesStatus;
+    // Date-based filters use createdAt so we can talk about "recent" tasks
+    let matchesDate = true;
+    if (dateFilter !== "all") {
+      const created = new Date(task.createdAt);
+      if (!isNaN(created.getTime())) {
+        const startOfToday = new Date();
+        startOfToday.setHours(23, 59, 59, 999);
+
+        if (dateFilter === "this_week") {
+          // Last 7 days including today
+          const startOfWeek = new Date(startOfToday);
+          startOfWeek.setDate(startOfWeek.getDate() - 6);
+          startOfWeek.setHours(0, 0, 0, 0);
+          matchesDate = created >= startOfWeek && created <= startOfToday;
+        } else if (dateFilter === "custom" && (dateFrom || dateTo)) {
+          let fromOk = true;
+          let toOk = true;
+          if (dateFrom) {
+            const from = new Date(dateFrom);
+            from.setHours(0, 0, 0, 0);
+            fromOk = created >= from;
+          }
+          if (dateTo) {
+            const to = new Date(dateTo);
+            to.setHours(23, 59, 59, 999);
+            toOk = created <= to;
+          }
+          matchesDate = fromOk && toOk;
+        }
+      } else {
+        // If we cannot parse the date and a date filter is active, hide the task
+        matchesDate = false;
+      }
+    }
+
+    return matchesSearch && matchesCategory && matchesStatus && matchesDate;
+  });
+
+  // Always show most recently updated/created tasks first
+  const sortedTasks = [...filteredTasks].sort((a, b) => {
+    const aDate = new Date(a.createdAt);
+    const bDate = new Date(b.createdAt);
+    const aTime = isNaN(aDate.getTime()) ? 0 : aDate.getTime();
+    const bTime = isNaN(bDate.getTime()) ? 0 : bDate.getTime();
+    return bTime - aTime;
   });
 
   // Refund management handler
@@ -646,7 +703,7 @@ export default function TasksPage() {
             disabled={isLoading}
           />
         </div>
-        <div className="flex items-center gap-2 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           <Select
             value={categoryFilter}
             onValueChange={setCategoryFilter}
@@ -681,6 +738,42 @@ export default function TasksPage() {
               <SelectItem value="Cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
+          {/* New: Date filters for recent / range */}
+          <Select
+            value={dateFilter}
+            onValueChange={(value: "all" | "this_week" | "custom") =>
+              setDateFilter(value)
+            }
+            disabled={isLoading}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by date" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Dates</SelectItem>
+              <SelectItem value="this_week">Recent (This Week)</SelectItem>
+              <SelectItem value="custom">Custom Range</SelectItem>
+            </SelectContent>
+          </Select>
+          {dateFilter === "custom" && (
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                className="w-[150px]"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                disabled={isLoading}
+              />
+              <span className="text-xs text-muted-foreground">to</span>
+              <Input
+                type="date"
+                className="w-[150px]"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -719,7 +812,7 @@ export default function TasksPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredTasks.map((task) => (
+              sortedTasks.map((task) => (
                 <TableRow key={task.id}>
                   <TableCell>
                     <div className="font-medium">{task.title}</div>
