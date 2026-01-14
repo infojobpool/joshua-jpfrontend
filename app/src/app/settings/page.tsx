@@ -146,16 +146,21 @@ export default function SettingsPage() {
   useEffect(() => {
     if (mounted) {
       updateStats();
+      // Also update stats periodically
+      const interval = setInterval(updateStats, 5000);
+      return () => clearInterval(interval);
     }
   }, [mounted]);
 
   // Show loading state until mounted (prevents SSR issues)
-  if (!mounted) {
+  if (!mounted || (!isAuthenticated && !userId)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
-          <p className="text-gray-600">Loading settings...</p>
+          <p className="text-gray-600">
+            {!mounted ? "Loading settings..." : "Redirecting to login..."}
+          </p>
         </div>
       </div>
     );
@@ -183,49 +188,51 @@ export default function SettingsPage() {
         </div>
 
         {/* Cache Stats Card */}
-        {cacheStats && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5" />
-                Cache Statistics
-              </CardTitle>
-              <CardDescription>Current storage usage</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-                  <div>
-                    <p className="text-sm text-gray-600">Local Storage</p>
-                    <p className="text-2xl font-bold text-blue-600">{cacheStats.localStorage}</p>
-                    <p className="text-xs text-gray-500">items</p>
-                  </div>
-                  <HardDrive className="h-8 w-8 text-blue-600" />
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5" />
+              Cache Statistics
+            </CardTitle>
+            <CardDescription>Current storage usage</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                <div>
+                  <p className="text-sm text-gray-600">Local Storage</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {cacheStats?.localStorage ?? 0}
+                  </p>
+                  <p className="text-xs text-gray-500">items</p>
                 </div>
-                
-                <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
-                  <div>
-                    <p className="text-sm text-gray-600">Session Storage</p>
-                    <p className="text-2xl font-bold text-green-600">{cacheStats.sessionStorage}</p>
-                    <p className="text-xs text-gray-500">items</p>
-                  </div>
-                  <Server className="h-8 w-8 text-green-600" />
-                </div>
-                
-                <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg">
-                  <div>
-                    <p className="text-sm text-gray-600">Service Worker</p>
-                    <p className="text-2xl font-bold text-purple-600">
-                      {cacheStats.serviceWorker ? "Active" : "Inactive"}
-                    </p>
-                    <p className="text-xs text-gray-500">status</p>
-                  </div>
-                  <Zap className="h-8 w-8 text-purple-600" />
-                </div>
+                <HardDrive className="h-8 w-8 text-blue-600" />
               </div>
-            </CardContent>
-          </Card>
-        )}
+              
+              <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
+                <div>
+                  <p className="text-sm text-gray-600">Session Storage</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {cacheStats?.sessionStorage ?? 0}
+                  </p>
+                  <p className="text-xs text-gray-500">items</p>
+                </div>
+                <Server className="h-8 w-8 text-green-600" />
+              </div>
+              
+              <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg">
+                <div>
+                  <p className="text-sm text-gray-600">Service Worker</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {cacheStats?.serviceWorker ? "Active" : "Inactive"}
+                  </p>
+                  <p className="text-xs text-gray-500">status</p>
+                </div>
+                <Zap className="h-8 w-8 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Cache Management Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
