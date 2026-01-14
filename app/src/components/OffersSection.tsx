@@ -447,14 +447,15 @@ export function OffersSection({
       // Payment is pending if:
       // 1. paymentData exists for this task
       // 2. payment_page_visited flag exists
-      // 3. pending_payment_verification exists (payment not verified yet)
+      // 3. Task status is still "open" (not "in_progress") OR pendingVerification exists
       // AND task is not yet in_progress
       if (paymentData && paymentPageVisited) {
         const data = JSON.parse(paymentData);
         if (data.taskId === task.id) {
-          // If pendingVerification exists, payment is still pending
-          // If task is in_progress, payment is complete
-          return !!pendingVerification && task.status !== "in_progress";
+          // Check if task is still open (payment not completed)
+          const isTaskOpen = task.status === "open" || task.status === "Open" || !task.status || task.status === true;
+          // Payment is pending if task is open OR pendingVerification exists
+          return (isTaskOpen || !!pendingVerification) && task.status !== "in_progress";
         }
       }
     } catch (e) {

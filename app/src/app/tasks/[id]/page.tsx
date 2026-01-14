@@ -1089,6 +1089,18 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       return;
     }
 
+    // Check if payment is pending - disable messaging if so
+    if (isPaymentPending) {
+      toast.error("Please complete payment before messaging. Payment is required to confirm the task assignment.", {
+        duration: 5000,
+        action: {
+          label: "Complete Payment",
+          onClick: () => router.push("/payments"),
+        },
+      });
+      return;
+    }
+
     const senderId = userId;
     let targetReceiverId: string | undefined;
 
@@ -1234,9 +1246,14 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               return; // Don't show toast
             }
             
-            // Only show warning if pendingVerification exists (payment not verified)
-            if (pendingVerification) {
-              console.warn("⚠️ Payment verification pending for task:", id);
+            // Payment is pending if:
+            // 1. Task status is still "open" (not "in_progress")
+            // 2. paymentData and payment_page_visited exist (user went to payment page)
+            // 3. pendingVerification exists OR task status is still "open"
+            const isTaskOpen = task?.status === "open" || task?.status === "Open" || !task?.status || task?.status === true;
+            if (isTaskOpen) {
+              // Task is still open, so payment is definitely pending
+              console.warn("⚠️ Payment pending for task:", id, "- task is still open");
               setIsPaymentPending(true); // Set state to disable messaging
               toast.error("⚠️ Payment was not completed. Please complete payment to confirm the assignment.", {
                 duration: 6000,
@@ -1244,6 +1261,13 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                   label: "Complete Payment",
                   onClick: () => router.push("/payments"),
                 },
+              });
+            } else if (pendingVerification) {
+              // Task might be in_progress but payment verification is pending
+              console.warn("⚠️ Payment verification pending for task:", id);
+              setIsPaymentPending(true); // Set state to disable messaging
+              toast.error("⚠️ Payment verification pending. Please wait for confirmation.", {
+                duration: 6000,
               });
             } else {
               setIsPaymentPending(false);
@@ -1260,10 +1284,13 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       }
     };
     
-    // Run check after a short delay to ensure page is loaded
-    const timeoutId = setTimeout(checkPendingPayment, 1000);
+    // Run check after a short delay to ensure page is loaded, and also when task changes
+    const timeoutId = setTimeout(() => {
+      checkPendingPayment();
+    }, task ? 100 : 1000); // Shorter delay if task is already loaded
+    
     return () => clearTimeout(timeoutId);
-  }, [id, userId, router]);
+  }, [id, userId, router, task]);
 
   if (authLoading) {
     return (
