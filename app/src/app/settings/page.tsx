@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import useStore from "@/lib/Zustand";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,6 @@ import { toast } from "sonner";
 import {
   clearAllCache,
   clearTaskCache,
-  clearUserDataCache,
   smartCacheRefresh,
   getCacheStats,
   autoCleanupOldCache,
@@ -34,11 +33,16 @@ export const dynamic = 'force-dynamic';
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { isAuthenticated, userId } = useStore();
+  const { isAuthenticated, userId, user, logout } = useStore();
   const [isClearing, setIsClearing] = useState(false);
   const [cacheStats, setCacheStats] = useState<CacheStats | null>(null);
   const [lastCleared, setLastCleared] = useState<string[]>([]);
   const [mounted, setMounted] = useState(false);
+
+  const handleSignOut = () => {
+    logout();
+    router.push("/signin");
+  };
 
   // Check authentication
   useEffect(() => {
@@ -48,11 +52,22 @@ export default function SettingsPage() {
     }
   }, [isAuthenticated, userId, router]);
 
-  const updateStats = () => {
+  const updateStats = useCallback(() => {
     if (typeof window === 'undefined') return;
-    const stats = getCacheStats();
-    setCacheStats(stats);
-  };
+    try {
+      const stats = getCacheStats();
+      setCacheStats(stats);
+    } catch (error) {
+      console.error("Failed to update cache stats:", error);
+      // Set default stats on error
+      setCacheStats({
+        localStorage: 0,
+        sessionStorage: 0,
+        serviceWorker: false,
+        cleared: [],
+      });
+    }
+  }, []);
 
   const handleClearAll = async () => {
     if (!confirm("This will clear ALL app data including login session. You'll need to log in again. Continue?")) {
@@ -144,13 +159,24 @@ export default function SettingsPage() {
 
   // Load stats on mount
   useEffect(() => {
-    if (mounted) {
-      updateStats();
-      // Also update stats periodically
-      const interval = setInterval(updateStats, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [mounted]);
+    if (!mounted || typeof window === 'undefined') return;
+    
+    // Initial stats load
+    updateStats();
+    
+    // Also update stats periodically
+    const interval = setInterval(() => {
+      try {
+        updateStats();
+      } catch (error) {
+        console.error("Error updating stats:", error);
+      }
+    }, 5000);
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [mounted, updateStats]);
 
   // Show loading state until mounted (prevents SSR issues)
   if (!mounted || (!isAuthenticated && !userId)) {
@@ -166,9 +192,18 @@ export default function SettingsPage() {
     );
   }
 
+  // Prepare user data for Header
+  const headerUser = user ? {
+    name: user.name || "User",
+    avatar: user.profile_image || "",
+  } : {
+    name: "User",
+    avatar: "",
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <Header user={headerUser} onSignOut={handleSignOut} />
       
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
