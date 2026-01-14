@@ -6,6 +6,9 @@ import useStore from "@/lib/Zustand";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
   Trash2, 
   RefreshCw, 
@@ -15,9 +18,11 @@ import {
   CheckCircle,
   ArrowLeft,
   HardDrive,
-  Server
+  Server,
+  UserX
 } from "lucide-react";
 import { toast } from "sonner";
+import axiosInstance from "@/lib/axiosInstance";
 import {
   clearAllCache,
   clearTaskCache,
@@ -38,10 +43,63 @@ export default function SettingsPage() {
   const [cacheStats, setCacheStats] = useState<CacheStats | null>(null);
   const [lastCleared, setLastCleared] = useState<string[]>([]);
   const [mounted, setMounted] = useState(false);
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const handleSignOut = () => {
     logout();
     router.push("/signin");
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== "DELETE") {
+      toast.error("Please type 'DELETE' to confirm account deletion");
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    try {
+      // Call backend API to delete account
+      const response = await axiosInstance.delete(`/delete-account/${userId}/`);
+      
+      if (response.data.status_code === 200 || response.status === 200) {
+        toast.success("Account deleted successfully");
+        
+        // Clear all local data
+        await clearAllCache();
+        
+        // Logout and redirect
+        logout();
+        
+        setTimeout(() => {
+          router.push("/signin");
+        }, 2000);
+      } else {
+        toast.error(response.data.message || "Failed to delete account");
+      }
+    } catch (error: any) {
+      console.error("Account deletion error:", error);
+      
+      // If endpoint doesn't exist, show a message with link to contact support
+      if (error.response?.status === 404) {
+        toast.error("Account deletion is not yet available. Please contact support to delete your account.", {
+          duration: 8000,
+          action: {
+            label: "Contact Support",
+            onClick: () => {
+              window.open("mailto:support@jobpool.in?subject=Account Deletion Request", "_blank");
+            },
+          },
+        });
+      } else {
+        toast.error(error.response?.data?.message || "Failed to delete account. Please contact support.");
+      }
+    } finally {
+      setIsDeletingAccount(false);
+      setShowDeleteAccountDialog(false);
+      setDeleteConfirmText("");
+    }
   };
 
   // Check authentication
@@ -417,6 +475,34 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Delete Account */}
+          <Card className="border-red-300 bg-red-50/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg text-red-700">
+                <UserX className="h-5 w-5" />
+                Delete Account
+              </CardTitle>
+              <CardDescription className="text-red-600">
+                Permanently delete your account and all associated data
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                onClick={() => setShowDeleteAccountDialog(true)}
+                disabled={isDeletingAccount}
+                variant="destructive"
+                className="w-full bg-red-600 hover:bg-red-700"
+              >
+                <UserX className="h-4 w-4 mr-2" />
+                Delete My Account
+              </Button>
+              <div className="mt-3 flex items-start gap-2 text-xs text-red-700">
+                <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <span>This action cannot be undone. All your data will be permanently deleted.</span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Last Cleared Info */}
@@ -448,6 +534,82 @@ export default function SettingsPage() {
           </Card>
         )}
       </div>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog open={showDeleteAccountDialog} onOpenChange={setShowDeleteAccountDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 flex items-center gap-2">
+              <UserX className="h-5 w-5" />
+              Delete Account
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              This action cannot be undone. This will permanently delete your account and remove all your data from our servers.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-sm font-semibold text-red-800 mb-2">What will be deleted:</p>
+              <ul className="text-sm text-red-700 space-y-1 list-disc list-inside">
+                <li>Your profile and personal information</li>
+                <li>All your posted tasks</li>
+                <li>All your bids and offers</li>
+                <li>Your message history</li>
+                <li>Your reviews and ratings</li>
+                <li>All associated data</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="deleteConfirm" className="text-sm font-medium">
+                Type <span className="font-bold text-red-600">DELETE</span> to confirm:
+              </Label>
+              <Input
+                id="deleteConfirm"
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="Type DELETE to confirm"
+                className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                disabled={isDeletingAccount}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteAccountDialog(false);
+                setDeleteConfirmText("");
+              }}
+              disabled={isDeletingAccount}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={isDeletingAccount || deleteConfirmText !== "DELETE"}
+              className="w-full sm:w-auto bg-red-600 hover:bg-red-700"
+            >
+              {isDeletingAccount ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting Account...
+                </>
+              ) : (
+                <>
+                  <UserX className="h-4 w-4 mr-2" />
+                  Delete Account Permanently
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
