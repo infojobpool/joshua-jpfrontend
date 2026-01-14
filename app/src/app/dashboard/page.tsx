@@ -3105,7 +3105,14 @@ export default function Dashboard() {
                       <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
                     </div>
                     <div className="flex flex-col items-start">
-                      <span className="text-sm font-medium text-gray-900">{safeUser.name || "User"}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-medium text-gray-900">{safeUser.name || "User"}</span>
+                        {user?.verification_status >= 3 && (
+                          <span title="Verified Account">
+                            <CheckCircle className="h-4 w-4 text-blue-600" />
+                          </span>
+                        )}
+                      </div>
                       <span className="text-xs text-gray-500">Online</span>
                     </div>
                     <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
@@ -3125,8 +3132,15 @@ export default function Dashboard() {
                               {(safeUser.name ? safeUser.name.charAt(0) : "U")}
                             </div>
                           )}
-                          <div>
-                            <p className="font-medium text-gray-900">{safeUser.name || "User"}</p>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-medium text-gray-900">{safeUser.name || "User"}</p>
+                              {user?.verification_status >= 3 && (
+                                <span title="Verified Account">
+                                  <CheckCircle className="h-4 w-4 text-blue-600" />
+                                </span>
+                              )}
+                            </div>
                             <p className="text-sm text-gray-500">{safeUser.email || ""}</p>
                           </div>
                         </div>
@@ -3199,7 +3213,14 @@ export default function Dashboard() {
                   )}
                   <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
                 </div>
-                <span className="text-lg">{safeUser.name || "User"}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-lg">{safeUser.name || "User"}</span>
+                  {user?.verification_status >= 3 && (
+                    <span title="Verified Account">
+                      <CheckCircle className="h-5 w-5 text-blue-600" />
+                    </span>
+                  )}
+                </div>
                 <ChevronDown className={`h-5 w-5 transition-transform duration-300 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
               
@@ -3218,8 +3239,15 @@ export default function Dashboard() {
                           {safeUser.name?.charAt(0) || "U"}
                         </div>
                       )}
-                      <div>
-                        <p className="font-medium text-gray-900 text-lg">{safeUser.name || "User"}</p>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-medium text-gray-900 text-lg">{safeUser.name || "User"}</p>
+                          {user?.verification_status >= 3 && (
+                            <span title="Verified Account">
+                              <CheckCircle className="h-5 w-5 text-blue-600" />
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-500">{safeUser.email || ""}</p>
                       </div>
                     </div>
