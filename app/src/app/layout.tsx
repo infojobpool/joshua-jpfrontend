@@ -58,11 +58,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="apple-touch-icon" href="/icons/icon-192x192.svg" />
-        <link rel="icon" type="image/svg+xml" sizes="32x32" href="/icons/icon-32x32.svg" />
-        <link rel="icon" type="image/svg+xml" sizes="16x16" href="/icons/icon-16x16.svg" />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png" />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="mask-icon" href="/icons/safari-pinned-tab.svg" color="#3b82f6" />
+        <link rel="mask-icon" href="/icons/icon-192x192.png" color="#1e3a8a" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <MobileLayout>
