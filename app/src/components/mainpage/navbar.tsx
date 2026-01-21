@@ -146,7 +146,7 @@ export function Navbar() {
       animate={{ y: 0 }}
       transition={{ type: "spring", stiffness: 100, damping: 15 }}
     >
-      <div className="w-full max-w-none flex h-16 items-center justify-between px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
+      <div className="w-full max-w-none flex h-20 md:h-24 items-center justify-between px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 pt-2 md:pt-3">
         <Link href="/" className="flex items-center gap-2">
           <motion.div
             className="flex items-center gap-2"
@@ -156,7 +156,7 @@ export function Navbar() {
             <img 
               src="/images/jobpool-logo.png" 
               alt="JobPool Logo" 
-              className="h-14 w-auto"
+              className="h-20 md:h-24 lg:h-28 w-auto drop-shadow-md transition-all duration-300 hover:drop-shadow-lg"
               style={{ mixBlendMode: 'multiply' }}
             />
           </motion.div>

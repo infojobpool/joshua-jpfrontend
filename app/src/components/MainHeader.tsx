@@ -53,13 +53,13 @@ const MainHeader: React.FC = () => {
   return (
     <header className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
+        <div className="flex h-20 md:h-24 items-center justify-between pt-2 md:pt-3">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
             <img 
               src="/images/jobpool-logo.png" 
               alt="JobPool Logo" 
-              className="h-20 md:h-24 w-auto group-hover:opacity-90 transition-opacity"
+              className="h-20 md:h-24 lg:h-28 w-auto drop-shadow-md transition-all duration-300 group-hover:drop-shadow-lg group-hover:opacity-90"
               style={{ mixBlendMode: 'multiply' }}
             />
           </Link>
