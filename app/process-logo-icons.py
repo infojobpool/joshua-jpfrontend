@@ -38,9 +38,17 @@ def remove_background_simple(img):
     return img
 
 def enhance_colors_to_theme(img):
-    """Enhance logo colors to match landing page blue theme"""
+    """Enhance logo colors to match landing page blue theme
+    Landing page uses: #0a2463 (dark blue), #2563eb (blue-600), #3b82f6 (light blue)
+    Directly maps logo colors to landing page color palette
+    """
     img = img.convert("RGBA")
     data = img.getdata()
+    
+    # Landing page colors
+    LANDING_DARK = (10, 36, 99)      # #0a2463 - Primary heading
+    LANDING_MEDIUM = (37, 99, 235)   # #2563eb - Buttons (blue-600)
+    LANDING_LIGHT = (59, 130, 246)   # #3b82f6 - Accent
     
     new_data = []
     for item in data:
@@ -51,18 +59,28 @@ def enhance_colors_to_theme(img):
             new_data.append(item)
             continue
         
-        # If pixel is dark (logo content), enhance blue tones
         brightness = (r + g + b) / 3
         
-        if brightness < 200:  # Dark pixels (logo content)
-            # Enhance blue channel slightly, maintain other colors
-            # This gives a subtle blue tint to match the theme
-            r = min(255, int(r * 0.95))  # Slightly reduce red
-            g = min(255, int(g * 0.98))  # Slightly reduce green
-            b = min(255, int(b * 1.05))  # Slightly enhance blue
+        # Map based on brightness to landing page colors
+        if brightness < 60:  # Very dark -> dark blue
+            new_data.append((LANDING_DARK[0], LANDING_DARK[1], LANDING_DARK[2], a))
+        elif brightness < 120:  # Medium dark -> blend dark and medium
+            factor = (brightness - 60) / 60
+            r = int(LANDING_DARK[0] * (1 - factor) + LANDING_MEDIUM[0] * factor)
+            g = int(LANDING_DARK[1] * (1 - factor) + LANDING_MEDIUM[1] * factor)
+            b = int(LANDING_DARK[2] * (1 - factor) + LANDING_MEDIUM[2] * factor)
             new_data.append((r, g, b, a))
-        else:
-            new_data.append(item)
+        elif brightness < 180:  # Medium -> blend medium and light
+            factor = (brightness - 120) / 60
+            r = int(LANDING_MEDIUM[0] * (1 - factor) + LANDING_LIGHT[0] * factor)
+            g = int(LANDING_MEDIUM[1] * (1 - factor) + LANDING_LIGHT[1] * factor)
+            b = int(LANDING_MEDIUM[2] * (1 - factor) + LANDING_LIGHT[2] * factor)
+            new_data.append((r, g, b, a))
+        else:  # Light pixels -> keep but enhance blue
+            r = min(255, int(r * 0.8))
+            g = min(255, int(g * 0.85))
+            b = min(255, int(b * 1.2))
+            new_data.append((r, g, b, a))
     
     img.putdata(new_data)
     return img
