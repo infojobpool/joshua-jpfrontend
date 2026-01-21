@@ -9,12 +9,13 @@ const Footer: React.FC = () => {
           {/* Company Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <img 
-                src="/images/jobpool-logo.png" 
-                alt="JobPool Logo" 
-                className="h-20 md:h-24 w-auto brightness-110 contrast-125 drop-shadow-lg"
-                style={{ filter: 'brightness(1.1) contrast(1.25) saturate(1.1)' }}
-              />
+              <div className="bg-white rounded-lg p-2 md:p-3 shadow-lg">
+                <img 
+                  src="/images/jobpool-logo.png" 
+                  alt="JobPool Logo" 
+                  className="h-16 md:h-20 w-auto"
+                />
+              </div>
             </div>
             <p className="text-gray-300 text-sm">
               Connect with skilled professionals to get your tasks done quickly and efficiently.

@@ -182,12 +182,13 @@ export function Footer() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <img 
-                  src="/images/jobpool-logo.png" 
-                  alt="JobPool Logo" 
-                  className="h-16 md:h-20 w-auto brightness-110 contrast-125 drop-shadow-lg"
-                  style={{ filter: 'brightness(1.1) contrast(1.25) saturate(1.1)' }}
-                />
+                <div className="bg-white rounded-lg p-2 md:p-3 shadow-lg">
+                  <img 
+                    src="/images/jobpool-logo.png" 
+                    alt="JobPool Logo" 
+                    className="h-14 md:h-18 w-auto"
+                  />
+                </div>
               </motion.div>
             </Link>
             <p className="text-slate-400 mb-6 max-w-md">
