@@ -4,7 +4,7 @@ Process JobPool logo to remove background and align colors with landing page the
 Landing page uses: #0a2463 (dark blue), #3b82f6 (blue-600), blue gradients
 """
 
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter
 import os
 import sys
 
@@ -85,22 +85,70 @@ def enhance_colors_to_theme(img):
     img.putdata(new_data)
     return img
 
-def process_logo(input_path, output_path, size=None):
+def create_clear_favicon(source_img, size, add_background=True):
+    """Create a clear, visible favicon optimized for small sizes"""
+    
+    # For very small sizes, add padding and background
+    if size <= 32:
+        # Create a new image with padding (10% padding)
+        padding = int(size * 0.1)
+        canvas_size = size
+        logo_size = size - (padding * 2)
+        
+        # Resize logo to fit in padded area
+        logo = source_img.resize((logo_size, logo_size), Image.Resampling.LANCZOS)
+        
+        # Create canvas
+        if add_background:
+            # Use a subtle blue background that matches the theme
+            # Light blue background: #e0f2fe (rgb(224, 242, 254))
+            canvas = Image.new('RGBA', (canvas_size, canvas_size), (224, 242, 254, 255))
+        else:
+            canvas = Image.new('RGBA', (canvas_size, canvas_size), (255, 255, 255, 0))
+        
+        # Paste logo in center with padding
+        canvas.paste(logo, (padding, padding), logo if logo.mode == 'RGBA' else None)
+        
+        # Enhance contrast for small sizes
+        enhancer = ImageEnhance.Contrast(canvas)
+        canvas = enhancer.enhance(1.2)  # 20% more contrast
+        
+        # Sharpen for clarity
+        canvas = canvas.filter(ImageFilter.SHARPEN)
+        
+        return canvas
+    else:
+        # For larger sizes, just resize with high quality
+        img = source_img.resize((size, size), Image.Resampling.LANCZOS)
+        
+        # Slight contrast enhancement
+        enhancer = ImageEnhance.Contrast(img)
+        img = enhancer.enhance(1.1)
+        
+        return img
+
+def process_logo(input_path, output_path, size=None, is_favicon=False):
     """Process logo: remove background and enhance colors"""
     print(f"  Processing: {input_path} -> {output_path}")
     
     # Open image
     img = Image.open(input_path)
     
-    # Resize if needed
-    if size:
-        img = img.resize((size, size), Image.Resampling.LANCZOS)
-    
     # Remove background
     img = remove_background_simple(img)
     
     # Enhance colors to match theme
     img = enhance_colors_to_theme(img)
+    
+    # For small favicons, use special processing for clarity
+    if is_favicon and size and size <= 32:
+        img = create_clear_favicon(img, size, add_background=True)
+    elif size:
+        # For larger sizes, just resize
+        img = img.resize((size, size), Image.Resampling.LANCZOS)
+        # Slight contrast enhancement
+        enhancer = ImageEnhance.Contrast(img)
+        img = enhancer.enhance(1.1)
     
     # Save as PNG (supports transparency)
     img.save(output_path, "PNG", optimize=True)
@@ -126,7 +174,7 @@ def main():
     sizes = [16, 32, 192, 512]
     for size in sizes:
         output = f"{temp_dir}/icon-{size}x{size}.png"
-        process_logo(logo_source, output, size)
+        process_logo(logo_source, output, size, is_favicon=(size <= 32))
     
     # Copy to public/icons
     print()
