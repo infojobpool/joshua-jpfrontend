@@ -85,47 +85,11 @@ def enhance_colors_to_theme(img):
     img.putdata(new_data)
     return img
 
-def create_clear_favicon(source_img, size, add_background=True):
-    """Create a clear, visible favicon optimized for small sizes"""
-    
-    # For very small sizes, add padding and background
-    if size <= 32:
-        # Create a new image with padding (10% padding)
-        padding = int(size * 0.1)
-        canvas_size = size
-        logo_size = size - (padding * 2)
-        
-        # Resize logo to fit in padded area
-        logo = source_img.resize((logo_size, logo_size), Image.Resampling.LANCZOS)
-        
-        # Create canvas
-        if add_background:
-            # Use a subtle blue background that matches the theme
-            # Light blue background: #e0f2fe (rgb(224, 242, 254))
-            canvas = Image.new('RGBA', (canvas_size, canvas_size), (224, 242, 254, 255))
-        else:
-            canvas = Image.new('RGBA', (canvas_size, canvas_size), (255, 255, 255, 0))
-        
-        # Paste logo in center with padding
-        canvas.paste(logo, (padding, padding), logo if logo.mode == 'RGBA' else None)
-        
-        # Enhance contrast for small sizes
-        enhancer = ImageEnhance.Contrast(canvas)
-        canvas = enhancer.enhance(1.2)  # 20% more contrast
-        
-        # Sharpen for clarity
-        canvas = canvas.filter(ImageFilter.SHARPEN)
-        
-        return canvas
-    else:
-        # For larger sizes, just resize with high quality
-        img = source_img.resize((size, size), Image.Resampling.LANCZOS)
-        
-        # Slight contrast enhancement
-        enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(1.1)
-        
-        return img
+def create_clear_favicon(source_img, size, add_background=False):
+    """Create favicon using the exact same logo - just resize, no modifications"""
+    # Simply resize the logo - no backgrounds, no padding, no modifications
+    # This ensures the favicon matches the website logo exactly
+    return source_img.resize((size, size), Image.Resampling.LANCZOS)
 
 def process_logo(input_path, output_path, size=None, is_favicon=False):
     """Process logo: remove background and enhance colors"""
@@ -140,9 +104,9 @@ def process_logo(input_path, output_path, size=None, is_favicon=False):
     # Enhance colors to match theme
     img = enhance_colors_to_theme(img)
     
-    # For small favicons, use special processing for clarity
-    if is_favicon and size and size <= 32:
-        img = create_clear_favicon(img, size, add_background=True)
+    # For favicons, just resize - no backgrounds or modifications
+    if is_favicon and size:
+        img = create_clear_favicon(img, size, add_background=False)
     elif size:
         # For larger sizes, just resize
         img = img.resize((size, size), Image.Resampling.LANCZOS)
