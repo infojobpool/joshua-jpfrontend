@@ -131,7 +131,7 @@ export default function SignUpPage() {
 
       <div className="relative w-full max-w-md">
         {/* Logo Section */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 mt-6 md:mt-8">
           <Link href="/" className="inline-flex items-center justify-center group">
             <img 
               src="/images/jobpool-logo.png" 
