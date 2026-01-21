@@ -86,8 +86,8 @@ export function MobileDashboard() {
               <img 
                 src="/images/jobpool-logo.png" 
                 alt="JobPool Logo" 
-                className="h-20 w-auto"
-                style={{ mixBlendMode: 'multiply' }}
+                className="h-20 w-auto brightness-110 contrast-125 drop-shadow-md"
+                style={{ filter: 'brightness(1.1) contrast(1.25) saturate(1.1)' }}
               />
               <div>
                 <p className="text-sm text-gray-500">Welcome back!</p>

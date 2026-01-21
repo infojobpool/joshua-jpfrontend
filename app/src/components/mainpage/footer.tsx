@@ -178,11 +178,16 @@ export function Footer() {
           <div className="flex flex-col">
             <Link href="/" className="inline-block mb-6">
               <motion.div
-                className="text-white font-bold text-2xl"
+                className="flex items-center gap-2"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                JobPool
+                <img 
+                  src="/images/jobpool-logo.png" 
+                  alt="JobPool Logo" 
+                  className="h-16 md:h-20 w-auto brightness-110 contrast-125 drop-shadow-lg"
+                  style={{ filter: 'brightness(1.1) contrast(1.25) saturate(1.1)' }}
+                />
               </motion.div>
             </Link>
             <p className="text-slate-400 mb-6 max-w-md">

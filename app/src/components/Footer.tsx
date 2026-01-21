@@ -12,8 +12,8 @@ const Footer: React.FC = () => {
               <img 
                 src="/images/jobpool-logo.png" 
                 alt="JobPool Logo" 
-                className="h-20 md:h-24 w-auto"
-                style={{ mixBlendMode: 'multiply' }}
+                className="h-20 md:h-24 w-auto brightness-110 contrast-125 drop-shadow-lg"
+                style={{ filter: 'brightness(1.1) contrast(1.25) saturate(1.1)' }}
               />
             </div>
             <p className="text-gray-300 text-sm">

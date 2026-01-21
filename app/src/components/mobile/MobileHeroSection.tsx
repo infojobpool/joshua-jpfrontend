@@ -13,8 +13,8 @@ export function MobileHeroSection() {
           <img 
             src="/images/jobpool-logo.png" 
             alt="JobPool Logo" 
-            className="h-32 md:h-36 w-auto"
-            style={{ mixBlendMode: 'multiply' }}
+            className="h-32 md:h-36 w-auto brightness-110 contrast-125 drop-shadow-2xl"
+            style={{ filter: 'brightness(1.15) contrast(1.3) saturate(1.2)' }}
           />
         </div>
         <h1 className="text-3xl font-extrabold leading-tight tracking-tight">Get Any Task Done</h1>
