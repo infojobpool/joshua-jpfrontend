@@ -13,7 +13,7 @@ export function MobileHeroSection() {
           <img 
             src="/images/jobpool-logo.png" 
             alt="JobPool Logo" 
-            className="h-24 w-auto"
+            className="h-32 md:h-36 w-auto"
             style={{ mixBlendMode: 'multiply' }}
           />
         </div>

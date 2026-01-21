@@ -12,7 +12,7 @@ const Footer: React.FC = () => {
               <img 
                 src="/images/jobpool-logo.png" 
                 alt="JobPool Logo" 
-                className="h-16 w-auto"
+                className="h-20 md:h-24 w-auto"
                 style={{ mixBlendMode: 'multiply' }}
               />
             </div>

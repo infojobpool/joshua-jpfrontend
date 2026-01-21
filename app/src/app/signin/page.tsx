@@ -241,7 +241,7 @@ export default function SignInPage() {
             <img 
               src="/images/jobpool-logo.png" 
               alt="JobPool Logo" 
-              className="h-24 w-auto group-hover:opacity-90 transition-opacity"
+              className="h-32 md:h-36 w-auto group-hover:opacity-90 transition-opacity"
               style={{ mixBlendMode: 'multiply' }}
             />
           </Link>

@@ -86,7 +86,7 @@ export function MobileDashboard() {
               <img 
                 src="/images/jobpool-logo.png" 
                 alt="JobPool Logo" 
-                className="h-14 w-auto"
+                className="h-20 w-auto"
                 style={{ mixBlendMode: 'multiply' }}
               />
               <div>
