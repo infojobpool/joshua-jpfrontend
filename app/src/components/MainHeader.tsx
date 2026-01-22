@@ -53,7 +53,7 @@ const MainHeader: React.FC = () => {
   return (
     <header className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-20 md:h-24 items-center justify-between pt-2 md:pt-3">
+        <div className="flex h-24 md:h-28 lg:h-32 items-center justify-between pt-4 md:pt-5 lg:pt-6">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
             <img 

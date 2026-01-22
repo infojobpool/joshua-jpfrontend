@@ -146,7 +146,7 @@ export function Navbar() {
       animate={{ y: 0 }}
       transition={{ type: "spring", stiffness: 100, damping: 15 }}
     >
-      <div className="w-full max-w-none flex h-20 md:h-24 items-center justify-between px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 pt-2 md:pt-3">
+      <div className="w-full max-w-none flex h-24 md:h-28 lg:h-32 items-center justify-between px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 pt-4 md:pt-5 lg:pt-6">
         <Link href="/" className="flex items-center gap-2">
           <motion.div
             className="flex items-center gap-2"
