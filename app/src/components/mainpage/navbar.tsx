@@ -156,8 +156,7 @@ export function Navbar() {
             <img 
               src="/images/jobpool-logo.png" 
               alt="JobPool Logo" 
-              className="h-20 md:h-24 lg:h-28 w-auto drop-shadow-md transition-all duration-300 hover:drop-shadow-lg"
-              style={{ mixBlendMode: 'multiply' }}
+              className="h-24 md:h-28 lg:h-32 xl:h-36 w-auto drop-shadow-md transition-all duration-300 hover:drop-shadow-lg"
             />
           </motion.div>
         </Link>
