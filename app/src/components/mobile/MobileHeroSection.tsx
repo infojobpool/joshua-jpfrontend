@@ -9,13 +9,14 @@ export function MobileHeroSection() {
     <div className="relative min-h-[100dvh] h-[100dvh] overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white flex items-center justify-center px-4 pt-[calc(env(safe-area-inset-top)+56px)] pb-[calc(env(safe-area-inset-bottom)+72px)]">
 
       <div className="relative w-full max-w-md text-center space-y-3">
-        <div className="mx-auto flex items-center justify-center">
-          <img 
-            src="/images/jobpool-logo.png" 
-            alt="JobPool Logo" 
-            className="h-32 md:h-36 w-auto brightness-110 contrast-125 drop-shadow-2xl"
-            style={{ filter: 'brightness(1.15) contrast(1.3) saturate(1.2)' }}
-          />
+        <div className="mx-auto flex items-center justify-center mb-2">
+          <div className="bg-white rounded-2xl p-4 md:p-5 shadow-2xl shadow-black/20">
+            <img 
+              src="/images/jobpool-logo.png" 
+              alt="JobPool Logo" 
+              className="h-28 md:h-32 w-auto"
+            />
+          </div>
         </div>
         <h1 className="text-3xl font-extrabold leading-tight tracking-tight">Get Any Task Done</h1>
         <p className="text-blue-100/90">Post a task. Get offers from local helpers. Done safely.</p>
