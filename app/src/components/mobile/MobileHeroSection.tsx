@@ -10,11 +10,11 @@ export function MobileHeroSection() {
 
       <div className="relative w-full max-w-md text-center space-y-3">
         <div className="mx-auto flex items-center justify-center mb-2">
-          <div className="bg-white rounded-2xl p-4 md:p-5 shadow-2xl shadow-black/20">
+          <div className="bg-white rounded-xl p-2 md:p-4 shadow-2xl shadow-black/20">
             <img 
               src="/images/jobpool-logo.png" 
               alt="JobPool Logo" 
-              className="h-28 md:h-32 w-auto"
+              className="h-24 md:h-32 w-auto"
             />
           </div>
         </div>
