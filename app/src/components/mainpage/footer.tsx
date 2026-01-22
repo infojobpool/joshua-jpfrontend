@@ -186,7 +186,7 @@ export function Footer() {
                   <img 
                     src="/images/jobpool-logo.png" 
                     alt="JobPool Logo" 
-                    className="h-14 md:h-18 w-auto"
+                    className="h-14 md:h-16 w-auto"
                   />
                 </div>
               </motion.div>
