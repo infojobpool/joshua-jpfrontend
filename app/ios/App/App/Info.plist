@@ -46,7 +46,7 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>JobPool needs access to your camera to take photos for your profile picture, task images, and completion proof. For example, you can take a photo of your profile or capture images when posting a task to help taskers understand the work needed.</string>
+	<string>JobPool uses the camera only when you choose to take a photo for your profile or for a task. These photos are uploaded to your JobPool account and shown in your task details to the taskers you share them with, so they can understand and verify the work.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>JobPool needs access to your photo library to select images for your profile picture, task images, and completion proof. For example, you can choose existing photos from your gallery when uploading task images or your profile picture.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
