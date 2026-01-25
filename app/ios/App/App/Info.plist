@@ -46,7 +46,7 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>JobPool uses the camera only when you choose to take a photo for your profile or for a task. These photos are uploaded to your JobPool account and shown in your task details to the taskers you share them with, so they can understand and verify the work.</string>
+	<string>JobPool uses the camera to take photos that you choose to upload. For example, when posting a task, you can take a photo of the work needed (like a broken appliance or room that needs cleaning) to show taskers what needs to be done. You can also take a photo for your profile picture. These photos are only used within the JobPool app and are never shared outside the platform.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>JobPool needs access to your photo library to select images for your profile picture, task images, and completion proof. For example, you can choose existing photos from your gallery when uploading task images or your profile picture.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
