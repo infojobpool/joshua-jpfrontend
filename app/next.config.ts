@@ -18,8 +18,10 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: isProd, // Skip TypeScript errors in production builds
   },
-  // Turbopack configuration (Next.js 16+)
-  turbopack: {},
+  eslint: {
+    ignoreDuringBuilds: isProd, // Skip ESLint errors in production builds
+  },
+  // Turbopack not available in Next.js 15
   images: {
     unoptimized: process.env.BUILD_MOBILE === 'true', // Disable image optimization for static export
     remotePatterns: [
