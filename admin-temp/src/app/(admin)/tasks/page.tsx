@@ -825,13 +825,13 @@ export default function TasksPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
-                      <Badge
-                        variant={getStatusBadgeVariant(task.status)}
-                        className="flex items-center w-fit"
-                      >
-                        {getStatusIcon(task.status)}
-                        {task.status}
-                      </Badge>
+                    <Badge
+                      variant={getStatusBadgeVariant(task.status)}
+                      className="flex items-center w-fit"
+                    >
+                      {getStatusIcon(task.status)}
+                      {task.status}
+                    </Badge>
                       {task.status === "Cancelled" && task.refundStatus && (
                         <Badge
                           variant={
@@ -1191,8 +1191,8 @@ export default function TasksPage() {
                               </div>
                             </div>
 
-                            {selectedTask.status === "Cancelled" &&
-                              selectedTask.cancelledAt && (
+                                {selectedTask.status === "Cancelled" &&
+                                  selectedTask.cancelledAt && (
                                     <div className="space-y-4 p-5 border-2 border-red-200 rounded-lg bg-gradient-to-br from-red-50 to-orange-50">
                                       <div className="flex items-center gap-2 pb-3 border-b border-red-200">
                                         <AlertCircle className="h-5 w-5 text-red-600" />
@@ -1200,12 +1200,12 @@ export default function TasksPage() {
                                       </div>
 
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
+                                    <div>
                                           <Label className="text-sm font-medium text-gray-700">Cancelled On</Label>
                                           <div className="flex items-center gap-2 mt-1.5">
                                             <Calendar className="h-4 w-4 text-gray-500" />
                                             <span className="text-sm font-medium">{formatDate(selectedTask.cancelledAt)}</span>
-                                          </div>
+                                      </div>
                                         </div>
 
                                         {selectedTask.cancelledByRole && (
@@ -1229,7 +1229,7 @@ export default function TasksPage() {
                                         <div>
                                           <Label className="text-sm font-medium text-gray-700">Cancellation Reason</Label>
                                           <div className="mt-1.5 text-sm p-3 bg-white rounded-md border border-gray-200 shadow-sm">
-                                            {selectedTask.cancellationReason}
+                                          {selectedTask.cancellationReason}
                                           </div>
                                         </div>
                                       )}
@@ -1296,9 +1296,9 @@ export default function TasksPage() {
                                               <p className="text-xs text-amber-700 mt-1">
                                                 The refund calculation requires the actual Razorpay payment amount or confirmed bid amount.
                                               </p>
-                                            </div>
-                                          )}
-                                        </div>
+                                    </div>
+                                  )}
+                              </div>
                                       )}
 
                                       <div className="flex items-center gap-3 pt-2 border-t border-red-200">
@@ -1323,7 +1323,7 @@ export default function TasksPage() {
                                             No refund needed (cancelled before payment)
                                           </Badge>
                                         ) : null}
-                                      </div>
+                            </div>
 
                                       {selectedTask.refundDate && (
                                         <div>

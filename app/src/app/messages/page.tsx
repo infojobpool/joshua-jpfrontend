@@ -161,7 +161,7 @@ export default function MessagesPage() {
         fetchChats();
       }
     } catch {
-      fetchChats();
+    fetchChats();
     }
     
     // Refresh when page becomes visible (user returns from chat)

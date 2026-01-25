@@ -40,21 +40,21 @@ export function PaymentFailed({
 
           {!(errorMessage?.includes("Payment was successful") || errorMessage?.includes("couldn't verify")) && (
             <>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>
-                  <strong>Common reasons for payment failure:</strong>
-                </p>
-                <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li>Insufficient funds in your account</li>
-                  <li>Incorrect card details</li>
-                  <li>Card expired or blocked</li>
-                  <li>Network connectivity issues</li>
-                </ul>
-              </div>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>
+              <strong>Common reasons for payment failure:</strong>
+            </p>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li>Insufficient funds in your account</li>
+              <li>Incorrect card details</li>
+              <li>Card expired or blocked</li>
+              <li>Network connectivity issues</li>
+            </ul>
+          </div>
 
-              <div className="text-center text-sm text-muted-foreground">
-                Please check your payment details and try again, or contact support if the issue persists.
-              </div>
+          <div className="text-center text-sm text-muted-foreground">
+            Please check your payment details and try again, or contact support if the issue persists.
+          </div>
             </>
           )}
 

@@ -3106,7 +3106,7 @@ export default function Dashboard() {
                     </div>
                     <div className="flex flex-col items-start">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-medium text-gray-900">{safeUser.name || "User"}</span>
+                      <span className="text-sm font-medium text-gray-900">{safeUser.name || "User"}</span>
                         {user?.verification_status >= 3 && (
                           <span title="Verified Account">
                             <CheckCircle className="h-4 w-4 text-blue-600" />
@@ -3134,7 +3134,7 @@ export default function Dashboard() {
                           )}
                           <div className="flex-1">
                             <div className="flex items-center gap-1.5">
-                              <p className="font-medium text-gray-900">{safeUser.name || "User"}</p>
+                            <p className="font-medium text-gray-900">{safeUser.name || "User"}</p>
                               {user?.verification_status >= 3 && (
                                 <span title="Verified Account">
                                   <CheckCircle className="h-4 w-4 text-blue-600" />
@@ -3214,7 +3214,7 @@ export default function Dashboard() {
                   <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-lg">{safeUser.name || "User"}</span>
+                <span className="text-lg">{safeUser.name || "User"}</span>
                   {user?.verification_status >= 3 && (
                     <span title="Verified Account">
                       <CheckCircle className="h-5 w-5 text-blue-600" />
@@ -3241,7 +3241,7 @@ export default function Dashboard() {
                       )}
                       <div className="flex-1">
                         <div className="flex items-center gap-1.5">
-                          <p className="font-medium text-gray-900 text-lg">{safeUser.name || "User"}</p>
+                        <p className="font-medium text-gray-900 text-lg">{safeUser.name || "User"}</p>
                           {user?.verification_status >= 3 && (
                             <span title="Verified Account">
                               <CheckCircle className="h-5 w-5 text-blue-600" />

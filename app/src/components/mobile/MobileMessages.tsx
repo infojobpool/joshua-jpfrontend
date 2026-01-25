@@ -97,7 +97,7 @@ export function MobileMessages() {
               </button>
               <div className="relative">
                 <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full flex items-center justify-center text-white font-bold shadow-sm">
-                  {chat?.avatar}
+                {chat?.avatar}
                 </div>
                 {chat?.online && (
                   <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white"></div>

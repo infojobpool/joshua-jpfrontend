@@ -211,7 +211,7 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
   const [images, setImages] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [minDate, setMinDate] = useState("");
-
+  
   // Check if payment is pending for this task
   const checkPaymentPending = () => {
     if (typeof window === 'undefined') return false;

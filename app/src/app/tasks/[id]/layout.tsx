@@ -1,8 +1,4 @@
-// Layout for dynamic route - required for static export
-export async function generateStaticParams() {
-  return [];
-}
-
+// Layout for dynamic route
 export default function TaskLayout({
   children,
 }: {
