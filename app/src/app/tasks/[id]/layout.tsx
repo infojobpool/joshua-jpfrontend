@@ -1,5 +1,5 @@
 // Layout for dynamic route - required for static export
-export function generateStaticParams() {
+export async function generateStaticParams() {
   return [];
 }
 

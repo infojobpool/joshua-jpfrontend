@@ -3,7 +3,7 @@ export async function generateStaticParams() {
   return [];
 }
 
-export default function ChatLayout({
+export default function CompleteTaskLayout({
   children,
 }: {
   children: React.ReactNode;
