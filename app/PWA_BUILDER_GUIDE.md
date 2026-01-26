@@ -57,8 +57,29 @@ PWA Builder will analyze your website and show:
    - **Bundle ID**: `com.jobpool.app`
    - **App Name**: `JobPool`
    - **Version**: `1.0.0`
-4. Click **"Generate"**
-5. Download the generated iOS package
+4. **⚠️ IMPORTANT: Configure Camera Permissions**
+   
+   Look for **"Permissions"** or **"iOS Configuration"** section and add:
+   
+   **Camera Permission Description:**
+   ```
+   JobPool uses the camera to take photos that you choose to upload. For example, when posting a task, you can take a photo of the work needed (like a broken appliance or room that needs cleaning) to show taskers what needs to be done. You can also take a photo for your profile picture. These photos are only used within the JobPool app and are never shared outside the platform.
+   ```
+   
+   **Photo Library Permission Description:**
+   ```
+   JobPool needs access to your photo library to select images for your profile picture, task images, and completion proof. For example, you can choose existing photos from your gallery when uploading task images or your profile picture.
+   ```
+   
+   **Photo Library Add Permission Description:**
+   ```
+   JobPool needs permission to save photos to your library when you download task images or completion photos.
+   ```
+   
+   > **Note:** These permission descriptions are required by Apple App Store. If you don't see a permissions section in PWA Builder, you may need to use Capacitor instead (see alternative below).
+
+5. Click **"Generate"**
+6. Download the generated iOS package
 
 ---
 
@@ -111,9 +132,7 @@ PWA Builder will analyze your website and show:
 
 ## ⚠️ Important Notes
 
-1. **Camera Purpose String**: The iOS app from PWA Builder will use your live website, so the camera purpose string we updated in `Info.plist` won't apply. You may need to:
-   - Update it in PWA Builder's iOS configuration, OR
-   - Use Capacitor build (which requires fixing the static export issue)
+1. **Camera Purpose String**: The iOS app from PWA Builder will use your live website, so the camera purpose string in your local `Info.plist` won't apply. **You MUST configure it in PWA Builder's iOS settings** when generating the app (see Step 4 above). This is required by Apple App Store.
 
 2. **Native Features**: PWA Builder apps have limited native features compared to Capacitor. If you need:
    - Push notifications
