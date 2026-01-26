@@ -11,17 +11,13 @@ import { Toaster } from "@/components/ui/sonner";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, use, useEffect, useState } from "react";
+import { useRouter, useSearchParams, useParams } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Task, User, Bid, Offer, ApiBidResponse, ApiJobResponse } from "../../types";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-
-interface TaskDetailPageProps {
-  params?: Promise<{ id: string }>;
-}
 
 interface UserProfile {
   profile_id: string;
@@ -32,10 +28,11 @@ interface UserProfile {
   joinDate: string;
 }
 
-export default function TaskDetailPage({ params }: TaskDetailPageProps) {
+export default function TaskDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { id } = use(params);
+  const params = useParams();
+  const id = params?.id as string;
   const { userId, user: storeUser, checkAuth, isAuthenticated, logout } = useStore();
   const fromBid = searchParams.get('fromBid') === 'true';
   const [user, setUser] = useState<User | null>(null);
