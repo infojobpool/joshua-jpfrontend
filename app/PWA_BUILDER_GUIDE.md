@@ -30,9 +30,15 @@ PWA Builder will analyze your website and show:
 
 **Expected Results:**
 - ✅ Manifest: Found and valid
-- ✅ Service Worker: Registered
+- ⚠️ Service Worker: May show "+0" (this is OK - see below)
 - ✅ HTTPS: Enabled
 - ✅ Mobile-friendly: Yes
+
+**⚠️ If Service Worker Shows "+0":**
+- This is **normal** - PWA Builder might not detect your `next-pwa` service worker
+- **Solution**: Click **"Generate Service Worker"** button in PWA Builder
+- This will create a service worker optimized for your app
+- See `/app/PWA_BUILDER_SERVICE_WORKER.md` for details
 
 ### Step 3: Generate Android App (APK/AAB)
 
