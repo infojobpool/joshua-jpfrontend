@@ -6,6 +6,7 @@ import MainHeader from "@/components/MainHeader";
 import Footer from "@/components/Footer";
 import { MobileBottomNav } from "@/components/mobile/MobileBottomNav";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
+import { InAppNotificationProvider } from "@/components/InAppNotificationProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -65,6 +66,7 @@ export default function RootLayout({
         <link rel="mask-icon" href="/icons/icon-192x192.png" color="#1e3a8a" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <InAppNotificationProvider />
         <MobileLayout>
           <MainHeader />
           <main className="min-h-screen pb-[calc(env(safe-area-inset-bottom)+72px)] md:pb-0">

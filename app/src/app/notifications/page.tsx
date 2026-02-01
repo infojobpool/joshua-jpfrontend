@@ -45,12 +45,14 @@ interface BidRequestItem {
 export default function NotificationsPage() {
   const router = useRouter();
   const userId = useStore((s) => s.userId);
+  const checkAuth = useStore((s) => s.checkAuth);
   const unreadCount = useStore((s) => s.unreadCount);
   const items = useStore((s) => s.items);
   const addNotifications = useStore((s) => s.addNotifications);
   const markAllRead = useStore((s) => s.markAllRead);
   const [loading, setLoading] = useState(true);
   const [allNotifications, setAllNotifications] = useState<any[]>([]);
+  const [authReady, setAuthReady] = useState(false);
 
   // Sort notifications by creation date (newest first)
   const sortedNotifications = useMemo(() => {
@@ -59,7 +61,16 @@ export default function NotificationsPage() {
     );
   }, [items]);
 
+  // Wait for auth to hydrate from localStorage before redirecting (avoids flash → signin → dashboard)
   useEffect(() => {
+    checkAuth();
+    const t = setTimeout(() => setAuthReady(true), 150);
+    return () => clearTimeout(t);
+  }, [checkAuth]);
+
+  useEffect(() => {
+    if (!authReady) return;
+
     if (!userId) {
       router.push("/signin");
       return;
@@ -68,10 +79,23 @@ export default function NotificationsPage() {
     // Set all notifications from store
     setAllNotifications(sortedNotifications);
     setLoading(false);
-  }, [userId, router, sortedNotifications]);
+  }, [authReady, userId, router, sortedNotifications]);
 
   const handleMarkAllRead = () => {
     markAllRead();
+  };
+
+  // Test in-app notification (simulates push from PWA Builder / FCM) — for checking web & Android
+  const handleTestInAppNotification = () => {
+    const payload = {
+      title: "Test notification",
+      body: "If you see this, in-app notifications are working.",
+      type: "system",
+      url: "/notifications",
+    };
+    window.dispatchEvent(
+      new CustomEvent("push-notification", { detail: JSON.stringify(payload) })
+    );
   };
 
   const getNotificationIcon = (type: string) => {
@@ -151,6 +175,18 @@ export default function NotificationsPage() {
           )}
         </div>
 
+        {/* Test in-app notification (for web & Android check) */}
+        <div className="mb-4 flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleTestInAppNotification}
+            className="text-gray-600 border-gray-300"
+          >
+            Test in-app notification
+          </Button>
+        </div>
+
         {/* Notifications List */}
         <div className="space-y-4">
           {allNotifications.length === 0 ? (
@@ -158,9 +194,12 @@ export default function NotificationsPage() {
               <CardContent>
                 <Bell className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-600 mb-2">No notifications yet</h3>
-                <p className="text-gray-500">
+                <p className="text-gray-500 mb-4">
                   You'll see notifications for new bids, messages, and updates here.
                 </p>
+                <Button variant="outline" onClick={handleTestInAppNotification}>
+                  Test in-app notification
+                </Button>
               </CardContent>
             </Card>
           ) : (

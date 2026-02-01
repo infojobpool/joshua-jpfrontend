@@ -313,17 +313,17 @@ const useStore = create<StoreState>((set) => ({
   notificationOpen: false,
   setNotifications: (items: NotificationItem[]) =>
     set(() => {
-      // Keep only active, received bid notifications; ignore deleted/withdrawn
+      // Keep bid (received, not deleted), message, and system notifications for in-app list
       const filtered = items.filter((n) => {
+        if (n.type === "message" || n.type === "system") return true;
         const isBid = n.type === "bid";
         const isReceived = n.direction === "received";
         const notDeleted = !n.deleted && n.status !== "deleted" && n.status !== "withdrawn" && n.status !== "canceled";
         return isBid && isReceived && notDeleted;
       });
-      // Sort strictly by newest and keep only the latest few
       const compact = [...filtered]
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-        .slice(0, 6);
+        .slice(0, 20);
       const unread = compact.filter((n) => !n.read).length;
       return {
         items: compact,
@@ -333,22 +333,21 @@ const useStore = create<StoreState>((set) => ({
     }),
   addNotifications: (items: NotificationItem[]) =>
     set((state) => {
-      // Merge by id first
       const byId: Record<string, NotificationItem> = {};
       [...items, ...state.items].forEach((n) => {
         byId[n.id] = n;
       });
-      // Filter to active, received bid notifications
+      // Same filter: bid (received, not deleted), message, system
       const merged = Object.values(byId).filter((n) => {
+        if (n.type === "message" || n.type === "system") return true;
         const isBid = n.type === "bid";
         const isReceived = n.direction === "received";
         const notDeleted = !n.deleted && n.status !== "deleted" && n.status !== "withdrawn" && n.status !== "canceled";
         return isBid && isReceived && notDeleted;
       });
-      // Sort strictly by newest and keep only the latest few
       const compact = merged
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-        .slice(0, 6);
+        .slice(0, 20);
       const unread = compact.filter((n) => !n.read).length;
       return {
         items: compact,
