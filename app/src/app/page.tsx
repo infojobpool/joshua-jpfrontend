@@ -9,6 +9,7 @@ import { HowItWorks } from '../components/mainpage/how-it-works'
 import { Features } from '../components/mainpage/features'
 import { Testimonials } from '../components/mainpage/testimonials'
 import { FeaturedServices } from '../components/mainpage/featured-services'
+import { CategoryScroller } from '../components/mainpage/category-scroller'
 import { MobileWrapper } from '../components/mobile/MobileWrapper'
 
 export default function Home() {
@@ -27,6 +28,7 @@ export default function Home() {
       <div className="hidden md:block">
         <HeroSection />
         <FeaturedServices />
+        <CategoryScroller />
         <HowItWorks />
         <Features />
         <Testimonials />

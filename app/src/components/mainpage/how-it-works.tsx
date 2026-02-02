@@ -260,27 +260,6 @@ export function HowItWorks() {
           ))}
         </div>
 
-        {/* We love a to-do section */}
-        <motion.div
-          className="text-center mb-16"
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-        >
-          <h3 className="text-2xl font-bold text-gray-900 mb-4">We love a to-do</h3>
-          <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
-            From odd jobs to serious renovations, the help you're looking for is on JobPool.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-            {['Cooking', 'Computer & IT', 'Photography', 'Removals', 'Design', 'Business', 'Handyman', 'Furniture Assembly'].map((category) => (
-              <div key={category} className="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium">
-                {category}
-              </div>
-            ))}
-          </div>
-        </motion.div>
-
         {/* We've got you covered */}
         <motion.div
           className="mb-16"
