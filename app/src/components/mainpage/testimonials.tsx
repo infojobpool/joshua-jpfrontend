@@ -227,32 +227,6 @@ export function Testimonials() {
             </Button>
           </div>
         </div>
-
-        {/* Simple Bottom CTA */}
-        <motion.div
-          className="text-center mt-12"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-        >
-          <div className="bg-blue-50 rounded-2xl p-8 max-w-3xl mx-auto">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">
-              Ready to get started?
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Join thousands of people who trust JobPool for their tasks.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3">
-                Post Your Task
-              </Button>
-              <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50 px-6 py-3">
-                Become a Helper
-              </Button>
-            </div>
-          </div>
-        </motion.div>
       </div>
     </section>
   )

@@ -366,33 +366,6 @@ export function HowItWorks() {
             </Link>
           </div>
         </motion.div>
-
-        {/* Final CTA */}
-        <motion.div
-          className="text-center"
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-        >
-          <h3 className="text-2xl font-bold text-gray-900 mb-4">Ready to get started?</h3>
-          <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
-            Join JobPool today and start connecting with skilled professionals in your area.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/post-task">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg">
-                Post Your Task
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link href="/signup">
-              <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-4 text-lg">
-                Become a Tasker
-              </Button>
-            </Link>
-          </div>
-        </motion.div>
       </motion.div>
     </section>
   )
