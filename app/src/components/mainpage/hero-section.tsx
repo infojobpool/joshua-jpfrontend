@@ -59,9 +59,9 @@ export function HeroSection() {
             </Link>
           </motion.div>
 
-          {/* Right: Category grid */}
+          {/* Right: Category grid - compact cards */}
           <motion.div
-            className="grid grid-cols-2 gap-4"
+            className="grid grid-cols-2 gap-3"
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
@@ -70,7 +70,7 @@ export function HeroSection() {
               <Link
                 key={i}
                 href="/browse-tasks"
-                className="group flex flex-col bg-gray-50 rounded-xl overflow-hidden border border-gray-100 hover:border-blue-200 hover:shadow-md transition-all duration-200"
+                className="group flex flex-col bg-gray-50 rounded-lg overflow-hidden border border-gray-100 hover:border-blue-200 hover:shadow-md transition-all duration-200"
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden">
                   <Image
@@ -80,11 +80,11 @@ export function HeroSection() {
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 text-sm md:text-base group-hover:text-blue-600 transition-colors">
+                <div className="p-3">
+                  <h3 className="font-semibold text-gray-900 text-xs md:text-sm group-hover:text-blue-600 transition-colors">
                     {cat.title}
                   </h3>
-                  <p className="text-gray-500 text-xs md:text-sm mt-0.5 line-clamp-2">
+                  <p className="text-gray-500 text-[10px] md:text-xs mt-0.5 line-clamp-2">
                     {cat.description}
                   </p>
                 </div>

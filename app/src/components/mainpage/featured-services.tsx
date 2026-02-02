@@ -126,12 +126,11 @@ export function FeaturedServices() {
     }
   ]
 
-  // Auto-scroll effect
+  // Auto-advance carousel
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % services.length)
-    }, 2500) // Change every 2.5 seconds for faster scrolling
-
+    }, 3000)
     return () => clearInterval(timer)
   }, [services.length])
 
@@ -149,16 +148,16 @@ export function FeaturedServices() {
     <section className="py-12 bg-gray-50 overflow-hidden">
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
         <motion.div
-          className="text-center mb-16"
+          className="text-center mb-8"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
             Popular Services
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-sm md:text-base text-gray-600 max-w-2xl mx-auto">
             Find help for the most common tasks people need
           </p>
         </motion.div>
@@ -169,7 +168,7 @@ export function FeaturedServices() {
           <div className="flex justify-center">
             <div 
               ref={scrollContainerRef}
-              className="flex gap-6 overflow-x-auto scrollbar-hide pb-6 pl-14 pr-14 md:pl-16 md:pr-16"
+              className="flex gap-4 overflow-x-auto scrollbar-hide pb-6 pl-12 pr-12 md:pl-14 md:pr-14"
               style={{ 
                 scrollbarWidth: 'none', 
                 msOverflowStyle: 'none',
@@ -179,14 +178,14 @@ export function FeaturedServices() {
               {services.map((service, index) => (
                 <motion.div
                   key={service.id}
-                  className="flex-shrink-0 w-80 bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 scroll-snap-start"
+                  className="flex-shrink-0 w-56 sm:w-60 md:w-64 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100 scroll-snap-start"
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1, duration: 0.6 }}
                   viewport={{ once: true }}
                 >
                   {/* Image */}
-                  <div className="relative h-48 overflow-hidden">
+                  <div className="relative h-32 overflow-hidden">
                     <Image
                       src={service.image}
                       alt={service.title}
@@ -196,15 +195,15 @@ export function FeaturedServices() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                     
                     {/* Category badge */}
-                    <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-medium text-gray-800 flex items-center gap-2">
+                    <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-xs font-medium text-gray-800 flex items-center gap-1">
                       {service.icon}
                       {service.category}
                     </div>
 
                     {/* Stats overlay */}
-                    <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                    <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md">
+                      <div className="flex items-center gap-1 text-xs">
+                        <Star className="h-3 w-3 text-yellow-500 fill-current" />
                         <span className="font-semibold">{service.stats.rating}</span>
                         <span className="text-gray-600">({service.stats.reviews})</span>
                       </div>
@@ -212,17 +211,17 @@ export function FeaturedServices() {
                   </div>
 
                   {/* Content */}
-                  <div className="p-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">{service.title}</h3>
-                    <p className="text-gray-600 mb-4 text-sm">{service.description}</p>
+                  <div className="p-4">
+                    <h3 className="text-base font-bold text-gray-900 mb-1">{service.title}</h3>
+                    <p className="text-gray-600 mb-3 text-xs line-clamp-2">{service.description}</p>
                     
                     {/* Features */}
-                    <div className="mb-6">
-                      <div className="flex flex-wrap gap-2">
-                        {service.features.map((feature, idx) => (
+                    <div className="mb-3">
+                      <div className="flex flex-wrap gap-1">
+                        {service.features.slice(0, 3).map((feature, idx) => (
                           <span
                             key={idx}
-                            className="bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-xs font-medium"
+                            className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-medium"
                           >
                             {feature}
                           </span>
@@ -231,26 +230,26 @@ export function FeaturedServices() {
                     </div>
 
                     {/* Stats */}
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-gray-900">{service.stats.taskers}</div>
-                        <div className="text-xs text-gray-500">Taskers</div>
+                    <div className="flex items-center justify-between mb-3 text-center">
+                      <div>
+                        <div className="text-sm font-bold text-gray-900">{service.stats.taskers}</div>
+                        <div className="text-[10px] text-gray-500">Taskers</div>
                       </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-green-600">{service.stats.rating}★</div>
-                        <div className="text-xs text-gray-500">Rating</div>
+                      <div>
+                        <div className="text-sm font-bold text-green-600">{service.stats.rating}★</div>
+                        <div className="text-[10px] text-gray-500">Rating</div>
                       </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-gray-900">{service.stats.reviews}</div>
-                        <div className="text-xs text-gray-500">Reviews</div>
+                      <div>
+                        <div className="text-sm font-bold text-gray-900">{service.stats.reviews}</div>
+                        <div className="text-[10px] text-gray-500">Reviews</div>
                       </div>
                     </div>
 
                     {/* CTA Button */}
                     <Link href={`/browse?category=${service.category.toLowerCase()}`}>
-                      <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                        Browse {service.category} Services
-                        <ArrowRight className="ml-2 h-4 w-4" />
+                      <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 h-auto">
+                        Browse {service.category}
+                        <ArrowRight className="ml-1 h-3 w-3" />
                       </Button>
                     </Link>
                   </div>
@@ -293,7 +292,7 @@ export function FeaturedServices() {
 
         {/* Bottom CTA */}
         <motion.div
-          className="text-center mt-12"
+          className="text-center mt-8"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8, duration: 0.6 }}
