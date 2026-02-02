@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { Button } from "../../components/ui/button"
-import { ArrowRight, Star, ThumbsUp, Check } from "lucide-react"
+import { ArrowRight, ThumbsUp, Check } from "lucide-react"
 
 export function HeroSection() {
   return (
@@ -70,13 +70,7 @@ export function HeroSection() {
                 <div className="h-10 w-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
                   <Image src="/images/ava-rahul.jpeg" alt="" width={40} height={40} className="object-cover" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-                    <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
-                    5.0 Overall Rating
-                  </div>
-                  <p className="text-xs text-gray-500">Trusted Tasker</p>
-                </div>
+                <p className="text-sm font-semibold text-gray-900">Trusted Tasker</p>
               </div>
               {/* Task completed (left) & Payment released (right) – side by side */}
               <div className="absolute bottom-5 right-5 flex items-center gap-3">
