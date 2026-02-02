@@ -29,7 +29,7 @@ const trustFeatures = [
 
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden bg-white py-16 md:py-20 lg:py-24">
+    <section className="relative overflow-hidden bg-white pt-8 pb-16 md:pt-10 md:pb-20 lg:pt-12 lg:pb-24">
       <div className="w-full px-4 md:px-6 lg:px-10 xl:px-14 2xl:px-16 max-w-7xl mx-auto">
         <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 xl:gap-20 items-center">
           {/* Left: Post your first task CTA */}
@@ -79,8 +79,8 @@ export function HeroSection() {
             {/* Image: tasker doing work, taskmaster getting help */}
             <div className="relative aspect-[4/3] w-full max-w-lg mx-auto rounded-2xl overflow-hidden bg-gray-100 shadow-lg">
               <Image
-                src="/images/image2.jpeg"
-                alt="Tasker helping with your task – get help from skilled professionals"
+                src="/images/heropage.png"
+                alt="Get help from skilled Taskers – post your task on JobPool"
                 fill
                 className="object-cover object-center"
                 sizes="(max-width: 1024px) 0vw, 512px"
