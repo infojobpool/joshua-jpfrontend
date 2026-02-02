@@ -144,30 +144,19 @@ export function HowItWorks() {
 
   const features = [
     {
-      icon: <Shield className="h-8 w-8 text-green-600" />,
-      title: "JobPool's insurance cover",
-      subtitle: "Public liability insurance",
-      description: "JobPool Insurance covers you for any accidental injury to the customer or property damage whilst performing certain task activities",
-      highlight: "Top rated insurance provided by reputable insurance brands"
-    },
-    {
       icon: <Star className="h-8 w-8 text-yellow-600" />,
       title: "Ratings & reviews",
-      description: "Review Tasker's portfolios, skills, badges on their profile, and see their transaction verified ratings, reviews & completion rating to see their reliability on tasks they've previously completed on JobPool.",
-      highlight: "This empowers you to make sure you're choosing the right person for your task"
+      description: "Review Taskers' profiles, skills, and verified ratings to choose the right person for your task."
     },
     {
       icon: <MessageCircle className="h-8 w-8 text-blue-600" />,
       title: "Communication",
-      description: "Use JobPool to stay in contact from the moment your task is posted until it's completed. Accept an offer and you can privately message the Tasker to discuss final details, and get your task completed.",
-      highlight: "Get started for free"
+      description: "Stay in contact from posting until completion. Message your Tasker to discuss details."
     },
     {
       icon: <CreditCard className="h-8 w-8 text-purple-600" />,
       title: "Payments on lock",
-      subtitle: "JobPool Pay is the seamless and secure way to get your tasks completed",
-      description: "Once you accept an offer on a task, the agreed upon amount is held secure with JobPool Pay until the task is complete. Once complete, you'll simply need to release the payment.",
-      highlight: "Fast and hassle free payment • Cashless payments, no cash in hand • You are always in control"
+      description: "Payment is held securely with JobPool Pay until the task is complete. Fast, cashless, and you're in control."
     }
   ]
 
@@ -300,36 +289,25 @@ export function HowItWorks() {
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <h3 className="text-2xl font-bold text-gray-900 mb-8 text-center">
+          <h3 className="text-2xl font-bold text-gray-900 mb-4 text-center">
             We've got you covered
           </h3>
-          <p className="text-gray-600 mb-12 text-center max-w-2xl mx-auto">
-            Whether you're posting a task or completing a task, you can do both with the peace of mind that JobPool is there to support.
+          <p className="text-gray-600 mb-10 text-center max-w-xl mx-auto text-sm">
+            JobPool is there to support you when posting or completing tasks.
           </p>
-          
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             {features.map((feature, index) => (
               <motion.div
                 key={index}
-                className="bg-gray-50 p-6 rounded-xl"
-                initial={{ opacity: 0, y: 20 }}
+                className="bg-gray-50/80 border border-gray-100 p-5 rounded-lg text-center"
+                initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
+                transition={{ duration: 0.4, delay: index * 0.08 }}
                 viewport={{ once: true }}
               >
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0">
-                    {feature.icon}
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-bold text-gray-900 mb-2">{feature.title}</h4>
-                    {feature.subtitle && (
-                      <p className="text-sm font-medium text-gray-700 mb-2">{feature.subtitle}</p>
-                    )}
-                    <p className="text-gray-600 mb-3">{feature.description}</p>
-                    <p className="text-sm font-medium text-blue-600">{feature.highlight}</p>
-                  </div>
-                </div>
+                <div className="flex justify-center mb-3">{feature.icon}</div>
+                <h4 className="font-semibold text-gray-900 mb-2">{feature.title}</h4>
+                <p className="text-sm text-gray-600">{feature.description}</p>
               </motion.div>
             ))}
           </div>
