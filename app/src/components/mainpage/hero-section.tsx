@@ -66,12 +66,6 @@ export function HeroSection() {
                 priority
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
-              <div className="absolute top-5 left-5 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-4 py-3 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
-                  <Image src="/images/ava-rahul.jpeg" alt="" width={40} height={40} className="object-cover" />
-                </div>
-                <p className="text-sm font-semibold text-gray-900">Trusted Tasker</p>
-              </div>
               {/* Task completed (left) & Payment released (right) – side by side */}
               <div className="absolute bottom-5 right-5 flex items-center gap-3">
                 <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-4 py-2.5 flex items-center gap-3">
