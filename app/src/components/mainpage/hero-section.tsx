@@ -55,14 +55,14 @@ export function HeroSection() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            {/* Image: tasker doing work, taskmaster getting help */}
-            <div className="relative aspect-[4/3] w-full max-w-lg mx-auto rounded-2xl overflow-hidden bg-gray-100 shadow-lg">
+            {/* Image: tasker doing work, taskmaster getting help – slightly larger */}
+            <div className="relative aspect-[4/3] w-full max-w-xl mx-auto rounded-2xl overflow-hidden bg-gray-100 shadow-lg">
               <Image
                 src="/images/heropage.png"
                 alt="Get help from skilled Taskers – post your task on JobPool"
                 fill
                 className="object-cover object-center"
-                sizes="(max-width: 1024px) 0vw, 512px"
+                sizes="(max-width: 1024px) 0vw, 576px"
                 priority
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
@@ -78,11 +78,12 @@ export function HeroSection() {
                   <p className="text-xs text-gray-500">Trusted Tasker</p>
                 </div>
               </div>
-              <div className="absolute bottom-24 left-5 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-4 py-2.5 flex items-center gap-3">
+              {/* Task completed & Payment released – right side */}
+              <div className="absolute bottom-24 right-5 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-4 py-2.5 flex items-center gap-3">
                 <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
                 <span className="text-sm font-medium text-gray-800">Task completed 2m ago</span>
               </div>
-              <div className="absolute bottom-5 left-5 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-4 py-2.5 flex items-center gap-3">
+              <div className="absolute bottom-5 right-5 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-4 py-2.5 flex items-center gap-3">
                 <ThumbsUp className="h-5 w-5 text-blue-600 flex-shrink-0" />
                 <span className="text-sm font-medium text-gray-800">Payment released 2m ago</span>
               </div>
