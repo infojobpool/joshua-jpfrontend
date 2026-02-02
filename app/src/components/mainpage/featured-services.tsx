@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Heart, Palette, Wrench, Users, Star, ArrowRight, Car, Home, Camera, BookOpen, Utensils, Truck } from "lucide-react"
+import { Heart, Palette, Wrench, Users, Star, ArrowRight, ArrowLeft, Car, Home, Camera, BookOpen, Utensils, Truck } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 
 export function FeaturedServices() {
@@ -135,19 +135,18 @@ export function FeaturedServices() {
     return () => clearInterval(timer)
   }, [services.length])
 
-  // Scroll to current card
+  // Scroll to current card (scrollIntoView so card width doesn't need to be hardcoded)
   useEffect(() => {
-    if (scrollContainerRef.current) {
-      const cardWidth = 320 // Approximate card width + gap
-      scrollContainerRef.current.scrollTo({
-        left: currentIndex * cardWidth,
-        behavior: 'smooth'
-      })
+    const container = scrollContainerRef.current
+    if (!container) return
+    const card = container.children[currentIndex] as HTMLElement
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' })
     }
   }, [currentIndex])
 
   return (
-    <section className="py-12 bg-white overflow-hidden">
+    <section className="py-12 bg-gray-50 overflow-hidden">
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
         <motion.div
           className="text-center mb-16"
@@ -170,7 +169,7 @@ export function FeaturedServices() {
           <div className="flex justify-center">
             <div 
               ref={scrollContainerRef}
-              className="flex gap-6 overflow-x-auto scrollbar-hide pb-6 px-4"
+              className="flex gap-6 overflow-x-auto scrollbar-hide pb-6 pl-14 pr-14 md:pl-16 md:pr-16"
               style={{ 
                 scrollbarWidth: 'none', 
                 msOverflowStyle: 'none',
@@ -275,18 +274,20 @@ export function FeaturedServices() {
             ))}
           </div>
 
-          {/* Navigation Arrows */}
+          {/* Navigation Arrows - circular white with black arrow (AirTasker style) */}
           <button
             onClick={() => setCurrentIndex((prev) => (prev - 1 + services.length) % services.length)}
-            className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/90 backdrop-blur-sm p-3 rounded-full shadow-lg hover:bg-white transition-colors border border-gray-200 z-10"
+            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white rounded-full shadow-md hover:shadow-lg transition-shadow border border-gray-200 z-10 text-gray-900"
+            aria-label="Previous service"
           >
-            <ArrowRight className="h-5 w-5 text-gray-700 rotate-180" />
+            <ArrowLeft className="h-5 w-5" />
           </button>
           <button
             onClick={() => setCurrentIndex((prev) => (prev + 1) % services.length)}
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/90 backdrop-blur-sm p-3 rounded-full shadow-lg hover:bg-white transition-colors border border-gray-200 z-10"
+            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white rounded-full shadow-md hover:shadow-lg transition-shadow border border-gray-200 z-10 text-gray-900"
+            aria-label="Next service"
           >
-            <ArrowRight className="h-5 w-5 text-gray-700" />
+            <ArrowRight className="h-5 w-5" />
           </button>
         </div>
 
