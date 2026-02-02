@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import Link from "next/link"
-import { ChevronLeft, ChevronRight, DollarSign, MapPin, Loader2, Briefcase } from "lucide-react"
+import { ChevronLeft, ChevronRight, MapPin, Loader2, Briefcase } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 
 interface Task {
@@ -51,13 +51,30 @@ export function AvailableTasksScroller() {
 
   const scroll = (dir: "left" | "right") => {
     if (!scrollRef.current) return
-    const step = 320
+    const step = 296
     scrollRef.current.scrollBy({ left: dir === "left" ? -step : step, behavior: "smooth" })
   }
 
+  // Continuous auto-scroll
+  useEffect(() => {
+    if (!tasks.length || !scrollRef.current) return
+    const el = scrollRef.current
+    let rafId: number
+    const tick = () => {
+      el.scrollLeft += 1
+      if (el.scrollLeft >= el.scrollWidth - el.clientWidth - 1) {
+        el.scrollLeft = 0
+      }
+      rafId = requestAnimationFrame(tick)
+    }
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
+  }, [tasks.length])
+
   const formatBudget = (n: number) => {
-    if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`
-    return `$${n}`
+    if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`
+    if (n >= 1000) return `₹${(n / 1000).toFixed(1)}k`
+    return `₹${n}`
   }
 
   return (
@@ -118,28 +135,27 @@ export function AvailableTasksScroller() {
                   <Link
                     key={task.id}
                     href={`/tasks/${task.id}`}
-                    className="flex-shrink-0 scroll-snap-start"
+                    className="flex-shrink-0 scroll-snap-start w-[280px]"
                   >
                     <motion.div
-                      className="bg-white border border-gray-100 rounded-2xl min-w-[260px] md:min-w-[280px] overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                      className="bg-white border border-gray-100 rounded-2xl w-[280px] h-[160px] overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      <div className="p-4">
-                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                      <div className="p-4 flex flex-col h-full min-w-0">
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide flex-shrink-0">
                           {task.category_name}
                         </span>
-                        <h3 className="font-semibold text-gray-900 mt-1 line-clamp-2 min-h-[2.5rem]">
+                        <h3 className="font-semibold text-gray-900 mt-1 line-clamp-2 flex-1 min-h-0">
                           {task.title}
                         </h3>
                         {task.location && (
-                          <p className="flex items-center gap-1.5 text-gray-500 text-sm mt-2">
+                          <p className="flex items-center gap-1.5 text-gray-500 text-sm mt-2 flex-shrink-0 min-w-0">
                             <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
                             <span className="truncate">{task.location}</span>
                           </p>
                         )}
-                        <p className="flex items-center gap-1.5 text-blue-600 font-semibold mt-2">
-                          <DollarSign className="w-4 h-4 flex-shrink-0" />
+                        <p className="text-blue-600 font-semibold mt-2 flex-shrink-0">
                           {formatBudget(task.budget)}
                         </p>
                       </div>
