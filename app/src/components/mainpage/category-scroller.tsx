@@ -3,21 +3,36 @@
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { useRef } from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import {
+  ChevronLeft,
+  ChevronRight,
+  Utensils,
+  Monitor,
+  Camera,
+  Truck,
+  Palette,
+  Briefcase,
+  Wrench,
+  Box,
+  Sparkles,
+  Flower2,
+  Package,
+  PartyPopper,
+} from "lucide-react"
 
 const categories = [
-  "Cooking",
-  "Computer & IT",
-  "Photography",
-  "Removals",
-  "Design",
-  "Business",
-  "Handyman",
-  "Furniture Assembly",
-  "Cleaning",
-  "Gardening",
-  "Delivery",
-  "Events",
+  { name: "Cooking", icon: Utensils },
+  { name: "Computer & IT", icon: Monitor },
+  { name: "Photography", icon: Camera },
+  { name: "Removals", icon: Truck },
+  { name: "Design", icon: Palette },
+  { name: "Business", icon: Briefcase },
+  { name: "Handyman", icon: Wrench },
+  { name: "Furniture Assembly", icon: Box },
+  { name: "Cleaning", icon: Sparkles },
+  { name: "Gardening", icon: Flower2 },
+  { name: "Delivery", icon: Package },
+  { name: "Events", icon: PartyPopper },
 ]
 
 export function CategoryScroller() {
@@ -25,50 +40,60 @@ export function CategoryScroller() {
 
   const scroll = (dir: "left" | "right") => {
     if (!scrollRef.current) return
-    const step = 280
+    const step = 220
     scrollRef.current.scrollBy({ left: dir === "left" ? -step : step, behavior: "smooth" })
   }
 
+  const slug = (name: string) =>
+    name.toLowerCase().replace(/\s*&\s*/g, "-").replace(/\s+/g, "-")
+
   return (
-    <section className="py-10 md:py-12 bg-white overflow-hidden">
+    <section className="pt-8 pb-12 md:pt-10 md:pb-14 bg-white overflow-hidden">
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 max-w-7xl mx-auto">
+        {/* Categories up and top – heading */}
         <motion.div
-          className="text-center mb-6"
+          className="text-center mb-8"
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+          <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-3">
             We love a to-do
           </h2>
-          <p className="text-gray-600 text-sm md:text-base max-w-2xl mx-auto">
+          <p className="text-gray-600 text-base md:text-lg max-w-2xl mx-auto">
             From odd jobs to serious renovations, the help you&apos;re looking for is on JobPool.
           </p>
         </motion.div>
 
+        {/* Horizontal scroller – bigger cards with icons */}
         <div className="relative">
           <div
             ref={scrollRef}
-            className="flex gap-3 overflow-x-auto scrollbar-hide pb-4 px-1"
+            className="flex gap-4 overflow-x-auto scrollbar-hide pb-4 px-2"
             style={{
               scrollbarWidth: "none",
               msOverflowStyle: "none",
               scrollSnapType: "x mandatory",
             }}
           >
-            {categories.map((category) => (
+            {categories.map(({ name, icon: Icon }) => (
               <Link
-                key={category}
-                href={`/browse?category=${encodeURIComponent(category.toLowerCase().replace(/\s*&\s*/g, "-").replace(/\s+/g, "-"))}`}
+                key={name}
+                href={`/browse?category=${encodeURIComponent(slug(name))}`}
                 className="flex-shrink-0 scroll-snap-start"
               >
                 <motion.div
-                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 px-5 py-3 rounded-xl text-sm font-medium whitespace-nowrap transition-colors min-w-[140px] text-center border border-blue-100/80"
-                  whileHover={{ scale: 1.02 }}
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-2xl min-w-[160px] md:min-w-[180px] px-6 py-5 flex flex-col items-center justify-center gap-3 border border-blue-100/80 transition-colors shadow-sm hover:shadow-md"
+                  whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  {category}
+                  <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white/80 text-blue-600">
+                    <Icon className="w-6 h-6" />
+                  </div>
+                  <span className="text-sm md:text-base font-semibold text-center leading-tight">
+                    {name}
+                  </span>
                 </motion.div>
               </Link>
             ))}
