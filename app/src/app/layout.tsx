@@ -65,7 +65,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <link rel="mask-icon" href="/icons/icon-192x192.png" color="#1e3a8a" />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}>
         <InAppNotificationProvider />
         <MobileLayout>
           <MainHeader />

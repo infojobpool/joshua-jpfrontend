@@ -126,15 +126,7 @@ export function FeaturedServices() {
     }
   ]
 
-  // Auto-advance carousel
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % services.length)
-    }, 3000)
-    return () => clearInterval(timer)
-  }, [services.length])
-
-  // Scroll to current card (scrollIntoView so card width doesn't need to be hardcoded)
+  // Scroll to current card (no auto-advance; user uses arrows/dots only) (scrollIntoView so card width doesn't need to be hardcoded)
   useEffect(() => {
     const container = scrollContainerRef.current
     if (!container) return

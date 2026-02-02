@@ -4,7 +4,28 @@ import Image from "next/image"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { Button } from "../../components/ui/button"
-import { ArrowRight, Star, ThumbsUp, Check } from "lucide-react"
+import { ArrowRight, Star, ThumbsUp, Check, DollarSign, ShieldCheck } from "lucide-react"
+
+const trustFeatures = [
+  {
+    icon: DollarSign,
+    title: "Secure payments",
+    description: "Funds are securely held until you confirm the task is completed properly.",
+    href: "/help#payments",
+  },
+  {
+    icon: Star,
+    title: "Verified ratings and reviews",
+    description: "Choose the best professionals by checking verified ratings from other clients.",
+    href: "/help#reviews",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Insurance for your peace of mind",
+    description: "We provide liability insurance for all tasks.",
+    href: "/help#insurance",
+  },
+]
 
 export function HeroSection() {
   return (
@@ -48,45 +69,76 @@ export function HeroSection() {
             </Link>
           </motion.div>
 
-          {/* Right: Trust/safety visual with overlay cards (reference style) */}
+          {/* Right: Person image with overlay cards + Trust and safety block (reference style) */}
           <motion.div
-            className="relative hidden lg:block"
+            className="relative hidden lg:flex lg:flex-col lg:gap-6"
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <div className="relative aspect-[4/5] max-w-md mx-auto rounded-2xl overflow-hidden bg-gray-100">
+            {/* Image with overlay cards - replaced with person-focused image */}
+            <div className="relative aspect-[4/5] max-w-sm mx-auto w-full rounded-2xl overflow-hidden bg-gray-100">
               <Image
-                src="/images/caregiving-hero.jpg"
+                src="/images/ava-nisha.jpg"
                 alt="Trust and safety - JobPool"
                 fill
                 className="object-cover object-top"
-                sizes="(max-width: 1024px) 0vw, 448px"
+                sizes="(max-width: 1024px) 0vw, 384px"
                 priority
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
-
-              {/* Overlay cards like reference */}
-              <div className="absolute top-6 left-6 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-4 py-3 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
-                  <Image src="/images/ava-rahul.jpeg" alt="" width={40} height={40} className="object-cover" />
+              <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-3 py-2 flex items-center gap-2">
+                <div className="h-9 w-9 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
+                  <Image src="/images/ava-rahul.jpeg" alt="" width={36} height={36} className="object-cover" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-                    <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                  <div className="flex items-center gap-1 text-sm font-semibold text-gray-900">
+                    <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
                     5.0 Overall Rating
                   </div>
-                  <p className="text-xs text-gray-500">Trusted Tasker</p>
+                  <p className="text-[10px] text-gray-500">Trusted Tasker</p>
                 </div>
               </div>
-              <div className="absolute bottom-24 left-6 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-4 py-2.5 flex items-center gap-3">
-                <ThumbsUp className="h-5 w-5 text-green-600 flex-shrink-0" />
-                <span className="text-sm font-medium text-gray-800">Job completed 2m ago</span>
+              <div className="absolute bottom-20 left-4 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-3 py-2 flex items-center gap-2">
+                <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                <span className="text-xs font-medium text-gray-800">Task completed 2m ago</span>
               </div>
-              <div className="absolute bottom-6 left-6 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-4 py-2.5 flex items-center gap-3">
-                <Check className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                <span className="text-sm font-medium text-gray-800">Payment released 2m ago</span>
+              <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-3 py-2 flex items-center gap-2">
+                <ThumbsUp className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                <span className="text-xs font-medium text-gray-800">Payment released 2m ago</span>
               </div>
+            </div>
+
+            {/* Trust and safety measures block (reference) */}
+            <div className="bg-gray-50/80 rounded-2xl p-6 border border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">
+                Trust and safety measures to protect you
+              </h2>
+              <ul className="space-y-4 mb-6">
+                {trustFeatures.map((item, i) => {
+                  const Icon = item.icon
+                  return (
+                  <li key={i} className="flex gap-3">
+                    <div className="flex-shrink-0 h-9 w-9 rounded-lg bg-white flex items-center justify-center shadow-sm text-amber-600">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-sm">{item.title}</h3>
+                      <p className="text-gray-600 text-xs mt-0.5">{item.description}</p>
+                      <Link href={item.href} className="text-blue-600 text-xs font-medium mt-1 inline-block hover:underline">
+                        Learn more
+                      </Link>
+                    </div>
+                  </li>
+                  )
+                })}
+              </ul>
+              <Link href="/post-task" className="block">
+                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-xl py-6">
+                  Post a task for free
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
             </div>
           </motion.div>
         </div>
