@@ -4,32 +4,11 @@ import Image from "next/image"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { Button } from "../../components/ui/button"
-import { ArrowRight, Star, ThumbsUp, Check, DollarSign, ShieldCheck } from "lucide-react"
-
-const trustFeatures = [
-  {
-    icon: DollarSign,
-    title: "Secure payments",
-    description: "Funds are securely held until you confirm the task is completed properly.",
-    href: "/help#payments",
-  },
-  {
-    icon: Star,
-    title: "Verified ratings and reviews",
-    description: "Choose the best professionals by checking verified ratings from other clients.",
-    href: "/help#reviews",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Insurance for your peace of mind",
-    description: "We provide liability insurance for all tasks.",
-    href: "/help#insurance",
-  },
-]
+import { ArrowRight, Star, ThumbsUp, Check } from "lucide-react"
 
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden bg-white pt-8 pb-16 md:pt-10 md:pb-20 lg:pt-12 lg:pb-24">
+    <section className="relative overflow-hidden bg-white pt-4 pb-16 md:pt-6 md:pb-20 lg:pt-8 lg:pb-24">
       <div className="w-full px-4 md:px-6 lg:px-10 xl:px-14 2xl:px-16 max-w-7xl mx-auto">
         <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 xl:gap-20 items-center">
           {/* Left: Post your first task CTA */}
@@ -69,9 +48,9 @@ export function HeroSection() {
             </Link>
           </motion.div>
 
-          {/* Right: Tasker helping taskmaster – image + overlay cards + Trust and safety block */}
+          {/* Right: Hero image with overlay cards */}
           <motion.div
-            className="relative hidden lg:flex lg:flex-col lg:gap-8"
+            className="relative hidden lg:block"
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
@@ -107,38 +86,6 @@ export function HeroSection() {
                 <ThumbsUp className="h-5 w-5 text-blue-600 flex-shrink-0" />
                 <span className="text-sm font-medium text-gray-800">Payment released 2m ago</span>
               </div>
-            </div>
-
-            {/* Trust and safety measures block */}
-            <div className="bg-gray-50/90 rounded-2xl p-8 border border-gray-100 shadow-sm">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">
-                Trust and safety measures to protect you
-              </h2>
-              <ul className="space-y-5 mb-8">
-                {trustFeatures.map((item, i) => {
-                  const Icon = item.icon
-                  return (
-                  <li key={i} className="flex gap-4">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-white flex items-center justify-center shadow-sm text-amber-600">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-gray-900 text-sm md:text-base">{item.title}</h3>
-                      <p className="text-gray-600 text-sm mt-1 leading-relaxed">{item.description}</p>
-                      <Link href={item.href} className="text-blue-600 text-sm font-medium mt-1.5 inline-block hover:underline">
-                        Learn more
-                      </Link>
-                    </div>
-                  </li>
-                  )
-                })}
-              </ul>
-              <Link href="/post-task" className="block">
-                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-xl py-6 text-base">
-                  Post a task for free
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
             </div>
           </motion.div>
         </div>
