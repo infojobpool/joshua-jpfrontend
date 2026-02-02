@@ -20,10 +20,19 @@ The frontend sends the FCM token when the PWA Builder app dispatches the `push-t
   ```json
   {
     "fcm_token": "<FCM_DEVICE_TOKEN>",
-    "platform": "android"
+    "platform": "web"
   }
   ```
-  Use `"android"`, `"ios"`, or `"web"` as appropriate (the frontend sends this based on user agent).
+  `platform` is one of: **`"web"`**, **`"ios"`**, or **`"android"`** (frontend sets this from user agent).
+
+### Why “No FCM token registered” / frontend not calling register-push?
+
+- **On web (desktop browser):** The FCM token is only available when:
+  1. The page is running inside the **PWA Builder app** (Android/iOS), which gets the token and dispatches `push-token`, or  
+  2. You use **Firebase JS** in the browser and call `getToken()` after the user allows notifications.  
+  So if you only open the site in Chrome on desktop, the frontend never gets a token and never calls `register-push`. **To test:** use the PWA Builder Android/iOS app (sign in, allow notifications) so the app gets a token and sends it; or add Firebase JS and call `registerToken(token)` with `platform: "web"` when `getToken()` resolves.
+
+- **Backend:** Accept `platform` as **`"web"`**, **`"ios"`**, or **`"android"`** and store it with the token.
 
 ### Backend behavior
 

@@ -53,13 +53,13 @@ const MainHeader: React.FC = () => {
   return (
     <header className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-24 md:h-28 lg:h-32 items-center justify-between pt-4 md:pt-5 lg:pt-6">
+        <div className="flex h-20 md:h-24 lg:h-28 items-center justify-between pt-3 md:pt-4 lg:pt-5">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
             <img 
               src="/images/jobpool-logo.png" 
               alt="JobPool Logo" 
-              className="h-24 md:h-28 lg:h-32 xl:h-36 w-auto drop-shadow-md transition-all duration-300 group-hover:drop-shadow-lg group-hover:opacity-90"
+              className="h-14 md:h-16 lg:h-20 w-auto drop-shadow-md transition-all duration-300 group-hover:drop-shadow-lg group-hover:opacity-90"
             />
           </Link>
 

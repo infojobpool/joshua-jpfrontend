@@ -95,20 +95,18 @@ export function InAppNotificationProvider() {
   }, [userId]);
 
   /**
-   * When the user is logged in and the app has an FCM token (from PWA Builder push-token event
-   * or from Firebase JS getToken()), call the register-push endpoint.
+   * When the user is logged in and the app has an FCM token, call the register-push endpoint.
    *
    * URL: POST https://api.jobpool.in/api/v1/register-push/
-   *      (or whatever NEXT_PUBLIC_API_BASE_URL / API base URL is — axiosInstance uses it)
-   * Headers: Authorization: Bearer <JWT> (axiosInstance adds this from localStorage)
-   * Body: { "fcm_token": "<FCM_TOKEN>", "platform": "android" | "ios" | "web" }
+   * Header: Authorization: Bearer <JWT> (axiosInstance adds from localStorage)
+   * Body: { "fcm_token": "<FCM_TOKEN>", "platform": "web" | "ios" | "android" }
    *
-   * Location: InAppNotificationProvider — right after we have the token and user is logged in.
+   * Platform is set by user agent: "android", "ios", or "web".
    */
   useEffect(() => {
     if (typeof window === "undefined" || !userId) return;
 
-    const getPlatform = (): "android" | "ios" | "web" => {
+    const getPlatform = (): "web" | "ios" | "android" => {
       const ua = navigator.userAgent.toLowerCase();
       if (/android/.test(ua)) return "android";
       if (/iphone|ipad|ipod/.test(ua)) return "ios";
