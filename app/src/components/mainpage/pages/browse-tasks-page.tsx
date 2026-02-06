@@ -768,34 +768,54 @@ export function BrowseTasksPage() {
     try {
       setIsLoading(true);
       const response = await axiosInstance.get("/get-all-jobs/");
-      if (response.data.status_code === 200) {
-        const mappedJobs = response.data.data.jobs.map((job: any) => ({
-          id: job.job_id,
-          user_ref_id: job.user_ref_id,
-          title: job.job_title ?? "",
-          description: job.job_description ?? "",
-          budget: typeof job.job_budget === "number" ? job.job_budget : 0,
-          location: job.job_location ?? "",
-          status: Boolean(job.status),
-          deletion_status: job.deletion_status,
-          posted_by: job.posted_by ?? "",
-          dueDate: job.job_due_date,
-          category: job.job_category ?? "",
-          category_name: job.job_category_name ?? "",
-          job_images: job.job_images,
-          postedAt: job.created_at ?? "",
-        }));
-        setJobs(mappedJobs);
-        // Extract unique locations from jobs
-        const uniqueLocations = [
-          ...new Set(mappedJobs.map((job: Task) => job.location)),
-        ];
-        setLocations(["all", ...uniqueLocations]);
+
+      if (response?.data?.status_code === 200) {
+        const jobsData = response?.data?.data?.jobs;
+
+        if (Array.isArray(jobsData)) {
+          const mappedJobs = jobsData.map((job: any) => ({
+            id: job.job_id,
+            user_ref_id: job.user_ref_id,
+            title: job.job_title ?? "",
+            description: job.job_description ?? "",
+            budget: typeof job.job_budget === "number" ? job.job_budget : 0,
+            location: job.job_location ?? "",
+            status: Boolean(job.status),
+            deletion_status: job.deletion_status,
+            posted_by: job.posted_by ?? "",
+            dueDate: job.job_due_date,
+            category: job.job_category ?? "",
+            category_name: job.job_category_name ?? "",
+            job_images: job.job_images,
+            postedAt: job.created_at ?? "",
+          }));
+
+          setJobs(mappedJobs);
+
+          // Extract unique locations from jobs (ignore falsy values)
+          const uniqueLocations = [
+            ...new Set(
+              mappedJobs
+                .map((job: Task) => job.location)
+                .filter((loc) => !!loc)
+            ),
+          ];
+          setLocations(["all", ...uniqueLocations]);
+        } else {
+          console.warn("Unexpected jobs payload shape:", response.data.data);
+          setJobs([]);
+          setLocations(["all"]);
+        }
       } else {
-        toast.error(response.data.message || "Failed to fetch jobs");
+        toast.error(
+          response?.data?.message || "Failed to fetch jobs"
+        );
       }
-    } catch {
+    } catch (err) {
+      console.error("Error fetching jobs:", err);
       toast.error("An error occurred while fetching jobs");
+      setJobs([]);
+      setLocations(["all"]);
     } finally {
       setIsLoading(false);
     }
@@ -805,13 +825,29 @@ export function BrowseTasksPage() {
     try {
       setIsLoading(true);
       const response = await axiosInstance.get("get-all-categories/");
-      if (response.data.status_code === 200) {
-        setCategories(response.data.data);
+
+      if (response?.data?.status_code === 200) {
+        const categoriesData = response?.data?.data;
+
+        if (Array.isArray(categoriesData)) {
+          setCategories(categoriesData);
+        } else {
+          console.warn(
+            "Unexpected categories payload shape:",
+            response.data.data
+          );
+          setCategories([]);
+        }
       } else {
-        toast.error(response.data.message || "Failed to fetch categories");
+        toast.error(
+          response?.data?.message || "Failed to fetch categories"
+        );
+        setCategories([]);
       }
-    } catch {
+    } catch (err) {
+      console.error("Error fetching categories:", err);
       toast.error("An error occurred while fetching categories");
+      setCategories([]);
     } finally {
       setIsLoading(false);
     }
