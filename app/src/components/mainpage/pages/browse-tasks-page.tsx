@@ -772,18 +772,18 @@ export function BrowseTasksPage() {
         const mappedJobs = response.data.data.jobs.map((job: any) => ({
           id: job.job_id,
           user_ref_id: job.user_ref_id,
-          title: job.job_title,
-          description: job.job_description,
-          budget: job.job_budget,
-          location: job.job_location,
-          status: job.status,
+          title: job.job_title ?? "",
+          description: job.job_description ?? "",
+          budget: typeof job.job_budget === "number" ? job.job_budget : 0,
+          location: job.job_location ?? "",
+          status: Boolean(job.status),
           deletion_status: job.deletion_status,
-          posted_by: job.posted_by,
+          posted_by: job.posted_by ?? "",
           dueDate: job.job_due_date,
-          category: job.job_category,
-          category_name: job.job_category_name,
+          category: job.job_category ?? "",
+          category_name: job.job_category_name ?? "",
           job_images: job.job_images,
-          postedAt: job.created_at,
+          postedAt: job.created_at ?? "",
         }));
         setJobs(mappedJobs);
         // Extract unique locations from jobs
@@ -877,20 +877,34 @@ export function BrowseTasksPage() {
   };
 
   const filteredTasks = jobs
-    .filter(
-      (job) =>
-        (job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          job.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          job.category_name.toLowerCase().includes(searchQuery.toLowerCase())) &&
-        (selectedCategories.length === 0 ||
-          selectedCategories.includes(job.category)) &&
-        (selectedLocation === "all" ||
-          job.location.toLowerCase() === selectedLocation.toLowerCase()) &&
-        isDateInRange(job.dueDate, selectedDateRange)
-    )
-    .filter(
-      (task) => task.budget >= priceRange[0] && task.budget <= priceRange[1]
-    );
+    .filter((job) => {
+      const title = (job.title ?? "").toLowerCase();
+      const description = (job.description ?? "").toLowerCase();
+      const categoryName = (job.category_name ?? "").toLowerCase();
+      const location = (job.location ?? "").toLowerCase();
+      const query = searchQuery.toLowerCase();
+
+      const matchesSearch =
+        title.includes(query) ||
+        description.includes(query) ||
+        categoryName.includes(query);
+
+      const matchesCategory =
+        selectedCategories.length === 0 ||
+        selectedCategories.includes(job.category ?? "");
+
+      const matchesLocation =
+        selectedLocation === "all" ||
+        location === selectedLocation.toLowerCase();
+
+      const matchesDate = isDateInRange(job.dueDate, selectedDateRange);
+
+      return matchesSearch && matchesCategory && matchesLocation && matchesDate;
+    })
+    .filter((task) => {
+      const budget = typeof task.budget === "number" ? task.budget : 0;
+      return budget >= priceRange[0] && budget <= priceRange[1];
+    });
 
   const sortedTasks = [...filteredTasks].sort((a, b) => {
     if (sortBy === "newest") {
