@@ -21,6 +21,7 @@ import useStore from "../../lib/Zustand";
 import axios, { AxiosError } from "axios";
 import { MobileSignIn } from "../../components/mobile/MobileAuth";
 import { useIsMobile } from "../../components/mobile/MobileWrapper";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function SignInPage() {
   const { login, isAuthenticated, checkAuth } = useStore();
@@ -34,6 +35,7 @@ export default function SignInPage() {
   const [hydrated, setHydrated] = useState(false);
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Hydrate auth state and redirect away if already logged in
   useEffect(() => {
@@ -296,16 +298,30 @@ export default function SignInPage() {
                     </button>
                   </div>
                 </div>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                    className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200 pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
               </div>
               {showResendVerification && (
                 <div className="rounded-md bg-yellow-50 border border-yellow-200 p-4">
