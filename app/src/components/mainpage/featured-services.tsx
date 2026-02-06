@@ -10,6 +10,7 @@ import { useState, useEffect, useRef } from "react"
 export function FeaturedServices() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const hasInitializedRef = useRef(false)
 
   const services = [
     {
@@ -126,8 +127,14 @@ export function FeaturedServices() {
     }
   ]
 
-  // Scroll to current card (no auto-advance; user uses arrows/dots only) (scrollIntoView so card width doesn't need to be hardcoded)
+  // Scroll to current card when the user changes it.
+  // Skip the initial render so we don't auto-scroll the whole page down on first load.
   useEffect(() => {
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true
+      return
+    }
+
     const container = scrollContainerRef.current
     if (!container) return
     const card = container.children[currentIndex] as HTMLElement
