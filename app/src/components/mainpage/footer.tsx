@@ -184,7 +184,7 @@ export function Footer() {
               >
                 <div className="bg-white rounded-lg p-2 md:p-3 shadow-lg">
                   <img 
-                    src="/images/jobpool-logo.png" 
+                    src="/images/new-logo.png" 
                     alt="JobPool Logo" 
                     className="h-14 md:h-16 w-auto"
                   />

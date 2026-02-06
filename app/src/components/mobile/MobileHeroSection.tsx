@@ -12,7 +12,7 @@ export function MobileHeroSection() {
         <div className="mx-auto flex items-center justify-center mb-2">
           <div className="bg-white rounded-xl p-2 md:p-4 shadow-2xl shadow-black/20">
           <img 
-            src="/images/jobpool-logo.png" 
+            src="/images/new-logo.png" 
             alt="JobPool Logo" 
               className="h-24 md:h-32 w-auto"
           />
