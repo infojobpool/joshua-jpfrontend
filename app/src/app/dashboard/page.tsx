@@ -3118,7 +3118,7 @@ export default function Dashboard() {
                     <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {profileDropdownOpen && (
-                    <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl border border-gray-200 py-3 z-50 animate-fade-in-up">
+                    <div className="absolute right-0 mt-3 w-64 max-w-[80vw] bg-white rounded-2xl shadow-2xl border border-gray-200 py-3 z-50 animate-fade-in-up">
                       <div className="px-4 py-3 border-b border-gray-100">
                         <div className="flex items-center gap-3">
                           {safeUser.profile_image ? (
@@ -3132,16 +3132,22 @@ export default function Dashboard() {
                               {(safeUser.name ? safeUser.name.charAt(0) : "U")}
                             </div>
                           )}
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
-                            <p className="font-medium text-gray-900">{safeUser.name || "User"}</p>
+                              <p className="font-medium text-gray-900 text-sm truncate">
+                                {safeUser.name || "User"}
+                              </p>
                               {user?.verification_status >= 3 && (
                                 <span title="Verified Account">
                                   <CheckCircle className="h-4 w-4 text-blue-600" />
                                 </span>
                               )}
                             </div>
-                            <p className="text-sm text-gray-500">{safeUser.email || ""}</p>
+                            {safeUser.email && (
+                              <p className="mt-0.5 text-xs text-gray-500 break-all">
+                                {safeUser.email}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>
