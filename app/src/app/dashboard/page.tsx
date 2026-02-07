@@ -303,6 +303,7 @@ export default function Dashboard() {
   const [showAllCategories, setShowAllCategories] = useState(false);
   // Mobile-only extra filter UI state
   const [sortBy, setSortBy] = useState<string>("newest");
+  const [availableSortBy, setAvailableSortBy] = useState<string>("newest");
   const [onlyOpen, setOnlyOpen] = useState<boolean>(true);
   const [withImages, setWithImages] = useState<boolean>(false);
 
@@ -2930,16 +2931,36 @@ export default function Dashboard() {
     return matchesSearch && matchesCategory && matchesPrice && matchesLocation && isNotCanceled;
   });
 
-  // Sort available tasks: newest posted first by default
+  // Sort available tasks by selected option (newest, oldest, highest budget, lowest budget)
   const sortedAvailableTasks = useMemo(() => {
     const copy = [...filteredTasks];
     copy.sort((a, b) => {
+      if (availableSortBy === "newest") {
+        const aVal = a.postedAtSortValue ?? 0;
+        const bVal = b.postedAtSortValue ?? 0;
+        return bVal - aVal;
+      }
+      if (availableSortBy === "oldest") {
+        const aVal = a.postedAtSortValue ?? 0;
+        const bVal = b.postedAtSortValue ?? 0;
+        return aVal - bVal;
+      }
+      if (availableSortBy === "highest") {
+        const aBudget = typeof a.budget === "number" ? a.budget : 0;
+        const bBudget = typeof b.budget === "number" ? b.budget : 0;
+        return bBudget - aBudget;
+      }
+      if (availableSortBy === "lowest") {
+        const aBudget = typeof a.budget === "number" ? a.budget : 0;
+        const bBudget = typeof b.budget === "number" ? b.budget : 0;
+        return aBudget - bBudget;
+      }
       const aVal = a.postedAtSortValue ?? 0;
       const bVal = b.postedAtSortValue ?? 0;
-      return bVal - aVal; // newest first
+      return bVal - aVal;
     });
     return copy;
-  }, [filteredTasks]);
+  }, [filteredTasks, availableSortBy]);
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -3516,10 +3537,11 @@ export default function Dashboard() {
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 block">Sort by</label>
                   <div className="bg-white border border-gray-200 rounded-lg p-2">
-                    <select value={sortBy} onChange={e=>setSortBy(e.target.value)} className="w-full bg-transparent text-gray-700">
+                    <select value={availableSortBy} onChange={e=>setAvailableSortBy(e.target.value)} className="w-full bg-transparent text-gray-700">
                       <option value="newest">Newest first</option>
-                      <option value="budget_high">Budget: High to Low</option>
-                      <option value="budget_low">Budget: Low to High</option>
+                      <option value="oldest">Oldest first</option>
+                      <option value="highest">Budget: High to Low</option>
+                      <option value="lowest">Budget: Low to High</option>
                     </select>
                   </div>
                 </div>
@@ -4017,7 +4039,7 @@ export default function Dashboard() {
                   <p className="text-sm text-muted-foreground">
                     {sortedAvailableTasks.length} tasks found
                   </p>
-                  <Select defaultValue="newest">
+                  <Select value={availableSortBy} onValueChange={setAvailableSortBy}>
                     <SelectTrigger className="w-[180px]">
                       <SelectValue placeholder="Sort by" />
                     </SelectTrigger>
