@@ -21,9 +21,7 @@ export function MobileHeroSection() {
         <h1 className="text-3xl font-extrabold leading-tight tracking-tight">Get Any Task Done</h1>
         <p className="text-blue-100/90">Post a task. Get offers from local helpers. Done safely.</p>
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-blue-100/90">
-          <span className="px-2 py-1 rounded-full bg-white/10 border border-white/20">1k+ customers</span>
-          <span className="px-2 py-1 rounded-full bg-white/10 border border-white/20">5k+ tasks done</span>
-          <span className="px-2 py-1 rounded-full bg-white/10 border border-white/20">★ 4.9 rating</span>
+          <span className="px-2 py-1 rounded-full bg-white/10 border border-white/20">100% Verified users</span>
         </div>
         <div className="pt-1">
           <div className="flex gap-1.5 overflow-x-auto pb-1 px-1" style={{ WebkitOverflowScrolling: 'touch' }}>
