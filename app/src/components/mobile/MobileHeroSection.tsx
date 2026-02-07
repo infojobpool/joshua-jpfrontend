@@ -9,7 +9,7 @@ export function MobileHeroSection() {
     <div className="relative min-h-[100dvh] h-[100dvh] overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white flex items-center justify-center px-4 pt-[calc(env(safe-area-inset-top)+56px)] pb-[calc(env(safe-area-inset-bottom)+72px)]">
 
       <div className="relative w-full max-w-md text-center space-y-3">
-        <div className="mx-auto flex items-center justify-center mb-0 mt-[-1.25rem]">
+        <div className="mx-auto flex items-center justify-center mt-[-2.5rem] mb-5">
           <div className="bg-white rounded-3xl p-2 md:p-3 shadow-2xl shadow-black/20">
             <img 
               src="/images/new-logo.png" 
