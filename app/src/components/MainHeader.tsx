@@ -55,11 +55,11 @@ const MainHeader: React.FC = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-20 md:h-24 lg:h-28 items-center justify-between pt-3 md:pt-4 lg:pt-5">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
+          <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
             <img 
-              src="/images/new-logo.png" 
+              src="/images/new_logo_22-removebg-preview.png" 
               alt="JobPool Logo" 
-              className="h-14 md:h-16 lg:h-20 w-auto drop-shadow-md transition-all duration-300 group-hover:drop-shadow-lg group-hover:opacity-90"
+              className="h-9 md:h-10 lg:h-11 w-auto drop-shadow-sm transition-all duration-300 group-hover:drop-shadow-md group-hover:opacity-90 object-contain"
             />
           </Link>
 
