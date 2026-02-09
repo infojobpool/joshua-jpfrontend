@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useIsMobile } from "./MobileWrapper";
@@ -10,6 +10,8 @@ import useStore from "@/lib/Zustand";
 import axiosInstance from "@/lib/axiosInstance";
 import { toast, Toaster } from "sonner";
 
+const REMEMBER_EMAIL_KEY = "jobpool_signin_remember_email";
+
 export function MobileSignIn() {
   const { isMobile } = useIsMobile();
   const router = useRouter();
@@ -18,9 +20,22 @@ export function MobileSignIn() {
     email: "",
     password: ""
   });
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [isResending, setIsResending] = useState(false);
+
+  // Pre-fill email from localStorage if we previously saved it (remember me)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem(REMEMBER_EMAIL_KEY);
+      if (saved) {
+        setFormData(prev => ({ ...prev, email: saved }));
+        setRememberMe(true);
+      }
+    } catch (_) {}
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +57,15 @@ export function MobileSignIn() {
         }
 
         login(token, user);
+        if (rememberMe && normalizedEmail) {
+          try {
+            localStorage.setItem(REMEMBER_EMAIL_KEY, normalizedEmail);
+          } catch (_) {}
+        } else {
+          try {
+            localStorage.removeItem(REMEMBER_EMAIL_KEY);
+          } catch (_) {}
+        }
         toast.success("Login successful!");
         
         if (user.verification_status === 0) {
@@ -223,8 +247,13 @@ export function MobileSignIn() {
             </div>
 
             <div className="flex items-center justify-between">
-              <label className="flex items-center">
-                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+              <label className="flex items-center cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                />
                 <span className="ml-2 text-sm text-gray-600">Remember me</span>
               </label>
               <div className="flex flex-col items-end gap-1">
