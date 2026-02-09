@@ -720,6 +720,9 @@ interface Task {
   location: string;
   status: boolean;
   deletion_status?: boolean;
+  job_completion_status?: number | string;
+  bid_accepted?: boolean | string;
+  assigned_tasker_id?: string | number | null;
   postedAt: string;
   offers?: number;
   assignedTo?: string;
@@ -782,6 +785,9 @@ export function BrowseTasksPage() {
             location: job.job_location ?? "",
             status: Boolean(job.status),
             deletion_status: job.deletion_status,
+            job_completion_status: job.job_completion_status,
+            bid_accepted: job.bid_accepted,
+            assigned_tasker_id: job.assigned_tasker_id ?? null,
             posted_by: job.posted_by ?? "",
             dueDate: job.job_due_date,
             category: job.job_category ?? "",
@@ -790,12 +796,20 @@ export function BrowseTasksPage() {
             postedAt: job.created_at ?? "",
           }));
 
-          setJobs(mappedJobs);
+          // Show only available (open) tasks: not deleted, not completed, not assigned
+          const availableOnly = mappedJobs.filter((job: Task) => {
+            const deleted = job.deletion_status === true || job.deletion_status === 1;
+            const completed = job.job_completion_status === 1 || job.job_completion_status === "1";
+            const assigned = job.bid_accepted === true || job.bid_accepted === "true" || !!job.assigned_tasker_id;
+            return !deleted && !completed && !assigned;
+          });
 
-          // Extract unique locations from jobs (ignore falsy values)
+          setJobs(availableOnly);
+
+          // Extract unique locations from available jobs (ignore falsy values)
           const uniqueLocations = [
             ...new Set(
-              mappedJobs
+              availableOnly
                 .map((job: Task) => job.location)
                 .filter((loc) => !!loc)
             ),
