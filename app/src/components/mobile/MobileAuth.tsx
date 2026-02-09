@@ -11,6 +11,7 @@ import axiosInstance from "@/lib/axiosInstance";
 import { toast, Toaster } from "sonner";
 
 const REMEMBER_EMAIL_KEY = "jobpool_signin_remember_email";
+const REMEMBER_PASSWORD_KEY = "jobpool_signin_remember_password";
 
 export function MobileSignIn() {
   const { isMobile } = useIsMobile();
@@ -25,13 +26,18 @@ export function MobileSignIn() {
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [isResending, setIsResending] = useState(false);
 
-  // Pre-fill email from localStorage if we previously saved it (remember me)
+  // Pre-fill email and password from localStorage if we previously saved them (remember me)
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      const saved = localStorage.getItem(REMEMBER_EMAIL_KEY);
-      if (saved) {
-        setFormData(prev => ({ ...prev, email: saved }));
+      const savedEmail = localStorage.getItem(REMEMBER_EMAIL_KEY);
+      const savedPassword = localStorage.getItem(REMEMBER_PASSWORD_KEY);
+      if (savedEmail) {
+        setFormData(prev => ({
+          ...prev,
+          email: savedEmail,
+          password: savedPassword || prev.password,
+        }));
         setRememberMe(true);
       }
     } catch (_) {}
@@ -60,10 +66,14 @@ export function MobileSignIn() {
         if (rememberMe && normalizedEmail) {
           try {
             localStorage.setItem(REMEMBER_EMAIL_KEY, normalizedEmail);
+            if (formData.password) {
+              localStorage.setItem(REMEMBER_PASSWORD_KEY, formData.password);
+            }
           } catch (_) {}
         } else {
           try {
             localStorage.removeItem(REMEMBER_EMAIL_KEY);
+            localStorage.removeItem(REMEMBER_PASSWORD_KEY);
           } catch (_) {}
         }
         toast.success("Login successful!");

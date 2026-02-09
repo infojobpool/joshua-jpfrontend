@@ -141,9 +141,8 @@ axiosInstance.interceptors.response.use(
         }
         return axiosInstance(error.config);
       } catch (refreshError) {
-        // Handle refresh token failure (e.g., logout user)
-        localStorage.removeItem('token');
-        //  window.location.href = '/auth'; // Redirect to login
+        // Do not auto-logout: only clear session when user clicks Logout.
+        // Token is left in storage so the UI stays logged in; user can retry or sign out manually.
         return Promise.reject(refreshError);
       }
     }
