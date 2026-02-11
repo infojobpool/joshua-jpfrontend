@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { addTicket, getTickets } from "@/lib/tickets-store"
 
 interface SupportRequestBody {
   name: string
@@ -24,10 +25,31 @@ export async function POST(request: Request) {
       )
     }
 
+    // Generate ticket ID
+    const ticketId = Date.now().toString()
+
+    // Store ticket
+    const ticket = addTicket({
+      ticketId,
+      name,
+      email,
+      phone,
+      category,
+      priority,
+      subject,
+      description,
+      attachments,
+      status: "open",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+
     const supportEmail = process.env.SUPPORT_EMAIL || "info@jobpool.in"
 
     const lines = [
       `New support request submitted on JobPool:`,
+      "",
+      `Ticket ID: #${ticketId}`,
       "",
       `Name: ${name}`,
       `Email: ${email}`,
@@ -92,16 +114,30 @@ export async function POST(request: Request) {
       from: process.env.SUPPORT_FROM_EMAIL || smtpUser,
       to: supportEmail,
       replyTo: email,
-      subject: `[JobPool Support] ${subject}`,
+      subject: `[JobPool Support #${ticketId}] ${subject}`,
       text: textBody,
       attachments: emailAttachments,
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, ticketId })
   } catch (error) {
     console.error("Error handling support request", error)
     return NextResponse.json(
       { success: false, message: "Failed to submit support request" },
+      { status: 500 },
+    )
+  }
+}
+
+// GET endpoint to retrieve all tickets
+export async function GET() {
+  try {
+    const tickets = getTickets()
+    return NextResponse.json({ success: true, tickets })
+  } catch (error) {
+    console.error("Error fetching tickets", error)
+    return NextResponse.json(
+      { success: false, message: "Failed to fetch tickets" },
       { status: 500 },
     )
   }

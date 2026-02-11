@@ -58,6 +58,9 @@ export default function SupportPage() {
     if (!response.ok) {
       throw new Error("Failed to submit support request")
     }
+
+    const result = await response.json()
+    return result.ticketId
   }
 
   return (

@@ -81,6 +81,8 @@ export function SupportForm({ onSubmit }: SupportFormProps) {
     return Object.keys(newErrors).length === 0
   }
 
+  const [ticketId, setTicketId] = useState<string | null>(null)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -90,7 +92,8 @@ export function SupportForm({ onSubmit }: SupportFormProps) {
     setSubmitStatus("idle")
 
     try {
-      await onSubmit(formData)
+      const id = await onSubmit(formData)
+      setTicketId(id || null)
       setSubmitStatus("success")
       // Reset form
       setFormData({
@@ -127,8 +130,13 @@ export function SupportForm({ onSubmit }: SupportFormProps) {
             <div>
               <h3 className="text-lg font-semibold text-green-600">Support Ticket Submitted!</h3>
               <p className="text-muted-foreground mt-2">
-                We've received your request and will get back to you within 24 hours. Your ticket ID is:{" "}
-                <span className="font-mono font-semibold">#{Date.now()}</span>
+                We've received your request and will get back to you within 24 hours.
+                {ticketId && (
+                  <>
+                    {" "}Your ticket ID is:{" "}
+                    <span className="font-mono font-semibold">#{ticketId}</span>
+                  </>
+                )}
               </p>
             </div>
             <Button onClick={() => setSubmitStatus("idle")} variant="outline">
