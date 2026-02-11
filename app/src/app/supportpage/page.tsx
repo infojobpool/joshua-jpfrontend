@@ -19,20 +19,39 @@ interface SupportFormData {
 
 export default function SupportPage() {
   const handleSupportSubmit = async (data: SupportFormData) => {
+    // Convert files to base64 for sending
+    const attachmentPromises = (data.attachments || []).map(async (file) => {
+      return new Promise<{ name: string; content: string; type: string }>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const base64String = (reader.result as string).split(",")[1] // Remove data:image/png;base64, prefix
+          resolve({
+            name: file.name,
+            content: base64String,
+            type: file.type,
+          })
+        }
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+    })
+
+    const attachments = await Promise.all(attachmentPromises)
+
     const response = await fetch("/api/support", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        ...data,
-        // We can't upload files via this JSON endpoint yet,
-        // but we can at least include their metadata in the email.
-        attachments: data.attachments?.map((file) => ({
-          name: file.name,
-          size: file.size,
-          type: file.type,
-        })),
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        category: data.category,
+        priority: data.priority,
+        subject: data.subject,
+        description: data.description,
+        attachments,
       }),
     })
 

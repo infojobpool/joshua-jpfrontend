@@ -8,7 +8,7 @@ interface SupportRequestBody {
   priority?: string
   subject: string
   description: string
-  attachments?: { name: string; size: number; type: string }[]
+  attachments?: { name: string; content: string; type: string }[]
 }
 
 export async function POST(request: Request) {
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       description,
       "",
       attachments && attachments.length
-        ? `Attachments: ${attachments.map((a) => `${a.name} (${a.size} bytes, ${a.type})`).join(", ")}`
+        ? `Attachments: ${attachments.map((a) => a.name).join(", ")} (${attachments.length} file${attachments.length > 1 ? "s" : ""} attached)`
         : null,
     ].filter(Boolean)
 
@@ -77,12 +77,24 @@ export async function POST(request: Request) {
       },
     })
 
+    // Prepare email attachments from base64
+    const emailAttachments =
+      attachments && attachments.length > 0
+        ? attachments.map((att) => ({
+            filename: att.name,
+            content: att.content,
+            encoding: "base64" as const,
+            contentType: att.type || "application/octet-stream",
+          }))
+        : []
+
     await transporter.sendMail({
       from: process.env.SUPPORT_FROM_EMAIL || smtpUser,
       to: supportEmail,
       replyTo: email,
       subject: `[JobPool Support] ${subject}`,
       text: textBody,
+      attachments: emailAttachments,
     })
 
     return NextResponse.json({ success: true })
