@@ -19,14 +19,26 @@ interface SupportFormData {
 
 export default function SupportPage() {
   const handleSupportSubmit = async (data: SupportFormData) => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    const response = await fetch("/api/support", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ...data,
+        // We can't upload files via this JSON endpoint yet,
+        // but we can at least include their metadata in the email.
+        attachments: data.attachments?.map((file) => ({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        })),
+      }),
+    })
 
-    // In a real app, you would send this data to your backend
-    console.log("Support ticket submitted:", data)
-
-    // You could also send an email notification here
-    // await sendSupportTicketEmail(data)
+    if (!response.ok) {
+      throw new Error("Failed to submit support request")
+    }
   }
 
   return (

@@ -77,7 +77,7 @@ export default function HomePage() {
           </p>
           <div className="flex justify-center space-x-4">
             <Button variant="outline" asChild>
-              <a href="mailto:support@example.com">Email Us</a>
+              <a href="mailto:info@jobpool.in">Email Us</a>
             </Button>
             <Button variant="outline" asChild>
               <a href="tel:+911234567890">Call Us</a>
