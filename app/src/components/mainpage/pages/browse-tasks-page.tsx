@@ -1272,8 +1272,7 @@ export function BrowseTasksPage() {
                                   </div>
                                   <div className="flex items-center text-sm text-gray-500">
                                     <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 mr-1" />
-                                    {job.rating || "No rating"} •{" "}
-                                    {job.description} tasks
+                                    {job.rating || "No rating"}
                                   </div>
                                 </div>
 
