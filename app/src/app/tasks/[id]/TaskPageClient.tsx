@@ -60,6 +60,7 @@ export default function TaskDetailPage() {
   const [isVerified, setIsVerified] = useState<boolean>(false);
   const [verificationChecked, setVerificationChecked] = useState<boolean>(false);
   const [isPaymentPending, setIsPaymentPending] = useState<boolean>(false);
+  const [taskRefreshKey, setTaskRefreshKey] = useState<number>(0);
   const taskerId = offers.length > 0 ? offers[0].tasker.id : null;
 
   // Debug: Log verification state changes
@@ -606,7 +607,7 @@ export default function TaskDetailPage() {
     };
 
     loadTaskData();
-  }, [id]);
+  }, [id, taskRefreshKey]);
 
   // Load bids/offers
   useEffect(() => {
@@ -1420,7 +1421,7 @@ export default function TaskDetailPage() {
               completionStatus={task.job_completion_status}
               existingReview={existingReview}
             />
-            {/* Completion controls */}
+            {/* Completion controls — backend must set job_completion_status = 1 only when BOTH tasker_completed and taskmaster_completed are true */}
             <div className="mt-4 space-y-2">
               {/* Tasker completion button (only for assigned tasker, before they confirm) */}
               {!isTaskPoster &&
@@ -1452,6 +1453,8 @@ export default function TaskDetailPage() {
                               }
                             : prev
                         );
+                        localStorage.removeItem(`task_${task.id}`);
+                        setTaskRefreshKey((k) => k + 1);
                       } catch (error: any) {
                         console.error("Tasker completion failed:", error);
                         toast.error(
@@ -1501,10 +1504,13 @@ export default function TaskDetailPage() {
                               }
                             : prev
                         );
+                        localStorage.removeItem(`task_${task.id}`);
+                        setTaskRefreshKey((k) => k + 1);
                       } catch (error: any) {
                         console.error("Taskmaster completion failed:", error);
                         toast.error(
                           error?.response?.data?.message ||
+                            error?.response?.data?.detail ||
                             "Failed to confirm task completion."
                         );
                       } finally {

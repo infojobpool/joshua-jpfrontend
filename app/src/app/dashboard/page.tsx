@@ -65,7 +65,9 @@ interface Task {
   offers: number;
   posted_by: string;
   category: string;
-  job_completion_status?: string;
+  job_completion_status?: string | number;
+  tasker_completed?: boolean;
+  taskmaster_completed?: boolean;
   images?: Image[];
   deletion_status?: boolean;
   cancel_status?: boolean;
@@ -923,7 +925,9 @@ export default function Dashboard() {
               offers: job.offers || 0, // Use original offers field as fallback
               posted_by: job.posted_by || "Unknown",
               category: job.job_category || "general",
-              job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
+              job_completion_status: job.job_completion_status === 1 || job.job_completion_status === "1" ? "1" : String(job.job_completion_status ?? ""),
+              tasker_completed: Boolean((job as any).tasker_completed),
+              taskmaster_completed: Boolean((job as any).taskmaster_completed),
               deletion_status: job.deletion_status || false,
               cancel_status: isCancelled || (job.cancel_status ?? false), // Use comprehensive cancellation check
               cancelled_by_role: job.cancelled_by_role || job.cancelled_by || undefined,
@@ -2540,44 +2544,55 @@ export default function Dashboard() {
       setCompletingTaskId(jobId);
       toast.loading("Marking task as complete...", { id: `my-complete-${jobId}` });
       
-      const response = await axiosInstance.put<APIResponse<any>>(`/mark-complete/${jobId}/`);
+      const response = await axiosInstance.put<APIResponse<any>>(`/mark-complete-by-taskmaster/${jobId}/`);
 
       if (response.data.status_code === 200) {
         toast.dismiss(`my-complete-${jobId}`);
-        toast.success("Task marked as complete!");
-        
-        // Find the completed task
+        const payload = (response.data as any)?.data || {};
+        const fullyCompleted = payload.job_completion_status === 1 || payload.job_completion_status === "1";
+
+        if (fullyCompleted) {
+          toast.success("Task marked as complete!");
+        } else {
+          toast.success("Your confirmation recorded. Task will show as completed once the tasker has also marked it complete.");
+        }
+
+        // Find the task
         const completedTask = postedTasks.find((task) => task.id === jobId);
         if (completedTask) {
-          const newCompleted = {
+          const updatedTask = {
             ...completedTask,
-            status: "completed",
-            job_completion_status: "1", // Set completion status to 1 (as string)
-            completedDate: new Date().toLocaleDateString("en-GB"),
-            _posterIsMe: true, // Mark as posted by me
+            tasker_completed: payload.tasker_completed ?? completedTask.tasker_completed,
+            taskmaster_completed: payload.taskmaster_completed ?? true,
+            job_completion_status: payload.job_completion_status ?? completedTask.job_completion_status,
+            status: fullyCompleted ? "completed" : completedTask.status,
+            completedDate: fullyCompleted ? new Date().toLocaleDateString("en-GB") : completedTask.completedDate,
+            _posterIsMe: true,
           } as Task;
-          
-          // Add to completed tasks list
-          setCompletedTasks((prev) => {
-            const exists = prev.some(t => String(t.id) === String(jobId));
-            if (exists) {
-              return prev.map(t => String(t.id) === String(jobId) ? newCompleted : t);
-            }
-            return [...prev, newCompleted];
-          });
-          
-          // Refresh completed tasks from API after marking as complete
-          // No local cache - rely on backend
-          setTimeout(() => {
-            fetchCompletedTasks();
-          }, 1000);
+
+          if (fullyCompleted) {
+            setCompletedTasks((prev) => {
+              const exists = prev.some(t => String(t.id) === String(jobId));
+              if (exists) {
+                return prev.map(t => String(t.id) === String(jobId) ? updatedTask : t);
+              }
+              return [...prev, updatedTask];
+            });
+            setTimeout(() => fetchCompletedTasks(), 1000);
+          }
         }
-        
-        // Update the posted task status
+
         setPostedTasks((prev) =>
           prev.map((task) =>
             task.id === jobId
-              ? { ...task, status: "completed", job_completion_status: "1", completedDate: new Date().toLocaleDateString("en-GB") }
+              ? {
+                  ...task,
+                  tasker_completed: payload.tasker_completed ?? task.tasker_completed,
+                  taskmaster_completed: payload.taskmaster_completed ?? true,
+                  job_completion_status: payload.job_completion_status ?? task.job_completion_status,
+                  status: fullyCompleted ? "completed" : task.status,
+                  completedDate: fullyCompleted ? new Date().toLocaleDateString("en-GB") : task.completedDate,
+                }
               : task
           )
         );
@@ -2585,10 +2600,14 @@ export default function Dashboard() {
         toast.dismiss(`my-complete-${jobId}`);
         toast.error(response.data.message || "Failed to mark task as complete");
       }
-    } catch (error) {
+    } catch (error: any) {
       toast.dismiss(`my-complete-${jobId}`);
       console.error("Error marking task as complete:", error);
-      toast.error("An error occurred while marking the task as complete");
+      toast.error(
+        error?.response?.data?.detail ||
+          error?.response?.data?.message ||
+          "An error occurred while marking the task as complete"
+      );
     } finally {
       setCompletingTaskId(null);
     }
@@ -2801,7 +2820,9 @@ export default function Dashboard() {
                     offers: job.offers || 0,
                     posted_by: job.posted_by || "Unknown",
                     category: job.job_category || "general",
-                    job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
+                    job_completion_status: job.job_completion_status === 1 || job.job_completion_status === "1" ? "1" : String(job.job_completion_status ?? ""),
+                    tasker_completed: Boolean((job as any).tasker_completed),
+                    taskmaster_completed: Boolean((job as any).taskmaster_completed),
                     deletion_status: job.deletion_status || false,
                     cancel_status: isCancelled || (job.cancel_status ?? false), // Ensure it's set correctly
                     cancelled_by_role: job.cancelled_by_role || job.cancelled_by || undefined,
@@ -3868,6 +3889,21 @@ export default function Dashboard() {
                                     </div>
                                   </Button>
                                 </Link>
+                                {task.job_completion_status !== 1 && task.job_completion_status !== "1" && !task.taskmaster_completed && (
+                                  <Button
+                                    className="shrink-0 w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-all duration-200"
+                                    onClick={() => handleMyTaskComplete(task.id)}
+                                    disabled={completingTaskId === task.id}
+                                  >
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-base">✅</span>
+                                      <span>{completingTaskId === task.id ? "Updating..." : "Confirm completion (Taskmaster)"}</span>
+                                    </div>
+                                  </Button>
+                                )}
+                                {(task.tasker_completed && !task.taskmaster_completed) && (
+                                  <span className="text-xs text-muted-foreground">Tasker marked done — confirm above to complete</span>
+                                )}
                               </div>
                             </>
                           ) : (
@@ -4330,7 +4366,7 @@ export default function Dashboard() {
                         >
                           <div className="flex items-center gap-2">
                             <span className="text-lg">✅</span>
-                            <span>Mark as Complete</span>
+                            <span>{completingTaskId === task.id ? "Updating..." : "Mark as complete (Tasker)"}</span>
                           </div>
                         </Button>
                           </>
