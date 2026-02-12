@@ -322,6 +322,11 @@ export default function Dashboard() {
   const [selectedAssignedId, setSelectedAssignedId] = useState<string | null>(null);
   const [cancellationReason, setCancellationReason] = useState("");
   const [activeTab, setActiveTab] = useState<string>("available");
+  const [refetchAssignedTrigger, setRefetchAssignedTrigger] = useState(0);
+  const [refetchPostedTrigger, setRefetchPostedTrigger] = useState(0);
+  const [refetchAvailableTrigger, setRefetchAvailableTrigger] = useState(0);
+  const [refetchCompletedTrigger, setRefetchCompletedTrigger] = useState(0);
+  const [refetchBidsTrigger, setRefetchBidsTrigger] = useState(0);
 
   // Safe user for UI (prevents null TS checks in JSX)
   const safeUser = user ?? { name: "User", email: "", profile_image: "" } as any;
@@ -423,6 +428,30 @@ export default function Dashboard() {
     const timeoutId = setTimeout(checkPendingPayment, 1500);
     return () => clearTimeout(timeoutId);
   }, [effectiveUserId, router]);
+
+  // Auto-refresh: refetch current tab's data periodically and when user returns to the tab
+  const refreshActiveTab = () => {
+    if (activeTab === "my-tasks") {
+      try { localStorage.removeItem(`user_tasks_${userId || effectiveUserId}`); } catch {}
+      setRefetchPostedTrigger((t) => t + 1);
+    } else if (activeTab === "available") setRefetchAvailableTrigger((t) => t + 1);
+    else if (activeTab === "assigned") setRefetchAssignedTrigger((t) => t + 1);
+    else if (activeTab === "completed") setRefetchCompletedTrigger((t) => t + 1);
+    else if (activeTab === "my-bids") setRefetchBidsTrigger((t) => t + 1);
+  };
+
+  useEffect(() => {
+    const interval = setInterval(refreshActiveTab, 45000); // refresh every 45 seconds
+    return () => clearInterval(interval);
+  }, [activeTab, userId, effectiveUserId]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") refreshActiveTab();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [activeTab, userId, effectiveUserId]);
 
   useEffect(() => {
     // Hydrate from session to reduce flicker on tab switches
@@ -725,17 +754,20 @@ export default function Dashboard() {
   // Fetch user's posted tasks
   useEffect(() => {
     if (!user || !(userId || effectiveUserId)) return;
-    
+
+    const cacheKey = `user_tasks_${userId || effectiveUserId}`;
+    if (refetchPostedTrigger > 0) {
+      try { localStorage.removeItem(cacheKey); } catch {}
+    }
 
     const fetchUserTasks = async () => {
       try {
-        // Check cache first
-        const cacheKey = `user_tasks_${userId || effectiveUserId}`;
-        const cached = localStorage.getItem(cacheKey);
+        // Check cache first (skip if we just triggered a refetch)
+        const cached = refetchPostedTrigger > 0 ? null : localStorage.getItem(cacheKey);
         if (cached) {
           const cachedData = JSON.parse(cached);
           const cacheAge = Date.now() - cachedData.timestamp;
-          if (cacheAge < 60000) { // 1 minute cache
+          if (cacheAge < 30000) { // 30 second cache
             console.log("Using cached user tasks");
             setPostedTasks(cachedData.tasks);
             return;
@@ -984,7 +1016,7 @@ export default function Dashboard() {
     };
 
     fetchUserTasks();
-  }, [user, userId, effectiveUserId, taskOrders]);
+  }, [user, userId, effectiveUserId, taskOrders, refetchPostedTrigger]);
 
   // Test useEffect
   useEffect(() => {
@@ -1237,7 +1269,7 @@ export default function Dashboard() {
     };
 
     fetchAllTasks();
-  }, [user, userId]);
+  }, [user, userId, refetchAvailableTrigger]);
 
   // Fetch user's bids
   useEffect(() => {
@@ -1299,7 +1331,7 @@ export default function Dashboard() {
     };
 
     fetchBids();
-  }, [user, userId, effectiveUserId]);
+  }, [user, userId, effectiveUserId, refetchBidsTrigger]);
 
   // Fetch assigned tasks
   useEffect(() => {
@@ -1536,6 +1568,8 @@ export default function Dashboard() {
                 posted_by: job.posted_by || job.postedBy || "Unknown",
                 category: job.job_category || job.category || "general",
                 job_completion_status: job.job_completion_status?.toString() || job.status?.toString() || undefined,
+                tasker_completed: Boolean((job as any).tasker_completed),
+                taskmaster_completed: Boolean((job as any).taskmaster_completed),
             deletion_status: job.deletion_status || false,
                 cancel_status: isCancelled || (cancellationInfo.cancel_status ?? false),
                 cancelled_by_role: cancellationInfo.cancelled_by_role || job.cancelled_by || undefined,
@@ -1664,6 +1698,8 @@ export default function Dashboard() {
                     posted_by: job.posted_by || job.postedBy || "Unknown",
                     category: job.job_category || job.category || "general",
                     job_completion_status: job.job_completion_status?.toString() || job.status?.toString() || undefined,
+                    tasker_completed: Boolean((job as any).tasker_completed),
+                    taskmaster_completed: Boolean((job as any).taskmaster_completed),
                     deletion_status: job.deletion_status || false,
                     cancel_status: isCancelled || (job.cancel_status ?? false),
                     cancelled_by_role: job.cancelled_by_role || job.cancelled_by || undefined,
@@ -1719,7 +1755,7 @@ export default function Dashboard() {
     };
 
     fetchAssignedBids();
-  }, [user, userId, effectiveUserId]);
+  }, [user, userId, effectiveUserId, refetchAssignedTrigger]);
 
   // Fetch requested bids
   useEffect(() => {
@@ -1822,7 +1858,7 @@ export default function Dashboard() {
     };
 
     fetchRequestedBids();
-  }, [user, userId]);
+  }, [user, userId, refetchBidsTrigger]);
 
   // Fetch completed tasks using the dedicated endpoint
   // Endpoint: /fetch-completed-tasks/{user_id}/
@@ -2442,7 +2478,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user || !userId) return;
     fetchCompletedTasks();
-  }, [user, userId, taskOrders]);
+  }, [user, userId, taskOrders, refetchCompletedTrigger]);
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
 
   const handleComplete = async (jobId: string) => {
@@ -2560,6 +2596,8 @@ export default function Dashboard() {
             );
           }
         }
+        // Refetch assigned list so UI stays in sync with backend
+        setTimeout(() => setRefetchAssignedTrigger((t) => t + 1), 600);
       } else {
         toast.dismiss(`complete-${jobId}`);
         console.error("Error marking task as complete:", result);
@@ -2638,6 +2676,10 @@ export default function Dashboard() {
               : task
           )
         );
+        try {
+          localStorage.removeItem(`user_tasks_${userId || effectiveUserId}`);
+        } catch {}
+        setTimeout(() => setRefetchPostedTrigger((t) => t + 1), 600);
       } else {
         toast.dismiss(`my-complete-${jobId}`);
         toast.error(response.data.message || "Failed to mark task as complete");
@@ -3536,7 +3578,27 @@ export default function Dashboard() {
           </div>
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => {
+            setActiveTab(value);
+            if (value === "my-tasks") {
+              try {
+                localStorage.removeItem(`user_tasks_${userId || effectiveUserId}`);
+              } catch {}
+              setRefetchPostedTrigger((t) => t + 1);
+            } else if (value === "available") {
+              setRefetchAvailableTrigger((t) => t + 1);
+            } else if (value === "assigned") {
+              setRefetchAssignedTrigger((t) => t + 1);
+            } else if (value === "completed") {
+              setRefetchCompletedTrigger((t) => t + 1);
+            } else if (value === "my-bids") {
+              setRefetchBidsTrigger((t) => t + 1);
+            }
+          }}
+          className="w-full"
+        >
           <TabsList className={
             isMobile
               ? "grid grid-cols-5 w-full p-2 bg-white border border-gray-100 rounded-3xl shadow-sm z-20 gap-2 sticky top-[calc(env(safe-area-inset-top)+48px)]"
@@ -4273,9 +4335,10 @@ export default function Dashboard() {
                   const isCancelled = task.cancel_status || task.cancelled || task.status === "canceled" || task.status === "cancelled";
                   const cancelledByTasker = task.cancelled_by_role === "tasker";
                   const cancelledByTaskmaster = task.cancelled_by_role === "taskmaster";
+                  const waitingForTaskmaster = !isCancelled && task.tasker_completed && !task.taskmaster_completed && task.job_completion_status !== 1 && task.job_completion_status !== "1";
                   
                   return (
-                  <Card key={task.id} className={`${isCancelled ? 'opacity-60 bg-gray-100 border-l-4 border-l-gray-400' : 'bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 border-l-4 border-l-amber-500'} shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden`}>
+                  <Card key={task.id} className={`${isCancelled ? 'opacity-60 bg-gray-100 border-l-4 border-l-gray-400' : waitingForTaskmaster ? 'bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50 border-l-4 border-l-blue-500' : 'bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 border-l-4 border-l-amber-500'} shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden`}>
                     {/* Mobile-optimized layout */}
                     <div className={isMobile ? "p-4" : "p-6"}>
                       {/* Header with title and status */}
@@ -4315,7 +4378,11 @@ export default function Dashboard() {
                               isCancelled
                             });
                           }
-                          return !isCancelled ? (
+                          return waitingForTaskmaster ? (
+                            <Badge className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-2 py-1">
+                              ⏳ Waiting for taskmaster
+                            </Badge>
+                          ) : !isCancelled ? (
                         <Badge className="bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs px-2 py-1">
                           🚀 In Progress
                         </Badge>
@@ -4361,6 +4428,13 @@ export default function Dashboard() {
                         </div>
                       </div>
 
+                      {/* Waiting for taskmaster message */}
+                      {waitingForTaskmaster && (
+                        <div className="mb-3 p-3 rounded-lg bg-blue-100 border border-blue-300 text-blue-800 text-sm">
+                          <span className="font-medium">✓ You marked this complete.</span> Waiting for the task owner to confirm. The task will move to Completed once they confirm.
+                        </div>
+                      )}
+
                       {/* Action buttons */}
                       <div className={`flex flex-wrap items-center gap-2 mt-4`}>
                         {isCancelled ? (
@@ -4380,6 +4454,21 @@ export default function Dashboard() {
                                 <span>Delete Permanently</span>
                               </div>
                             </Button>
+                          </>
+                        ) : waitingForTaskmaster ? (
+                          <>
+                        <Link href={`/tasks/${task.id}`} className="shrink-0" onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); } catch {} }}>
+                          <Button variant="outline" className={`w-auto border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">👁️</span>
+                            <span>View Details</span>
+                          </div>
+                        </Button>
+                        </Link>
+                        <div className="shrink-0 w-auto inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-100 border-2 border-blue-300 text-blue-800 font-semibold text-sm cursor-default">
+                          <span className="text-lg">✅</span>
+                          <span>Marked complete — waiting for taskmaster</span>
+                        </div>
                           </>
                         ) : (
                           <>
