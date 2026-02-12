@@ -236,9 +236,11 @@ export default function PaymentPage() {
                 console.log("✅ Payment captured successfully");
                 verificationSuccess = true;
                 
-                // Clear stored payment details on success
+                // Clear stored payment details on success so task/dashboard don't show "payment pending"
                 try {
                   localStorage.removeItem("pending_payment_verification");
+                  sessionStorage.removeItem("paymentData");
+                  sessionStorage.removeItem("payment_page_visited");
                 } catch (e) {
                   console.warn("Failed to clear payment details:", e);
                 }

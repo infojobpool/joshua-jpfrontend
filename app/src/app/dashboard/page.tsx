@@ -382,7 +382,9 @@ export default function Dashboard() {
                 const isInProgress = job.status === "in_progress" || 
                                    job.assigned_tasker_id || 
                                    job.accepted_bidder_id ||
-                                   job.bid_accepted === true;
+                                   job.bid_accepted === true ||
+                                   job.payment_status === "success" ||
+                                   job.payment_status === true;
                 
                 if (isInProgress) {
                   // Payment was completed - clear the flags
@@ -2474,50 +2476,90 @@ export default function Dashboard() {
 
       if (result.status_code === 200) {
         toast.dismiss(`complete-${jobId}`);
-        toast.success("Task marked as complete!");
-        
-        // Optimistic UI update
-        const completedTask = assignedTasks.find((task) => task.id === jobId);
-        if (completedTask) {
-          setAssignedTasks((prev) => prev.filter((task) => String(task.id) !== String(jobId)));
-          const newCompleted = {
-            ...completedTask,
-            status: "completed",
-            job_completion_status: "1", // Set completion status to 1 (as string)
-            completedDate: new Date().toLocaleDateString("en-GB"),
-            assignedToMe: true, // Ensure this is set
-            _posterIsMe: false, // Explicitly set to false to ensure it passes the filter
-            confirmed_bid_id: userId, // Set confirmed_bid_id to user ID so it passes the filter
-            role: "tasker", // Set role to "tasker" so it passes the filter
-          } as Task;
-          
-          console.log("✅ Adding optimistic completed task:", {
-            id: newCompleted.id,
-            title: newCompleted.title,
-            assignedToMe: newCompleted.assignedToMe,
-            _posterIsMe: newCompleted._posterIsMe,
-            status: newCompleted.status
-          });
-          
-          setCompletedTasks((prev) => {
-            // Check if task already exists (avoid duplicates)
-            const exists = prev.some(t => String(t.id) === String(jobId));
-            if (exists) {
-              console.log("⚠️ Task already in completed list, updating:", jobId);
-              return prev.map(t => String(t.id) === String(jobId) ? newCompleted : t);
-            }
-            return [...prev, newCompleted];
-          });
-          
-          // Refresh completed tasks from API after marking as complete
-          // This will merge with the optimistic update
-          setTimeout(() => {
-            fetchCompletedTasks();
-          }, 2000); // Increased delay to give backend time to update
+        const payload: any = (result as any).data || {};
+        const fullyCompleted =
+          payload?.job_completion_status === 1 ||
+          payload?.job_completion_status === "1";
+        const updatedTaskerCompleted =
+          payload?.tasker_completed !== undefined
+            ? payload.tasker_completed
+            : true;
+        const updatedTaskmasterCompleted =
+          payload?.taskmaster_completed !== undefined
+            ? payload.taskmaster_completed
+            : false;
+
+        if (fullyCompleted) {
+          toast.success("Task marked as complete!");
+        } else {
+          toast.success(
+            "You marked this task as completed. Waiting for taskmaster confirmation."
+          );
         }
         
-        // Switch to Completed tab
-        setActiveTab("completed");
+        // Update assigned tasks: mark tasker_completed and, only when BOTH sides confirmed,
+        // move the card to Completed tab.
+        const completedTask = assignedTasks.find((task) => task.id === jobId);
+        if (completedTask) {
+          if (fullyCompleted) {
+            // Remove from Assigned and add to Completed
+            setAssignedTasks((prev) =>
+              prev.filter((task) => String(task.id) !== String(jobId))
+            );
+            const newCompleted = {
+              ...completedTask,
+              status: "completed",
+              job_completion_status:
+                payload?.job_completion_status ?? "1",
+              completedDate: new Date().toLocaleDateString("en-GB"),
+              assignedToMe: true,
+              _posterIsMe: false,
+              confirmed_bid_id: userId,
+              role: "tasker",
+              tasker_completed: updatedTaskerCompleted,
+              taskmaster_completed: updatedTaskmasterCompleted,
+            } as Task;
+
+            console.log("✅ Moving task to completed (both confirmed):", {
+              id: newCompleted.id,
+              title: newCompleted.title,
+            });
+
+            setCompletedTasks((prev) => {
+              const exists = prev.some((t) => String(t.id) === String(jobId));
+              if (exists) {
+                return prev.map((t) =>
+                  String(t.id) === String(jobId) ? newCompleted : t
+                );
+              }
+              return [...prev, newCompleted];
+            });
+
+            // Refresh completed tasks from API after marking as complete
+            setTimeout(() => {
+              fetchCompletedTasks();
+            }, 2000);
+
+            // Switch to Completed tab only when fully completed
+            setActiveTab("completed");
+          } else {
+            // Only tasker has confirmed so far – keep card in Assigned tab
+            setAssignedTasks((prev) =>
+              prev.map((task) =>
+                task.id === jobId
+                  ? {
+                      ...task,
+                      tasker_completed: updatedTaskerCompleted,
+                      taskmaster_completed: updatedTaskmasterCompleted,
+                      job_completion_status:
+                        payload?.job_completion_status ??
+                        task.job_completion_status,
+                    }
+                  : task
+              )
+            );
+          }
+        }
       } else {
         toast.dismiss(`complete-${jobId}`);
         console.error("Error marking task as complete:", result);

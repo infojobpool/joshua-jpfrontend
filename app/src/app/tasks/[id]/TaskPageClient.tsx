@@ -1232,46 +1232,61 @@ export default function TaskDetailPage() {
         
         if (paymentData && paymentPageVisited) {
           const data = JSON.parse(paymentData);
-          // If payment data exists for this task
-          if (data.taskId === id) {
-            // Check if payment is actually pending by verifying task status
-            // If task is in_progress or has assignedTasker, payment was completed
-            if (task?.status === "in_progress" || task?.assignedTasker) {
-              // Payment was completed - clear the flags
-              console.log("✅ Payment completed for task:", id, "- clearing flags");
-              sessionStorage.removeItem("paymentData");
-              sessionStorage.removeItem("payment_page_visited");
-              localStorage.removeItem("pending_payment_verification");
-              setIsPaymentPending(false);
-              return; // Don't show toast
-            }
-            
-            // Payment is pending if:
-            // 1. Task status is still "open" (not "in_progress")
-            // 2. paymentData and payment_page_visited exist (user went to payment page)
-            // 3. pendingVerification exists OR task status is still "open"
-            const isTaskOpen = task?.status === "open" || task?.status === "Open" || !task?.status || task?.status === true;
-            if (isTaskOpen) {
-              // Task is still open, so payment is definitely pending
-              console.warn("⚠️ Payment pending for task:", id, "- task is still open");
-              setIsPaymentPending(true); // Set state to disable messaging
-              toast.error("⚠️ Payment was not completed. Please complete payment to confirm the assignment.", {
-                duration: 6000,
-                action: {
-                  label: "Complete Payment",
-                  onClick: () => router.push("/payments"),
-                },
+          if (data.taskId !== id) {
+            setIsPaymentPending(false);
+            return;
+          }
+          // For this task: get fresh status from API so we don't show "payment pending" after user just paid
+          let paymentCompleted = false;
+          if (task?.status === "in_progress" || task?.assignedTasker) {
+            paymentCompleted = true;
+          } else {
+            try {
+              const token = localStorage.getItem("token");
+              const res = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
+                method: "GET",
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                credentials: "omit",
               });
-            } else if (pendingVerification) {
-              // Task might be in_progress but payment verification is pending
-              console.warn("⚠️ Payment verification pending for task:", id);
-              setIsPaymentPending(true); // Set state to disable messaging
-              toast.error("⚠️ Payment verification pending. Please wait for confirmation.", {
-                duration: 6000,
-              });
-            } else {
-              setIsPaymentPending(false);
+              if (res.ok) {
+                const json = await res.json();
+                const job = json?.data;
+                const assignedId = job?.assigned_tasker_id || job?.assigned_user_id || job?.assigned_to || job?.accepted_bidder_id || job?.worker_id;
+                const status = (job?.status || "").toLowerCase();
+                if (status === "in_progress" || assignedId || job?.payment_status === "success" || job?.payment_status === true) {
+                  paymentCompleted = true;
+                }
+              }
+            } catch (_) {
+              // Fall back to current task state
+              if (task?.status === "in_progress" || task?.assignedTasker) paymentCompleted = true;
             }
+          }
+          if (paymentCompleted) {
+            console.log("✅ Payment completed for task:", id, "- clearing flags");
+            sessionStorage.removeItem("paymentData");
+            sessionStorage.removeItem("payment_page_visited");
+            localStorage.removeItem("pending_payment_verification");
+            setIsPaymentPending(false);
+            return;
+          }
+          const isTaskOpen = task?.status === "open" || task?.status === "Open" || !task?.status || task?.status === true;
+          if (isTaskOpen) {
+            console.warn("⚠️ Payment pending for task:", id, "- task is still open");
+            setIsPaymentPending(true);
+            toast.error("⚠️ Payment was not completed. Please complete payment to confirm the assignment.", {
+              duration: 6000,
+              action: {
+                label: "Complete Payment",
+                onClick: () => router.push("/payments"),
+              },
+            });
+          } else if (pendingVerification) {
+            console.warn("⚠️ Payment verification pending for task:", id);
+            setIsPaymentPending(true);
+            toast.error("⚠️ Payment verification pending. Please wait for confirmation.", {
+              duration: 6000,
+            });
           } else {
             setIsPaymentPending(false);
           }
@@ -1284,10 +1299,9 @@ export default function TaskDetailPage() {
       }
     };
     
-    // Run check after a short delay to ensure page is loaded, and also when task changes
     const timeoutId = setTimeout(() => {
       checkPendingPayment();
-    }, task ? 100 : 1000); // Shorter delay if task is already loaded
+    }, task ? 100 : 1000);
     
     return () => clearTimeout(timeoutId);
   }, [id, userId, router, task]);
