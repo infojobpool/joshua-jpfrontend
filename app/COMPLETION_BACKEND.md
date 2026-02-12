@@ -13,13 +13,21 @@
    - Return 200 with body containing `tasker_completed`, `taskmaster_completed`, `job_completion_status`.  
    - **Do not** set the job to cancelled in this endpoint.
 
-3. **APIs that return a job** (get-job, admin task list, get-user-jobs, get-user-assigned-bids, etc.)  
-   - Include in the response: `tasker_completed`, `taskmaster_completed`, `job_completion_status`.
+3. **APIs that return a job** must include in the response: `tasker_completed`, `taskmaster_completed`, `job_completion_status`.  
+   Examples: get-job, admin task list, get-user-jobs, get-user-assigned-bids, get-all-jobs-admin, fetch-completed-tasks (or equivalent).  
+   Optionally include `cancel_status` so the admin UI can show “Cancelled” only when the job is actually cancelled.
 
-4. **Admin UI (if you control it)**  
-   - Show **“Completed”** only when `job_completion_status === 1`.  
-   - When `tasker_completed === true` and `taskmaster_completed === false` (and job not cancelled), show **“Pending taskmaster confirmation”** (or similar), **not** “Cancelled”.  
-   - Show **“Cancelled”** only when the job is actually cancelled (e.g. `cancel_status === true`).
+---
+
+## Admin UI display rules (frontend)
+
+Backend does not render the admin UI; it only exposes data. The **admin frontend** must use `tasker_completed`, `taskmaster_completed`, `job_completion_status` (and optionally `cancel_status`) from the API responses to display status:
+
+- When only one side has confirmed (`tasker_completed === true`, `taskmaster_completed === false`, `job_completion_status === 0`): show **“Pending confirmation”** / **“Pending taskmaster confirmation”** / **“Awaiting both confirmations”** — **not** “Cancelled”.
+- **“Completed”** only when `job_completion_status === 1`.
+- **“Cancelled”** only when the job is actually cancelled (e.g. `cancel_status === true`).
+
+Admin UI changes are implemented in the frontend repo using these fields from the API.
 
 ---
 
@@ -42,7 +50,5 @@ For the task detail page and admin to show **completed** only when **both** task
 3. **Admin / get-job APIs**  
    - Include `tasker_completed`, `taskmaster_completed`, `job_completion_status` in responses so the UI can show “Tasker done / waiting for taskmaster”, “Both completed”, etc., and treat “Completed” only when `job_completion_status === 1`.
 
-4. **Admin must not show “Cancelled” when only tasker has confirmed**  
-   - When only the tasker has clicked “Mark complete” (`tasker_completed = true`, `taskmaster_completed = false`, `job_completion_status = 0`), the job is **not** cancelled.  
-   - The completion endpoints must **not** set `cancel_status` or `status = "cancelled"`.  
-   - In the admin UI, treat “Cancelled” only when the job is actually cancelled (e.g. `cancel_status === true` or a dedicated cancel flow). For “tasker done, waiting for taskmaster”, show a status like **“Pending taskmaster confirmation”** or **“Awaiting both confirmations”**, not “Cancelled”.
+4. **Backend:** completion endpoints must **not** set `cancel_status` or `status = "cancelled"**.  
+   **Admin UI (frontend):** see “Admin UI display rules (frontend)” above — use the three fields to show “Pending confirmation” / “Completed” / “Cancelled” as specified.
