@@ -32,6 +32,9 @@ export interface Image {
     location: string;
     status: string;
     job_completion_status: number;
+    // New flags from backend so we can track who has confirmed completion
+    tasker_completed?: boolean;
+    taskmaster_completed?: boolean;
     postedAt: string;
     dueDate: string;
     category: string;

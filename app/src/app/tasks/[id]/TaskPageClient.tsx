@@ -539,6 +539,8 @@ export default function TaskDetailPage() {
           location: job.job_location,
           status: jobStatus,
           job_completion_status: job.job_completion_status,
+          tasker_completed: Boolean((job as any).tasker_completed),
+          taskmaster_completed: Boolean((job as any).taskmaster_completed),
           postedAt: formattedPosted,
           dueDate: job.job_due_date
             ? new Date(job.job_due_date).toLocaleDateString("en-GB", {
@@ -1404,6 +1406,7 @@ export default function TaskDetailPage() {
               isEditing={isEditing}
               setIsEditing={setIsEditing}
             />
+            {/* Poster can leave review only after final completion */}
             <ReviewSection
               isTaskPoster={isTaskPoster}
               taskStatus={task.status}
@@ -1417,6 +1420,117 @@ export default function TaskDetailPage() {
               completionStatus={task.job_completion_status}
               existingReview={existingReview}
             />
+            {/* Completion controls */}
+            <div className="mt-4 space-y-2">
+              {/* Tasker completion button (only for assigned tasker, before they confirm) */}
+              {!isTaskPoster &&
+                task.assignedTasker?.id === userId &&
+                !task.tasker_completed &&
+                task.job_completion_status !== 1 && (
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        setIsSubmitting(true);
+                        const response = await axiosInstance.put(
+                          `/mark-complete/${task.id}/`
+                        );
+                        const payload = response.data?.data || {};
+                        toast.success("You marked this task as completed.");
+                        setTask((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                job_completion_status:
+                                  payload.job_completion_status ??
+                                  prev.job_completion_status,
+                                tasker_completed:
+                                  payload.tasker_completed ?? true,
+                                taskmaster_completed:
+                                  payload.taskmaster_completed ??
+                                  prev.taskmaster_completed,
+                              }
+                            : prev
+                        );
+                      } catch (error: any) {
+                        console.error("Tasker completion failed:", error);
+                        toast.error(
+                          error?.response?.data?.message ||
+                            "Failed to mark task as completed."
+                        );
+                      } finally {
+                        setIsSubmitting(false);
+                      }
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting
+                      ? "Updating..."
+                      : "Mark task as completed (Tasker)"}
+                  </Button>
+                )}
+
+              {/* Taskmaster completion button (only for poster, before they confirm) */}
+              {isTaskPoster &&
+                !task.taskmaster_completed &&
+                task.job_completion_status !== 1 && (
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        setIsSubmitting(true);
+                        const response = await axiosInstance.put(
+                          `/mark-complete-by-taskmaster/${task.id}/`
+                        );
+                        const payload = response.data?.data || {};
+                        toast.success(
+                          "You confirmed this task is completed."
+                        );
+                        setTask((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                job_completion_status:
+                                  payload.job_completion_status ??
+                                  prev.job_completion_status,
+                                tasker_completed:
+                                  payload.tasker_completed ??
+                                  prev.tasker_completed,
+                                taskmaster_completed:
+                                  payload.taskmaster_completed ?? true,
+                              }
+                            : prev
+                        );
+                      } catch (error: any) {
+                        console.error("Taskmaster completion failed:", error);
+                        toast.error(
+                          error?.response?.data?.message ||
+                            "Failed to confirm task completion."
+                        );
+                      } finally {
+                        setIsSubmitting(false);
+                      }
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting
+                      ? "Updating..."
+                      : "Confirm completion (Taskmaster)"}
+                  </Button>
+                )}
+
+              {/* Small status text so both parties know what's pending */}
+              {(task.tasker_completed || task.taskmaster_completed) &&
+                task.job_completion_status !== 1 && (
+                  <p className="text-xs text-muted-foreground">
+                    {task.tasker_completed && !task.taskmaster_completed
+                      ? "Tasker has marked the task as completed. Waiting for taskmaster confirmation."
+                      : !task.tasker_completed && task.taskmaster_completed
+                      ? "Taskmaster has confirmed completion. Waiting for tasker to mark as completed."
+                      : null}
+                  </p>
+                )}
+            </div>
             {/* Allow tasker to request cancellation */}
             {(!isTaskPoster && (task.status === "in_progress" || !!task.assignedTasker)) && (
               <div className="flex gap-2">
