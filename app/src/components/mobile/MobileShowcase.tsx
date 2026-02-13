@@ -22,7 +22,14 @@ export function MobileShowcase() {
             </ul>
           </div>
           <div className="relative h-56 w-full rounded-b-2xl overflow-hidden bg-black">
-            <Image src="/images/pottery.JPG" alt="Tasker at work" fill className="object-contain" sizes="(max-width: 768px) 100vw, 600px" priority />
+            <Image
+              src="/images/new img.jpeg"
+              alt="Tasker helping a student"
+              fill
+              className="object-contain"
+              sizes="(max-width: 768px) 100vw, 600px"
+              priority
+            />
           </div>
         </div>
       </section>
