@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Button } from "../../components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
-import { HeadphonesIcon, MessageSquare, HelpCircle, ArrowRight } from "lucide-react"
+import { HelpCircle, ArrowRight } from "lucide-react"
 
 export default function HomePage() {
   return (
@@ -12,33 +12,10 @@ export default function HomePage() {
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4">Welcome to Our Platform</h1>
-          <p className="text-xl text-muted-foreground mb-8">Your one-stop solution for all your service needs</p>
-          <div className="flex justify-center space-x-4">
-            <Button size="lg" asChild>
-              <Link href="/supportpagepage">Get Support</Link>
-            </Button>
-            <Button variant="outline" size="lg">
-              Learn More
-            </Button>
-          </div>
+          <p className="text-xl text-muted-foreground">Your one-stop solution for all your service needs</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <Card className="text-center">
-            <CardHeader>
-              <MessageSquare className="h-12 w-12 mx-auto text-blue-600 mb-4" />
-              <CardTitle>Contact Support</CardTitle>
-              <CardDescription>Submit a support ticket and get help from our team</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" asChild className="w-full">
-                <Link href="/supportpage">
-                  Contact Us <ArrowRight className="h-4 w-4 ml-2" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-
+        <div className="grid grid-cols-1 md:grid-cols-1 max-w-md mx-auto gap-6 mb-12">
           <Card className="text-center">
             <CardHeader>
               <HelpCircle className="h-12 w-12 mx-auto text-green-600 mb-4" />
@@ -49,21 +26,6 @@ export default function HomePage() {
               <Button variant="outline" asChild className="w-full">
                 <Link href="/supportpage?tab=faq">
                   View FAQ <ArrowRight className="h-4 w-4 ml-2" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="text-center">
-            <CardHeader>
-              <HeadphonesIcon className="h-12 w-12 mx-auto text-purple-600 mb-4" />
-              <CardTitle>Live Support</CardTitle>
-              <CardDescription>Get immediate help through phone or live chat</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" asChild className="w-full">
-                <Link href="/supportpage?tab=info">
-                  Contact Info <ArrowRight className="h-4 w-4 ml-2" />
                 </Link>
               </Button>
             </CardContent>
