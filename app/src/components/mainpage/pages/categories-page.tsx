@@ -1070,9 +1070,7 @@ export function CategoriesPage() {
               {filteredCategories.map((category, index) => (
                 <motion.div key={category.category_id || index} variants={itemVariants}>
                   <Link
-                    href={`/categories/${category.category_name
-                      .toLowerCase()
-                      .replace(/\s+/g, "-")}`}
+                    href={`/browse?category=${encodeURIComponent(String(category.category_id || category.category_name))}`}
                     className="flex items-center gap-4 p-4 sm:p-5 bg-white hover:bg-blue-50/60 active:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 group"
                   >
                     <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-100 transition-colors">

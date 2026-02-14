@@ -21,6 +21,11 @@ export default function BrowseTasksPage() {
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [category, setCategory] = useState(searchParams.get("category") || "all")
+
+  useEffect(() => {
+    const cat = searchParams.get("category")
+    if (cat != null) setCategory(cat)
+  }, [searchParams])
   const [priceRange, setPriceRange] = useState([0, 500])
   const [location, setLocation] = useState("")
   const [showFilters, setShowFilters] = useState(false)
@@ -235,8 +240,8 @@ export default function BrowseTasksPage() {
       task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description.toLowerCase().includes(searchTerm.toLowerCase())
 
-    // Filter by category
-    const matchesCategory = category === "all" || task.category === category
+    // Filter by category (URL param is string; API may return category as number or string)
+    const matchesCategory = category === "all" || String(task.category) === String(category)
 
     // Filter by price range
     const matchesPrice = task.budget >= priceRange[0] && task.budget <= priceRange[1]

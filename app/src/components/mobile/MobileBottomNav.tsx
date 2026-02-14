@@ -48,7 +48,7 @@ export function MobileBottomNav() {
 
   const navItems = [
     { href: "/", icon: Home, label: "Home" },
-    { href: "/browse-tasks", icon: Search, label: "Browse" },
+    { href: "/dashboard", icon: Search, label: "Browse" },
     { href: "/post-task", icon: Plus, label: "Post" },
     { href: "/messages", icon: MessageCircle, label: "Messages" },
     { href: "/profile", icon: User, label: "Profile" },
