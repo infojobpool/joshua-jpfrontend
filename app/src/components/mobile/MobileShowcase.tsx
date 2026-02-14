@@ -21,12 +21,12 @@ export function MobileShowcase() {
               <li className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 rounded-full bg-blue-600"></span> Grow your business and client base</li>
             </ul>
           </div>
-          <div className="relative h-56 w-full rounded-b-2xl overflow-hidden bg-black">
+          <div className="relative h-56 w-full rounded-b-2xl overflow-hidden bg-gray-100">
             <Image
               src="/images/land.png"
               alt="Tasker helping a student"
               fill
-              className="object-contain"
+              className="object-cover"
               sizes="(max-width: 768px) 100vw, 600px"
               priority
             />
@@ -46,8 +46,8 @@ export function MobileShowcase() {
               <li>Receive quotes and pick the best Tasker</li>
             </ol>
           </div>
-          <div className="relative h-56 w-full rounded-b-2xl overflow-hidden bg-black">
-            <Image src="/images/eldercare.JPG" alt="Eldercare help" fill className="object-contain" sizes="(max-width: 768px) 100vw, 600px" />
+          <div className="relative h-56 w-full rounded-b-2xl overflow-hidden bg-gray-100">
+            <Image src="/images/tmland.png" alt="Post your first task" fill className="object-cover object-center" sizes="(max-width: 768px) 100vw, 600px" />
           </div>
         </div>
       </section>
