@@ -8,10 +8,10 @@ export function MobileHeroBanner() {
     <div className="md:hidden px-4 pt-4 bg-white">
       <div className="relative w-full h-48 rounded-2xl overflow-hidden shadow-md">
         <Image
-          src="/images/banner.png"
-          alt="JobPool Hero Banner"
+          src="/images/get%20anything%20done.png"
+          alt="Get anything done – JobPool"
           fill
-          className="object-cover"
+          className="object-cover object-center"
           priority
           sizes="(max-width:768px) 100vw, 600px"
         />
