@@ -951,9 +951,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { Input } from "../../../components/ui/input";
 import { Button } from "../../../components/ui/button";
-import { SquareCheckBig, Search, ChevronRight } from "lucide-react";
+import { SquareCheckBig, Search, X, ArrowUpDown, RotateCw } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../components/ui/select";
 
 interface Category {
   category_id: string;
@@ -961,11 +968,13 @@ interface Category {
   status: boolean;
   created_at: string;
   icon?: React.ReactNode;
-  tasks?: number;
 }
+
+type SortOption = "default" | "a-z" | "z-a";
 
 export function CategoriesPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("default");
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -977,7 +986,6 @@ export function CategoriesPage() {
         const enrichedCategories = response.data.data.map((category: Category) => ({
           ...category,
           icon: <SquareCheckBig className="h-8 w-8" />,
-          tasks: category.job_count || 0,
         }));
         setCategories(enrichedCategories);
       } else {
@@ -998,9 +1006,15 @@ export function CategoriesPage() {
     fetchCategories();
   }, []);
 
-  const filteredCategories = categories.filter((category) =>
+  const filteredBySearch = categories.filter((category) =>
     category.category_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const filteredCategories = [...filteredBySearch].sort((a, b) => {
+    if (sortBy === "a-z") return a.category_name.localeCompare(b.category_name);
+    if (sortBy === "z-a") return b.category_name.localeCompare(a.category_name);
+    return 0;
+  });
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -1036,20 +1050,58 @@ export function CategoriesPage() {
               Categories
             </h1>
             <p className="mt-4 text-xl text-gray-500">
-              Browse all task categories and find the help you need
+              All categories added by admin — search and sort below
             </p>
-            <div className="mt-8 flex items-center max-w-md mx-auto">
-              <Input
-                type="text"
-                placeholder="Search categories..."
-                className="flex-1"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Button className="ml-2 bg-blue-600 hover:bg-blue-700">
-                <Search className="h-4 w-4" />
+            <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-2xl mx-auto">
+              <div className="relative flex items-center flex-1">
+                <Search className="h-4 w-4 text-gray-400 absolute left-3 pointer-events-none" />
+                <Input
+                  type="text"
+                  placeholder="Search categories..."
+                  className="pl-10 flex-1"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 ml-1"
+                    onClick={() => setSearchQuery("")}
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <ArrowUpDown className="h-4 w-4 mr-2 text-gray-500" />
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Default order</SelectItem>
+                  <SelectItem value="a-z">A → Z</SelectItem>
+                  <SelectItem value="z-a">Z → A</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0"
+                onClick={() => fetchCategories()}
+                disabled={isLoading}
+              >
+                <RotateCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+                Refresh
               </Button>
             </div>
+            {searchQuery && (
+              <p className="mt-3 text-sm text-gray-500">
+                Showing {filteredCategories.length} of {categories.length} categories
+              </p>
+            )}
           </motion.div>
         </div>
       </section>
@@ -1068,29 +1120,26 @@ export function CategoriesPage() {
               animate="visible"
             >
               {filteredCategories.map((category, index) => (
-                <motion.div key={category.category_id || index} variants={itemVariants}>
-                  <Link
-                    href={`/browse?category=${encodeURIComponent(String(category.category_id || category.category_name))}`}
-                    className="flex items-center gap-4 p-4 sm:p-5 bg-white hover:bg-blue-50/60 active:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 group"
-                  >
-                    <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-100 transition-colors">
-                      {category.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 text-base sm:text-lg truncate">
-                        {category.category_name}
-                      </h3>
-                      <p className="text-sm text-gray-500 mt-0.5">
-                        <span className="font-medium text-blue-600">{category.tasks ?? 0}</span> active tasks
-                      </p>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-blue-600 flex-shrink-0 transition-colors" />
-                  </Link>
+                <motion.div
+                  key={category.category_id || index}
+                  variants={itemVariants}
+                  className="flex items-center gap-4 p-4 sm:p-5 bg-white border-b border-gray-100 last:border-b-0"
+                >
+                  <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                    {category.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-900 text-base sm:text-lg truncate">
+                      {category.category_name}
+                    </h3>
+                  </div>
                 </motion.div>
               ))}
               {filteredCategories.length === 0 && !isLoading && (
                 <div className="p-8 text-center text-gray-500">
-                  No categories match your search.
+                  {categories.length === 0
+                    ? "No categories have been added yet."
+                    : "No categories match your search."}
                 </div>
               )}
             </motion.div>
