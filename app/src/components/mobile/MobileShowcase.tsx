@@ -23,7 +23,7 @@ export function MobileShowcase() {
           </div>
           <div className="relative h-56 w-full rounded-b-2xl overflow-hidden bg-black">
             <Image
-              src="/images/img.png"
+              src="/images/land.png"
               alt="Tasker helping a student"
               fill
               className="object-contain"
