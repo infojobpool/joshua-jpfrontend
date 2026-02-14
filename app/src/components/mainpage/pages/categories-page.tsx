@@ -951,7 +951,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Input } from "../../../components/ui/input";
 import { Button } from "../../../components/ui/button";
-import { SquareCheckBig, Search } from "lucide-react";
+import { SquareCheckBig, Search, ChevronRight } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import { toast } from "sonner";
 
@@ -1054,47 +1054,49 @@ export function CategoriesPage() {
         </div>
       </section>
 
-      <section className="py-16">
-        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-          <motion.div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            {filteredCategories.map((category, index) => (
-              <motion.div
-                key={index}
-                variants={itemVariants}
-                whileHover={{
-                  scale: 1.03,
-                  boxShadow:
-                    "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-                }}
-                className="bg-white rounded-xl p-6 shadow-md transition-all duration-200"
-              >
-                <Link
-                  href={`/categories/${category.category_name
-                    .toLowerCase()
-                    .replace(/\s+/g, "-")}`}
-                >
-                  <div className="flex flex-col h-full">
-                    <div className="p-3 bg-blue-50 rounded-full mb-4 w-fit">
+      <section className="py-10 md:py-16">
+        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 max-w-2xl mx-auto">
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="h-10 w-10 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+            </div>
+          ) : (
+            <motion.div
+              className="flex flex-col gap-2 rounded-2xl overflow-hidden bg-white shadow-sm border border-gray-100"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {filteredCategories.map((category, index) => (
+                <motion.div key={category.category_id || index} variants={itemVariants}>
+                  <Link
+                    href={`/categories/${category.category_name
+                      .toLowerCase()
+                      .replace(/\s+/g, "-")}`}
+                    className="flex items-center gap-4 p-4 sm:p-5 bg-white hover:bg-blue-50/60 active:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 group"
+                  >
+                    <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-100 transition-colors">
                       {category.icon}
                     </div>
-                    <h3 className="font-bold text-xl mb-2">
-                      {category.category_name}
-                    </h3>
-                    <div className="mt-auto">
-                      <div className="mt-4 text-sm font-medium text-gray-500">
-                        {category.tasks || 0} active tasks
-                      </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 text-base sm:text-lg truncate">
+                        {category.category_name}
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-0.5">
+                        <span className="font-medium text-blue-600">{category.tasks ?? 0}</span> active tasks
+                      </p>
                     </div>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
-          </motion.div>
+                    <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-blue-600 flex-shrink-0 transition-colors" />
+                  </Link>
+                </motion.div>
+              ))}
+              {filteredCategories.length === 0 && !isLoading && (
+                <div className="p-8 text-center text-gray-500">
+                  No categories match your search.
+                </div>
+              )}
+            </motion.div>
+          )}
         </div>
       </section>
 

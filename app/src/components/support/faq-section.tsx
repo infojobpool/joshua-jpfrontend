@@ -17,7 +17,7 @@ const faqData: FAQItem[] = [
     id: "1",
     question: "How do I contact customer support?",
     answer:
-      "You can reach us through email us at support@jobpool.in, call us at +917799789200, or use our live chat feature.",
+      "You can reach us through email at support@jobpool.in or use our live chat feature.",
     category: "account",
   },
   {

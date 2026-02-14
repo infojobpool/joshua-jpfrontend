@@ -175,35 +175,33 @@ export function HowItWorksPage() {
 
   return (
     <>
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-12 md:py-16">
-        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-          <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 xl:grid-cols-2">
-          <motion.div
-              className="flex flex-col justify-center space-y-4"
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-6 sm:py-10 md:py-16">
+        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-12 xl:grid-cols-2">
+            <motion.div
+              className="flex flex-col justify-center space-y-3 sm:space-y-4 order-2 lg:order-1"
               initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-              <motion.div className="space-y-2" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <motion.div className="space-y-1 sm:space-y-2" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                 <motion.h1
-                  className="text-4xl font-bold tracking-tight sm:text-5xl xl:text-6xl/none"
-                  style={{
-                    color: "#0a2463",
-                  }}
+                  className="text-2xl sm:text-4xl font-bold tracking-tight sm:text-5xl xl:text-6xl/none"
+                  style={{ color: "#0a2463" }}
                 >
                   How JobPool Works
                 </motion.h1>
-                <p className="max-w-[600px] text-gray-700 md:text-xl mb-2">
+                <p className="max-w-[600px] text-gray-700 text-sm sm:text-base md:text-xl mb-1">
                   Simple steps to get tasks done or earn money as a Helper.
                 </p>
-                <p className="max-w-[600px] text-gray-600 text-lg">
+                <p className="max-w-[600px] text-gray-600 text-sm sm:text-lg">
                   Post a task. Get offers. Get it done. Or help others and earn money.
                 </p>
               </motion.div>
 
-              <motion.div className="flex flex-col sm:flex-row gap-4 mt-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+              <motion.div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4 sm:mt-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
                 <Link href="/post-task" className="w-full sm:w-auto">
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg">
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-5 sm:px-8 sm:py-6 text-base sm:text-lg">
                     Post Your First Task
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
@@ -211,7 +209,7 @@ export function HowItWorksPage() {
                 <Link href="/signup" className="w-full sm:w-auto">
                   <Button
                     variant="outline"
-                    className="w-full border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-6 text-lg"
+                    className="w-full border-blue-600 text-blue-600 hover:bg-blue-50 px-6 py-5 sm:px-8 sm:py-6 text-base sm:text-lg"
                   >
                     Become a Helper
                     <ArrowRight className="ml-2 h-5 w-5" />
@@ -219,114 +217,104 @@ export function HowItWorksPage() {
                 </Link>
               </motion.div>
 
-              <motion.div className="mt-8 p-4 bg-white rounded-lg shadow-md" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
-                <h3 className="text-lg font-medium mb-3">Quick Start Guide</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="text-center p-3 bg-blue-50 rounded-lg">
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm mx-auto mb-2">1</div>
-                    <p className="text-sm font-medium">Post your task</p>
+              <motion.div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-white rounded-lg shadow-md" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+                <h3 className="text-base sm:text-lg font-medium mb-2 sm:mb-3">Quick Start Guide</h3>
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                  <div className="text-center p-2 sm:p-3 bg-blue-50 rounded-lg">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm mx-auto mb-1 sm:mb-2">1</div>
+                    <p className="text-xs sm:text-sm font-medium">Post your task</p>
                   </div>
-                  <div className="text-center p-3 bg-blue-50 rounded-lg">
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm mx-auto mb-2">2</div>
-                    <p className="text-sm font-medium">Choose a Helper</p>
+                  <div className="text-center p-2 sm:p-3 bg-blue-50 rounded-lg">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm mx-auto mb-1 sm:mb-2">2</div>
+                    <p className="text-xs sm:text-sm font-medium">Choose a Helper</p>
                   </div>
-                  <div className="text-center p-3 bg-blue-50 rounded-lg">
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm mx-auto mb-2">3</div>
-                    <p className="text-sm font-medium">Get it done</p>
+                  <div className="text-center p-2 sm:p-3 bg-blue-50 rounded-lg">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm mx-auto mb-1 sm:mb-2">3</div>
+                    <p className="text-xs sm:text-sm font-medium">Get it done</p>
                   </div>
                 </div>
               </motion.div>
             </motion.div>
 
             <motion.div
-              className="flex items-center justify-center lg:justify-end"
+              className="flex items-center justify-center lg:justify-end order-1 lg:order-2"
               initial={{ opacity: 0, x: 100 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ type: "spring", stiffness: 50, damping: 20, delay: 0.5 }}
             >
-              <div className="relative">
-                {/* Main Image */}
+              <div className="relative w-full max-w-md lg:max-w-none">
                 <div className="relative overflow-hidden rounded-2xl shadow-2xl">
-                  <div className="w-[500px] h-[600px] md:w-[550px] md:h-[650px] relative overflow-hidden">
+                  <div className="relative w-full aspect-[4/5] sm:aspect-[5/6] lg:w-[500px] lg:h-[600px] xl:w-[550px] xl:h-[650px] max-h-[320px] sm:max-h-[400px] lg:max-h-none mx-auto">
                     <Image
                       src="/images/image1.jpeg"
                       alt="How JobPool works - connecting people with tasks"
                       fill
                       className="object-cover"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 550px"
                     />
-                    
-                    {/* Overlay with text */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
-                    
-                    {/* Content overlay */}
-                    <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
-                      <div className="flex items-center gap-4 mb-6">
-                        <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
-                          <Users className="h-8 w-8 text-white" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 lg:p-8 text-white">
+                      <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-6">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-600 rounded-full flex items-center justify-center shrink-0">
+                          <Users className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                         </div>
-                        <div>
-                          <h3 className="text-3xl font-bold mb-2">Trusted Platform</h3>
-                          <p className="text-lg text-blue-100">Safe, secure, and reliable</p>
+                        <div className="min-w-0">
+                          <h3 className="text-xl sm:text-3xl font-bold mb-0.5 sm:mb-2">Trusted Platform</h3>
+                          <p className="text-sm sm:text-lg text-blue-100">Safe, secure, and reliable</p>
                         </div>
                       </div>
-                      
-                      {/* Stats */}
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold">10,000+</div>
-                          <div className="text-sm text-blue-100">Tasks Completed</div>
+                      <div className="grid grid-cols-2 gap-3 sm:gap-6">
+                        <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 sm:p-4 text-center">
+                          <div className="text-lg sm:text-2xl font-bold">10,000+</div>
+                          <div className="text-xs sm:text-sm text-blue-100">Tasks Completed</div>
                         </div>
-                        <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold">4.9★</div>
-                          <div className="text-sm text-blue-100">Rating</div>
+                        <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 sm:p-4 text-center">
+                          <div className="text-lg sm:text-2xl font-bold">4.9★</div>
+                          <div className="text-xs sm:text-sm text-blue-100">Rating</div>
                         </div>
                       </div>
                     </div>
                   </div>
-                  
-                  {/* Floating stats card */}
                   <motion.div
-                    className="absolute -top-6 -left-6 bg-white p-5 rounded-xl shadow-xl border border-gray-100"
+                    className="absolute -top-3 -left-3 sm:-top-6 sm:-left-6 bg-white p-3 sm:p-5 rounded-xl shadow-xl border border-gray-100 hidden sm:block"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1 }}
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                        <CheckCircle className="h-6 w-6 text-blue-600" />
+                    <div className="flex items-center space-x-2 sm:space-x-3">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                       </div>
                       <div>
-                        <div className="text-xl font-bold text-gray-800">100%</div>
-                        <p className="text-sm text-gray-500">Secure payments</p>
+                        <div className="text-base sm:text-xl font-bold text-gray-800">100%</div>
+                        <p className="text-xs sm:text-sm text-gray-500">Secure payments</p>
                       </div>
                     </div>
                   </motion.div>
                 </div>
-                
-                {/* Background decorative elements */}
-                <div className="absolute -z-10 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[700px] bg-gradient-to-br from-blue-200/30 to-indigo-300/30 rounded-full blur-3xl"></div>
+                <div className="absolute -z-10 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[300px] h-[400px] sm:w-[500px] sm:h-[600px] lg:w-[600px] lg:h-[700px] bg-gradient-to-br from-blue-200/30 to-indigo-300/30 rounded-full blur-3xl" />
               </div>
-          </motion.div>
+            </motion.div>
           </div>
         </div>
       </section>
 
-      <section className="py-16">
-        <div className="container px-4 md:px-6">
+      <section className="py-8 sm:py-12 md:py-16">
+        <div className="container px-4 md:px-6 max-w-6xl mx-auto">
           <Tabs defaultValue="poster" className="w-full">
-            <TabsList className="mb-8 flex justify-center">
-              <TabsTrigger value="poster" className="px-8 py-3">
+            <TabsList className="mb-6 sm:mb-8 flex flex-wrap justify-center gap-2 w-full sm:w-auto">
+              <TabsTrigger value="poster" className="flex-1 sm:flex-none px-4 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base">
                 For Task Posters
               </TabsTrigger>
-              <TabsTrigger value="tasker" className="px-8 py-3">
+              <TabsTrigger value="tasker" className="flex-1 sm:flex-none px-4 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base">
                 For Helpers
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="poster" className="mt-0">
-              <div className="grid gap-16">
+              <div className="grid gap-10 sm:gap-16">
                 <motion.div
-                  className="grid md:grid-cols-3 gap-8 relative"
+                  className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-8 relative"
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"
@@ -368,22 +356,23 @@ export function HowItWorksPage() {
                 </div>
 
                 <motion.div
-                  className="grid md:grid-cols-2 gap-12 items-center"
+                  className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 items-center"
                   initial={{ opacity: 0 }}
                   whileInView={{ opacity: 1 }}
                   transition={{ duration: 0.5 }}
                   viewport={{ once: true }}
                 >
-                  <div className="relative h-[400px] rounded-xl overflow-hidden">
+                  <div className="relative w-full aspect-[4/3] md:h-[400px] rounded-xl overflow-hidden order-2 md:order-1">
                     <Image
-                      src="images/placeholder.svg?height=400&width=600"
+                      src="/images/image1.jpeg"
                       fill
-                      alt="Post a task"
+                      alt="Post a task - describe what you need"
                       className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 50vw"
                     />
                   </div>
-                  <div>
-                    <h2 className="text-3xl font-bold mb-6">Tips for posting a great task</h2>
+                  <div className="order-1 md:order-2">
+                    <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Tips for posting a great task</h2>
                     <ul className="space-y-4">
                       <li className="flex items-start">
                         <div className="bg-blue-100 p-2 rounded-full mr-4 mt-1">
@@ -432,9 +421,9 @@ export function HowItWorksPage() {
             </TabsContent>
 
             <TabsContent value="tasker" className="mt-0">
-              <div className="grid gap-16">
+              <div className="grid gap-10 sm:gap-16">
                 <motion.div
-                  className="grid md:grid-cols-3 gap-8 relative"
+                  className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-8 relative"
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"
@@ -476,14 +465,14 @@ export function HowItWorksPage() {
                 </div>
 
                 <motion.div
-                  className="grid md:grid-cols-2 gap-12 items-center"
+                  className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 items-center"
                   initial={{ opacity: 0 }}
                   whileInView={{ opacity: 1 }}
                   transition={{ duration: 0.5 }}
                   viewport={{ once: true }}
                 >
                   <div>
-                    <h2 className="text-3xl font-bold mb-6">Tips for successful Taskers</h2>
+                    <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Tips for successful Taskers</h2>
                     <ul className="space-y-4">
                       <li className="flex items-start">
                         <div className="bg-blue-100 p-2 rounded-full mr-4 mt-1">
@@ -527,12 +516,13 @@ export function HowItWorksPage() {
                       </li>
                     </ul>
                   </div>
-                  <div className="relative h-[400px] rounded-xl overflow-hidden">
+                  <div className="relative w-full aspect-[4/3] md:h-[400px] rounded-xl overflow-hidden">
                     <Image
-                      src="images/placeholder.svg?height=400&width=600"
+                      src="/images/eldercare.JPG"
                       fill
-                      alt="Become a Tasker"
+                      alt="Become a Tasker - help others and earn"
                       className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 50vw"
                     />
                   </div>
                 </motion.div>
@@ -645,13 +635,14 @@ export function HowItWorksPage() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
               viewport={{ once: true }}
-              className="relative h-[400px]"
+              className="relative w-full aspect-[4/3] md:h-[400px] rounded-xl overflow-hidden"
             >
               <Image
-                src="images/placeholder.svg?height=400&width=600"
+                src="/images/image1.jpeg"
                 fill
-                alt="JobPool"
+                alt="JobPool - get started"
                 className="object-cover rounded-xl"
+                sizes="(max-width: 768px) 100vw, 50vw"
               />
             </motion.div>
           </div>

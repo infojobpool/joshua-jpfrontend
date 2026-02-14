@@ -75,12 +75,9 @@ export default function HomePage() {
           <p className="text-muted-foreground mb-6">
             Our support team is available 24/7 to assist you with any questions or issues.
           </p>
-          <div className="flex justify-center space-x-4">
+          <div className="flex justify-center">
             <Button variant="outline" asChild>
               <a href="mailto:info@jobpool.in">Email Us</a>
-            </Button>
-            <Button variant="outline" asChild>
-              <a href="tel:+911234567890">Call Us</a>
             </Button>
           </div>
         </div>

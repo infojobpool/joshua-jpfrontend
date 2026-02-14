@@ -1,6 +1,6 @@
 "use client"
 
-import { Mail, Phone, MapPin, Clock, MessageCircle } from "lucide-react"
+import { Mail, MapPin, Clock } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 
@@ -14,22 +14,6 @@ export function ContactInfo() {
       action: "Send Email",
       href: "mailto:info@jobpool.in",
     },
-    {
-      icon: Phone,
-      title: "Phone Support",
-      description: "Speak with our team",
-      contact: "+91-7799789200",
-      action: "Call Now",
-      href: "tel:+917799789200",
-    },
-    // {
-    //   icon: MessageCircle,
-    //   title: "Live Chat",
-    //   description: "Chat with us in real-time",
-    //   contact: "Available 24/7",
-    //   action: "Start Chat",
-    //   href: "#",
-    // },
   ]
 
   return (
@@ -99,10 +83,6 @@ Vanasthalipuram, Hyd - 70
             <div className="flex justify-between items-center">
               <span className="text-sm">Email Support</span>
               <span className="text-sm font-medium">Within 24 hours</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm">Phone Support</span>
-              <span className="text-sm font-medium">Immediate</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm">Live Chat</span>
