@@ -56,12 +56,12 @@ export function MobileWhyChoose() {
           })}
         </div>
 
-        <div className="relative mt-6 rounded-2xl overflow-hidden shadow-lg w-full min-h-[220px] h-56 bg-gray-200">
+        <div className="relative mt-6 rounded-2xl overflow-hidden shadow-lg w-full min-h-[240px] h-64 bg-gray-200">
           <Image
             src="/images/image2.jpeg"
             alt="Join our community"
             fill
-            className="object-cover object-center"
+            className="object-cover object-top"
             sizes="(max-width: 768px) 100vw, 400px"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex items-end justify-center">
