@@ -35,7 +35,7 @@ const SERVICES: Service[] = [
     subtitle: "Furniture and flatpack assembly",
     rating: "4.9",
     reviews: "900+",
-    image: "/images/image2.jpeg", // tasker photo
+    image: "/images/assembly.png",
   },
   {
     id: "mounting",
