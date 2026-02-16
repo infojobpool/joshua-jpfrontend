@@ -19,7 +19,7 @@ const SERVICES: Service[] = [
     subtitle: "Reliable movers for transport needs",
     rating: "4.7",
     reviews: "1,500+",
-    image: "/images/image1.jpeg", // tasker at work (photo)
+    image: "/images/moving%20and%20delievery.jpg",
   },
   {
     id: "cleaning",
@@ -27,7 +27,7 @@ const SERVICES: Service[] = [
     subtitle: "Professional cleaning for home & office",
     rating: "4.8",
     reviews: "1,800+",
-    image: "/images/caregiving-hero.jpg", // photo backdrop
+    image: "/images/house%20cleaning.jpeg",
   },
   {
     id: "assembly",
@@ -43,7 +43,7 @@ const SERVICES: Service[] = [
     subtitle: "Secure and tidy installations",
     rating: "4.9",
     reviews: "1,000+",
-    image: "/images/mobileapp.png", // fallback photo
+    image: "/images/tv%20mounting.jpg",
   },
 ];
 
