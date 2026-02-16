@@ -4,6 +4,7 @@ import { MobileHeroSection } from '../components/mobile/MobileHeroSection'
 import { MobileServiceScroller } from '../components/mobile/MobileServiceScroller'
 import { MobileTestimonials } from '../components/mobile/MobileTestimonials'
 import { MobileWhyChoose } from '../components/mobile/MobileWhyChoose'
+import { MobileEarnAsTasker } from '../components/mobile/MobileEarnAsTasker'
 import { MobileShowcase } from '../components/mobile/MobileShowcase'
 import { MobileHeroBanner } from '../components/mobile/MobileHeroBanner'
 import { HowItWorks } from '../components/mainpage/how-it-works'
@@ -22,8 +23,9 @@ export default function Home() {
         <MobileServiceScroller />
         <MobileHeroBanner />
         <MobileShowcase />
-        <MobileTestimonials />
+        <MobileEarnAsTasker />
         <MobileWhyChoose />
+        <MobileTestimonials />
       </div>
 
       {/* Desktop landing (md and up) */}

@@ -56,16 +56,16 @@ export function MobileWhyChoose() {
           })}
         </div>
 
-        <div className="relative mt-6 rounded-2xl overflow-hidden shadow-lg aspect-[4/3] max-h-64 bg-gray-200">
+        <div className="relative mt-6 rounded-2xl overflow-hidden shadow-lg w-full min-h-[220px] h-56 bg-gray-200">
           <Image
             src="/images/image2.jpeg"
             alt="Join our community"
             fill
-            className="object-cover"
+            className="object-cover object-center"
             sizes="(max-width: 768px) 100vw, 400px"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex items-end">
-            <div className="p-5 text-white w-full">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex items-end justify-center">
+            <div className="p-5 text-white w-full text-center">
               <h3 className="text-lg font-bold">Join our community</h3>
               <p className="text-sm text-white/90 mt-1">
                 Connect with thousands of Taskers and customers in your area
