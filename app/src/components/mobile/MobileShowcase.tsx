@@ -47,7 +47,7 @@ export function MobileShowcase() {
             </ol>
           </div>
           <div className="relative h-56 w-full rounded-b-2xl overflow-hidden bg-gray-100">
-            <Image src="/images/tmland.png" alt="Post your first task" fill className="object-cover object-center" sizes="(max-width: 768px) 100vw, 600px" />
+            <Image src="/images/post%20a%20task.png" alt="Post your first task" fill className="object-cover object-center" sizes="(max-width: 768px) 100vw, 600px" />
           </div>
         </div>
       </section>

@@ -3,6 +3,7 @@ import { HeroSection } from '../components/mainpage/hero-section'
 import { MobileHeroSection } from '../components/mobile/MobileHeroSection'
 import { MobileServiceScroller } from '../components/mobile/MobileServiceScroller'
 import { MobileTestimonials } from '../components/mobile/MobileTestimonials'
+import { MobileWhyChoose } from '../components/mobile/MobileWhyChoose'
 import { MobileShowcase } from '../components/mobile/MobileShowcase'
 import { MobileHeroBanner } from '../components/mobile/MobileHeroBanner'
 import { HowItWorks } from '../components/mainpage/how-it-works'
@@ -22,6 +23,7 @@ export default function Home() {
         <MobileHeroBanner />
         <MobileShowcase />
         <MobileTestimonials />
+        <MobileWhyChoose />
       </div>
 
       {/* Desktop landing (md and up) */}
