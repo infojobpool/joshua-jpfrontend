@@ -55,7 +55,7 @@ export function MobileServiceScroller() {
     if (!el) return;
 
     let paused = false;
-    const speed = 2.5; // px per frame
+    const speed = 1.5; // px per frame - smoother, slower scroll
     let rafId = 0;
 
     const tick = () => {

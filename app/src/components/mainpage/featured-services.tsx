@@ -9,6 +9,7 @@ import { useState, useEffect, useRef } from "react"
 
 export function FeaturedServices() {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [isHovered, setIsHovered] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const hasInitializedRef = useRef(false)
 
@@ -101,7 +102,7 @@ export function FeaturedServices() {
       id: 7,
       title: "Tutoring & Education",
       description: "Expert tutors and educators for all subjects and age groups",
-      image: "/images/image1.jpeg",
+      image: "/images/tutoring%20and%20education.jpg",
       category: "Education",
       icon: <BookOpen className="h-5 w-5" />,
       stats: {
@@ -127,7 +128,7 @@ export function FeaturedServices() {
     }
   ]
 
-  // Scroll to current card when the user changes it.
+  // Smoothly scroll to current card when the user changes it.
   // Skip the initial render so we don't auto-scroll the whole page down on first load.
   useEffect(() => {
     if (!hasInitializedRef.current) {
@@ -142,6 +143,22 @@ export function FeaturedServices() {
       card.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' })
     }
   }, [currentIndex])
+
+  // Gentle auto-advance for desktop carousel
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const isDesktop = window.matchMedia("(min-width: 768px)").matches
+    if (!isDesktop) return
+
+    if (isHovered) return
+
+    const interval = window.setInterval(() => {
+      setCurrentIndex(prev => (prev + 1) % services.length)
+    }, 6000) // advance every 6 seconds
+
+    return () => window.clearInterval(interval)
+  }, [isHovered, services.length])
 
   return (
     <section className="py-12 bg-gray-50 overflow-hidden">
@@ -173,6 +190,8 @@ export function FeaturedServices() {
                 msOverflowStyle: 'none',
                 scrollSnapType: 'x mandatory'
               }}
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
             >
               {services.map((service, index) => (
                 <motion.div
