@@ -140,7 +140,16 @@ export function FeaturedServices() {
     if (!container) return
     const card = container.children[currentIndex] as HTMLElement
     if (card) {
-      card.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' })
+      // Compute horizontal position of the card relative to the scroll container
+      const left =
+        card.offsetLeft -
+        container.offsetLeft -
+        parseFloat(getComputedStyle(container).paddingLeft || "0")
+
+      container.scrollTo({
+        left,
+        behavior: "smooth",
+      })
     }
   }, [currentIndex])
 
