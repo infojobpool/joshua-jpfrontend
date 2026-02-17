@@ -17,7 +17,7 @@ export function FeaturedServices() {
       id: 1,
       title: "Creative Professionals",
       description: "Artists, designers, and craftspeople bringing your creative vision to life",
-      image: "/images/mobileapp.png",
+      image: "/images/creative%20professionals.webp",
       category: "Creative",
       icon: <Palette className="h-5 w-5" />,
       stats: {
@@ -31,7 +31,7 @@ export function FeaturedServices() {
       id: 2,
       title: "Caregiving Services",
       description: "Compassionate caregivers providing support and companionship",
-      image: "/images/image1.jpeg",
+      image: "/images/caretaking%20services.jpg",
       category: "Care",
       icon: <Heart className="h-5 w-5" />,
       stats: {
@@ -45,7 +45,7 @@ export function FeaturedServices() {
       id: 3,
       title: "Handyman Services",
       description: "Skilled professionals for repairs, installations, and maintenance",
-      image: "/images/image2.jpeg",
+      image: "/images/handyman%20services.jpg",
       category: "Home",
       icon: <Wrench className="h-5 w-5" />,
       stats: {
@@ -59,7 +59,7 @@ export function FeaturedServices() {
       id: 4,
       title: "Moving & Delivery",
       description: "Reliable movers and delivery professionals for all your transport needs",
-      image: "/images/image1.jpeg",
+      image: "/images/moving%20and%20delievery.jpg",
       category: "Transport",
       icon: <Truck className="h-5 w-5" />,
       stats: {
@@ -73,7 +73,7 @@ export function FeaturedServices() {
       id: 5,
       title: "House Cleaning",
       description: "Professional cleaning services for homes and offices",
-      image: "/images/image2.jpeg",
+      image: "/images/house%20cleaning.jpeg",
       category: "Cleaning",
       icon: <Home className="h-5 w-5" />,
       stats: {
@@ -87,7 +87,7 @@ export function FeaturedServices() {
       id: 6,
       title: "Photography & Events",
       description: "Capture your special moments with professional photographers",
-      image: "/images/mobileapp.png",
+      image: "/images/photography%20and%20events.jpg",
       category: "Events",
       icon: <Camera className="h-5 w-5" />,
       stats: {
@@ -115,7 +115,7 @@ export function FeaturedServices() {
       id: 8,
       title: "Catering & Food",
       description: "Delicious catering services for events and special occasions",
-      image: "/images/image2.jpeg",
+      image: "/images/catering%20and%20events.jpg",
       category: "Food",
       icon: <Utensils className="h-5 w-5" />,
       stats: {
