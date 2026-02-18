@@ -62,23 +62,54 @@ export function InAppNotificationProvider() {
 
     // Service worker postMessage (when Web Push is used and SW forwards to client)
     const sw = navigator.serviceWorker;
-    if (sw) {
-      const onMessage = (e: MessageEvent) => {
-        if (e.data?.type === "push" && e.data?.payload) {
-          handlePushPayload(e.data.payload);
+    const onSwMessage = (e: MessageEvent) => {
+      if (e.data?.type === "push" && e.data?.payload) handlePushPayload(e.data.payload);
+    };
+    if (sw) sw.addEventListener("message", onSwMessage);
+
+    // Foreground: when tab is open, FCM delivers to the page (not the SW). Listen and show.
+    const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+    let foregroundCancelled = false;
+    if (vapidKey) {
+      (async () => {
+        try {
+          const { getApp, getApps, initializeApp } = await import("firebase/app");
+          const { getMessaging, onMessage } = await import("firebase/messaging");
+          const config = {
+            apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+            authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+            projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+            storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+            messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+            appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+          };
+          if (!config.apiKey || !config.projectId) return;
+          const app = getApps().length ? getApp() : initializeApp(config);
+          const messaging = getMessaging(app);
+          onMessage(messaging, (payload) => {
+            if (foregroundCancelled) return;
+            const notif = payload.notification as { title?: string; body?: string } | undefined;
+            const data = {
+              title: notif?.title ?? payload.data?.title ?? "Notification",
+              body: notif?.body ?? payload.data?.body ?? "",
+              ...payload.data,
+            };
+            handlePushPayload(data);
+            if ("Notification" in window && Notification.permission === "granted" && notif?.title) {
+              new Notification(notif.title, { body: notif.body ?? "" });
+            }
+          });
+        } catch {
+          // Firebase not configured or onMessage not supported
         }
-      };
-      sw.addEventListener("message", onMessage);
-      return () => {
-        window.removeEventListener("push-notification", onPushEvent);
-        window.removeEventListener("push-notification-click", onPushEvent);
-        sw.removeEventListener("message", onMessage);
-      };
+      })();
     }
 
     return () => {
+      foregroundCancelled = true;
       window.removeEventListener("push-notification", onPushEvent);
       window.removeEventListener("push-notification-click", onPushEvent);
+      if (sw) sw.removeEventListener("message", onSwMessage);
     };
   }, [addNotifications]);
 
