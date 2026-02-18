@@ -64,6 +64,8 @@ export async function registerPushToken(jwt: string): Promise<void> {
 
     if (!res.ok) throw new Error(await res.text());
     console.log("Push: Token registered");
+    // Copy the next line in Console and use in Firebase → Messaging → Send to single device
+    console.log("FCM token (test):", token);
   } catch (e) {
     console.warn("Push: Failed", e);
   }
