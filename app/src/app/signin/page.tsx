@@ -85,6 +85,7 @@ export default function SignInPage() {
         }
 
         login(token, user);
+        import("@/lib/firebase-push").then(({ registerPushToken }) => registerPushToken(token));
 
         toast.success("Login successful!");
 

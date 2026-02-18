@@ -134,8 +134,39 @@ export function InAppNotificationProvider() {
     };
 
     window.addEventListener("push-token", onPushToken);
+
+    // Firebase Web: get FCM token and register with backend (when VAPID key + config are set).
+    const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+    if (vapidKey) {
+      let cancelled = false;
+      (async () => {
+        try {
+          const { getApp, getApps, initializeApp } = await import("firebase/app");
+          const { getMessaging, getToken } = await import("firebase/messaging");
+          const config = {
+            apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+            authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+            projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+            storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+            messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+            appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+          };
+          if (!config.apiKey || !config.projectId) return;
+          const app = getApps().length ? getApp() : initializeApp(config);
+          const messaging = getMessaging(app);
+          const token = await getToken(messaging, { vapidKey });
+          if (!cancelled && token) registerToken(token);
+        } catch {
+          // User denied permission or getToken failed – skip register-push (no crash).
+        }
+      })();
+      return () => {
+        cancelled = true;
+        window.removeEventListener("push-token", onPushToken);
+      };
+    }
+
     return () => window.removeEventListener("push-token", onPushToken);
-    // If you add Firebase JS: after getToken() resolves, call registerToken(token) here too.
   }, [userId]);
 
   return null;

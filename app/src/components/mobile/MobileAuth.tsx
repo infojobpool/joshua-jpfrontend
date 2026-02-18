@@ -63,6 +63,7 @@ export function MobileSignIn() {
         }
 
         login(token, user);
+        import("@/lib/firebase-push").then(({ registerPushToken }) => registerPushToken(token));
         if (rememberMe && normalizedEmail) {
           try {
             localStorage.setItem(REMEMBER_EMAIL_KEY, normalizedEmail);
