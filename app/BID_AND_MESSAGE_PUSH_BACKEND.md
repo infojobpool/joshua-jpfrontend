@@ -75,18 +75,18 @@ def send_push_to_user(user_id, title, body, type="system", url=""):
 ```python
 # After successfully creating the bid:
 def on_bid_created(job_id, bidder_id, bid_amount, bidder_name, task_title):
-    # Get task poster (taskmaster) user_id from the job
-    job = get_job(job_id)
-    poster_user_id = job.user_ref_id  # or job.poster_id, job.created_by, etc.
+    poster_user_id = get_job(job_id).user_ref_id  # task poster
 
     send_push_to_user(
         user_id=poster_user_id,
-        title="New bid on your task",
-        body=f"{bidder_name} placed a bid of ₹{bid_amount} on \"{task_title}\".",
+        title=f"New bid on \"{task_title}\"",           # e.g. "New bid on Fix Kitchen Sink"
+        body=f"{bidder_name} placed a bid of ₹{bid_amount}",  # e.g. "Joshua placed a bid of ₹500"
         type="bid",
-        url=f"/tasks/{job_id}",
+        url=f"/tasks/{job_id}",                        # REQUIRED: redirect to task on tap
     )
 ```
+
+**Example notification:** `"New bid on Fix Kitchen Sink"` / `"Joshua placed a bid of ₹500"` → tap opens `/tasks/xyz`
 
 **API structure (from frontend):** `POST /bid-a-job/` with payload containing `job_id`, bidder info, etc.
 
@@ -106,12 +106,14 @@ def on_bid_created(job_id, bidder_id, bid_amount, bidder_name, task_title):
 def on_bid_accepted(task_id, tasker_id, task_title, poster_name):
     send_push_to_user(
         user_id=tasker_id,
-        title="Your bid was accepted!",
-        body=f"{poster_name} accepted your offer for \"{task_title}\".",
+        title=f"Your bid was accepted for \"{task_title}\"",  # e.g. "Your bid was accepted for Fix Kitchen Sink"
+        body=f"{poster_name} accepted your offer",            # e.g. "Joshua accepted your offer"
         type="bid",
-        url=f"/tasks/{task_id}",
+        url=f"/tasks/{task_id}",                              # REQUIRED: redirect to task on tap
     )
 ```
+
+**Example notification:** `"Your bid was accepted for Fix Kitchen Sink"` / `"Joshua accepted your offer"` → tap opens `/tasks/xyz`
 
 **API structure (from frontend):** `POST /accept-bid/{task.id}/{offer.tasker.id}/`
 
@@ -123,23 +125,28 @@ def on_bid_accepted(task_id, tasker_id, task_title, poster_name):
 
 **Backend hook:** In the endpoint that sends a message (e.g. `POST /api/v1/send-message/` or similar):
 
-- Request has: `receiver_id`, `message`, `chat_id`, etc.
+- Request has: `receiver_id`, `message`, `chat_id`, `sender_id`, etc.
 - Notify the **receiver** (the other person in the chat)
+- **Include sender name** so the user knows who messaged them
+- **Include message preview** (truncated) as the body
+- **Include url** so tapping opens the chat
 
 ```python
 # After successfully saving the message:
-def on_message_sent(sender_id, receiver_id, message_preview, chat_id):
-    # Truncate long messages for notification
-    body = message_preview[:100] + "..." if len(message_preview) > 100 else message_preview
+def on_message_sent(sender_id, receiver_id, message_content, chat_id, sender_name):
+    # sender_name = get_user_name(sender_id)  # e.g. "Joshua Bayagalla"
+    body = message_content[:80] + "..." if len(message_content) > 80 else message_content
 
     send_push_to_user(
         user_id=receiver_id,
-        title="New message",
-        body=body,
+        title=f"New message from {sender_name}",   # e.g. "New message from Joshua Bayagalla"
+        body=body,                                  # e.g. "Hello, when can you start?"
         type="message",
-        url=f"/messages/{chat_id}",
+        url=f"/messages/{chat_id}",                 # REQUIRED: redirect to chat on tap
     )
 ```
+
+**Example notification:** `"New message from Joshua Bayagalla"` / `"Hello, when can you start?"` → tap opens `/messages/chatId`
 
 **API structure (from frontend):** Chat uses `chat_id`, `receiver_id`, `message` in the payload.
 
@@ -203,16 +210,18 @@ def on_task_fully_completed(job_id, taskmaster_user_id, tasker_user_id, task_tit
 
 ---
 
-## 8. Summary Table
+## 8. Summary Table (Notification Format)
 
-| Event                  | Who to notify     | Title                                | Body example                                       | URL              |
-|------------------------|-------------------|--------------------------------------|----------------------------------------------------|------------------|
-| New bid                | Task poster       | "New bid on your task"               | "{name} placed a bid of ₹X on \"{task}\""          | `/tasks/{id}`    |
-| Bid accepted           | Tasker            | "Your bid was accepted!"             | "{poster} accepted your offer for \"{task}\""      | `/tasks/{id}`    |
-| New message            | Message receiver  | "New message"                        | Message preview (truncated)                        | `/messages/{id}` |
-| Tasker marks complete  | Taskmaster        | "Tasker marked job complete"         | "{tasker} marked \"{task}\" complete. Confirm."    | `/tasks/{id}`    |
-| Taskmaster confirms    | Tasker            | "Task owner confirmed completion"    | "Task owner confirmed \"{task}\" is complete."     | `/tasks/{id}`    |
-| Both confirmed         | Both              | "Task completed"                     | "\"{task}\" has been completed by both parties."   | `/tasks/{id}`    |
+| Event                  | Who to notify     | Title (include context)                     | Body (include who + what)                     | URL (tap = redirect) |
+|------------------------|-------------------|---------------------------------------------|-----------------------------------------------|----------------------|
+| New bid                | Task poster       | "New bid on \"{task_title}\""               | "{bidder_name} placed a bid of ₹{amount}"     | `/tasks/{id}`        |
+| Bid accepted           | Tasker            | "Your bid was accepted for \"{task_title}\""| "{poster_name} accepted your offer"           | `/tasks/{id}`        |
+| New message            | Message receiver  | "New message from {sender_name}"            | Message preview (truncated)                   | `/messages/{id}`     |
+| Tasker marks complete  | Taskmaster        | "Tasker marked job complete"                | "{tasker} marked \"{task}\" complete."        | `/tasks/{id}`        |
+| Taskmaster confirms    | Tasker            | "Task owner confirmed completion"           | "Task owner confirmed \"{task}\" is complete."| `/tasks/{id}`        |
+| Both confirmed         | Both              | "Task completed"                            | "\"{task}\" completed by both parties."       | `/tasks/{id}`        |
+
+**Rules:** Always include **who** (name) and **what** (task/message) in title or body. Always include **url** so tap opens the correct screen.
 
 ---
 

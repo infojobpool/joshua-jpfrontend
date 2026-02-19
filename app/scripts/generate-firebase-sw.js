@@ -41,7 +41,7 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage(function(payload) {
   var title = payload.notification && payload.notification.title || payload.data && payload.data.title || 'JobPool';
   var body = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || '';
-  var url = (payload.data && payload.data.url) || '/';
+  var url = (payload.data && (payload.data.url || payload.data.link)) || '/';
   var options = {
     body: body,
     icon: (payload.notification && payload.notification.image) || '/icons/icon-128x128.svg',
@@ -53,17 +53,22 @@ messaging.onBackgroundMessage(function(payload) {
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
   var url = event.notification.data && event.notification.data.url || '/';
+  var fullUrl = url.startsWith('http') ? url : (self.location.origin + (url.startsWith('/') ? url : '/' + url));
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
-      var fullUrl = url.startsWith('http') ? url : (self.location.origin + (url.startsWith('/') ? url : '/' + url));
       for (var i = 0; i < clientList.length; i++) {
-        var client = clientList[i];
-        if (client.url.indexOf(self.location.origin) === 0 && 'focus' in client) {
-          client.navigate(fullUrl);
-          return client.focus();
+        var c = clientList[i];
+        if (c.url.indexOf(self.location.origin) === 0 && 'focus' in c) {
+          if (c.url === fullUrl || c.url.split('?')[0] === fullUrl.split('?')[0]) {
+            return c.focus();
+          }
+          if (c.navigate) {
+            return c.navigate(fullUrl).then(function() { return c.focus(); });
+          }
+          break;
         }
       }
-      if (clients.openWindow) return clients.openWindow(fullUrl);
+      return clients.openWindow ? clients.openWindow(fullUrl) : Promise.resolve();
     })
   );
 });

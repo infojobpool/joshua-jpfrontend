@@ -96,7 +96,7 @@ export function InAppNotificationProvider() {
             };
             handlePushPayload(data);
             if ("Notification" in window && Notification.permission === "granted" && notif?.title) {
-              const url = (payload.data?.url as string) || "/";
+              const url = (payload.data?.url as string) || (payload.data?.link as string) || "/";
               const n = new Notification(notif.title, { body: notif.body ?? "" });
               n.onclick = () => {
                 n.close();
