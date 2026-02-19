@@ -144,15 +144,36 @@ export function InAppNotificationProvider() {
       return "web";
     };
 
-    const registerToken = async (token: string) => {
-      if (!token || token === "ERROR GET TOKEN") return;
+    const registerToken = async (fcmToken: string, retryCount = 0) => {
+      if (!fcmToken || fcmToken === "ERROR GET TOKEN") return;
+
+      // Ensure we have a JWT before sending (fixes 401 when push-token fires before auth is ready)
+      const jwt = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!jwt && retryCount < 5) {
+        // Retry after 2s - auth may still be hydrating (common in PWA Builder app on first load)
+        setTimeout(() => registerToken(fcmToken, retryCount + 1), 2000);
+        return;
+      }
+      if (!jwt) {
+        console.warn("Push: No JWT - sign in to register for push");
+        return;
+      }
+
       try {
         await axiosInstance.post("register-push/", {
-          fcm_token: token,
+          fcm_token: fcmToken,
           platform: getPlatform(),
         });
-      } catch (err) {
-        console.warn("Failed to register push token:", err);
+      } catch (err: unknown) {
+        const status = err && typeof err === "object" && "response" in err
+          ? (err as { response?: { status?: number } }).response?.status
+          : 0;
+        // Retry on 401 - token might have just been saved (race with login)
+        if (status === 401 && retryCount < 3) {
+          setTimeout(() => registerToken(fcmToken, retryCount + 1), 2000);
+        } else {
+          console.warn("Failed to register push token:", err);
+        }
       }
     };
 
