@@ -81,23 +81,11 @@ export default function ChatPageClient() {
       return;
     }
 
-    // Debug localStorage data
-    console.log('🔍 DEBUGGING USER DATA:');
-    console.log('🔍 Store userId:', userId);
-    console.log('🔍 Store user object:', user);
-    console.log('🔍 localStorage user:', localStorage.getItem('user'));
-    console.log('🔍 localStorage token:', localStorage.getItem('token'));
-    
     // Fix user.id if it's undefined
     if (userId && (!user?.id || user.id === undefined)) {
-      console.log('🔧 Fixing user.id - setting it to userId');
       const updatedUser = { ...user, id: userId, name: user?.name || "User" };
       useStore.setState({ user: updatedUser });
-      console.log('🔧 Updated user object:', updatedUser);
     }
-    
-    // Skip the problematic get-chat-id call for now
-    console.log('🔍 Chat ID:', chatId);
     fetchMessages();
     // Persist immediately so the list can show this convo even before messages load
     if (chatId) persistChatId(chatId)
@@ -107,55 +95,31 @@ export default function ChatPageClient() {
     scrollToBottom();
   }, [messages]);
 
-  // Auto-refresh messages every 10 seconds for real-time updates
+  // Refetch when user returns to tab (no auto-refresh interval)
   useEffect(() => {
     if (!userId || !chatId) return;
-    
-    const interval = setInterval(() => {
-      fetchMessages();
-           }, 20000); // Refresh every 20 seconds
-
-    return () => clearInterval(interval);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") fetchMessages(false);
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, [userId, chatId]);
 
   const fetchUserInfo = async (userId: string) => {
     try {
-      if (!userId || userId === "undefined" || userId === "unknown") {
-        console.log('⚠️ Invalid userId for profile fetch:', userId);
-        return null;
-      }
-      
-      console.log('🔄 Fetching user info for:', userId);
+      if (!userId || userId === "undefined" || userId === "unknown") return null;
       const response = await axiosInstance.get(`/profile?user_id=${userId}`);
-      console.log('👤 User profile response:', response.data);
-      
-      if (response.data && response.data.name) {
-        console.log('✅ Got user name from profile:', response.data.name);
-        return response.data.name;
-      }
-    } catch (error) {
-      console.log('⚠️ Could not fetch user profile for:', userId, error);
+      if (response.data && response.data.name) return response.data.name;
+    } catch {
+      // Ignore profile fetch errors
     }
     return null;
   };
 
-  const fetchMessages = async () => {
+  const fetchMessages = async (showLoading = true) => {
     try {
-      setLoading(true);
-      console.log('🔍 Fetching messages for chatId:', chatId);
-      console.log('🔍 Current userId:', userId);
-      
+      if (showLoading) setLoading(true);
       const response = await axiosInstance.get(`/get-messages/${chatId}`);
-      console.log('🔍 API Response:', response.data);
-      console.log('🔍 Response structure:', {
-        status: response.status,
-        statusText: response.statusText,
-        hasData: !!response.data,
-        dataKeys: response.data ? Object.keys(response.data) : 'no data',
-        statusCode: response.data?.status_code,
-        hasMessages: !!response.data?.data?.messages,
-        messageCount: response.data?.data?.messages?.length || 0
-      });
       
       // Handle different API response formats
       let fetchedMessages = [];
@@ -169,13 +133,11 @@ export default function ChatPageClient() {
         fetchedMessages = response.data.data;
       }
       
-      console.log('🔍 Extracted messages:', fetchedMessages);
       setMessages(fetchedMessages);
       
       // Determine other user info
       if (fetchedMessages.length > 0) {
         const firstMessage = fetchedMessages[0];
-        console.log('🔍 First message:', firstMessage);
         
         const currentUserId = userId;
         
@@ -199,7 +161,6 @@ export default function ChatPageClient() {
               otherUserId = msg.sender_id;
               otherUserName = msg.sender_name || "Unknown User";
               foundOtherUser = true;
-              console.log('🔍 Found other user from sender:', { otherUserId, otherUserName });
               break;
             } else if (msg.receiver_id !== currentUserId) {
               otherUserId = msg.receiver_id;
@@ -212,7 +173,6 @@ export default function ChatPageClient() {
         }
         
         if (!foundOtherUser) {
-          console.log('⚠️ Could not find other user from messages, using chatId parsing');
           // Fallback: try to parse from chatId
           const chatIdParts = chatId.split('_');
           const possibleOtherUserId = chatIdParts.find(part => 
@@ -222,7 +182,6 @@ export default function ChatPageClient() {
           if (possibleOtherUserId && possibleOtherUserId !== userId) {
             otherUserId = possibleOtherUserId;
             otherUserName = `User ${possibleOtherUserId}`;
-            console.log('🔍 Using chatId parsing:', { otherUserId, otherUserName });
           } else {
             otherUserId = "unknown";
             otherUserName = "Unknown User";
@@ -245,30 +204,19 @@ export default function ChatPageClient() {
         
         // CRITICAL FIX: Ensure otherUserId is NOT the current user
         if (otherUserId === currentUserId) {
-          console.log('⚠️ otherUserId is same as currentUserId, this is wrong!');
-          console.log('🔍 Current user:', currentUserId);
-          console.log('🔍 Other user:', otherUserId);
-          console.log('🔍 First message:', firstMessage);
-          
           // Try to find the actual other user from the message
           if (firstMessage.receiver_id !== currentUserId) {
             otherUserId = firstMessage.receiver_id;
           } else if (firstMessage.sender_id !== currentUserId) {
             otherUserId = firstMessage.sender_id;
           }
-          
-          console.log('🔍 Corrected otherUserId:', otherUserId);
         }
-        
-        console.log('🔍 Other user info from message:', { otherUserId, otherUserName });
         
         // If we don't have a proper name, try to fetch it from the profile API
         if (!otherUserName || otherUserName === "Unknown User" || otherUserName === "unknown") {
-          console.log('🔄 Trying to fetch user info from profile API...');
           const fetchedName = await fetchUserInfo(otherUserId);
           if (fetchedName) {
             otherUserName = fetchedName;
-            console.log('✅ Got user name from profile API:', fetchedName);
           }
         }
         
@@ -278,7 +226,6 @@ export default function ChatPageClient() {
             otherUserName = otherUserId.length > 3 
               ? otherUserId.charAt(0).toUpperCase() + otherUserId.slice(1)
               : "User " + otherUserId;
-            console.log('🔄 Generated name from user ID:', otherUserName);
           } else {
             otherUserName = "Unknown User";
           }
@@ -310,12 +257,8 @@ export default function ChatPageClient() {
         console.log('🔍 Chat ID parts:', chatIdParts);
         
         if (chatIdParts.length >= 2) {
-          // Try to find the other user ID from chat ID parts
           const possibleOtherUserId = chatIdParts.find(part => part !== userId && part !== "undefined" && part !== "unknown");
-          console.log('🔍 Possible other user ID:', possibleOtherUserId);
-          
           if (possibleOtherUserId && possibleOtherUserId !== userId) {
-            console.log('🔄 Trying to get user info from chat ID parts:', possibleOtherUserId);
             const fetchedName = await fetchUserInfo(possibleOtherUserId);
             if (fetchedName) {
               setOtherUserName(fetchedName);
@@ -326,7 +269,6 @@ export default function ChatPageClient() {
                   name: fetchedName,
                 }
               });
-              console.log('✅ Got user name from chat ID analysis:', fetchedName);
               // Persist chat id for list page
               persistChatId(chatId)
               return;
@@ -334,13 +276,8 @@ export default function ChatPageClient() {
           }
         }
         
-        // Try alternative chat ID formats - maybe it's just a single user ID
         if (chatId && chatId !== userId && chatId !== "undefined" && chatId !== "unknown") {
-          console.log('🔄 Trying chat ID as direct user ID:', chatId);
-          
-          // CRITICAL: Ensure we're not setting the current user as the other user
           if (chatId === userId) {
-            console.log('⚠️ Chat ID is same as current user ID, skipping');
             return;
           }
           
@@ -361,8 +298,6 @@ export default function ChatPageClient() {
           }
         }
         
-        // Fallback to unknown user
-        console.log('⚠️ Could not determine other user, setting as unknown');
         setOtherUserName("Unknown User");
         setChatInfo({
           chatId,
@@ -373,7 +308,6 @@ export default function ChatPageClient() {
         });
       }
     } catch (error: any) {
-      console.error('❌ Error fetching messages:', error);
       toast.error(error.response?.data?.message || 'Failed to load messages');
       setOtherUserName("Unknown User");
       setChatInfo({
@@ -384,7 +318,7 @@ export default function ChatPageClient() {
         }
       });
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -412,23 +346,10 @@ export default function ChatPageClient() {
       
       // Log the full URL being called
       console.log('🔍 Full API URL:', `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/send-message/`);
-      console.log('🔍 Request payload:', {
-        chat_id: chatId,
-        sender_id: currentUserId,
-        receiver_id: chatInfo.otherUser.id,
-        description: message.trim(),
-      });
-      
-      // CRITICAL: Check if receiver_id is correct
       if (chatInfo.otherUser.id === currentUserId) {
-        console.error('❌ CRITICAL ERROR: receiver_id is same as sender_id!');
-        console.error('❌ This will cause messages to be sent to yourself!');
         toast.error('Cannot send message: Invalid recipient configuration');
         return;
       }
-      console.log('🔍 User object from store:', user);
-      console.log('🔍 Store userId:', userId);
-      console.log('🔍 User.id:', user?.id);
       
       // Try different possible endpoints for sending messages
       let response;
@@ -442,7 +363,6 @@ export default function ChatPageClient() {
         });
       } catch (error: any) {
         if (error.response?.status === 404) {
-          console.log('🔄 /send-message/ not found, trying /create-message/...');
           try {
             response = await axiosInstance.post('/create-message/', {
               chat_id: chatId,
@@ -452,7 +372,6 @@ export default function ChatPageClient() {
             });
           } catch (secondError: any) {
             if (secondError.response?.status === 404) {
-              console.log('🔄 /create-message/ not found, trying /add-message/...');
               try {
                 response = await axiosInstance.post('/add-message/', {
                   chat_id: chatId,
@@ -461,7 +380,6 @@ export default function ChatPageClient() {
                   description: message.trim(),
                 });
               } catch (thirdError: any) {
-                console.log('🔄 /add-message/ not found, trying /message/...');
                 response = await axiosInstance.post('/message/', {
                   chat_id: chatId,
                   sender_id: currentUserId,
@@ -496,19 +414,11 @@ export default function ChatPageClient() {
         // Mark message as read
         try {
           await axiosInstance.put(`/mark-as-read/${newMessage.id}`);
-        } catch (error) {
-          console.error('Error marking message as read:', error);
+        } catch {
+          // Ignore
         }
       }
-          } catch (error: any) {
-        console.error('❌ Error sending message:', error);
-        console.error('❌ Error details:', {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          url: error.config?.url,
-          method: error.config?.method
-        });
+      } catch (error: any) {
         toast.error(error.response?.data?.message || 'Failed to send message');
       } finally {
         setSending(false);
@@ -537,13 +447,10 @@ export default function ChatPageClient() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="relative">
-            <div className="h-12 w-12 rounded-full border-4 border-blue-500/20 border-t-blue-600 animate-spin" />
-            <div className="absolute inset-0 m-auto h-5 w-5 rounded-full bg-blue-600/10 animate-ping" />
-          </div>
-          <span className="text-sm text-muted-foreground animate-pulse">Loading chat...</span>
+      <div className="flex h-screen items-center justify-center bg-[#f8fafc]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-10 w-10 rounded-xl border-2 border-indigo-200 border-t-indigo-600 animate-spin" />
+          <span className="text-sm text-slate-500 font-medium">Loading chat...</span>
         </div>
       </div>
     );
@@ -567,12 +474,12 @@ export default function ChatPageClient() {
   const taskId = searchParams?.get('task_id') || chatInfo?.task?.id || ''
 
   return (
-    <div className="flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 overflow-hidden fixed inset-0 z-50">
+    <div className="flex flex-col bg-[#f8fafc] overflow-hidden fixed inset-0 z-50">
       <Toaster position="top-right" />
       
-      {/* Chat Header - Clean Mobile Design */}
-      <header className="bg-white/95 backdrop-blur-xl border-b border-gray-200/30 flex-shrink-0 shadow-sm">
-        <div className="flex h-14 items-center px-4 gap-3">
+      {/* Chat Header */}
+      <header className="bg-white border-b border-slate-200/80 flex-shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+        <div className="flex h-14 md:h-16 items-center px-4 gap-3">
           <button
             onClick={() => {
               // Check if we came from a task page
@@ -600,34 +507,34 @@ export default function ChatPageClient() {
                 router.push('/messages')
               }
             }}
-            className="p-2.5 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors touch-manipulation flex-shrink-0"
+            className="p-2.5 -ml-1 rounded-xl hover:bg-slate-100 active:bg-slate-200 transition-colors touch-manipulation flex-shrink-0"
             aria-label="Back"
           >
-            <ArrowLeft className="h-5 w-5 text-gray-700" />
+            <ArrowLeft className="h-5 w-5 text-slate-700" />
           </button>
           
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="relative flex-shrink-0">
-              <div className="h-10 w-10 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 rounded-full flex items-center justify-center text-white font-bold text-base shadow-sm">
+              <div className="h-11 w-11 rounded-full flex items-center justify-center text-white font-semibold text-lg shadow-md bg-gradient-to-br from-indigo-500 to-violet-600 ring-2 ring-white">
                 {otherUserName?.charAt(0)?.toUpperCase() || "U"}
               </div>
               <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></div>
             </div>
             
             <div className="flex-1 min-w-0">
-              <h2 className="font-bold text-gray-900 text-base truncate">
+              <h2 className="font-semibold text-slate-900 text-base truncate">
                 {otherUserName || chatInfo?.otherUser?.name || "Unknown User"}
               </h2>
               {taskTitle ? (
-                <div className="text-xs text-gray-600 flex items-center gap-1.5 truncate">
-                  <span className="px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-medium text-xs">Task</span>
-                  <Link href={taskId ? `/tasks/${taskId}` : '#'} className="hover:text-blue-700 truncate">
+                <div className="text-xs text-slate-500 flex items-center gap-1.5 truncate mt-0.5">
+                  <span className="px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 font-medium">Task</span>
+                  <Link href={taskId ? `/tasks/${taskId}` : '#'} className="text-slate-600 hover:text-indigo-600 truncate">
                     {taskTitle}
                   </Link>
                 </div>
               ) : (
-                <p className="text-xs text-emerald-600 flex items-center gap-1.5 font-medium">
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                <p className="text-xs text-emerald-600 flex items-center gap-1.5 font-medium mt-0.5">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
                   Active now
                 </p>
               )}
@@ -636,19 +543,21 @@ export default function ChatPageClient() {
         </div>
       </header>
 
-      {/* Messages Area - Mobile Optimized */}
-      <ScrollArea className="flex-1 bg-gradient-to-b from-slate-50 via-blue-50/20 to-white min-h-0">
-        <div className="px-4 py-4 space-y-4 h-full max-w-4xl mx-auto" style={{ paddingBottom: '140px' }}>
+      {/* Messages Area */}
+      <ScrollArea className="flex-1 min-h-0 bg-[#f1f5f9]/50">
+        <div className="px-4 py-4 space-y-3 h-full max-w-3xl mx-auto" style={{ paddingBottom: '140px' }}>
           
           {messages.length === 0 && (
-            <div className="text-center py-12 space-y-4">
-              <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            <div className="text-center py-16 space-y-5">
+              <div className="w-20 h-20 mx-auto rounded-2xl flex items-center justify-center bg-gradient-to-br from-indigo-100 to-violet-100 shadow-inner">
+                <svg className="w-10 h-10 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </div>
-              <p className="text-gray-600 text-lg font-medium">Start your conversation</p>
-              <p className="text-gray-400 text-sm">Send a message to begin chatting</p>
+              <div>
+                <p className="text-slate-700 text-lg font-semibold">Start your conversation</p>
+                <p className="text-slate-500 text-sm mt-1">Send a message to begin chatting</p>
+              </div>
             </div>
           )}
           
@@ -673,32 +582,26 @@ export default function ChatPageClient() {
             return (
               <div
                 key={msg.id || msg.messagesid || `msg-${index}`}
-                className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} items-end gap-2 mb-4`}
+                className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} items-end gap-2`}
               >
                 {!isOwnMessage && (
-                  <div className="h-8 w-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                  <div className="h-8 w-8 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0 bg-gradient-to-br from-emerald-500 to-teal-600 shadow">
                     {senderName?.charAt(0)?.toUpperCase() || "U"}
                   </div>
                 )}
-                <div className={`max-w-[75%] ${isOwnMessage ? 'order-1' : 'order-2'}`}>
+                <div className={`max-w-[80%] sm:max-w-[70%] ${isOwnMessage ? 'order-1' : 'order-2'}`}>
                   <div
-                    className={`rounded-2xl px-4 py-3 ${
+                    className={`rounded-2xl px-4 py-2.5 ${
                       isOwnMessage
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
-                        : 'bg-white text-gray-900 border border-gray-200 shadow-sm'
+                        ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md'
+                        : 'bg-white text-slate-800 border border-slate-200/80 shadow-sm'
                     }`}
                   >
-                    <p className="text-sm leading-relaxed">{msg.description}</p>
+                    <p className="text-[15px] leading-snug">{msg.description}</p>
                   </div>
-                  <div className={`flex items-center gap-1.5 mt-1.5 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-                    <p className="text-xs text-gray-500">
-                      {new Date(msg.tstamp).toLocaleTimeString('en-US', { 
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        hour12: true
-                      })}
-                    </p>
-                  </div>
+                  <p className={`text-[11px] text-slate-400 mt-1 ${isOwnMessage ? 'text-right mr-1' : 'ml-1'}`}>
+                    {new Date(msg.tstamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                  </p>
                 </div>
               </div>
             );
@@ -708,38 +611,36 @@ export default function ChatPageClient() {
         </div>
       </ScrollArea>
 
-      {/* Clean Message Input - Mobile Optimized */}
+      {/* Message Input */}
       <div 
-        className="bg-white/95 backdrop-blur-xl border-t border-gray-200/30 p-3 flex-shrink-0 shadow-2xl fixed left-0 right-0"
+        className="bg-white border-t border-slate-200/80 p-3 flex-shrink-0 fixed left-0 right-0 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]"
         style={{
-          bottom: 'calc(env(safe-area-inset-bottom) + 60px)', // Above bottom nav
-          zIndex: 51, // Above bottom nav
+          bottom: 'calc(env(safe-area-inset-bottom) + 60px)',
+          zIndex: 51,
         }}
       >
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-3">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                placeholder="Type your message..."
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                onFocus={() => {
-                  setTimeout(() => {
-                    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-                  }, 100)
-                }}
-                ref={inputRef}
-                className="w-full px-4 py-3 border-2 border-gray-200/50 focus:border-blue-500 rounded-full bg-gray-50/60 focus:bg-white text-base font-medium shadow-sm transition-all duration-200"
-                style={{ fontSize: '16px' }} // Prevents zoom on iOS
-                disabled={sending}
-              />
-            </div>
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder="Type a message..."
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              onFocus={() => {
+                setTimeout(() => {
+                  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }, 100);
+              }}
+              ref={inputRef}
+              className="flex-1 px-4 py-3 border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 rounded-xl bg-slate-50 focus:bg-white text-base transition-all outline-none"
+              style={{ fontSize: '16px' }}
+              disabled={sending}
+            />
             <button
               onClick={sendMessage}
               disabled={!message.trim() || sending}
-              className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full disabled:opacity-50 shadow-lg transition-all duration-200 active:scale-95 touch-manipulation flex-shrink-0"
+              className="p-3 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl disabled:opacity-50 shadow-md hover:shadow-lg transition-all active:scale-95 touch-manipulation flex-shrink-0"
               aria-label="Send message"
             >
               {sending ? (

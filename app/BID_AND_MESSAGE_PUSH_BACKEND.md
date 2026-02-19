@@ -231,6 +231,26 @@ def on_task_fully_completed(job_id, taskmaster_user_id, tasker_user_id, task_tit
 
 ---
 
+## 8a. Backend Implementation: Web Push Redirect
+
+The backend (`utils/fcm.py`) implements web push redirect via `WebpushConfig`:
+
+- `webpush=messaging.WebpushConfig(fcm_options=messaging.WebpushFCMOptions(link=full_url))`
+- `full_url` = `FRONTEND_BASE_URL` + path (e.g. `https://www.jobpool.in` + `/messages/chatId`)
+- `webpush` is only set when a non-empty `url` is provided
+
+**Env configuration (Render):**
+
+Set `FRONTEND_BASE_URL` in your backend env. Defaults to `https://www.jobpool.in` if not set:
+
+```
+FRONTEND_BASE_URL=https://www.jobpool.in
+```
+
+If the frontend uses a different domain, set your actual domain (e.g. `https://app.jobpool.in`). This allows web/PWA notifications to open the correct page when tapped.
+
+---
+
 ## 9. Where to Add the Hooks
 
 Find these endpoints in your backend and add the `send_push_to_user` call **after** the DB write succeeds:

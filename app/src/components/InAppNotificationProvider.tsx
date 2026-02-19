@@ -61,10 +61,30 @@ export function InAppNotificationProvider() {
     window.addEventListener("push-notification", onPushEvent);
     window.addEventListener("push-notification-click", onPushEvent);
 
-    // Service worker postMessage (when Web Push is used and SW forwards to client)
+    // Service worker postMessage (when Web Push is used and SW forwards to client - e.g. foreground on dashboard)
     const sw = navigator.serviceWorker;
+    const showToastForPayload = (payload: Record<string, unknown>) => {
+      const notif = (payload.notification as { title?: string; body?: string }) || {};
+      const data = (payload.data as Record<string, unknown>) || payload;
+      const title = notif.title ?? (data.title as string) ?? "Notification";
+      const body = notif.body ?? (data.body as string) ?? "";
+      const url = (data.url as string) || (data.link as string) || "/";
+      const fullUrl = url.startsWith("http") ? url : window.location.origin + (url.startsWith("/") ? url : "/" + url);
+      toast(title, {
+        description: body,
+        action: { label: "View", onClick: () => { window.location.href = fullUrl; } },
+        duration: 5000,
+      });
+    };
     const onSwMessage = (e: MessageEvent) => {
-      if (e.data?.type === "push" && e.data?.payload) handlePushPayload(e.data.payload);
+      if (e.data?.type === "push" && e.data?.payload) {
+        const p = e.data.payload as { notification?: { title?: string; body?: string }; data?: Record<string, unknown> };
+        const notif = p.notification || {};
+        const data = p.data || {};
+        const merged = { ...data, title: (data.title as string) || notif.title, body: (data.body as string) || notif.body, notification: notif };
+        handlePushPayload(merged);
+        showToastForPayload(p);
+      }
     };
     if (sw) sw.addEventListener("message", onSwMessage);
 

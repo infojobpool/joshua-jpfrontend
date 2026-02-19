@@ -38,6 +38,31 @@ importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-comp
 firebase.initializeApp(${JSON.stringify(config, null, 2)});
 
 const messaging = firebase.messaging();
+
+// Forward push to focused/visible page clients (foreground) so they can show toast.
+// When app is in foreground, FCM may deliver to SW; we forward so the page shows a toast.
+self.addEventListener('push', function(event) {
+  if (!event.data) return;
+  var data = {};
+  try {
+    data = event.data.json();
+  } catch (e) {
+    return;
+  }
+  var payload = { notification: data.notification || {}, data: data.data || data };
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      for (var i = 0; i < clientList.length; i++) {
+        var c = clientList[i];
+        if (c.visibilityState === 'visible' || c.focused) {
+          c.postMessage({ type: 'push', payload: payload });
+          break; // One visible client is enough
+        }
+      }
+    })
+  );
+});
+
 messaging.onBackgroundMessage(function(payload) {
   var title = payload.notification && payload.notification.title || payload.data && payload.data.title || 'JobPool';
   var body = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || '';
