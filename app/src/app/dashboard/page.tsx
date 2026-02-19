@@ -3573,7 +3573,9 @@ export default function Dashboard() {
             </div>
             <div className="px-4 py-3 border-t bg-gray-50 flex gap-2">
               <Button variant="outline" className="h-9 px-3 border-gray-300">Mark all read</Button>
-              <Button className="h-9 px-3 bg-emerald-600 hover:bg-emerald-700">View all</Button>
+              <Link href="/notifications">
+                <Button className="h-9 px-3 bg-emerald-600 hover:bg-emerald-700">View all</Button>
+              </Link>
             </div>
           </div>
         )}

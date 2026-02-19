@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { User, Settings, Bell, Shield, HelpCircle, LogOut, Edit3, Camera } from "lucide-react";
 import { useIsMobile } from "./MobileWrapper";
 import { MobileCard, MobileCardHeader, MobileCardContent } from "./MobileCard";
@@ -144,14 +145,13 @@ export function MobileProfile() {
             <div className="space-y-1">
               {menuItems.map((item) => {
                 const Icon = item.icon;
+                const isNotifications = item.id === "notifications";
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => isNotifications ? router.push("/notifications") : setActiveTab(item.id)}
                     className={`w-full flex items-center space-x-3 p-3 rounded-xl transition-colors ${
-                      activeTab === item.id
-                        ? 'bg-blue-50 text-blue-600'
-                        : 'hover:bg-gray-50'
+                      activeTab === item.id ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'
                     }`}
                   >
                     <Icon className="h-5 w-5" />
