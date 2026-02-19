@@ -53,6 +53,8 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [allNotifications, setAllNotifications] = useState<any[]>([]);
   const [authReady, setAuthReady] = useState(false);
+  const [fcmToken, setFcmToken] = useState<string | null>(null);
+  const [tokenCopied, setTokenCopied] = useState(false);
 
   // Sort notifications by creation date (newest first)
   const sortedNotifications = useMemo(() => {
@@ -81,8 +83,25 @@ export default function NotificationsPage() {
     setLoading(false);
   }, [authReady, userId, router, sortedNotifications]);
 
+  // Listen for FCM token (from PWA Builder app) so user can copy it for Firebase "Send test message"
+  useEffect(() => {
+    const stored = (window as unknown as { __FCM_TOKEN?: string }).__FCM_TOKEN;
+    if (stored) setFcmToken(stored);
+    const onToken = (e: Event) => setFcmToken((e as CustomEvent<string>).detail);
+    window.addEventListener("fcm-token-available", onToken);
+    return () => window.removeEventListener("fcm-token-available", onToken);
+  }, []);
+
   const handleMarkAllRead = () => {
     markAllRead();
+  };
+
+  const handleCopyFcmToken = () => {
+    if (fcmToken) {
+      navigator.clipboard.writeText(fcmToken);
+      setTokenCopied(true);
+      setTimeout(() => setTokenCopied(false), 2000);
+    }
   };
 
   // Test in-app notification (simulates push from PWA Builder / FCM) — for checking web & Android
@@ -175,8 +194,30 @@ export default function NotificationsPage() {
           )}
         </div>
 
-        {/* Test in-app notification (for web & Android check) */}
-        <div className="mb-4 flex justify-end">
+        {/* Test in-app notification & FCM token (for Firebase "Send test message") */}
+        <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+          {fcmToken && (
+            <Card className="flex-1 min-w-0 max-w-2xl">
+              <CardContent className="p-3">
+                <p className="text-xs font-medium text-gray-600 mb-1">
+                  FCM token (paste into Firebase → Send test message):
+                </p>
+                <div className="flex gap-2">
+                  <code className="flex-1 truncate text-xs bg-gray-100 px-2 py-1 rounded">
+                    {fcmToken}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyFcmToken}
+                    className="shrink-0"
+                  >
+                    {tokenCopied ? "Copied!" : "Copy"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <Button
             variant="outline"
             size="sm"

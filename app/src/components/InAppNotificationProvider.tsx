@@ -182,7 +182,11 @@ export function InAppNotificationProvider() {
     const onPushToken = (e: Event) => {
       const ev = e as CustomEvent<string>;
       const token = typeof ev.detail === "string" ? ev.detail : null;
-      if (token) registerToken(token);
+      if (token) {
+        (window as unknown as { __FCM_TOKEN?: string }).__FCM_TOKEN = token;
+        window.dispatchEvent(new CustomEvent("fcm-token-available", { detail: token }));
+        registerToken(token);
+      }
     };
 
     window.addEventListener("push-token", onPushToken);
@@ -207,7 +211,11 @@ export function InAppNotificationProvider() {
           const app = getApps().length ? getApp() : initializeApp(config);
           const messaging = getMessaging(app);
           const token = await getToken(messaging, { vapidKey });
-          if (!cancelled && token) registerToken(token);
+          if (!cancelled && token) {
+            (window as unknown as { __FCM_TOKEN?: string }).__FCM_TOKEN = token;
+            window.dispatchEvent(new CustomEvent("fcm-token-available", { detail: token }));
+            registerToken(token);
+          }
         } catch {
           // User denied permission or getToken failed – skip register-push (no crash).
         }
