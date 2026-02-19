@@ -96,7 +96,14 @@ export function InAppNotificationProvider() {
             };
             handlePushPayload(data);
             if ("Notification" in window && Notification.permission === "granted" && notif?.title) {
-              new Notification(notif.title, { body: notif.body ?? "" });
+              const url = (payload.data?.url as string) || "/";
+              const n = new Notification(notif.title, { body: notif.body ?? "" });
+              n.onclick = () => {
+                n.close();
+                window.focus();
+                const fullUrl = url.startsWith("http") ? url : window.location.origin + (url.startsWith("/") ? url : "/" + url);
+                window.location.href = fullUrl;
+              };
             }
           });
         } catch {

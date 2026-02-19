@@ -39,12 +39,33 @@ firebase.initializeApp(${JSON.stringify(config, null, 2)});
 
 const messaging = firebase.messaging();
 messaging.onBackgroundMessage(function(payload) {
-  var title = payload.notification && payload.notification.title || 'JobPool';
+  var title = payload.notification && payload.notification.title || payload.data && payload.data.title || 'JobPool';
+  var body = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || '';
+  var url = (payload.data && payload.data.url) || '/';
   var options = {
-    body: (payload.notification && payload.notification.body) || '',
-    icon: (payload.notification && payload.notification.image) || '/icons/icon-128x128.svg'
+    body: body,
+    icon: (payload.notification && payload.notification.image) || '/icons/icon-128x128.svg',
+    data: { url: url }
   };
   return self.registration.showNotification(title, options);
+});
+
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  var url = event.notification.data && event.notification.data.url || '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      var fullUrl = url.startsWith('http') ? url : (self.location.origin + (url.startsWith('/') ? url : '/' + url));
+      for (var i = 0; i < clientList.length; i++) {
+        var client = clientList[i];
+        if (client.url.indexOf(self.location.origin) === 0 && 'focus' in client) {
+          client.navigate(fullUrl);
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) return clients.openWindow(fullUrl);
+    })
+  );
 });
 `;
 
