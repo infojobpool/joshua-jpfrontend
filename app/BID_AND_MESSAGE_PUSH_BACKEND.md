@@ -253,6 +253,8 @@ If the frontend uses a different domain, set your actual domain (e.g. `https://a
 
 ## 9. Where to Add the Hooks
 
+**Mark complete – both sides:** When tasker or taskmaster hits "Mark as complete", the **other party** must get a push notification so they can confirm. Add hooks to both endpoints below.
+
 Find these endpoints in your backend and add the `send_push_to_user` call **after** the DB write succeeds:
 
 | Event              | Endpoint                                          |
