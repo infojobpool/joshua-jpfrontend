@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { toast } from "sonner";
 import useStore from "@/lib/Zustand";
 import axiosInstance from "@/lib/axiosInstance";
 
@@ -95,13 +96,23 @@ export function InAppNotificationProvider() {
               ...payload.data,
             };
             handlePushPayload(data);
+            const url = (payload.data?.url as string) || (payload.data?.link as string) || "/";
+            const fullUrl = url.startsWith("http") ? url : window.location.origin + (url.startsWith("/") ? url : "/" + url);
+            // Show toast when app is in foreground (user always sees it)
+            toast(notif?.title ?? "Notification", {
+              description: notif?.body ?? "",
+              action: {
+                label: "View",
+                onClick: () => { window.location.href = fullUrl; },
+              },
+              duration: 5000,
+            });
+            // Also show system notification when permitted
             if ("Notification" in window && Notification.permission === "granted" && notif?.title) {
-              const url = (payload.data?.url as string) || (payload.data?.link as string) || "/";
               const n = new Notification(notif.title, { body: notif.body ?? "" });
               n.onclick = () => {
                 n.close();
                 window.focus();
-                const fullUrl = url.startsWith("http") ? url : window.location.origin + (url.startsWith("/") ? url : "/" + url);
                 window.location.href = fullUrl;
               };
             }

@@ -58,12 +58,14 @@ self.addEventListener('notificationclick', function(event) {
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
       for (var i = 0; i < clientList.length; i++) {
         var c = clientList[i];
-        if (c.url.indexOf(self.location.origin) === 0 && 'focus' in c) {
-          if (c.url === fullUrl || c.url.split('?')[0] === fullUrl.split('?')[0]) {
-            return c.focus();
-          }
+        if (c.url.indexOf(self.location.origin) === 0) {
+          var baseUrl = c.url.split('?')[0];
+          var targetBase = fullUrl.split('?')[0];
+          if (baseUrl === targetBase) return c.focus();
           if (c.navigate) {
-            return c.navigate(fullUrl).then(function() { return c.focus(); });
+            return c.navigate(fullUrl).then(function() { return c.focus(); }).catch(function() {
+              return clients.openWindow ? clients.openWindow(fullUrl) : Promise.resolve();
+            });
           }
           break;
         }

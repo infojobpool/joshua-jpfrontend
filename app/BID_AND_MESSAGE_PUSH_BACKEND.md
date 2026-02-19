@@ -34,6 +34,7 @@ def send_push_to_user(user_id, title, body, type="system", url=""):
     # - Deduplicate by fcm_token (below)
     # - Or limit: send only to most recent token, or 1 per platform (web/android/ios)
     seen = set()
+    full_url = f"https://www.jobpool.in{url}" if url and not url.startswith("http") else (url or "https://www.jobpool.in")
     for token in tokens:
         # Skip duplicate tokens (same user can have multiple from tabs/sessions)
         t = token.get("fcm_token") or token
@@ -50,10 +51,13 @@ def send_push_to_user(user_id, title, body, type="system", url=""):
                     "title": title,
                     "body": body,
                     "type": type,
-                    "url": url,
+                    "url": url or "/",
                 },
                 token=t if isinstance(t, str) else token["fcm_token"],
                 android=messaging.AndroidConfig(priority="high"),
+                webpush=messaging.WebpushConfig(
+                    fcm_options=messaging.WebpushFCMOptions(link=full_url),
+                ),
             )
             messaging.send(message)
         except Exception as e:
@@ -222,6 +226,8 @@ def on_task_fully_completed(job_id, taskmaster_user_id, tasker_user_id, task_tit
 | Both confirmed         | Both              | "Task completed"                            | "\"{task}\" completed by both parties."       | `/tasks/{id}`        |
 
 **Rules:** Always include **who** (name) and **what** (task/message) in title or body. Always include **url** so tap opens the correct screen.
+
+**webpush.fcm_options.link:** Enables redirect when user taps the notification (web + PWA). Use full URL: `https://www.jobpool.in/messages/xyz`.
 
 ---
 
