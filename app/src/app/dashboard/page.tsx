@@ -37,7 +37,9 @@ import {
   Settings,
   LogOut,
   ChevronDown,
-  Bell
+  Bell,
+  Gavel,
+  MessageSquare
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
@@ -150,17 +152,21 @@ function formatTimestampValue(raw: any): {
 
 export default function Dashboard() {
   const router = useRouter();
-  const { user, userId, isAuthenticated, logout } = useStore();
+  const { user, userId, isAuthenticated, logout, items: notificationItems, unreadCount, markAllRead } = useStore();
   const { isMobile } = useIsMobile();
   // Prevent SSR → CSR flicker on mobile by delaying mobile-only UI until mounted
   const [mounted, setMounted] = useState(false);
   // Notifications UI state
   const [showNotifications, setShowNotifications] = useState(false);
-  const dummyNotifications = [
-    { id: "n1", title: "Bid Accepted", desc: "Swanika accepted your bid on 'Install AC'.", time: "2m ago", tone: "success" },
-    { id: "n2", title: "Payment Confirmed", desc: "₹2,000 payment confirmed for 'Fix door hinge'.", time: "10m ago", tone: "info" },
-    { id: "n3", title: "New Message", desc: "You have a new message from Rahul.", time: "1h ago", tone: "neutral" },
-  ];
+  const formatTimeAgo = (iso: string) => {
+    const d = new Date(iso);
+    const diff = Date.now() - d.getTime();
+    if (diff < 60000) return "Just now";
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+    if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
+    return d.toLocaleDateString();
+  };
   // Robust user id resolution across sources (store → user → storage)
   const effectiveUserId = useMemo(() => {
     try {
@@ -3509,9 +3515,11 @@ export default function Dashboard() {
                 title="Notifications"
               >
                 <Bell className="h-5 w-5 text-gray-700" />
-                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full text-[10px] bg-emerald-600 text-white">
-                  3
-                </span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full text-[10px] font-medium bg-emerald-600 text-white">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -3528,9 +3536,11 @@ export default function Dashboard() {
               title="Notifications"
             >
               <Bell className="h-5 w-5 text-gray-700" />
-              <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full text-[10px] bg-emerald-600 text-white">
-                3
-              </span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full text-[10px] font-medium bg-emerald-600 text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </button>
             <Link href="/post-task" passHref className="ml-auto">
               <Button className="group bg-gray-900 hover:bg-gray-800 text-white font-semibold px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 text-lg">
@@ -3556,24 +3566,42 @@ export default function Dashboard() {
               </button>
             </div>
             <div className="max-h-[60vh] overflow-auto">
-              {dummyNotifications.map((n) => (
-                <div key={n.id} className="px-4 py-3 flex items-start gap-3 hover:bg-gray-50">
-                  <div className={`h-8 w-8 rounded-full flex items-center justify-center text-white ${n.tone === 'success' ? 'bg-emerald-500' : n.tone === 'info' ? 'bg-blue-500' : 'bg-gray-400'}`}>
-                    <Bell className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <div className="font-medium text-gray-900 truncate">{n.title}</div>
-                      <div className="text-xs text-gray-500 ml-2 whitespace-nowrap">{n.time}</div>
-                    </div>
-                    <div className="text-sm text-gray-600 line-clamp-2">{n.desc}</div>
-                  </div>
-                </div>
-              ))}
+              {notificationItems.length === 0 ? (
+                <div className="px-4 py-8 text-center text-gray-500 text-sm">No notifications yet</div>
+              ) : (
+                notificationItems.map((n) => {
+                  const href = n.link || "/notifications";
+                  const Icon = n.type === "bid" ? Gavel : n.type === "message" ? MessageSquare : Bell;
+                  const iconBg = n.type === "bid" ? "bg-amber-500" : n.type === "message" ? "bg-blue-500" : "bg-purple-500";
+                  return (
+                    <Link
+                      key={n.id}
+                      href={href}
+                      onClick={() => setShowNotifications(false)}
+                      className="block px-4 py-3 flex items-start gap-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                    >
+                      <div className={`h-8 w-8 rounded-full flex items-center justify-center text-white flex-shrink-0 ${iconBg}`}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className={`font-medium truncate ${!n.read ? "text-gray-900" : "text-gray-600"}`}>{n.title}</div>
+                          <div className="text-xs text-gray-500 whitespace-nowrap">{formatTimeAgo(n.createdAt)}</div>
+                        </div>
+                        {n.description && (
+                          <div className="text-sm text-gray-600 line-clamp-2 mt-0.5">{n.description}</div>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })
+              )}
             </div>
             <div className="px-4 py-3 border-t bg-gray-50 flex gap-2">
-              <Button variant="outline" className="h-9 px-3 border-gray-300">Mark all read</Button>
-              <Link href="/notifications">
+              <Button variant="outline" className="h-9 px-3 border-gray-300" onClick={() => { markAllRead(); setShowNotifications(false); }}>
+                Mark all read
+              </Button>
+              <Link href="/notifications" onClick={() => setShowNotifications(false)}>
                 <Button className="h-9 px-3 bg-emerald-600 hover:bg-emerald-700">View all</Button>
               </Link>
             </div>

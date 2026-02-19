@@ -315,7 +315,6 @@ const useStore = create<StoreState>((set) => ({
   notificationOpen: false,
   setNotifications: (items: NotificationItem[]) =>
     set(() => {
-      // Keep bid (received, not deleted), message, and system notifications for in-app list
       const filtered = items.filter((n) => {
         if (n.type === "message" || n.type === "system") return true;
         const isBid = n.type === "bid";
@@ -323,7 +322,10 @@ const useStore = create<StoreState>((set) => ({
         const notDeleted = !n.deleted && n.status !== "deleted" && n.status !== "withdrawn" && n.status !== "canceled";
         return isBid && isReceived && notDeleted;
       });
-      const compact = [...filtered]
+      const maxAge = 7 * 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      const pruned = filtered.filter((n) => now - Date.parse(n.createdAt) < maxAge);
+      const compact = pruned
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
         .slice(0, 20);
       const unread = compact.filter((n) => !n.read).length;
@@ -347,7 +349,11 @@ const useStore = create<StoreState>((set) => ({
         const notDeleted = !n.deleted && n.status !== "deleted" && n.status !== "withdrawn" && n.status !== "canceled";
         return isBid && isReceived && notDeleted;
       });
-      const compact = merged
+      // Auto-erase: drop notifications older than 7 days (keeps list lightweight, no perf impact)
+      const maxAge = 7 * 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      const pruned = merged.filter((n) => now - Date.parse(n.createdAt) < maxAge);
+      const compact = pruned
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
         .slice(0, 20);
       const unread = compact.filter((n) => !n.read).length;
