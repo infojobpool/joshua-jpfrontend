@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,6 +55,7 @@ export default function NotificationsPage() {
   const [authReady, setAuthReady] = useState(false);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [tokenCopied, setTokenCopied] = useState(false);
+  const [registerPushStatus, setRegisterPushStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
   // Sort notifications by creation date (newest first)
   const sortedNotifications = useMemo(() => {
@@ -91,6 +92,29 @@ export default function NotificationsPage() {
     window.addEventListener("fcm-token-available", onToken);
     return () => window.removeEventListener("fcm-token-available", onToken);
   }, []);
+
+  // Re-register push token when visiting this page (fixes 401 when token wasn't ready earlier)
+  const registerPushWithBackend = useCallback(async () => {
+    const token = (window as unknown as { __FCM_TOKEN?: string }).__FCM_TOKEN;
+    const jwt = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token || !jwt) {
+      setRegisterPushStatus("error");
+      return;
+    }
+    setRegisterPushStatus("loading");
+    try {
+      const ua = navigator.userAgent.toLowerCase();
+      const platform = /android/.test(ua) ? "android" : /iphone|ipad|ipod/.test(ua) ? "ios" : "web";
+      await axiosInstance.post("register-push/", { fcm_token: token, platform });
+      setRegisterPushStatus("success");
+    } catch {
+      setRegisterPushStatus("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (fcmToken && userId) registerPushWithBackend();
+  }, [fcmToken, userId, registerPushWithBackend]);
 
   const handleMarkAllRead = () => {
     markAllRead();
@@ -202,8 +226,8 @@ export default function NotificationsPage() {
                 <p className="text-xs font-medium text-gray-600 mb-1">
                   FCM token (paste into Firebase → Send test message):
                 </p>
-                <div className="flex gap-2">
-                  <code className="flex-1 truncate text-xs bg-gray-100 px-2 py-1 rounded">
+                <div className="flex flex-wrap gap-2 items-center">
+                  <code className="flex-1 min-w-0 truncate text-xs bg-gray-100 px-2 py-1 rounded">
                     {fcmToken}
                   </code>
                   <Button
@@ -214,7 +238,19 @@ export default function NotificationsPage() {
                   >
                     {tokenCopied ? "Copied!" : "Copy"}
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={registerPushWithBackend}
+                    disabled={registerPushStatus === "loading"}
+                    className="shrink-0"
+                  >
+                    {registerPushStatus === "loading" ? "..." : registerPushStatus === "success" ? "✓ Registered" : "Retry register"}
+                  </Button>
                 </div>
+                {registerPushStatus === "error" && (
+                  <p className="text-xs text-red-600 mt-1">Sign in again and retry, or check backend.</p>
+                )}
               </CardContent>
             </Card>
           )}
