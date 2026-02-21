@@ -67,9 +67,14 @@ messaging.onBackgroundMessage(function(payload) {
   var title = payload.notification && payload.notification.title || payload.data && payload.data.title || 'JobPool';
   var body = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || '';
   var url = (payload.data && (payload.data.url || payload.data.link)) || '/';
+  var origin = self.location.origin;
+  var iconUrl = (payload.notification && payload.notification.image) || origin + '/icons/icon-192x192-real.png';
+  var badgeUrl = origin + '/icons/icon-192x192-real.png';
   var options = {
     body: body,
-    icon: (payload.notification && payload.notification.image) || '/icons/icon-128x128.svg',
+    icon: iconUrl,
+    badge: badgeUrl,
+    tag: 'jobpool',
     data: { url: url }
   };
   return self.registration.showNotification(title, options);

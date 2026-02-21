@@ -198,10 +198,17 @@ export function InAppNotificationProvider() {
       }
 
       try {
-        await axiosInstance.post("register-push/", {
-          fcm_token: fcmToken,
-          platform: getPlatform(),
-        });
+        await axiosInstance.post(
+          "register-push/",
+          {
+            fcm_token: fcmToken,
+            platform: getPlatform(),
+          },
+          {
+            // Explicit auth header to avoid interceptor timing issues
+            headers: { Authorization: `Bearer ${jwt}` },
+          }
+        );
       } catch (err: unknown) {
         const status = err && typeof err === "object" && "response" in err
           ? (err as { response?: { status?: number } }).response?.status

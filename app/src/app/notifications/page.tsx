@@ -105,7 +105,14 @@ export default function NotificationsPage() {
     try {
       const ua = navigator.userAgent.toLowerCase();
       const platform = /android/.test(ua) ? "android" : /iphone|ipad|ipod/.test(ua) ? "ios" : "web";
-      await axiosInstance.post("register-push/", { fcm_token: token, platform });
+      await axiosInstance.post(
+        "register-push/",
+        { fcm_token: token, platform },
+        {
+          // Explicit auth header to avoid interceptor timing issues
+          headers: { Authorization: `Bearer ${jwt}` },
+        }
+      );
       setRegisterPushStatus("success");
     } catch {
       setRegisterPushStatus("error");
