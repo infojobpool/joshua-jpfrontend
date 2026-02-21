@@ -3,7 +3,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Script from "next/script";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PaymentModal } from "@/components/PaymentModal"; // Adjust path
 import { PaymentFailed } from "@/components/payment-failed"; // Adjust path
@@ -93,12 +92,35 @@ export default function PaymentPage() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [showPaymentModal, paymentStatus]);
 
-  // Check if Razorpay is loaded
+  const loadRazorpay = async (): Promise<boolean> => {
+    if (typeof window === "undefined") return false;
+    if (window.Razorpay) return true;
+
+    return new Promise((resolve) => {
+      const existing = document.getElementById("razorpay-checkout-js") as HTMLScriptElement | null;
+      if (existing) {
+        existing.addEventListener("load", () => resolve(!!window.Razorpay));
+        existing.addEventListener("error", () => resolve(false));
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.id = "razorpay-checkout-js";
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.async = true;
+      script.onload = () => resolve(!!window.Razorpay);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  // Ensure Razorpay script is loaded as early as possible
   useEffect(() => {
-    if (window.Razorpay) {
-      setRazorpayLoaded(true);
-      console.log("Razorpay loaded on mount");
-    }
+    (async () => {
+      const ok = await loadRazorpay();
+      setRazorpayLoaded(ok);
+      console.log("Razorpay loaded on mount:", ok);
+    })();
   }, []);
 
   // Fallback to query params or mock data if sessionStorage is empty
@@ -157,9 +179,11 @@ export default function PaymentPage() {
         throw new Error("Missing required order details");
       }
 
-      // Verify Razorpay script
-      if (!razorpayLoaded || !window.Razorpay) {
-        console.error("Razorpay not loaded:", { razorpayLoaded, hasWindowRazorpay: !!window.Razorpay });
+      // Verify Razorpay script (load on-demand for mobile reliability)
+      const scriptOk = await loadRazorpay();
+      setRazorpayLoaded(scriptOk);
+      if (!scriptOk || !window.Razorpay) {
+        console.error("Razorpay not loaded:", { razorpayLoaded: scriptOk, hasWindowRazorpay: !!window.Razorpay });
         throw new Error("Payment gateway not loaded. Please try again.");
       }
 
@@ -381,19 +405,6 @@ export default function PaymentPage() {
 
   return (
     <div>
-      <Script
-        src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="afterInteractive"
-        onLoad={() => {
-          console.log("Razorpay script loaded");
-          setRazorpayLoaded(true);
-        }}
-        onError={() => {
-          console.error("Failed to load Razorpay script");
-          setErrorMessage("Failed to load payment gateway");
-          setShowPaymentFailed(true);
-        }}
-      />
       <PaymentModal
         show={showPaymentModal}
         task={mockTask}
