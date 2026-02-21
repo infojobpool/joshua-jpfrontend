@@ -133,6 +133,17 @@ export default function PaymentPage() {
 
   console.log("PaymentPage mounted with params:", { taskId, bidAmount, taskerId, taskPosterId });
 
+  const isInAppWebView = (): boolean => {
+    if (typeof window === "undefined") return false;
+    const ua = navigator.userAgent || "";
+    const isIOS = /iphone|ipad|ipod/i.test(ua);
+    const isAndroid = /android/i.test(ua);
+    const isSafari = isIOS && /safari/i.test(ua) && !/crios|fxios|edgios/i.test(ua);
+    const isWebViewIOS = isIOS && !isSafari;
+    const isWebViewAndroid = isAndroid && /wv/.test(ua);
+    return isWebViewIOS || isWebViewAndroid;
+  };
+
   const handlePayment = async () => {
     console.log("handlePayment called at", new Date().toISOString());
     if (isSubmitting) {
@@ -185,6 +196,25 @@ export default function PaymentPage() {
       if (!scriptOk || !window.Razorpay) {
         console.error("Razorpay not loaded:", { razorpayLoaded: scriptOk, hasWindowRazorpay: !!window.Razorpay });
         throw new Error("Payment gateway not loaded. Please try again.");
+      }
+
+      // Persist details for redirect flow (webviews can skip handler)
+      try {
+        localStorage.setItem(
+          "pending_payment_order",
+          JSON.stringify({
+            postId: orderDetails.postId,
+            order_id: orderDetails.order_id,
+            tasker_id: taskerId,
+            taskmanager_id: taskPosterId,
+            bid_amount: orderDetails.bid_amount,
+            gst_amount: orderDetails.gst_amount,
+            commission_amount: orderDetails.commission_amount,
+            payable_amount: orderDetails.payable_amount,
+          })
+        );
+      } catch (e) {
+        console.warn("Failed to store pending payment order:", e);
       }
 
       // Razorpay checkout options
@@ -339,6 +369,13 @@ export default function PaymentPage() {
           },
         },
       };
+
+      // WebView fallback: force redirect flow to avoid blank screen in in-app browsers
+      if (isInAppWebView()) {
+        (options as Record<string, unknown>).redirect = true;
+        (options as Record<string, unknown>).callback_url =
+          `${window.location.origin}/payments/razorpay-callback`;
+      }
 
       console.log("Opening Razorpay checkout with options:", JSON.stringify(options, null, 2));
       const rzp = new window.Razorpay(options);
