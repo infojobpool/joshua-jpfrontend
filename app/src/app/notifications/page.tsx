@@ -56,6 +56,7 @@ export default function NotificationsPage() {
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [tokenCopied, setTokenCopied] = useState(false);
   const [registerPushStatus, setRegisterPushStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [lastTokenEventAt, setLastTokenEventAt] = useState<string | null>(null);
 
   // Sort notifications by creation date (newest first)
   const sortedNotifications = useMemo(() => {
@@ -88,7 +89,10 @@ export default function NotificationsPage() {
   useEffect(() => {
     const stored = (window as unknown as { __FCM_TOKEN?: string }).__FCM_TOKEN;
     if (stored) setFcmToken(stored);
-    const onToken = (e: Event) => setFcmToken((e as CustomEvent<string>).detail);
+    const onToken = (e: Event) => {
+      setFcmToken((e as CustomEvent<string>).detail);
+      setLastTokenEventAt(new Date().toISOString());
+    };
     window.addEventListener("fcm-token-available", onToken);
     return () => window.removeEventListener("fcm-token-available", onToken);
   }, []);
@@ -222,6 +226,37 @@ export default function NotificationsPage() {
               <CheckCircle className="h-4 w-4" />
               Mark All Read
             </Button>
+          )}
+        </div>
+
+        {/* Debug banner for FCM token status (temporary) */}
+        <div className="mb-6 rounded-lg border p-4 bg-white/80">
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge className={fcmToken ? "bg-green-600" : "bg-red-600"}>
+              {fcmToken ? "FCM Token: Present" : "FCM Token: Missing"}
+            </Badge>
+            <span className="text-sm text-gray-600">
+              Register push: {registerPushStatus}
+            </span>
+            {lastTokenEventAt && (
+              <span className="text-sm text-gray-500">
+                Token event: {new Date(lastTokenEventAt).toLocaleString()}
+              </span>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyFcmToken}
+              disabled={!fcmToken}
+            >
+              {tokenCopied ? "Copied" : "Copy FCM token"}
+            </Button>
+          </div>
+          {!fcmToken && (
+            <p className="mt-2 text-sm text-gray-500">
+              Token missing in iOS app means the native wrapper did not register for push.
+              Check iOS build (Push Notifications capability, Background Modes, and GoogleService-Info.plist).
+            </p>
           )}
         </div>
 
