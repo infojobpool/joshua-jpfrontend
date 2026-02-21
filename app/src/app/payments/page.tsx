@@ -52,6 +52,7 @@ export default function PaymentPage() {
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const [hasTriedOnce, setHasTriedOnce] = useState(false);
+  const [showWebviewHelp, setShowWebviewHelp] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -133,6 +134,16 @@ export default function PaymentPage() {
 
   console.log("PaymentPage mounted with params:", { taskId, bidAmount, taskerId, taskPosterId });
 
+  const buildPaymentUrl = (): string => {
+    if (typeof window === "undefined") return "/payments";
+    const params = new URLSearchParams();
+    params.set("taskId", taskId);
+    params.set("amount", String(bidAmount));
+    if (taskerId) params.set("taskerId", taskerId);
+    if (taskPosterId) params.set("taskPosterId", taskPosterId);
+    return `${window.location.origin}/payments?${params.toString()}`;
+  };
+
   const isInAppWebView = (): boolean => {
     if (typeof window === "undefined") return false;
     const ua = navigator.userAgent || "";
@@ -148,6 +159,10 @@ export default function PaymentPage() {
     console.log("handlePayment called at", new Date().toISOString());
     if (isSubmitting) {
       console.log("Prevented double submit");
+      return;
+    }
+    if (isInAppWebView()) {
+      setShowWebviewHelp(true);
       return;
     }
     setIsSubmitting(true);
@@ -438,6 +453,19 @@ export default function PaymentPage() {
     closeModal();
   };
 
+  const handleOpenInBrowser = () => {
+    const url = buildPaymentUrl();
+    const win = window.open(url, "_blank", "noopener,noreferrer");
+    if (!win) {
+      window.location.href = url;
+    }
+  };
+
+  const handleCopyLink = () => {
+    const url = buildPaymentUrl();
+    navigator.clipboard.writeText(url).catch(() => {});
+  };
+
   console.log("Current state:", { showPaymentModal, showPaymentFailed, paymentStatus, errorMessage, razorpayLoaded });
 
   return (
@@ -471,6 +499,23 @@ export default function PaymentPage() {
               <Button onClick={handleGoHome} className="bg-green-600 hover:bg-green-700">
                 Go Home
               </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+      {showWebviewHelp && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md mx-auto">
+            <CardHeader>
+              <CardTitle>Open in Browser to Pay</CardTitle>
+              <CardDescription>
+                Razorpay checkout is blocked in in-app browsers. Please open this page in Safari/Chrome to complete
+                payment.
+              </CardDescription>
+            </CardHeader>
+            <CardFooter className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={handleCopyLink}>Copy Link</Button>
+              <Button onClick={handleOpenInBrowser} className="bg-green-600 hover:bg-green-700">Open in Browser</Button>
             </CardFooter>
           </Card>
         </div>
