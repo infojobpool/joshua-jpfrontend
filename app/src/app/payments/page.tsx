@@ -150,7 +150,8 @@ export default function PaymentPage() {
     const isIOS = /iphone|ipad|ipod/i.test(ua);
     const isAndroid = /android/i.test(ua);
     const isSafari = isIOS && /safari/i.test(ua) && !/crios|fxios|edgios/i.test(ua);
-    const isWebViewIOS = isIOS && !isSafari;
+    const isPWAShell = /pwashell/i.test(ua);
+    const isWebViewIOS = (isIOS && !isSafari) || isPWAShell;
     const isWebViewAndroid = isAndroid && /wv/.test(ua);
     return isWebViewIOS || isWebViewAndroid;
   };
