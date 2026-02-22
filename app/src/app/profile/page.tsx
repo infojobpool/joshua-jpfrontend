@@ -160,6 +160,8 @@ export default function ProfilePage() {
         } catch {}
       }
       if (!effectiveUserId) {
+        setError("Failed to load profile: missing user id");
+        setIsLoading(false);
         return;
       }
 
@@ -167,37 +169,41 @@ export default function ProfilePage() {
         setIsLoading(true);
         const response = await axiosInstance.get(`/profile?user_id=${effectiveUserId}`);
         const data = response.data;
+        const payload = data?.data ?? data;
+        if (data?.status_code && data.status_code !== 200) {
+          throw new Error(data?.message || "Failed to load profile");
+        }
         setProfileUser({
-          profile_id: data.profile_id || "",
-          name: data.name || "",
-          email: data.email || "",
-          phone: data.phone_number || "",
-          addresses: Array.isArray(data.addresses)
-            ? data.addresses.map((addr: any, index: number) => ({
+          profile_id: payload.profile_id || "",
+          name: payload.name || "",
+          email: payload.email || "",
+          phone: payload.phone_number || "",
+          addresses: Array.isArray(payload.addresses)
+            ? payload.addresses.map((addr: any, index: number) => ({
                 id: index + 1,
                 address: addr.address || "",
                 isDefault: addr.isDefault || index === 0,
               }))
             : [{ id: 1, address: "", isDefault: true }],
           avatar:
-            data.profile_img || "/images/placeholder.svg?height=128&width=128",
-          joinDate: data.tstamp ? formatDate(data.tstamp) : "",
-          bank_info: data.bank_info
+            payload.profile_img || "/images/placeholder.svg?height=128&width=128",
+          joinDate: payload.tstamp ? formatDate(payload.tstamp) : "",
+          bank_info: payload.bank_info
             ? {
-                // account_holder_name: data.bank_info.account_holder_name || "",
-                bank_account_number: data.bank_info.bank_account_number || "",
-                ifsc_code: data.bank_info.ifsc_code || "",
-                // bank_name: data.bank_info.bank_name || "",
-                // bank_location: data.bank_info.bank_location || "",
-                // swift_code: data.bank_info.swift_code || "",
+                // account_holder_name: payload.bank_info.account_holder_name || "",
+                bank_account_number: payload.bank_info.bank_account_number || "",
+                ifsc_code: payload.bank_info.ifsc_code || "",
+                // bank_name: payload.bank_info.bank_name || "",
+                // bank_location: payload.bank_info.bank_location || "",
+                // swift_code: payload.bank_info.swift_code || "",
               }
             : undefined,
-          job_title: data.job_title || "",
+          job_title: payload.job_title || "",
         });
 
-        if (Array.isArray(data.reviews)) {
+        if (Array.isArray(payload.reviews)) {
           setReviews(
-            data.reviews.map((review: any, index: number) => ({
+            payload.reviews.map((review: any, index: number) => ({
               id: index + 1,
               rating: review.rating || 0,
               comment: review.comment || "",
@@ -208,7 +214,11 @@ export default function ProfilePage() {
           );
         }
       } catch (err: any) {
-        setError("Failed to load profile");
+        const message =
+          err?.response?.data?.message ||
+          err?.message ||
+          "Failed to load profile";
+        setError(message);
         if (err.response?.status === 401) {
           logout();
           router.push("/signin");

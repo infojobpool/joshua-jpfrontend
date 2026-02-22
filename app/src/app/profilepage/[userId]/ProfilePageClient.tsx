@@ -100,24 +100,28 @@ export default function ProfilePageClient() {
         setIsLoading(true);
         const response = await axiosInstance.get(`/profile?user_id=${userId}`);
         const data = response.data;
+        const payload = data?.data ?? data;
+        if (data?.status_code && data.status_code !== 200) {
+          throw new Error(data?.message || "Failed to load profile");
+        }
         setProfileUser({
-          profile_id: data.profile_id || "",
-          name: data.name || "",
-          email: data.email || "",
-          phone: data.phone_number || "",
-          addresses: Array.isArray(data.addresses)
-            ? data.addresses.map((addr: any, index: number) => ({
+          profile_id: payload.profile_id || "",
+          name: payload.name || "",
+          email: payload.email || "",
+          phone: payload.phone_number || "",
+          addresses: Array.isArray(payload.addresses)
+            ? payload.addresses.map((addr: any, index: number) => ({
                 id: index + 1,
                 address: addr.address || "",
                 isDefault: addr.isDefault || index === 0,
               }))
             : [],
-          avatar: data.profile_img || "",
+          avatar: payload.profile_img || "",
         });
 
-        if (Array.isArray(data.reviews)) {
+        if (Array.isArray(payload.reviews)) {
           setReviews(
-            data.reviews.map((review: any, index: number) => ({
+            payload.reviews.map((review: any, index: number) => ({
               id: index + 1,
               name: review.reviewer_name || "Anonymous",
               avatar: review.reviewer_avatar || "",
@@ -130,7 +134,11 @@ export default function ProfilePageClient() {
           );
         }
       } catch (err: any) {
-        setError("Failed to load profile");
+        const message =
+          err?.response?.data?.message ||
+          err?.message ||
+          "Failed to load profile";
+        setError(message);
         if (err.response?.status === 401) {
           router.push("/signin");
         }
