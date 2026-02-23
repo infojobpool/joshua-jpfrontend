@@ -145,14 +145,18 @@ export default function PaymentPage() {
     return `${window.location.origin}/payments?${params.toString()}`;
   };
 
-  // Detect in-app WebView where Razorpay modal renders blank
-  const isInAppWebView = (): boolean => {
+  // Use Payment Link (open in browser) when Razorpay modal would render blank:
+  // - In-app WebView (PWA Builder, standalone PWA)
+  // - Mobile devices (iPhone, Android, iPad, etc.)
+  const usePaymentLink = (): boolean => {
     if (typeof window === "undefined") return false;
-    return !!(
+    const ua = navigator.userAgent || "";
+    const isInAppWebView =
       window.matchMedia?.("(display-mode: standalone)")?.matches ||
       (navigator as any).standalone === true ||
-      /wv\)|WebView|PWA Builder|pwashell/i.test(navigator.userAgent || "")
-    );
+      /wv\)|WebView|PWA Builder|pwashell/i.test(ua);
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    return !!(isInAppWebView || isMobile);
   };
 
   const handlePayment = async () => {
@@ -170,8 +174,8 @@ export default function PaymentPage() {
     const payableAmount = bidAmount + commissionAmount + gstAmount;
 
     try {
-      // In-app WebView: use Payment Link and open in system browser
-      if (isInAppWebView()) {
+      // Mobile / WebView: use Payment Link, open in system browser (Razorpay modal is blank in app)
+      if (usePaymentLink()) {
         const response = await axiosInstance.post("/create-payment-link/", {
           postId: taskId,
           bid_amount: Number(bidAmount.toFixed(2)),
@@ -406,7 +410,7 @@ export default function PaymentPage() {
       };
 
       // WebView fallback: force redirect flow to avoid blank screen in in-app browsers
-      if (isInAppWebView()) {
+      if (usePaymentLink()) {
         (options as Record<string, unknown>).redirect = true;
         (options as Record<string, unknown>).callback_url =
           `${window.location.origin}/payments/razorpay-callback`;
