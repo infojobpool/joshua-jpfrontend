@@ -33,7 +33,7 @@ export default function TaskDetailPage() {
   const searchParams = useSearchParams();
   const params = useParams();
   const id = params?.id as string;
-  const { userId, user: storeUser, checkAuth, isAuthenticated, logout } = useStore();
+  const { userId, user: storeUser, checkAuth, isAuthenticated, logout, addNotifications } = useStore();
   const fromBid = searchParams.get('fromBid') === 'true';
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -900,6 +900,15 @@ export default function TaskDetailPage() {
 
       if (response.data.status_code === 201) {
         toast.success("Your offer has been submitted and the task moved to My Bids.");
+        addNotifications([{
+          id: `bid-${id}-${userId}-${Date.now()}`,
+          type: "system",
+          title: "Offer submitted",
+          description: `Your offer of ₹${offerAmountNumber} for "${task?.title || "task"}" was submitted.`,
+          createdAt: new Date().toISOString(),
+          read: false,
+          link: `/tasks/${id}`,
+        }]);
 
         const storedBids = localStorage.getItem("bids");
         let allBids: Bid[] = storedBids ? JSON.parse(storedBids) : [];

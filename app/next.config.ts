@@ -42,9 +42,8 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  // Allow mobile network access (Next.js 15 compatible)
   experimental: {
-    // allowedDevOrigins will be available in future Next.js versions
+    optimizePackageImports: ['lucide-react'],
   }
 };
 

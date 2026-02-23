@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import { MobileBottomNav } from "@/components/mobile/MobileBottomNav";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { InAppNotificationProvider } from "@/components/InAppNotificationProvider";
+import { NotificationPoller } from "@/components/NotificationPoller";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -67,6 +68,7 @@ export default function RootLayout({
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}>
         <InAppNotificationProvider />
+        <NotificationPoller />
         <MobileLayout>
           <MainHeader />
           <main className="min-h-screen pb-[calc(env(safe-area-inset-bottom)+72px)] md:pb-0">

@@ -303,6 +303,7 @@ import { Textarea } from "./ui/textarea";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import axiosInstance from "../lib/axiosInstance";
 import { toast } from "sonner";
+import useStore from "@/lib/Zustand";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./ui/dialog";
@@ -392,6 +393,7 @@ export function OffersSection({
   const [isAccepting, setIsAccepting] = useState<string | null>(null);
   const [paymentUrlForApp, setPaymentUrlForApp] = useState<string | null>(null);
   const [paymentLinkLoading, setPaymentLinkLoading] = useState(false);
+  const addNotifications = useStore((s) => s.addNotifications);
 
   // Try to read accepted tasker from sessionStorage (when accept was done earlier in this browser)
   // This is a graceful fallback when API doesn't return accepted status on bids
@@ -521,6 +523,17 @@ export function OffersSection({
 
       if (response.data.status_code === 200) {
         toast.success(response.data.message || "Bid accepted successfully");
+        addNotifications([{
+          id: `accept-${task.id}-${offer.tasker.id}-${Date.now()}`,
+          type: "bid",
+          title: "Offer accepted",
+          description: `You accepted ${offer.tasker.name}'s offer for ₹${offer.amount}. Complete payment to confirm.`,
+          createdAt: new Date().toISOString(),
+          read: false,
+          link: `/payments?taskId=${task.id}&taskerId=${offer.tasker.id}&taskPosterId=${task.poster.id}&amount=${offer.amount}`,
+          direction: "received",
+          taskId: task.id,
+        }]);
         
         // Update task status immediately to show in My Tasks
         const updatedTask = {

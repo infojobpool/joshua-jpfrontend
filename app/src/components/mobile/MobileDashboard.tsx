@@ -1,13 +1,16 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { Plus, Search, Filter, Bell, User, Home, MessageCircle, TrendingUp, Clock, MapPin, DollarSign } from "lucide-react";
 import { useIsMobile } from "./MobileWrapper";
+import useStore from "@/lib/Zustand";
 import { MobileCard, MobileCardHeader, MobileCardContent } from "./MobileCard";
 import { MobileButton } from "./MobileForm";
 
 export function MobileDashboard() {
   const { isMobile } = useIsMobile();
+  const unreadCount = useStore((s) => s.unreadCount);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -94,10 +97,14 @@ export function MobileDashboard() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <button className="p-2 rounded-full hover:bg-gray-100 relative">
+              <Link href="/notifications" className="p-2 rounded-full hover:bg-gray-100 relative">
                 <Bell className="h-5 w-5 text-gray-600" />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-              </button>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-medium bg-red-500 text-white">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </Link>
               <button className="p-2 rounded-full hover:bg-gray-100">
                 <User className="h-5 w-5 text-gray-600" />
               </button>

@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
+import { useNotifications } from "@/lib/useNotifications";
 
 interface Image {
   id: string;
@@ -152,7 +153,8 @@ function formatTimestampValue(raw: any): {
 
 export default function Dashboard() {
   const router = useRouter();
-  const { user, userId, isAuthenticated, logout, items: notificationItems, unreadCount, markAllRead } = useStore();
+  const { user, userId, isAuthenticated, logout, addNotifications } = useStore();
+  const { items: notificationItems, unreadCount, markAsRead } = useNotifications(!!isAuthenticated);
   const { isMobile } = useIsMobile();
   // Prevent SSR → CSR flicker on mobile by delaying mobile-only UI until mounted
   const [mounted, setMounted] = useState(false);
@@ -184,21 +186,6 @@ export default function Dashboard() {
   useEffect(() => { setMounted(true); }, []);
   const mobile = mounted && isMobile;
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
-  
-  // Debug authentication state
-  console.log("🔍 Dashboard render - Auth state:", {
-    isAuthenticated,
-    user: user ? { id: user.id, name: user.name } : null,
-    userId,
-    effectiveUserId,
-    userType: typeof user,
-    userIdType: typeof userId
-  });
-  
-  // Debug useEffect dependencies
-  console.log("🔍 useEffect dependencies - user:", !!user, "userId:", !!userId, "effectiveUserId:", !!effectiveUserId);
-  console.log("🔍 User object details:", user);
-  console.log("🔍 UserId details:", userId, "effectiveUserId:", effectiveUserId);
   const [loading, setLoading] = useState(true);
   
   // Task states
@@ -243,7 +230,7 @@ export default function Dashboard() {
       // Use fetch API directly to bypass axios timeout issues
       const token = localStorage.getItem('token');
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout (Render.com can be slow)
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
 
       const fetchResponse = await fetch(`${API_BASE}/get-all-task-orders/`, {
         method: 'GET',
@@ -265,16 +252,6 @@ export default function Dashboard() {
       const response = await fetchResponse.json();
       if (response.status_code === 200 && response.data?.task_orders) {
         setTaskOrders(response.data.task_orders);
-        console.log("📋 Task orders fetched:", response.data.task_orders);
-        console.log("📋 Total orders:", response.data.task_orders.length);
-        console.log("📋 Sample order structure:", response.data.task_orders[0]);
-        console.log("📋 All order statuses:", response.data.task_orders.map((order: any) => ({
-          order_id: order.order_id,
-          job_id: order.job_id,
-          status: order.status,
-          tasker_id: order.tasker_id,
-          poster_id: order.taskmanager_id
-        })));
       }
     } catch (error) {
       // Handle AbortError separately (don't show error for timeouts)
@@ -473,64 +450,6 @@ export default function Dashboard() {
       const r = sessionStorage.getItem("requestedTasks");
       if (r) setRequestedTasks(JSON.parse(r));
     } catch {}
-    
-    // Debug: Log all localStorage and sessionStorage contents
-    if (typeof window !== "undefined") {
-      console.log("📦 === LOCALSTORAGE CONTENTS ===");
-      const localStorageData: Record<string, any> = {};
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key) {
-          try {
-            const value = localStorage.getItem(key);
-            if (value) {
-              // Try to parse as JSON, fallback to string
-              try {
-                localStorageData[key] = JSON.parse(value);
-              } catch {
-                localStorageData[key] = value;
-              }
-            }
-          } catch (e) {
-            localStorageData[key] = "Error reading";
-          }
-        }
-      }
-      console.table(localStorageData);
-      console.log("📦 Full localStorage:", localStorageData);
-      
-      console.log("📦 === SESSIONSTORAGE CONTENTS ===");
-      const sessionStorageData: Record<string, any> = {};
-      for (let i = 0; i < sessionStorage.length; i++) {
-        const key = sessionStorage.key(i);
-        if (key) {
-          try {
-            const value = sessionStorage.getItem(key);
-            if (value) {
-              // Try to parse as JSON, fallback to string
-              try {
-                sessionStorageData[key] = JSON.parse(value);
-              } catch {
-                sessionStorageData[key] = value;
-              }
-            }
-          } catch (e) {
-            sessionStorageData[key] = "Error reading";
-          }
-        }
-      }
-      console.table(sessionStorageData);
-      console.log("📦 Full sessionStorage:", sessionStorageData);
-      
-      // Show task-related storage specifically
-      console.log("📋 === TASK-RELATED STORAGE ===");
-      console.log("Assigned Tasks (sessionStorage):", sessionStorage.getItem("assignedTasks") ? JSON.parse(sessionStorage.getItem("assignedTasks")!).length + " tasks" : "Empty");
-      console.log("Posted Tasks (sessionStorage):", sessionStorage.getItem("postedTasks") ? JSON.parse(sessionStorage.getItem("postedTasks")!).length + " tasks" : "Empty");
-      console.log("Requested Tasks (sessionStorage):", sessionStorage.getItem("requestedTasks") ? JSON.parse(sessionStorage.getItem("requestedTasks")!).length + " tasks" : "Empty");
-      console.log("Available Tasks (localStorage):", localStorage.getItem("availableTasks") ? JSON.parse(localStorage.getItem("availableTasks")!).length + " tasks" : "Empty");
-      console.log("Posted Tasks (localStorage):", localStorage.getItem("postedTasks") ? JSON.parse(localStorage.getItem("postedTasks")!).length + " tasks" : "Empty");
-      console.log("Bids (localStorage):", localStorage.getItem("bids") ? JSON.parse(localStorage.getItem("bids")!).length + " bids" : "Empty");
-    }
   }, []);
 
   // Ensure categories are loaded when the inline mobile filters are opened (only if not already loaded)
@@ -547,7 +466,7 @@ export default function Dashboard() {
           return;
         }
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
         const res = await fetch(`${API_BASE}/get-all-categories/`, {
           method: 'GET',
           headers: {
@@ -632,14 +551,10 @@ export default function Dashboard() {
   }, [requestedTasks.length]);
 
   useEffect(() => {
-    console.log("🔍 Auth check useEffect - isAuthenticated:", isAuthenticated, "user:", !!user, "userId:", !!userId);
-    
     if (!isAuthenticated || !user || !(userId || effectiveUserId)) {
-        console.log("🔍 Redirecting to signin - missing auth data");
         router.push("/signin");
         return;
       }
-    console.log("🔍 Auth check passed, setting loading false and fetching task orders");
     setLoading(false);
     fetchTaskOrders(); // Fetch task orders when user is authenticated
   }, [isAuthenticated, user, userId, effectiveUserId, router]);
@@ -696,7 +611,7 @@ export default function Dashboard() {
         
         // Fallback to fetch API
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout // 20 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout // 20 second timeout
 
         const fetchResponse = await fetch(`${API_BASE}/get-all-categories/`, {
           method: 'GET',
@@ -783,7 +698,7 @@ export default function Dashboard() {
         // Use the faster get-all-jobs-admin API with better filtering
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
 
         const fetchResponse = await fetch(`${API_BASE}/get-user-jobs/${userId || effectiveUserId}/`, {
           method: 'GET',
@@ -1067,30 +982,16 @@ export default function Dashboard() {
   }, []);
 
   // Fetch all available tasks
-  console.log("🔍 About to register fetchAllTasks useEffect");
   useEffect(() => {
-    console.log("🔍 ===== FETCH ALL TASKS useEffect TRIGGERED =====");
-    console.log("🔍 useEffect triggered - user:", user, "userId:", userId, "effectiveUserId:", effectiveUserId);
-    console.log("🔍 User type:", typeof user, "UserId type:", typeof userId);
-    console.log("🔍 User keys:", user ? Object.keys(user) : "No user");
-    console.log("🔍 User ID from user object:", user?.id);
-    console.log("🔍 User ID from store:", userId);
-    
-    if (!user || !(userId || effectiveUserId)) {
-      console.log("🔍 User or userId missing, returning early");
-      console.log("🔍 user exists:", !!user, "userId exists:", !!userId);
-      console.log("🔍 user.id exists:", !!user?.id);
-      return;
-    }
+    if (!user || !(userId || effectiveUserId)) return;
 
     const fetchAllTasks = async () => {
       try {
-        console.log("🔍 Starting fetchAllTasks...");
         
         // Use fetch API directly to bypass axios CORS issues
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
         
         const fetchResponse = await fetch(`${API_BASE}/get-all-jobs/`, {
           method: 'GET',
@@ -1126,61 +1027,18 @@ export default function Dashboard() {
 
 
         if (result.status_code === 200 && result.data?.jobs) {
-          console.log("🔍 Total jobs from API:", result.data.jobs.length);
-          console.log("🔍 Current user ID:", userId || effectiveUserId);
-          console.log("🔍 User from store:", user?.id);
-          
           const tasks: Task[] = result.data.jobs
             .filter((job: any) => {
-              // Debug: Log the full job object to see what fields are available
-              
-              // The API uses user_ref_id as the user identifier
               const jobPostedById = job.user_ref_id;
               const currentUserId = (userId || effectiveUserId)?.toString();
-              
-              // Use userId from store as the primary identifier
               const isNotPostedByUser = jobPostedById !== currentUserId;
-              
-              // Only show open tasks (not completed, deleted, or cancelled)
               const isOpen = job.job_completion_status !== 1 && 
                            !job.deletion_status && 
                            !job.cancel_status;
-              
-              // Debug logging for all jobs
-              console.log(`🔍 Job ${job.job_id}:`, {
-                jobPostedById,
-                currentUserId,
-                isNotPostedByUser,
-                isOpen,
-                job_completion_status: job.job_completion_status,
-                deletion_status: job.deletion_status,
-                cancel_status: job.cancel_status,
-                posted_by: job.posted_by
-              });
-              
-              // Additional debug for filtering
-              if (job.job_id === "task_31" || job.job_id === "task_32") {
-                console.log(`🔍 DETAILED DEBUG for ${job.job_id}:`, {
-                  'job.user_ref_id': job.user_ref_id,
-                  'job.posted_by_id': job.posted_by_id,
-                  'job.user_id': job.user_id,
-                  'userId': userId,
-                  'user.id': user?.id,
-                  'typeof jobPostedById': typeof jobPostedById,
-                  'typeof currentUserId': typeof currentUserId,
-                  'jobPostedById === currentUserId': jobPostedById === currentUserId,
-                  'isNotPostedByUser': isNotPostedByUser,
-                  'isOpen': isOpen,
-                  'FINAL RESULT': isNotPostedByUser && isOpen
-                });
-              }
-              
-              // Original behaviour: only show tasks NOT posted by the current user, and still open
               return isNotPostedByUser && isOpen;
             })
             .map((job: any) => {
               let jobStatus = "open";
-              console.log(`🔍 AVAILABLE TASKS - Processing task ${job.job_id} for available tasks`);
               
               // For available tasks, we only care about basic status
               // All available tasks should be "open" for bidding
@@ -1227,20 +1085,12 @@ export default function Dashboard() {
               };
             });
 
-          // Skip bid count fetching for now to avoid API errors
           const availableTasksWithBidCounts = tasks;
-
-          console.log("🔍 FINAL FILTERED AVAILABLE TASKS:", availableTasksWithBidCounts.length);
-          console.log("🔍 Available tasks details:", availableTasksWithBidCounts);
-
-          console.log("🔍 Available tasks after filtering:", availableTasksWithBidCounts.length);
           // Store in localStorage for persistence
           localStorage.setItem('availableTasks', JSON.stringify(availableTasksWithBidCounts));
           localStorage.setItem('availableTasksTimestamp', Date.now().toString());
           
           setAvailableTasks(availableTasksWithBidCounts);
-          console.log("🔍 setAvailableTasks called with", availableTasksWithBidCounts.length, "tasks");
-          
           // Store shared cache for other tabs to use
           localStorage.setItem(`all_jobs_data_${userId}`, JSON.stringify({
             jobs: result.data.jobs,
@@ -1286,7 +1136,7 @@ export default function Dashboard() {
         // Use fetch API directly to bypass axios timeout issues
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
 
         const fetchResponse = await fetch(`${API_BASE}/get-user-bids/${userId || effectiveUserId}/`, {
           method: 'GET',
@@ -1354,7 +1204,7 @@ export default function Dashboard() {
         // Use fetch API directly to bypass axios timeout issues
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
 
         const url = `${API_BASE}/get-user-assigned-bids/${targetUserId}/`;
         console.log("📋 Fetching assigned tasks from:", url, "for userId:", targetUserId);
@@ -1772,7 +1622,7 @@ export default function Dashboard() {
         // Use fetch API directly to bypass axios timeout issues
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
 
         const fetchResponse = await fetch(`${API_BASE}/get-user-requested-bids/${userId}/`, {
           method: 'GET',
@@ -1886,7 +1736,7 @@ export default function Dashboard() {
       // Fetch directly from API - no caching
       const token = localStorage.getItem('token');
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout (Render.com can be slow)
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
 
       console.log("Fetching completed tasks from dedicated endpoint...");
       let completedForMe: Task[] = [];
@@ -2533,6 +2383,16 @@ export default function Dashboard() {
 
         if (fullyCompleted) {
           toast.success("Task marked as complete!");
+          const t = assignedTasks.find((task) => task.id === jobId);
+          addNotifications([{
+            id: `complete-tasker-${jobId}-${Date.now()}`,
+            type: "system",
+            title: "Task completed",
+            description: t ? `"${t.title}" is complete.` : "Task marked as complete.",
+            createdAt: new Date().toISOString(),
+            read: false,
+            link: `/tasks/${jobId}`,
+          }]);
         } else {
           toast.success(
             "You marked this task as completed. Waiting for taskmaster confirmation."
@@ -2639,6 +2499,16 @@ export default function Dashboard() {
 
         if (fullyCompleted) {
           toast.success("Task marked as complete!");
+          const t = postedTasks.find((task) => task.id === jobId);
+          addNotifications([{
+            id: `complete-taskmaster-${jobId}-${Date.now()}`,
+            type: "system",
+            title: "Task completed",
+            description: t ? `"${t.title}" is complete.` : "Task marked as complete.",
+            createdAt: new Date().toISOString(),
+            read: false,
+            link: `/tasks/${jobId}`,
+          }]);
         } else {
           toast.success("Your confirmation recorded. Task will show as completed once the tasker has also marked it complete.");
         }
@@ -3573,11 +3443,15 @@ export default function Dashboard() {
                   const href = n.link || "/notifications";
                   const Icon = n.type === "bid" ? Gavel : n.type === "message" ? MessageSquare : Bell;
                   const iconBg = n.type === "bid" ? "bg-amber-500" : n.type === "message" ? "bg-blue-500" : "bg-purple-500";
+                  const createdAt = n.created_at ?? (n as any).createdAt ?? new Date().toISOString();
                   return (
                     <Link
                       key={n.id}
                       href={href}
-                      onClick={() => setShowNotifications(false)}
+                      onClick={() => {
+                        if (!n.read) markAsRead(parseInt(String(n.id), 10));
+                        setShowNotifications(false);
+                      }}
                       className="block px-4 py-3 flex items-start gap-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
                     >
                       <div className={`h-8 w-8 rounded-full flex items-center justify-center text-white flex-shrink-0 ${iconBg}`}>
@@ -3586,7 +3460,7 @@ export default function Dashboard() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <div className={`font-medium truncate ${!n.read ? "text-gray-900" : "text-gray-600"}`}>{n.title}</div>
-                          <div className="text-xs text-gray-500 whitespace-nowrap">{formatTimeAgo(n.createdAt)}</div>
+                          <div className="text-xs text-gray-500 whitespace-nowrap">{formatTimeAgo(createdAt)}</div>
                         </div>
                         {n.description && (
                           <div className="text-sm text-gray-600 line-clamp-2 mt-0.5">{n.description}</div>
@@ -3598,7 +3472,7 @@ export default function Dashboard() {
               )}
             </div>
             <div className="px-4 py-3 border-t bg-gray-50 flex gap-2">
-              <Button variant="outline" className="h-9 px-3 border-gray-300" onClick={() => { markAllRead(); setShowNotifications(false); }}>
+              <Button variant="outline" className="h-9 px-3 border-gray-300" onClick={() => { markAsRead(null); setShowNotifications(false); }}>
                 Mark all read
               </Button>
               <Link href="/notifications" onClick={() => setShowNotifications(false)}>

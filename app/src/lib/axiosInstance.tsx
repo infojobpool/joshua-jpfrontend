@@ -31,7 +31,6 @@ const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || `https://api.jobpool.in/api/v1`,
   headers: {
     'Content-Type': 'application/json',
-    'Cache-Control': 'no-cache',
   },
   withCredentials: false,
   timeout: 60000,
@@ -74,10 +73,7 @@ axiosInstance.interceptors.request.use(
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
-    // add cache-busting param to avoid stale results after admin updates
-    config.params = { ...(config.params || {}), _ts: Date.now() };
-    
-    // Create a unique key for request deduplication
+    // Create a unique key for request deduplication (no cache-busting to allow HTTP caching)
     const requestKey = `${config.method?.toUpperCase()}_${config.url}_${JSON.stringify(config.params)}`;
     
     // Check if the same request is already pending
