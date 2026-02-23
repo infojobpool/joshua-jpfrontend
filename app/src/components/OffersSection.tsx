@@ -390,6 +390,7 @@ export function OffersSection({
   const [completing, setCompleting] = useState<boolean>(false);
   const [selectedFromSession, setSelectedFromSession] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState<string | null>(null);
+  const [paymentUrlForApp, setPaymentUrlForApp] = useState<string | null>(null);
 
   // Try to read accepted tasker from sessionStorage (when accept was done earlier in this browser)
   // This is a graceful fallback when API doesn't return accepted status on bids
@@ -563,7 +564,24 @@ export function OffersSection({
           taskerId: offer.tasker.id,
           timestamp: Date.now()
         }));
-        
+
+        // In installed app: open payment in system browser (Razorpay blank in WebView)
+        const isStandalone =
+          typeof window !== "undefined" &&
+          (window.matchMedia?.("(display-mode: standalone)")?.matches ||
+           window.matchMedia?.("(display-mode: fullscreen)")?.matches ||
+           window.matchMedia?.("(display-mode: minimal-ui)")?.matches ||
+           (navigator as any).standalone === true);
+        if (isStandalone) {
+          const params = new URLSearchParams({
+            taskId: task.id,
+            taskerId: offer.tasker.id,
+            taskPosterId: task.poster.id,
+            amount: String(offer.amount),
+          });
+          setPaymentUrlForApp(`${window.location.origin}/payments?${params}`);
+          return;
+        }
         router.push("/payments");
       } else {
         toast.error(response.data.message || "Failed to accept bid");
@@ -752,6 +770,35 @@ export function OffersSection({
           <DialogFooter>
             <Button variant="outline" onClick={() => setCompleteOpen(false)} disabled={completing}>Cancel</Button>
             <Button onClick={handleCompleteWithReview} disabled={completing}>{completing ? "Submitting..." : "Submit"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!paymentUrlForApp} onOpenChange={(open) => !open && setPaymentUrlForApp(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Open in Browser to Pay</DialogTitle>
+            <DialogDescription>
+              Payment cannot complete in the app. Tap the button below to open the payment page in your browser (Chrome/Safari). Complete payment there, then return to the app.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPaymentUrlForApp(null)}>Cancel</Button>
+            {paymentUrlForApp && (
+              <a
+                href={paymentUrlForApp}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  if (typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                    e.preventDefault();
+                    window.location.href = `x-safari-${paymentUrlForApp}`;
+                  }
+                }}
+                className="rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700 no-underline"
+              >
+                Open Payment Page
+              </a>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

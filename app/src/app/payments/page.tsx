@@ -180,8 +180,9 @@ export default function PaymentPage() {
     const payableAmount = bidAmount + commissionAmount + gstAmount;
 
     try {
-      // Mobile / WebView: use Payment Link, open in system browser (Razorpay modal is blank in app)
-      if (usePaymentLink()) {
+      // ALWAYS use Payment Link - Razorpay modal (api.razorpay.com/v1/checkout/public) renders blank in PWA/TWA/WebView.
+      // Detection was unreliable; payment link works everywhere (browser + app).
+      {
         const response = await axiosInstance.post("/create-payment-link/", {
           postId: taskId,
           bid_amount: Number(bidAmount.toFixed(2)),
@@ -197,19 +198,23 @@ export default function PaymentPage() {
         }
         const paymentUrl = result.data.short_url;
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || "");
-        const isStandalone = window.matchMedia?.("(display-mode: standalone)")?.matches ||
-          (navigator as any).standalone === true;
+        const isStandalone =
+          window.matchMedia?.("(display-mode: standalone)")?.matches ||
+          window.matchMedia?.("(display-mode: fullscreen)")?.matches ||
+          window.matchMedia?.("(display-mode: minimal-ui)")?.matches ||
+          (navigator as any).standalone === true ||
+          (navigator as any).displayMode === "standalone";
 
-        // iOS PWA: programmatic window.open/location.href opens in same WebView (Razorpay blank).
-        // Show "tap to open" modal with real <a> link - user's tap opens Safari reliably.
-        if (isIOS && isStandalone) {
+        // In installed app (standalone): window.open opens in same WebView → blank Razorpay.
+        // ALWAYS show tap-to-open modal so user opens payment in real browser (iOS + Android).
+        if (isStandalone) {
           setPaymentLinkForSafari(paymentUrl);
           setShowPaymentModal(false);
           return;
         }
 
-        // Android/desktop: try window.open (opens external browser on Android). Fallback to tap modal if blocked.
-        if (!isIOS) {
+        // Regular mobile browser (not app): try window.open. Fallback to tap modal if blocked.
+        if (isIOS || /Android/i.test(navigator.userAgent || "")) {
           const win = window.open(paymentUrl, "_blank", "noopener,noreferrer");
           if (win) {
             setShowPaymentModal(false);
@@ -218,7 +223,7 @@ export default function PaymentPage() {
           }
         }
 
-        // Popup blocked or fallback: show tap-to-open modal (works on all platforms)
+        // Desktop or popup blocked: show tap-to-open modal
         setPaymentLinkForSafari(paymentUrl);
         setShowPaymentModal(false);
         return;
