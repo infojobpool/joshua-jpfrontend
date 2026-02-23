@@ -59,7 +59,7 @@ export default function PaymentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Retrieve data from sessionStorage on mount
+  // Retrieve data from sessionStorage or URL params (when opened in Safari from copy link)
   useEffect(() => {
     const data = sessionStorage.getItem("paymentData");
     if (data) {
@@ -73,14 +73,29 @@ export default function PaymentPage() {
         setShowPaymentFailed(true);
       }
     } else {
-      console.warn("No payment data found in sessionStorage");
-      setErrorMessage("Payment data not found");
-      setShowPaymentFailed(true);
-    }
-    
+      // Opened in Safari/browser - no sessionStorage. Use URL params.
+      const taskId = searchParams.get("taskId");
+      const amount = searchParams.get("amount");
+      const taskerId = searchParams.get("taskerId") || "";
+      const taskPosterId = searchParams.get("taskPosterId") || "";
+      if (taskId && amount && !isNaN(parseFloat(amount))) {
+        setPaymentData({
+          taskId,
+          taskerId,
+          taskPosterId,
+          amount: parseFloat(amount),
+        });
+        setShowPaymentModal(true);
+        console.log("Retrieved payment data from URL params:", { taskId, amount, taskerId, taskPosterId });
+      } else {
+        console.warn("No payment data in sessionStorage or URL params");
+        setErrorMessage("Payment data not found");
+        setShowPaymentFailed(true);
+      }
+    }    
     // Mark that user has entered the payment page
     sessionStorage.setItem("payment_page_visited", "true");
-  }, []);
+  }, [searchParams]);
 
   // Warn user before leaving page without completing payment
   useEffect(() => {

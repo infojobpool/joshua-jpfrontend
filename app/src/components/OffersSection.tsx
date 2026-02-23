@@ -587,17 +587,20 @@ export function OffersSection({
               tasker_id: offer.tasker.id,
               taskmanager_id: task.poster.id,
             });
-            const razorpayUrl = paymentUrlRes.data?.data?.short_url;
+            const res = paymentUrlRes.data;
+            const razorpayUrl = res?.data?.short_url ?? res?.short_url;
             if (razorpayUrl) {
               setPaymentUrlForApp(razorpayUrl);
             } else {
-              toast.error("Failed to create payment link. Opening payment page...");
-              setPaymentUrlForApp(`${window.location.origin}/payments?taskId=${task.id}&taskerId=${offer.tasker.id}&taskPosterId=${task.poster.id}&amount=${offer.amount}`);
+              const fallbackUrl = `${window.location.origin}/payments?taskId=${task.id}&taskerId=${offer.tasker.id}&taskPosterId=${task.poster.id}&amount=${offer.amount}`;
+              toast.error("Payment link unavailable. Use Copy Link and open in Safari.");
+              setPaymentUrlForApp(fallbackUrl);
             }
-          } catch (e) {
-            console.error("create-payment-link failed:", e);
-            toast.error("Could not create payment link. Opening payment page...");
-            setPaymentUrlForApp(`${window.location.origin}/payments?taskId=${task.id}&taskerId=${offer.tasker.id}&taskPosterId=${task.poster.id}&amount=${offer.amount}`);
+          } catch (e: any) {
+            console.error("create-payment-link failed:", e?.response?.data ?? e);
+            const fallbackUrl = `${window.location.origin}/payments?taskId=${task.id}&taskerId=${offer.tasker.id}&taskPosterId=${task.poster.id}&amount=${offer.amount}`;
+            toast.error("Copy the link below and paste in Safari to pay.");
+            setPaymentUrlForApp(fallbackUrl);
           } finally {
             setPaymentLinkLoading(false);
           }
@@ -801,11 +804,24 @@ export function OffersSection({
             <DialogDescription>
               {paymentLinkLoading
                 ? "Please wait..."
-                : "Payment cannot complete in the app. Tap below to open in Safari/Chrome. If it opens in the app instead, use Copy Link and paste in Safari manually."}
+                : "Payment cannot complete in the app. Copy the link below, open Safari, paste the link, and complete payment there. Then return to the app."}
             </DialogDescription>
           </DialogHeader>
           {paymentUrlForApp && !paymentLinkLoading && (
             <DialogFooter className="flex-col gap-2 sm:flex-col">
+              <Button
+                className="w-full bg-green-600 hover:bg-green-700"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard?.writeText(paymentUrlForApp);
+                    toast.success("Link copied! Open Safari, paste the link, and complete payment.");
+                  } catch {
+                    toast.error("Could not copy link.");
+                  }
+                }}
+              >
+                Copy Link (recommended)
+              </Button>
               <a
                 href={paymentUrlForApp}
                 target="_blank"
@@ -816,24 +832,10 @@ export function OffersSection({
                     window.location.href = `x-safari-${paymentUrlForApp}`;
                   }
                 }}
-                className="w-full rounded-md bg-green-600 px-4 py-3 text-center font-medium text-white hover:bg-green-700 no-underline"
+                className="w-full rounded-md border border-gray-300 px-4 py-3 text-center font-medium no-underline hover:bg-gray-50"
               >
-                Open Payment Page
+                Try Open in Browser
               </a>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard?.writeText(paymentUrlForApp);
-                    toast.success("Link copied! Paste in Safari/Chrome to pay.");
-                  } catch {
-                    toast.error("Could not copy. Tap the green button above.");
-                  }
-                }}
-              >
-                Copy Link (paste in Safari if above doesn&apos;t work)
-              </Button>
               <Button variant="ghost" onClick={() => setPaymentUrlForApp(null)}>Cancel</Button>
             </DialogFooter>
           )}
