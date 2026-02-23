@@ -146,17 +146,21 @@ export default function PaymentPage() {
   };
 
   // Use Payment Link (open in browser) when Razorpay modal would render blank:
-  // - In-app WebView (PWA Builder, standalone PWA)
+  // - In-app WebView (PWA Builder, standalone PWA, TWA)
   // - Mobile devices (iPhone, Android, iPad, etc.)
   const usePaymentLink = (): boolean => {
     if (typeof window === "undefined") return false;
     const ua = navigator.userAgent || "";
-    const isInAppWebView =
+    const isStandalone =
       window.matchMedia?.("(display-mode: standalone)")?.matches ||
       (navigator as any).standalone === true ||
-      /wv\)|WebView|PWA Builder|pwashell/i.test(ua);
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-    return !!(isInAppWebView || isMobile);
+      (navigator as any).displayMode === "standalone";
+    const isWebViewOrPWA =
+      /wv\)|WebView|PWA Builder|pwashell|pwa-builder/i.test(ua) ||
+      document.referrer?.startsWith("android-app://") ||
+      typeof (window as any).Windows !== "undefined"; // PWA Builder on Windows
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua);
+    return !!(isStandalone || isWebViewOrPWA || isMobile);
   };
 
   const handlePayment = async () => {
@@ -189,9 +193,24 @@ export default function PaymentPage() {
         if (!result?.data?.short_url) {
           throw new Error(result?.message || "Failed to create payment link");
         }
-        const win = window.open(result.data.short_url, "_blank", "noopener,noreferrer");
+        const paymentUrl = result.data.short_url;
+        const isStandalone = window.matchMedia?.("(display-mode: standalone)")?.matches ||
+          (navigator as any).standalone === true;
+        // In standalone PWA/WebView, window.open often opens in same WebView (still blank).
+        // Use full redirect so user goes to Razorpay's page; they'll be redirected back after payment.
+        if (isStandalone) {
+          window.location.href = paymentUrl;
+          setShowPaymentModal(false);
+          setPaymentOpenedInBrowser(true);
+          return;
+        }
+        const win = window.open(paymentUrl, "_blank", "noopener,noreferrer");
         if (!win) {
-          throw new Error("Popup blocked. Please allow popups for this site and try again.");
+          // Popup blocked - fallback to full redirect
+          window.location.href = paymentUrl;
+          setShowPaymentModal(false);
+          setPaymentOpenedInBrowser(true);
+          return;
         }
         setShowPaymentModal(false);
         setPaymentOpenedInBrowser(true);
