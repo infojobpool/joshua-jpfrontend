@@ -391,6 +391,7 @@ export function OffersSection({
   const [selectedFromSession, setSelectedFromSession] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState<string | null>(null);
   const [paymentUrlForApp, setPaymentUrlForApp] = useState<string | null>(null);
+  const [paymentLinkLoading, setPaymentLinkLoading] = useState(false);
 
   // Try to read accepted tasker from sessionStorage (when accept was done earlier in this browser)
   // This is a graceful fallback when API doesn't return accepted status on bids
@@ -565,7 +566,7 @@ export function OffersSection({
           timestamp: Date.now()
         }));
 
-        // In installed app: open payment in system browser (Razorpay blank in WebView)
+        // In installed app: create Razorpay payment link and open in system browser (not our /payments - that loads in-app)
         const isStandalone =
           typeof window !== "undefined" &&
           (window.matchMedia?.("(display-mode: standalone)")?.matches ||
@@ -573,13 +574,33 @@ export function OffersSection({
            window.matchMedia?.("(display-mode: minimal-ui)")?.matches ||
            (navigator as any).standalone === true);
         if (isStandalone) {
-          const params = new URLSearchParams({
-            taskId: task.id,
-            taskerId: offer.tasker.id,
-            taskPosterId: task.poster.id,
-            amount: String(offer.amount),
-          });
-          setPaymentUrlForApp(`${window.location.origin}/payments?${params}`);
+          setPaymentLinkLoading(true);
+          try {
+            const commissionAmount = offer.amount * 0.05;
+            const gstAmount = (offer.amount + commissionAmount) * 0.18;
+            const paymentUrlRes = await axiosInstance.post("/create-payment-link/", {
+              postId: task.id,
+              bid_amount: Number(offer.amount.toFixed(2)),
+              gst_amount: Number(gstAmount.toFixed(2)),
+              commission_amount: Number(commissionAmount.toFixed(2)),
+              payable_amount: Number((offer.amount + commissionAmount + gstAmount).toFixed(2)),
+              tasker_id: offer.tasker.id,
+              taskmanager_id: task.poster.id,
+            });
+            const razorpayUrl = paymentUrlRes.data?.data?.short_url;
+            if (razorpayUrl) {
+              setPaymentUrlForApp(razorpayUrl);
+            } else {
+              toast.error("Failed to create payment link. Opening payment page...");
+              setPaymentUrlForApp(`${window.location.origin}/payments?taskId=${task.id}&taskerId=${offer.tasker.id}&taskPosterId=${task.poster.id}&amount=${offer.amount}`);
+            }
+          } catch (e) {
+            console.error("create-payment-link failed:", e);
+            toast.error("Could not create payment link. Opening payment page...");
+            setPaymentUrlForApp(`${window.location.origin}/payments?taskId=${task.id}&taskerId=${offer.tasker.id}&taskPosterId=${task.poster.id}&amount=${offer.amount}`);
+          } finally {
+            setPaymentLinkLoading(false);
+          }
           return;
         }
         router.push("/payments");
@@ -773,17 +794,18 @@ export function OffersSection({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog open={!!paymentUrlForApp} onOpenChange={(open) => !open && setPaymentUrlForApp(null)}>
+      <Dialog open={!!paymentUrlForApp || paymentLinkLoading} onOpenChange={(open) => !open && !paymentLinkLoading && setPaymentUrlForApp(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Open in Browser to Pay</DialogTitle>
+            <DialogTitle>{paymentLinkLoading ? "Creating payment link..." : "Open in Browser to Pay"}</DialogTitle>
             <DialogDescription>
-              Payment cannot complete in the app. Tap the button below to open the payment page in your browser (Chrome/Safari). Complete payment there, then return to the app.
+              {paymentLinkLoading
+                ? "Please wait..."
+                : "Payment cannot complete in the app. Tap below to open in Safari/Chrome. If it opens in the app instead, use Copy Link and paste in Safari manually."}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPaymentUrlForApp(null)}>Cancel</Button>
-            {paymentUrlForApp && (
+          {paymentUrlForApp && !paymentLinkLoading && (
+            <DialogFooter className="flex-col gap-2 sm:flex-col">
               <a
                 href={paymentUrlForApp}
                 target="_blank"
@@ -794,12 +816,27 @@ export function OffersSection({
                     window.location.href = `x-safari-${paymentUrlForApp}`;
                   }
                 }}
-                className="rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700 no-underline"
+                className="w-full rounded-md bg-green-600 px-4 py-3 text-center font-medium text-white hover:bg-green-700 no-underline"
               >
                 Open Payment Page
               </a>
-            )}
-          </DialogFooter>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard?.writeText(paymentUrlForApp);
+                    toast.success("Link copied! Paste in Safari/Chrome to pay.");
+                  } catch {
+                    toast.error("Could not copy. Tap the green button above.");
+                  }
+                }}
+              >
+                Copy Link (paste in Safari if above doesn&apos;t work)
+              </Button>
+              <Button variant="ghost" onClick={() => setPaymentUrlForApp(null)}>Cancel</Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
       {!isTaskPoster && shouldBlockSubmit && (
