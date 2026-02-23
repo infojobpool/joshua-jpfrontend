@@ -5,6 +5,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PaymentModal } from "@/components/PaymentModal"; // Adjust path
+import { toast } from "sonner";
 import { PaymentFailed } from "@/components/payment-failed"; // Adjust path
 import { Task } from "../types"; // Adjust path to your types
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,6 +55,7 @@ export default function PaymentPage() {
   const [hasTriedOnce, setHasTriedOnce] = useState(false);
   const [showWebviewHelp, setShowWebviewHelp] = useState(false);
   const [paymentOpenedInBrowser, setPaymentOpenedInBrowser] = useState(false);
+  const [paymentLinkForSafari, setPaymentLinkForSafari] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -194,26 +196,31 @@ export default function PaymentPage() {
           throw new Error(result?.message || "Failed to create payment link");
         }
         const paymentUrl = result.data.short_url;
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || "");
         const isStandalone = window.matchMedia?.("(display-mode: standalone)")?.matches ||
           (navigator as any).standalone === true;
-        // In standalone PWA/WebView, window.open often opens in same WebView (still blank).
-        // Use full redirect so user goes to Razorpay's page; they'll be redirected back after payment.
-        if (isStandalone) {
-          window.location.href = paymentUrl;
+
+        // iOS PWA: programmatic window.open/location.href opens in same WebView (Razorpay blank).
+        // Show "tap to open" modal with real <a> link - user's tap opens Safari reliably.
+        if (isIOS && isStandalone) {
+          setPaymentLinkForSafari(paymentUrl);
           setShowPaymentModal(false);
-          setPaymentOpenedInBrowser(true);
           return;
         }
-        const win = window.open(paymentUrl, "_blank", "noopener,noreferrer");
-        if (!win) {
-          // Popup blocked - fallback to full redirect
-          window.location.href = paymentUrl;
-          setShowPaymentModal(false);
-          setPaymentOpenedInBrowser(true);
-          return;
+
+        // Android/desktop: try window.open (opens external browser on Android). Fallback to tap modal if blocked.
+        if (!isIOS) {
+          const win = window.open(paymentUrl, "_blank", "noopener,noreferrer");
+          if (win) {
+            setShowPaymentModal(false);
+            setPaymentOpenedInBrowser(true);
+            return;
+          }
         }
+
+        // Popup blocked or fallback: show tap-to-open modal (works on all platforms)
+        setPaymentLinkForSafari(paymentUrl);
         setShowPaymentModal(false);
-        setPaymentOpenedInBrowser(true);
         return;
       }
 
@@ -563,7 +570,58 @@ export default function PaymentPage() {
           </Card>
         </div>
       )}
-      {paymentOpenedInBrowser && (
+      {paymentLinkForSafari && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Open in Safari to Pay</CardTitle>
+              <CardDescription>
+                Payment cannot complete in the app. Tap the button below to open the payment page in Safari. After
+                payment, you&apos;ll be redirected back here.
+              </CardDescription>
+            </CardHeader>
+            <CardFooter className="flex flex-col gap-2">
+              <a
+                href={paymentLinkForSafari}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  if (typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                    e.preventDefault();
+                    window.location.href = `x-safari-${paymentLinkForSafari}`;
+                  }
+                }}
+                className="w-full rounded-md bg-green-600 px-4 py-3 text-center font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 no-underline"
+              >
+                Open Payment Page in Safari
+              </a>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard?.writeText(paymentLinkForSafari);
+                    toast.success("Link copied. Paste in Safari to pay.");
+                  } catch {
+                    toast.error("Could not copy. Tap the green button above to open.");
+                  }
+                }}
+              >
+                Copy Link (paste in Safari)
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setPaymentLinkForSafari(null);
+                  setShowPaymentModal(true);
+                }}
+              >
+                Cancel
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+      {paymentOpenedInBrowser && !paymentLinkForSafari && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-md">
             <CardHeader>
