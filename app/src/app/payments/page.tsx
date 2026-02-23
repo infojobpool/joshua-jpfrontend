@@ -53,6 +53,7 @@ export default function PaymentPage() {
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const [hasTriedOnce, setHasTriedOnce] = useState(false);
   const [showWebviewHelp, setShowWebviewHelp] = useState(false);
+  const [paymentOpenedInBrowser, setPaymentOpenedInBrowser] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -144,26 +145,20 @@ export default function PaymentPage() {
     return `${window.location.origin}/payments?${params.toString()}`;
   };
 
+  // Detect in-app WebView where Razorpay modal renders blank
   const isInAppWebView = (): boolean => {
     if (typeof window === "undefined") return false;
-    const ua = navigator.userAgent || "";
-    const isIOS = /iphone|ipad|ipod/i.test(ua);
-    const isAndroid = /android/i.test(ua);
-    const isSafari = isIOS && /safari/i.test(ua) && !/crios|fxios|edgios/i.test(ua);
-    const isPWAShell = /pwashell/i.test(ua);
-    const isWebViewIOS = (isIOS && !isSafari) || isPWAShell;
-    const isWebViewAndroid = isAndroid && /wv/.test(ua);
-    return isWebViewIOS || isWebViewAndroid;
+    return !!(
+      window.matchMedia?.("(display-mode: standalone)")?.matches ||
+      (navigator as any).standalone === true ||
+      /wv\)|WebView|PWA Builder|pwashell/i.test(navigator.userAgent || "")
+    );
   };
 
   const handlePayment = async () => {
     console.log("handlePayment called at", new Date().toISOString());
     if (isSubmitting) {
       console.log("Prevented double submit");
-      return;
-    }
-    if (isInAppWebView()) {
-      setShowWebviewHelp(true);
       return;
     }
     setIsSubmitting(true);
@@ -175,6 +170,30 @@ export default function PaymentPage() {
     const payableAmount = bidAmount + commissionAmount + gstAmount;
 
     try {
+      // In-app WebView: use Payment Link and open in system browser
+      if (isInAppWebView()) {
+        const response = await axiosInstance.post("/create-payment-link/", {
+          postId: taskId,
+          bid_amount: Number(bidAmount.toFixed(2)),
+          gst_amount: Number(gstAmount.toFixed(2)),
+          commission_amount: Number(commissionAmount.toFixed(2)),
+          payable_amount: Number(payableAmount.toFixed(2)),
+          tasker_id: taskerId,
+          taskmanager_id: taskPosterId,
+        });
+        const result = response.data;
+        if (!result?.data?.short_url) {
+          throw new Error(result?.message || "Failed to create payment link");
+        }
+        const win = window.open(result.data.short_url, "_blank", "noopener,noreferrer");
+        if (!win) {
+          throw new Error("Popup blocked. Please allow popups for this site and try again.");
+        }
+        setShowPaymentModal(false);
+        setPaymentOpenedInBrowser(true);
+        return;
+      }
+
       const response = await axiosInstance.post("/create-order/", {
         postId: taskId,
         bid_amount: Number(bidAmount.toFixed(2)),
@@ -517,6 +536,23 @@ export default function PaymentPage() {
             <CardFooter className="flex gap-2 justify-end">
               <Button variant="outline" onClick={handleCopyLink}>Copy Link</Button>
               <Button onClick={handleOpenInBrowser} className="bg-green-600 hover:bg-green-700">Open in Browser</Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+      {paymentOpenedInBrowser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Complete Payment in Browser</CardTitle>
+              <CardDescription>
+                The payment page has opened in your browser. Complete the payment there, then return to the app.
+              </CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button onClick={() => router.push("/dashboard")} className="w-full">
+                Go to Dashboard
+              </Button>
             </CardFooter>
           </Card>
         </div>
