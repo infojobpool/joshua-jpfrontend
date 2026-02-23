@@ -822,20 +822,19 @@ export function OffersSection({
               >
                 Copy Link (recommended)
               </Button>
-              <a
-                href={paymentUrlForApp}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => {
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
                   if (typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-                    e.preventDefault();
-                    window.location.href = `x-safari-${paymentUrlForApp}`;
+                    window.location.href = paymentUrlForApp;
+                  } else {
+                    window.open(paymentUrlForApp, "_blank", "noopener,noreferrer");
                   }
                 }}
-                className="w-full rounded-md border border-gray-300 px-4 py-3 text-center font-medium no-underline hover:bg-gray-50"
               >
-                Try Open in Browser
-              </a>
+                Open Payment Page
+              </Button>
               <Button variant="ghost" onClick={() => setPaymentUrlForApp(null)}>Cancel</Button>
             </DialogFooter>
           )}

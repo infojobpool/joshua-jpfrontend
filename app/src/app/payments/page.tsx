@@ -213,35 +213,21 @@ export default function PaymentPage() {
         }
         const paymentUrl = result.data.short_url;
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || "");
-        const isStandalone =
-          window.matchMedia?.("(display-mode: standalone)")?.matches ||
-          window.matchMedia?.("(display-mode: fullscreen)")?.matches ||
-          window.matchMedia?.("(display-mode: minimal-ui)")?.matches ||
-          (navigator as any).standalone === true ||
-          (navigator as any).displayMode === "standalone";
 
-        // In installed app (standalone): window.open opens in same WebView → blank Razorpay.
-        // ALWAYS show tap-to-open modal so user opens payment in real browser (iOS + Android).
-        if (isStandalone) {
-          setPaymentLinkForSafari(paymentUrl);
-          setShowPaymentModal(false);
+        // iOS: window.open opens new in-app WebView (blank/loading). Navigate in place instead.
+        if (isIOS) {
+          window.location.href = paymentUrl;
           return;
         }
 
-        // Regular mobile browser (not app): try window.open. Fallback to tap modal if blocked.
-        if (isIOS || /Android/i.test(navigator.userAgent || "")) {
-          const win = window.open(paymentUrl, "_blank", "noopener,noreferrer");
-          if (win) {
-            setShowPaymentModal(false);
-            setPaymentOpenedInBrowser(true);
-            return;
-          }
+        // Android/desktop: try window.open. Fallback to in-place navigation if popup blocked.
+        const win = window.open(paymentUrl, "_blank", "noopener,noreferrer");
+        if (win) {
+          setShowPaymentModal(false);
+          setPaymentOpenedInBrowser(true);
+          return;
         }
-
-        // Desktop or popup blocked: show tap-to-open modal
-        setPaymentLinkForSafari(paymentUrl);
-        setShowPaymentModal(false);
-        return;
+        window.location.href = paymentUrl;
       }
 
       const response = await axiosInstance.post("/create-order/", {
