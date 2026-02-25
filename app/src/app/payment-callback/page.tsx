@@ -1,9 +1,10 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { CheckCircle, XCircle, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { openInAppOrWeb } from "@/lib/openInApp";
 import {
   Card,
   CardContent,
@@ -15,7 +16,6 @@ import {
 
 export default function PaymentCallbackPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const status = searchParams.get("status");
   const error = searchParams.get("error");
 
@@ -30,7 +30,7 @@ export default function PaymentCallbackPage() {
       window.opener.location.href = "/dashboard";
       window.close();
     } else {
-      router.push("/dashboard");
+      openInAppOrWeb("/dashboard");
     }
   };
 
@@ -38,7 +38,7 @@ export default function PaymentCallbackPage() {
     if (window.opener) {
       window.close();
     } else {
-      router.push("/dashboard");
+      openInAppOrWeb("/dashboard");
     }
   };
 

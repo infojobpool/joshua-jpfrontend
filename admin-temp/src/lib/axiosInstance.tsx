@@ -17,9 +17,13 @@ const axiosInstance = axios.create({
 // Add a request interceptor to include JWT in headers
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+    const url = (config.url || '').toLowerCase();
+    const isLogin = url.includes('admin-login');
+    if (!isLogin) {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+      }
     }
     // Cache-bust GET requests so admin list reflects latest edits immediately
     if ((config.method || 'get').toLowerCase() === 'get') {
@@ -49,28 +53,33 @@ axiosInstance.interceptors.response.use(
       // eslint-disable-next-line no-console
       console.warn('[admin][http][error]', (cfg.method || 'GET').toUpperCase(), fullUrl, error?.response?.status);
     } catch {}
-    if (error.response.status === 401) {
-      // Unauthorized
-      // Handle token refresh logic here
-      // This might involve calling a refresh endpoint and updating the token
+    const status = error?.response?.status;
+    const url = (error?.config?.url || '').toLowerCase();
+    const isLogin = url.includes('admin-login');
+    if (status === 401) {
+      if (isLogin) {
+        // Login 401 = wrong credentials, don't attempt refresh
+        return Promise.reject(error);
+      }
+      // Unauthorized on other endpoints - try refresh
       try {
         const refreshResponse = await axios.post(
-          '/refresh-token/',
+          `${axiosInstance.defaults.baseURL || 'https://api.jobpool.in/api/v1'}/refresh-token/`,
           {},
           {
             withCredentials: true,
           }
         );
-        const newToken = refreshResponse.data.token;
-        localStorage.setItem('token', newToken);
-        error.config.headers['Authorization'] = `Bearer ${newToken}`;
-        return axiosInstance(error.config);
+        const newToken = refreshResponse.data?.token;
+        if (newToken) {
+          localStorage.setItem('token', newToken);
+          error.config.headers['Authorization'] = `Bearer ${newToken}`;
+          return axiosInstance(error.config);
+        }
       } catch (refreshError) {
-        // Handle refresh token failure (e.g., logout user)
         localStorage.removeItem('token');
-        //  window.location.href = '/auth'; // Redirect to login
-        return Promise.reject(refreshError);
       }
+      return Promise.reject(error);
     }
     return Promise.reject(error);
   }

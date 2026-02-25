@@ -114,7 +114,7 @@ export default function AdminLoginPage() {
                 <Label htmlFor="user_email">Email</Label>
                 <Input
                   id="user_email"
-                  type="user_email"
+                  type="email"
                   name="user_email"
                   placeholder="admin@taskmaster.com"
                   value={formData.user_email}

@@ -13,9 +13,13 @@ const axiosInstance = axios.create({
 // Add a request interceptor to include JWT in headers
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+    const url = (config.url || '').toLowerCase();
+    const isLogin = url.includes('admin-login');
+    if (!isLogin) {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -28,28 +32,30 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response.status === 401) {
-      // Unauthorized
-      // Handle token refresh logic here
-      // This might involve calling a refresh endpoint and updating the token
-      try {
-        const refreshResponse = await axios.post(
-          '/refresh-token/',
-          {},
-          {
-            withCredentials: true,
-          }
-        );
-        const newToken = refreshResponse.data.token;
-        localStorage.setItem('token', newToken);
-        error.config.headers['Authorization'] = `Bearer ${newToken}`;
-        return axiosInstance(error.config);
-      } catch (refreshError) {
-        // Handle refresh token failure (e.g., logout user)
-        localStorage.removeItem('token');
-        //  window.location.href = '/auth'; // Redirect to login
-        return Promise.reject(refreshError);
+    const status = error?.response?.status;
+    const url = (error?.config?.url || '').toLowerCase();
+    const isLogin = url.includes('admin-login');
+    if (status === 401) {
+      if (isLogin) {
+        return Promise.reject(error);
       }
+      try {
+        const base = axiosInstance.defaults.baseURL || '';
+        const refreshResponse = await axios.post(
+          `${base}/refresh-token/`,
+          {},
+          { withCredentials: true }
+        );
+        const newToken = refreshResponse.data?.token;
+        if (newToken) {
+          localStorage.setItem('token', newToken);
+          error.config.headers['Authorization'] = `Bearer ${newToken}`;
+          return axiosInstance(error.config);
+        }
+      } catch (refreshError) {
+        localStorage.removeItem('token');
+      }
+      return Promise.reject(error);
     }
     return Promise.reject(error);
   }

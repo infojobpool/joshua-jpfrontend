@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import axiosInstance from "@/lib/axiosInstance";
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { openInAppOrWeb } from "@/lib/openInApp";
 
 type PendingOrder = {
   postId: string;
@@ -19,7 +20,6 @@ type PendingOrder = {
 
 export default function RazorpayCallbackPage() {
   const params = useSearchParams();
-  const router = useRouter();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("Verifying payment...");
 
@@ -74,13 +74,13 @@ export default function RazorpayCallbackPage() {
         sessionStorage.removeItem("paymentData");
         sessionStorage.removeItem("payment_page_visited");
 
-        setTimeout(() => router.push("/dashboard"), 1500);
+        setTimeout(() => openInAppOrWeb("/dashboard"), 1500);
       } catch (err: any) {
         setStatus("error");
         setMessage(err?.message || "Payment verification failed");
       }
     })();
-  }, [params, router]);
+  }, [params]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -91,11 +91,16 @@ export default function RazorpayCallbackPage() {
           </CardTitle>
           <CardDescription>{message}</CardDescription>
         </CardHeader>
-        {status === "error" && (
-          <CardFooter className="flex justify-end">
-            <Button onClick={() => router.push("/payments")}>Try Again</Button>
-          </CardFooter>
-        )}
+        <CardFooter className="flex flex-col gap-2">
+          {status === "error" && (
+            <Button onClick={() => (window.location.href = "/payments")}>Try Again</Button>
+          )}
+          {(status === "success" || status === "error") && (
+            <Button variant={status === "success" ? "default" : "outline"} onClick={() => openInAppOrWeb("/dashboard")}>
+              Back to Dashboard
+            </Button>
+          )}
+        </CardFooter>
       </Card>
     </div>
   );
