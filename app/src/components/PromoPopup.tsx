@@ -51,21 +51,21 @@ export function PromoPopup({
         onClick={handleClose}
         aria-hidden="true"
       />
-      {/* Popup card */}
-      <div className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
+      {/* Popup card - larger on desktop, no white bleed, image extends to fill */}
+      <div className="relative w-full max-w-[95vw] sm:max-w-xl md:max-w-3xl overflow-hidden rounded-2xl shadow-2xl bg-[#0f172a]">
         <button
           onClick={handleClose}
-          className="absolute right-2 top-2 z-10 flex size-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50 active:scale-95"
+          className="absolute right-2 top-2 z-10 flex size-10 items-center justify-center rounded-full bg-black/40 text-white transition hover:bg-black/60 active:scale-95"
           aria-label="Close promo"
         >
           <X className="size-5" />
         </button>
-        <div className="relative aspect-[4/3] w-full">
+        <div className="relative w-full">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageSrc}
             alt={imageAlt}
-            className="h-full w-full object-contain"
+            className="block w-full h-auto max-h-[85vh] object-contain"
           />
         </div>
       </div>
