@@ -36,13 +36,25 @@ export function useNotifications(isAuthenticated: boolean) {
 
       if (data?.status_code === 200 && data?.data) {
         const payload = data.data;
+        let list: NotificationItem[] = [];
         if (Array.isArray(payload)) {
-          setItems(payload);
-          setUnreadCount(payload.filter((n) => !n.read).length);
+          list = payload;
         } else if (payload && typeof payload === "object" && "data" in payload) {
-          const list = (payload as { data?: NotificationItem[]; unread_count?: number }).data ?? [];
-          setItems(list);
-          setUnreadCount((payload as { unread_count?: number }).unread_count ?? list.filter((n) => !n.read).length);
+          list = (payload as { data?: NotificationItem[]; unread_count?: number }).data ?? [];
+        }
+        if (list.length > 0) {
+          setItems((prev) => {
+            const byId = new Map<string, NotificationItem>();
+            [...list, ...prev].forEach((n) => {
+              const id = String(n.id ?? (n as any).notification_id);
+              if (id) byId.set(id, n);
+            });
+            const merged = Array.from(byId.values())
+              .sort((a, b) => new Date((b as any).created_at ?? b.createdAt ?? 0).getTime() - new Date((a as any).created_at ?? a.createdAt ?? 0).getTime())
+              .slice(0, 50);
+            setUnreadCount(merged.filter((n) => !n.read).length);
+            return merged;
+          });
         }
       }
     } catch {
@@ -78,5 +90,10 @@ export function useNotifications(isAuthenticated: boolean) {
     [isAuthenticated, fetchNotifications]
   );
 
-  return { items, unreadCount, loading, fetchNotifications, markAsRead };
+  const clearAll = useCallback(() => {
+    setItems([]);
+    setUnreadCount(0);
+  }, []);
+
+  return { items, unreadCount, loading, fetchNotifications, markAsRead, clearAll };
 }
