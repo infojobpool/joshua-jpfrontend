@@ -2585,10 +2585,16 @@ export default function Dashboard() {
     try {
       setCompletingTaskId(jobId);
       const reviewBody = { rating, comment };
+      const token = typeof window !== "undefined" && (localStorage.getItem("token") || sessionStorage.getItem("token"));
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+        headers["X-Access-Token"] = token;
+      }
       if (completeReviewAsTaskmaster) {
-        await axiosInstance.put(`/mark-complete-by-taskmaster/${jobId}/`, reviewBody);
+        await axiosInstance.put(`/mark-complete-by-taskmaster/${jobId}/`, reviewBody, { headers });
       } else {
-        await axiosInstance.put(`/mark-complete/${jobId}/`, reviewBody);
+        await axiosInstance.put(`/mark-complete/${jobId}/`, reviewBody, { headers });
       }
       toast.success("Task marked complete and review submitted!");
       setCompleteReviewTask(null);
@@ -2618,7 +2624,13 @@ export default function Dashboard() {
         setRefetchCompletedTrigger((t) => t + 1);
       }, 500);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to complete. Please try again.");
+      const errMsg =
+        error?.response?.data?.message ||
+        error?.response?.data?.detail ||
+        (typeof error?.response?.data === "string" ? error.response.data : null) ||
+        "Failed to complete. Please try again.";
+      console.error("Mark complete error:", { status: error?.response?.status, data: error?.response?.data });
+      toast.error(errMsg);
       throw error;
     } finally {
       setCompletingTaskId(null);

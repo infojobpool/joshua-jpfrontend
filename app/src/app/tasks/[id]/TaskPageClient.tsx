@@ -1074,10 +1074,16 @@ export default function TaskDetailPage() {
     try {
       setIsSubmitting(true);
       const reviewBody = { rating, comment };
+      const token = typeof window !== "undefined" && (localStorage.getItem("token") || sessionStorage.getItem("token"));
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+        headers["X-Access-Token"] = token;
+      }
       if (completeReviewAsTaskmaster) {
-        await axiosInstance.put(`/mark-complete-by-taskmaster/${task.id}/`, reviewBody);
+        await axiosInstance.put(`/mark-complete-by-taskmaster/${task.id}/`, reviewBody, { headers });
       } else {
-        await axiosInstance.put(`/mark-complete/${task.id}/`, reviewBody);
+        await axiosInstance.put(`/mark-complete/${task.id}/`, reviewBody, { headers });
       }
       toast.success("Task marked complete and review submitted!");
       setCompleteReviewOpen(false);
@@ -1090,7 +1096,13 @@ export default function TaskDetailPage() {
       localStorage.removeItem(`task_${task.id}`);
       setTaskRefreshKey((k) => k + 1);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to complete. Please try again.");
+      const errMsg =
+        error?.response?.data?.message ||
+        error?.response?.data?.detail ||
+        (typeof error?.response?.data === "string" ? error.response.data : null) ||
+        "Failed to complete. Please try again.";
+      console.error("Mark complete error:", { status: error?.response?.status, data: error?.response?.data, msg: errMsg });
+      toast.error(errMsg);
       throw error;
     } finally {
       setIsSubmitting(false);

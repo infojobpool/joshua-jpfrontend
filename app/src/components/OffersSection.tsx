@@ -645,16 +645,27 @@ export function OffersSection({
     if (!offer) return;
     try {
       setCompleting(true);
-      // Mark complete + review in one call (taskmaster)
-      await axiosInstance.put(`/mark-complete-by-taskmaster/${task.id}/`, {
-        rating: reviewRating,
-        comment: reviewComment,
-      });
+      const token = typeof window !== "undefined" && (localStorage.getItem("token") || sessionStorage.getItem("token"));
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+        headers["X-Access-Token"] = token;
+      }
+      await axiosInstance.put(
+        `/mark-complete-by-taskmaster/${task.id}/`,
+        { rating: reviewRating, comment: reviewComment },
+        { headers }
+      );
       toast.success("Task marked complete and review submitted");
       setCompleteOpen(false);
       setReviewComment("");
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || "Failed to complete task");
+      const errMsg =
+        e?.response?.data?.message ||
+        e?.response?.data?.detail ||
+        (typeof e?.response?.data === "string" ? e.response.data : null) ||
+        "Failed to complete task";
+      toast.error(errMsg);
     } finally {
       setCompleting(false);
     }
