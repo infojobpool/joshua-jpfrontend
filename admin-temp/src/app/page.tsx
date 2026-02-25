@@ -49,7 +49,11 @@ export default function AdminLoginPage() {
 
     try {
       setIsLoading(true);
-      const response = await axiosInstance.post("/admin-login/", formData);
+      const response = await axiosInstance.post("/admin-login/", {
+        user_email: formData.user_email,
+        email: formData.user_email,
+        password: formData.password,
+      });
 
       const { status_code, message, data } = response.data;
 
@@ -75,13 +79,13 @@ export default function AdminLoginPage() {
         const axiosError = err as AxiosError<{ message?: string }>;
         const status = axiosError.response?.status;
 
+        const msg = axiosError.response?.data?.message || axiosError.response?.data?.detail;
         if (status === 404) {
-          toast.error(axiosError.response?.data?.message || "User not found.");
+          toast.error(msg || "User not found.");
+        } else if (status === 401) {
+          toast.error(msg || "Invalid email or password. Please try again or reset your password.");
         } else {
-          toast.error(
-            axiosError.response?.data?.message ||
-              "An error occurred while logging in"
-          );
+          toast.error(msg || "An error occurred while logging in");
         }
       } else {
         toast.error("Something went wrong");

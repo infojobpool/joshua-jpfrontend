@@ -49,7 +49,11 @@ export default function AdminLoginPage() {
 
     try {
       setIsLoading(true);
-      const response = await axiosInstance.post("/admin-login/", formData);
+      const response = await axiosInstance.post("/admin-login/", {
+        user_email: formData.user_email,
+        email: formData.user_email,
+        password: formData.password,
+      });
 
       const { status_code, message, data } = response.data;
 
