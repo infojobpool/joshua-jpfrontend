@@ -2,10 +2,10 @@
 
 import axios from 'axios';
 
-// Admin backend: point to legacy API on api.jobpool.in
-// This matches how the admin was originally configured.
+// Admin backend: API is at api.jobpool.in (refresh must hit API, not admin.jobpool.in)
+const API_BASE = 'https://api.jobpool.in/api/v1';
 const axiosInstance = axios.create({
-  baseURL: 'https://api.jobpool.in/api/v1',
+  baseURL: API_BASE,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -56,19 +56,19 @@ axiosInstance.interceptors.response.use(
     const status = error?.response?.status;
     const url = (error?.config?.url || '').toLowerCase();
     const isLogin = url.includes('admin-login');
+    const isRefresh = url.includes('refresh-token');
     if (status === 401) {
-      if (isLogin) {
-        // Login 401 = wrong credentials, don't attempt refresh
+      if (isLogin || isRefresh) {
         return Promise.reject(error);
       }
-      // Unauthorized on other endpoints - try refresh
+      if (!localStorage.getItem('token')) {
+        return Promise.reject(error);
+      }
       try {
         const refreshResponse = await axios.post(
-          `${axiosInstance.defaults.baseURL || 'https://api.jobpool.in/api/v1'}/refresh-token/`,
+          `${API_BASE}/refresh-token/`,
           {},
-          {
-            withCredentials: true,
-          }
+          { withCredentials: true }
         );
         const newToken = refreshResponse.data?.token;
         if (newToken) {

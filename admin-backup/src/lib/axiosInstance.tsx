@@ -2,8 +2,11 @@
 
 import axios from 'axios';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL
+  ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1`
+  : 'https://api.jobpool.in/api/v1';
 const axiosInstance = axios.create({
-  baseURL: `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1`,
+  baseURL: API_BASE,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -35,14 +38,17 @@ axiosInstance.interceptors.response.use(
     const status = error?.response?.status;
     const url = (error?.config?.url || '').toLowerCase();
     const isLogin = url.includes('admin-login');
+    const isRefresh = url.includes('refresh-token');
     if (status === 401) {
-      if (isLogin) {
+      if (isLogin || isRefresh) {
+        return Promise.reject(error);
+      }
+      if (!localStorage.getItem('token')) {
         return Promise.reject(error);
       }
       try {
-        const base = axiosInstance.defaults.baseURL || '';
         const refreshResponse = await axios.post(
-          `${base}/refresh-token/`,
+          `${API_BASE}/refresh-token/`,
           {},
           { withCredentials: true }
         );
