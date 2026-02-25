@@ -69,9 +69,14 @@ axiosInstance.interceptors.request.use(
       requestThrottle.requests++;
     }
     
-    const token = localStorage.getItem('token');
+    // Token from localStorage or sessionStorage (PWA/mobile fallback)
+    const token =
+      (typeof window !== 'undefined' && localStorage.getItem('token')) ||
+      (typeof window !== 'undefined' && sessionStorage.getItem('token')) ||
+      null;
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
+      config.headers['X-Access-Token'] = token;
     }
     // Create a unique key for request deduplication (no cache-busting to allow HTTP caching)
     const requestKey = `${config.method?.toUpperCase()}_${config.url}_${JSON.stringify(config.params)}`;

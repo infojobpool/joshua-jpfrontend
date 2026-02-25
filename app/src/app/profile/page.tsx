@@ -405,39 +405,42 @@ export default function ProfilePage() {
   // Use unified profile page for both mobile and desktop so data is consistent
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 to-white">
       <Header user={profileuser} onSignOut={handleSignOut} />
-      <main className="flex-1 container mx-auto max-w-6xl py-8 md:py-12 px-4 md:px-6">
+      <main className="flex-1 container mx-auto max-w-6xl py-6 md:py-10 px-4 md:px-6">
         <Link
           href="/dashboard"
-          className="text-sm text-muted-foreground hover:underline"
+          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-emerald-600 transition-colors mb-6"
         >
           ← Back to Dashboard
         </Link>
 
-        <div className="grid gap-8 md:grid-cols-3 mt-4">
-          <Card className="md:col-span-1 border-0 shadow-sm rounded-xl">
-            <CardHeader className="flex flex-col items-center space-y-2 text-center">
+        <div className="grid gap-6 md:grid-cols-3 mt-2">
+          {/* Profile card - left column */}
+          <Card className="md:col-span-1 border-0 shadow-lg rounded-2xl overflow-hidden bg-white">
+            <div className="h-24 bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600" />
+            <CardHeader className="flex flex-col items-center -mt-14 relative pb-2">
               {profileuser.isEditing ? (
                 <div className="relative">
-                  <Avatar className="h-24 w-24">
+                  <Avatar className="h-28 w-28 ring-4 ring-white shadow-xl">
                     <AvatarImage
                       src={tempAvatar || profileuser.avatar}
                       alt={profileuser.name}
+                      className="object-cover"
                     />
-                    <AvatarFallback>
+                    <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-2xl">
                       {profileuser.name
                         .split(" ")
                         .map((n) => n[0])
                         .join("")}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full">
                     <div
-                      className="rounded-full bg-black/50 p-2 cursor-pointer"
+                      className="rounded-full bg-black/60 p-2.5 cursor-pointer hover:bg-black/80 transition-colors"
                       onClick={triggerFileInput}
                     >
-                      <Camera className="h-6 w-6 text-white" />
+                      <Camera className="h-5 w-5 text-white" />
                     </div>
                   </div>
                   <input
@@ -449,7 +452,7 @@ export default function ProfilePage() {
                   />
                   {tempAvatar && (
                     <button
-                      className="absolute -top-2 -right-2 rounded-full bg-red-500 p-1"
+                      className="absolute -top-1 -right-1 rounded-full bg-red-500 p-1.5 shadow-md hover:bg-red-600"
                       onClick={removeSelectedImage}
                       type="button"
                     >
@@ -458,12 +461,13 @@ export default function ProfilePage() {
                   )}
                 </div>
               ) : (
-                <Avatar className="h-24 w-24">
+                <Avatar className="h-28 w-28 ring-4 ring-white shadow-xl">
                   <AvatarImage
                     src={profileuser.avatar}
                     alt={profileuser.name}
+                    className="object-cover"
                   />
-                  <AvatarFallback>
+                  <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-2xl">
                     {profileuser.name
                       .split(" ")
                       .map((n) => n[0])
@@ -471,74 +475,71 @@ export default function ProfilePage() {
                   </AvatarFallback>
                 </Avatar>
               )}
-              <div>
-                <CardTitle className="text-xl font-semibold tracking-tight">{profileuser.name}</CardTitle>
-                <CardDescription className="text-sm text-muted-foreground">{profileuser.email}</CardDescription>
+              <div className="text-center mt-3">
+                <CardTitle className="text-xl font-bold text-slate-800">{profileuser.name}</CardTitle>
+                <CardDescription className="text-sm text-slate-500 mt-0.5">{profileuser.email}</CardDescription>
               </div>
               <Button
                 variant="outline"
                 size="sm"
-                className="mt-2"
+                className="mt-3 rounded-xl border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
                 onClick={toggleEditProfile}
               >
                 <Edit className="mr-2 h-4 w-4" />
                 {profileuser.isEditing ? "Cancel" : "Edit Profile"}
               </Button>
             </CardHeader>
-            <CardContent className="space-y-5">
+            <CardContent className="space-y-6 pt-2">
               {!profileuser.isEditing && (
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-lg bg-gray-50 p-3">
-                    <p className="text-[10px] uppercase text-muted-foreground">Member since</p>
-                    <p className="text-sm font-medium">{profileuser.joinDate || "—"}</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 p-4 text-center border border-slate-100">
+                    <Calendar className="h-5 w-5 mx-auto mb-2 text-emerald-600" />
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Member since</p>
+                    <p className="text-sm font-bold text-slate-800 mt-1">{profileuser.joinDate || "—"}</p>
                   </div>
-                  <div className="rounded-lg bg-gray-50 p-3">
-                    <p className="text-[10px] uppercase text-muted-foreground">Verification</p>
-                    <p className="text-sm font-medium">
+                  <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 p-4 text-center border border-emerald-100">
+                    <CheckCircle className="h-5 w-5 mx-auto mb-2 text-emerald-600" />
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Verification</p>
+                    <p className={`text-sm font-bold mt-1 ${verificationStatus.bank.completed ? "text-emerald-700" : "text-slate-600"}`}>
                       {verificationStatus.bank.completed ? "Verified" : verificationStatus.aadhar.completed ? "Aadhar" : verificationStatus.pan.completed ? "PAN" : "Pending"}
                     </p>
                   </div>
-                  <div className="rounded-lg bg-gray-50 p-3">
-                    <p className="text-[10px] uppercase text-muted-foreground">Contact</p>
-                    <p className="text-sm font-medium">{profileuser.phone || "—"}</p>
+                  <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 p-4 text-center border border-slate-100">
+                    <Phone className="h-5 w-5 mx-auto mb-2 text-emerald-600" />
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Contact</p>
+                    <p className="text-sm font-bold text-slate-800 mt-1">{profileuser.phone || "—"}</p>
                   </div>
                 </div>
               )}
               {profileuser.isEditing ? (
                 <form onSubmit={saveProfileChanges} className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium" htmlFor="name">
-                      Name
-                    </label>
+                    <label className="text-sm font-medium text-slate-700" htmlFor="name">Name</label>
                     <input
                       id="name"
                       name="name"
-                      className="w-full rounded-md border p-2 text-sm"
+                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                       defaultValue={profileuser.name}
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium" htmlFor="email">
-                      Email
-                    </label>
+                    <label className="text-sm font-medium text-slate-700" htmlFor="email">Email</label>
                     <input
                       id="email"
                       name="email"
                       type="email"
-                      className="w-full rounded-md border p-2 text-sm bg-gray-100"
+                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm bg-slate-50"
                       defaultValue={profileuser.email}
                       disabled
                       readOnly
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium" htmlFor="phone">
-                      Phone
-                    </label>
+                    <label className="text-sm font-medium text-slate-700" htmlFor="phone">Phone</label>
                     <input
                       id="phone"
                       name="phone"
-                      className="w-full rounded-md border p-2 text-sm"
+                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                       defaultValue={profileuser.phone}
                     />
                   </div>
@@ -551,7 +552,7 @@ export default function ProfilePage() {
                       >
                         <textarea
                           name={`address-${addr.id}`}
-                          className="w-full rounded-md border p-2 text-sm"
+                          className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                           defaultValue={addr.address}
                           rows={2}
                           onChange={(e) =>
@@ -596,113 +597,104 @@ export default function ProfilePage() {
                       Add Address
                     </Button>
                   </div>
-                  <div className="flex justify-end">
-                    <Button type="submit" size="sm" disabled={isLoading}>
+                  <div className="flex justify-end pt-2">
+                    <Button type="submit" size="sm" disabled={isLoading} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">
                       {isLoading ? "Saving..." : "Save Changes"}
                     </Button>
                   </div>
                 </form>
               ) : (
                 <>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2 text-sm">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span>{profileuser.name}</span>
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Profile Details</h3>
+                    <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                        <User className="h-5 w-5 text-emerald-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Name</p>
+                        <p className="font-medium text-slate-800">{profileuser.name}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span>{profileuser.email}</span>
+                    <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                        <Mail className="h-5 w-5 text-emerald-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-slate-500">Email</p>
+                        <p className="font-medium text-slate-800 truncate">{profileuser.email}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span>{profileuser.phone}</span>
+                    <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                        <Phone className="h-5 w-5 text-emerald-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Phone</p>
+                        <p className="font-medium text-slate-800">{profileuser.phone || "—"}</p>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex items-start space-x-2 text-sm">
-                        <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <div className="flex flex-col">
-                          <span className="font-medium">Addresses:</span>
-                          {profileuser.addresses.map((addr) => (
-                            <div
-                              key={addr.id}
-                              className="flex items-center mt-1"
-                            >
-                              <span>{addr.address}</span>
+                    <div className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                        <MapPin className="h-5 w-5 text-emerald-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-slate-500">Addresses</p>
+                        {profileuser.addresses.filter((a) => a.address).length > 0 ? (
+                          profileuser.addresses.map((addr) => (
+                            <div key={addr.id} className="flex items-center gap-2 mt-1 flex-wrap">
+                              <span className="font-medium text-slate-800">{addr.address}</span>
                               {addr.isDefault && (
-                                <Badge
-                                  variant="outline"
-                                  className="ml-2 text-xs px-2 py-1"
-                                >
-                                  Default
-                                </Badge>
+                                <Badge className="bg-emerald-100 text-emerald-700 text-xs">Default</Badge>
                               )}
                             </div>
-                          ))}
-                        </div>
+                          ))
+                        ) : (
+                          <p className="font-medium text-slate-500">No address added</p>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span>Joined: {profileuser.joinDate}</span>
+                    <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                        <Calendar className="h-5 w-5 text-emerald-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Joined</p>
+                        <p className="font-medium text-slate-800">{profileuser.joinDate || "—"}</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="pt-4">
-                    <h3 className="mb-2 text-sm font-medium">
-                      Verification Status
-                    </h3>
+                  <div className="pt-4 border-t border-slate-100">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Verification Status</h3>
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">PAN Card</span>
+                      <div className="flex items-center justify-between rounded-xl px-4 py-3 bg-slate-50">
+                        <span className="text-sm font-medium text-slate-700">PAN Card</span>
                         {verificationStatus.pan.completed ? (
-                          <Badge
-                            variant="outline"
-                            className="bg-green-50 text-green-700"
-                          >
-                            <CheckCircle className="mr-1 h-3 w-3" /> Verified
+                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                            <CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Verified
                           </Badge>
                         ) : (
-                          <Badge
-                            variant="outline"
-                            className="bg-gray-100 text-gray-700"
-                          >
-                            Pending
-                          </Badge>
+                          <Badge variant="outline" className="bg-white text-slate-500 border-slate-200">Pending</Badge>
                         )}
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Aadhar</span>
+                      <div className="flex items-center justify-between rounded-xl px-4 py-3 bg-slate-50">
+                        <span className="text-sm font-medium text-slate-700">Aadhar</span>
                         {verificationStatus.aadhar.completed ? (
-                          <Badge
-                            variant="outline"
-                            className="bg-green-50 text-green-700"
-                          >
-                            <CheckCircle className="mr-1 h-3 w-3" /> Verified
+                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                            <CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Verified
                           </Badge>
                         ) : (
-                          <Badge
-                            variant="outline"
-                            className="bg-gray-100 text-gray-700"
-                          >
-                            Pending
-                          </Badge>
+                          <Badge variant="outline" className="bg-white text-slate-500 border-slate-200">Pending</Badge>
                         )}
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Bank Account</span>
+                      <div className="flex items-center justify-between rounded-xl px-4 py-3 bg-slate-50">
+                        <span className="text-sm font-medium text-slate-700">Bank Account</span>
                         {verificationStatus.bank.completed ? (
-                          <Badge
-                            variant="outline"
-                            className="bg-green-50 text-green-700"
-                          >
-                            <CheckCircle className="mr-1 h-3 w-3" /> Verified
+                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                            <CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Verified
                           </Badge>
                         ) : (
-                          <Badge
-                            variant="outline"
-                            className="bg-gray-100 text-gray-700"
-                          >
-                            Pending
-                          </Badge>
+                          <Badge variant="outline" className="bg-white text-slate-500 border-slate-200">Pending</Badge>
                         )}
                       </div>
                     </div>
@@ -711,64 +703,47 @@ export default function ProfilePage() {
               )}
             </CardContent>
           </Card>
-          <Card className="md:col-span-2 border-0 shadow-sm rounded-xl">
-            <CardHeader>
-              <CardTitle className="text-2xl font-semibold tracking-tight">Profile Details</CardTitle>
-              <CardDescription>Manage your verification and reviews</CardDescription>
+          <Card className="md:col-span-2 border-0 shadow-lg rounded-2xl overflow-hidden bg-white">
+            <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+              <CardTitle className="text-xl font-bold text-slate-800">Profile Details</CardTitle>
+              <CardDescription className="text-slate-500">Manage your verification and reviews</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <Tabs defaultValue="bank">
-                <TabsList className="w-full grid grid-cols-2 rounded-xl bg-gray-100 p-2">
-                  <TabsTrigger value="bank" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary">Bank Account</TabsTrigger>
-                  <TabsTrigger value="reviews" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary">Reviews</TabsTrigger>
+                <TabsList className="w-full grid grid-cols-2 rounded-xl bg-slate-100 p-1.5 h-12">
+                  <TabsTrigger value="bank" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">Bank Account</TabsTrigger>
+                  <TabsTrigger value="reviews" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">Reviews</TabsTrigger>
                 </TabsList>
-                <TabsContent value="bank" className="space-y-4 pt-4">
+                <TabsContent value="bank" className="space-y-6 pt-6">
                   <div className="flex flex-col gap-6 md:flex-row">
                     <div className="w-full md:w-1/3">
-                      <div className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
-                        <img
-                          src="/images/placeholder.svg?height=160&width=240"
-                          alt="Bank Details"
-                          className="mx-auto h-40 w-60 rounded-md object-cover"
-                        />
+                      <div className="rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 border border-slate-200 p-6 flex items-center justify-center min-h-[180px]">
+                        <div className="text-center">
+                          <div className="mx-auto w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-3">
+                            <Briefcase className="h-8 w-8 text-emerald-600" />
+                          </div>
+                          <p className="text-sm font-medium text-slate-600">Bank Details</p>
+                        </div>
                       </div>
                     </div>
                     <div className="w-full space-y-4 md:w-2/3">
                       {verificationStatus.bank.completed &&
                       profileuser.bank_info ? (
                         <>
-                          <div className="rounded-md bg-green-50 p-3 text-green-700">
-                            <div className="flex items-center">
-                              <CheckCircle className="mr-2 h-5 w-5" />
-                              <div>
-                                <p className="font-medium">
-                                  Verification Complete
-                                </p>
-                              </div>
+                          <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4 text-emerald-800">
+                            <div className="flex items-center gap-3">
+                              <CheckCircle className="h-6 w-6 text-emerald-600 shrink-0" />
+                              <p className="font-semibold">Verification Complete</p>
                             </div>
                           </div>
                           <div className="grid gap-4 md:grid-cols-2">
-                            {/* <div>
-                              <p className="text-sm font-medium text-muted-foreground">
-                                Account Holder Name
-                              </p>
-                              <p>{profileuser.bank_info.account_holder_name}</p>
-                            </div> */}
-                            <div>
-                              <p className="text-sm font-medium text-muted-foreground">
-                                Account Number
-                              </p>
-                              <p>
-                                {profileuser.bank_info.bank_account_number}
-                              </p>
+                            <div className="rounded-xl bg-slate-50 px-4 py-3 border border-slate-100">
+                              <p className="text-xs font-semibold uppercase text-slate-500">Account Number</p>
+                              <p className="font-medium text-slate-800 mt-1">{profileuser.bank_info.bank_account_number}</p>
                             </div>
-                            <div>
-                              <p className="text-sm font-medium text-muted-foreground">
-                                IFSC Code
-                              </p>
-                              <p>
-                                {profileuser.bank_info.ifsc_code}
-                                </p>
+                            <div className="rounded-xl bg-slate-50 px-4 py-3 border border-slate-100">
+                              <p className="text-xs font-semibold uppercase text-slate-500">IFSC Code</p>
+                              <p className="font-medium text-slate-800 mt-1">{profileuser.bank_info.ifsc_code}</p>
                             </div>
                             {/* <div>
                               <p className="text-sm font-medium text-muted-foreground">
@@ -791,17 +766,8 @@ export default function ProfilePage() {
                           </div>
                         </>
                       ) : (
-                        <div className="rounded-md bg-gray-100 p-3">
-                          <div className="flex items-center">
-                            <div>
-                              <p className="font-medium">
-                                Verification Pending
-                              </p>
-                              {/* <p className="text-sm">
-                                Please complete your bank account verification
-                              </p> */}
-                            </div>
-                          </div>
+                        <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+                          <p className="font-medium text-slate-700">Verification Pending</p>
                         </div>
                       )}
                       {/* {!verificationStatus.bank.completed && (
@@ -810,7 +776,7 @@ export default function ProfilePage() {
                         </Button>
                       )} */}
                       {!verificationStatus.bank.completed && (
-                        <Button asChild>
+                        <Button asChild className="rounded-xl bg-emerald-600 hover:bg-emerald-700">
                           <Link
                             href={
                               user?.verification_status === 2
@@ -825,13 +791,13 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 </TabsContent>
-                <TabsContent value="reviews" className="space-y-4 pt-4">
+                <TabsContent value="reviews" className="space-y-4 pt-6">
                   <Tabs defaultValue="tasker" className="space-y-4">
-                    <TabsList className="w-full grid grid-cols-2 rounded-xl bg-gray-100 p-2">
-                      <TabsTrigger value="tasker" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary">
+                    <TabsList className="w-full grid grid-cols-2 rounded-xl bg-slate-100 p-1.5 h-12">
+                      <TabsTrigger value="tasker" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">
                         Reviews as Tasker
                       </TabsTrigger>
-                      <TabsTrigger value="taskmaster" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary">
+                      <TabsTrigger value="taskmaster" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">
                         Reviews as Taskmaster
                       </TabsTrigger>
                     </TabsList>
@@ -842,7 +808,7 @@ export default function ProfilePage() {
                           .map((review) => (
                             <div
                               key={review.id}
-                              className="rounded-lg border p-4 space-y-3 bg-white shadow-sm"
+                              className="rounded-xl border border-slate-100 p-4 space-y-3 bg-white shadow-sm hover:shadow-md transition-shadow"
                             >
                               <div className="flex items-start gap-4">
                                 <Avatar className="h-12 w-12 shrink-0">
@@ -887,7 +853,7 @@ export default function ProfilePage() {
                           .map((review) => (
                             <div
                               key={review.id}
-                              className="rounded-lg border p-4 space-y-3 bg-white shadow-sm"
+                              className="rounded-xl border border-slate-100 p-4 space-y-3 bg-white shadow-sm hover:shadow-md transition-shadow"
                             >
                               <div className="flex items-start gap-4">
                                 <Avatar className="h-12 w-12 shrink-0">
