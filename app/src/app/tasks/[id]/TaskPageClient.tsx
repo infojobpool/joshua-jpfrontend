@@ -5,6 +5,7 @@ import { OffersSection } from "@/components/OffersSection";
 import { PaymentModal } from "@/components/PaymentModal";
 import { PosterInfo } from "@/components/PosterInfo";
 import { ReviewSection } from "@/components/ReviewSection";
+import { CompletionReviewModal } from "@/components/CompletionReviewModal";
 import { SafetyTips } from "@/components/SafetyTips";
 import { TaskInfo } from "@/components/TaskInfo";
 import { Toaster } from "@/components/ui/sonner";
@@ -61,7 +62,9 @@ export default function TaskDetailPage() {
   const [verificationChecked, setVerificationChecked] = useState<boolean>(false);
   const [isPaymentPending, setIsPaymentPending] = useState<boolean>(false);
   const [taskRefreshKey, setTaskRefreshKey] = useState<number>(0);
-  const taskerId = offers.length > 0 ? offers[0].tasker.id : null;
+  const [completeReviewOpen, setCompleteReviewOpen] = useState(false);
+  const [completeReviewAsTaskmaster, setCompleteReviewAsTaskmaster] = useState(false);
+  const taskerId = offers.length > 0 ? offers[0].tasker.id : (task?.assignedTasker?.id ? String(task.assignedTasker.id) : null);
 
   // Debug: Log verification state changes
   useEffect(() => {
@@ -1066,6 +1069,34 @@ export default function TaskDetailPage() {
     }
   };
 
+  const handleCompleteReviewSubmit = async (rating: number, comment: string) => {
+    if (!task) return;
+    try {
+      setIsSubmitting(true);
+      const reviewBody = { rating, comment };
+      if (completeReviewAsTaskmaster) {
+        await axiosInstance.put(`/mark-complete-by-taskmaster/${task.id}/`, reviewBody);
+      } else {
+        await axiosInstance.put(`/mark-complete/${task.id}/`, reviewBody);
+      }
+      toast.success("Task marked complete and review submitted!");
+      setCompleteReviewOpen(false);
+      const payload = {
+        job_completion_status: 1,
+        tasker_completed: true,
+        taskmaster_completed: true,
+      };
+      setTask((prev) => (prev ? { ...prev, ...payload } : prev));
+      localStorage.removeItem(`task_${task.id}`);
+      setTaskRefreshKey((k) => k + 1);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to complete. Please try again.");
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const markAsComplete = () => {
     setTimeout(() => {
       toast.success("Task marked as complete!");
@@ -1453,46 +1484,13 @@ export default function TaskDetailPage() {
                 task.job_completion_status !== 1 && (
                   <Button
                     variant="outline"
-                    onClick={async () => {
-                      try {
-                        setIsSubmitting(true);
-                        const response = await axiosInstance.put(
-                          `/mark-complete/${task.id}/`
-                        );
-                        const payload = response.data?.data || {};
-                        toast.success("You marked this task as completed.");
-                        setTask((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                job_completion_status:
-                                  payload.job_completion_status ??
-                                  prev.job_completion_status,
-                                tasker_completed:
-                                  payload.tasker_completed ?? true,
-                                taskmaster_completed:
-                                  payload.taskmaster_completed ??
-                                  prev.taskmaster_completed,
-                              }
-                            : prev
-                        );
-                        localStorage.removeItem(`task_${task.id}`);
-                        setTaskRefreshKey((k) => k + 1);
-                      } catch (error: any) {
-                        console.error("Tasker completion failed:", error);
-                        toast.error(
-                          error?.response?.data?.message ||
-                            "Failed to mark task as completed."
-                        );
-                      } finally {
-                        setIsSubmitting(false);
-                      }
+                    onClick={() => {
+                      setCompleteReviewAsTaskmaster(false);
+                      setCompleteReviewOpen(true);
                     }}
                     disabled={isSubmitting}
                   >
-                    {isSubmitting
-                      ? "Updating..."
-                      : "Mark task as completed (Tasker)"}
+                    {isSubmitting ? "Updating..." : "Mark task as completed (Tasker)"}
                   </Button>
                 )}
 
@@ -1502,49 +1500,13 @@ export default function TaskDetailPage() {
                 task.job_completion_status !== 1 && (
                   <Button
                     variant="outline"
-                    onClick={async () => {
-                      try {
-                        setIsSubmitting(true);
-                        const response = await axiosInstance.put(
-                          `/mark-complete-by-taskmaster/${task.id}/`
-                        );
-                        const payload = response.data?.data || {};
-                        toast.success(
-                          "You confirmed this task is completed."
-                        );
-                        setTask((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                job_completion_status:
-                                  payload.job_completion_status ??
-                                  prev.job_completion_status,
-                                tasker_completed:
-                                  payload.tasker_completed ??
-                                  prev.tasker_completed,
-                                taskmaster_completed:
-                                  payload.taskmaster_completed ?? true,
-                              }
-                            : prev
-                        );
-                        localStorage.removeItem(`task_${task.id}`);
-                        setTaskRefreshKey((k) => k + 1);
-                      } catch (error: any) {
-                        console.error("Taskmaster completion failed:", error);
-                        toast.error(
-                          error?.response?.data?.message ||
-                            error?.response?.data?.detail ||
-                            "Failed to confirm task completion."
-                        );
-                      } finally {
-                        setIsSubmitting(false);
-                      }
+                    onClick={() => {
+                      setCompleteReviewAsTaskmaster(true);
+                      setCompleteReviewOpen(true);
                     }}
                     disabled={isSubmitting}
                   >
-                    {isSubmitting
-                      ? "Updating..."
-                      : "Confirm completion (Taskmaster)"}
+                    {isSubmitting ? "Updating..." : "Confirm completion (Taskmaster)"}
                   </Button>
                 )}
 
@@ -1777,6 +1739,18 @@ export default function TaskDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CompletionReviewModal
+        open={completeReviewOpen}
+        onOpenChange={setCompleteReviewOpen}
+        revieweeName={
+          completeReviewAsTaskmaster
+            ? (task?.assignedTasker?.name || "the tasker")
+            : (task?.poster?.name || "the taskmaster")
+        }
+        onSubmit={handleCompleteReviewSubmit}
+        isTaskmasterReviewingTasker={completeReviewAsTaskmaster}
+      />
     </div>
   );
 }

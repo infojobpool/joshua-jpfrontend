@@ -645,13 +645,8 @@ export function OffersSection({
     if (!offer) return;
     try {
       setCompleting(true);
-      // Mark complete
-      await axiosInstance.put(`/mark-complete/${task.id}/`);
-      // Submit review
-      await axiosInstance.put("/submit-review/", {
-        job_ref_id: task.id,
-        reviewer_id: task.poster.id,
-        user_id: offer.tasker.id,
+      // Mark complete + review in one call (taskmaster)
+      await axiosInstance.put(`/mark-complete-by-taskmaster/${task.id}/`, {
         rating: reviewRating,
         comment: reviewComment,
       });

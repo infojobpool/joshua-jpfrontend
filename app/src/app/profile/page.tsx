@@ -79,6 +79,9 @@ interface Review {
   date: string;
   isEditing: boolean;
   jobTitle?: string;
+  reviewer_name?: string;
+  reviewer_avatar?: string;
+  role?: "tasker" | "taskmaster";
 }
 
 export default function ProfilePage() {
@@ -210,6 +213,9 @@ export default function ProfilePage() {
               date: review.timestamp ? formatDate(review.timestamp) : "",
               isEditing: false,
               jobTitle: review.job_title || review.task_title || review.title || review?.job?.job_title || "",
+              reviewer_name: review.reviewer_name || "Anonymous",
+              reviewer_avatar: review.reviewer_avatar || review.reviewer_profile_img || review.profile_img || "",
+              role: review.role || "tasker",
             }))
           );
         }
@@ -820,57 +826,106 @@ export default function ProfilePage() {
                   </div>
                 </TabsContent>
                 <TabsContent value="reviews" className="space-y-4 pt-4">
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center"></div>
-                    {reviews.length > 0 ? (
-                      reviews.map((review) => (
-                        <div
-                          key={review.id}
-                          className="rounded-lg border p-4 space-y-3 bg-white shadow-sm"
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex flex-col space-y-2">
-                              <div className="flex items-center space-x-4">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star
-                                    key={i}
-                                    className={`h-4 w-4 ${
-                                      i < review.rating
-                                        ? "fill-yellow-400 text-yellow-400"
-                                        : "text-gray-300"
-                                    }`}
-                                  />
-                                ))}
-                                <span className="text-sm text-muted-foreground">
-                                  {review.date}
-                                </span>
-                              </div>
-                              <div className="flex items-center space-x-2 text-sm font-bold">
-                                <Briefcase className="h-4 w-4 text-muted-foreground" />
-                                <span>Job Title: {review.jobTitle || profileuser.job_title || "—"}</span>
+                  <Tabs defaultValue="tasker" className="space-y-4">
+                    <TabsList className="w-full grid grid-cols-2 rounded-xl bg-gray-100 p-2">
+                      <TabsTrigger value="tasker" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary">
+                        Reviews as Tasker
+                      </TabsTrigger>
+                      <TabsTrigger value="taskmaster" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary">
+                        Reviews as Taskmaster
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="tasker" className="space-y-4 mt-0">
+                      {reviews.filter((r) => (r.role || "tasker") === "tasker").length > 0 ? (
+                        reviews
+                          .filter((r) => (r.role || "tasker") === "tasker")
+                          .map((review) => (
+                            <div
+                              key={review.id}
+                              className="rounded-lg border p-4 space-y-3 bg-white shadow-sm"
+                            >
+                              <div className="flex items-start gap-4">
+                                <Avatar className="h-12 w-12 shrink-0">
+                                  <AvatarImage src={review.reviewer_avatar} alt={review.reviewer_name} />
+                                  <AvatarFallback className="bg-emerald-100 text-emerald-700">
+                                    {(review.reviewer_name || "A").charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                                    <span className="font-medium">{review.reviewer_name || "Anonymous"}</span>
+                                    <span className="text-xs text-muted-foreground">{review.date}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1 mb-2">
+                                    {[...Array(5)].map((_, i) => (
+                                      <Star
+                                        key={i}
+                                        className={`h-4 w-4 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                                      />
+                                    ))}
+                                    <span className="text-sm text-muted-foreground ml-1">{review.rating}/5</span>
+                                  </div>
+                                  {review.jobTitle && (
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                                      <Briefcase className="h-4 w-4 shrink-0" />
+                                      {review.jobTitle}
+                                    </div>
+                                  )}
+                                  <p className="text-sm">{review.comment}</p>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          {review.isEditing ? (
-                            <div className="space-y-2">
-                              <textarea
-                                className="w-full rounded-md border p-2 text-sm"
-                                defaultValue={review.comment}
-                                id={`review-${review.id}`}
-                                rows={3}
-                              />
+                          ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No reviews as tasker yet.</p>
+                      )}
+                    </TabsContent>
+                    <TabsContent value="taskmaster" className="space-y-4 mt-0">
+                      {reviews.filter((r) => r.role === "taskmaster").length > 0 ? (
+                        reviews
+                          .filter((r) => r.role === "taskmaster")
+                          .map((review) => (
+                            <div
+                              key={review.id}
+                              className="rounded-lg border p-4 space-y-3 bg-white shadow-sm"
+                            >
+                              <div className="flex items-start gap-4">
+                                <Avatar className="h-12 w-12 shrink-0">
+                                  <AvatarImage src={review.reviewer_avatar} alt={review.reviewer_name} />
+                                  <AvatarFallback className="bg-blue-100 text-blue-700">
+                                    {(review.reviewer_name || "A").charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                                    <span className="font-medium">{review.reviewer_name || "Anonymous"}</span>
+                                    <span className="text-xs text-muted-foreground">{review.date}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1 mb-2">
+                                    {[...Array(5)].map((_, i) => (
+                                      <Star
+                                        key={i}
+                                        className={`h-4 w-4 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                                      />
+                                    ))}
+                                    <span className="text-sm text-muted-foreground ml-1">{review.rating}/5</span>
+                                  </div>
+                                  {review.jobTitle && (
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                                      <Briefcase className="h-4 w-4 shrink-0" />
+                                      {review.jobTitle}
+                                    </div>
+                                  )}
+                                  <p className="text-sm">{review.comment}</p>
+                                </div>
+                              </div>
                             </div>
-                          ) : (
-                            <p className="text-sm">{review.comment}</p>
-                          )}
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        No reviews available.
-                      </p>
-                    )}
-                  </div>
+                          ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No reviews as taskmaster yet.</p>
+                      )}
+                    </TabsContent>
+                  </Tabs>
                 </TabsContent>
               </Tabs>
             </CardContent>

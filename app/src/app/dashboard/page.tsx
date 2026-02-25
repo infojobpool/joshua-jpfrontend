@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { CompletionReviewModal } from "@/components/CompletionReviewModal";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { 
@@ -86,6 +87,7 @@ interface Task {
   confirmed_bid_id?: string | number;
   user_ref_id?: string | number;
   role?: string; // API role field: "poster" or "tasker"
+  assigned_tasker_id?: string | number; // tasker user id for reviews
 }
 
 interface Bid {
@@ -897,6 +899,7 @@ export default function Dashboard() {
                   }))
                 : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
               assignedToMe,
+              assigned_tasker_id: job.assigned_tasker_id || job.accepted_bidder_id || job.assigned_user_id || job.confirmed_bid_id,
             };
           });
 
@@ -1433,6 +1436,7 @@ export default function Dashboard() {
                 cancelled_at: cancellationInfo.cancelled_at || job.cancelledAt || undefined,
                 cancelled: isCancelled,
                 assignedToMe: true, // Mark as assigned to current user
+                user_ref_id: job.user_ref_id || job.posted_by_id || job.user_id,
             images: job.job_images?.urls?.length
               ? job.job_images.urls.map((url: string, index: number) => ({
                   id: `img${index + 1}`,
@@ -2336,6 +2340,8 @@ export default function Dashboard() {
     fetchCompletedTasks();
   }, [user, userId, taskOrders, refetchCompletedTrigger]);
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
+  const [completeReviewTask, setCompleteReviewTask] = useState<Task | null>(null);
+  const [completeReviewAsTaskmaster, setCompleteReviewAsTaskmaster] = useState(false);
 
   const handleComplete = async (jobId: string) => {
     if (completingTaskId) return; // Prevent multiple clicks
@@ -2568,6 +2574,52 @@ export default function Dashboard() {
           error?.response?.data?.message ||
           "An error occurred while marking the task as complete"
       );
+    } finally {
+      setCompletingTaskId(null);
+    }
+  };
+
+  const handleCompleteReviewSubmit = async (rating: number, comment: string) => {
+    if (!completeReviewTask) return;
+    const jobId = completeReviewTask.id;
+    try {
+      setCompletingTaskId(jobId);
+      const reviewBody = { rating, comment };
+      if (completeReviewAsTaskmaster) {
+        await axiosInstance.put(`/mark-complete-by-taskmaster/${jobId}/`, reviewBody);
+      } else {
+        await axiosInstance.put(`/mark-complete/${jobId}/`, reviewBody);
+      }
+      toast.success("Task marked complete and review submitted!");
+      setCompleteReviewTask(null);
+      if (completeReviewAsTaskmaster) {
+        const payload = { job_completion_status: 1, tasker_completed: true, taskmaster_completed: true };
+        const completedTask = postedTasks.find((t) => t.id === jobId);
+        if (completedTask) {
+          const updated = { ...completedTask, ...payload, status: "completed" } as Task;
+          setCompletedTasks((prev) => [...prev.filter((t) => String(t.id) !== String(jobId)), updated]);
+        }
+        setPostedTasks((prev) =>
+          prev.map((t) =>
+            t.id === jobId ? { ...t, ...payload, status: "completed" as const } : t
+          )
+        );
+      } else {
+        const completedTask = assignedTasks.find((t) => t.id === jobId);
+        if (completedTask) {
+          setAssignedTasks((prev) => prev.filter((t) => String(t.id) !== String(jobId)));
+          setCompletedTasks((prev) => [...prev, { ...completedTask, status: "completed" } as Task]);
+          setActiveTab("completed");
+        }
+      }
+      setTimeout(() => {
+        setRefetchPostedTrigger((t) => t + 1);
+        setRefetchAssignedTrigger((t) => t + 1);
+        setRefetchCompletedTrigger((t) => t + 1);
+      }, 500);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to complete. Please try again.");
+      throw error;
     } finally {
       setCompletingTaskId(null);
     }
@@ -3448,9 +3500,14 @@ export default function Dashboard() {
                     <Link
                       key={n.id}
                       href={href}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.preventDefault();
                         if (!n.read) markAsRead(parseInt(String(n.id), 10));
-                        setShowNotifications(false);
+                        // Keep notification visible for a moment before navigating
+                        setTimeout(() => {
+                          setShowNotifications(false);
+                          router.push(href);
+                        }, 800);
                       }}
                       className="block px-4 py-3 flex items-start gap-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
                     >
@@ -3900,7 +3957,10 @@ export default function Dashboard() {
                                 {task.job_completion_status !== 1 && task.job_completion_status !== "1" && !task.taskmaster_completed && (
                                   <Button
                                     className="shrink-0 w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-all duration-200"
-                                    onClick={() => handleMyTaskComplete(task.id)}
+                                    onClick={() => {
+                                      setCompleteReviewTask(task);
+                                      setCompleteReviewAsTaskmaster(true);
+                                    }}
                                     disabled={completingTaskId === task.id}
                                   >
                                     <div className="flex items-center gap-1">
@@ -4396,7 +4456,10 @@ export default function Dashboard() {
                         </Button>
                         <Button
                           className={`shrink-0 w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}
-                          onClick={() => handleComplete(task.id)}
+                          onClick={() => {
+                            setCompleteReviewTask(task);
+                            setCompleteReviewAsTaskmaster(false);
+                          }}
                           disabled={completingTaskId === task.id}
                         >
                           <div className="flex items-center gap-2">
@@ -4724,7 +4787,19 @@ export default function Dashboard() {
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog> 
+        </Dialog>
+
+        <CompletionReviewModal
+          open={!!completeReviewTask}
+          onOpenChange={(open) => !open && setCompleteReviewTask(null)}
+          revieweeName={
+            completeReviewAsTaskmaster
+              ? "the tasker"
+              : completeReviewTask?.posted_by || "the taskmaster"
+          }
+          onSubmit={handleCompleteReviewSubmit}
+          isTaskmasterReviewingTasker={completeReviewAsTaskmaster}
+        />
 
         {/* Floating Post a Task (mobile only) */}
         <div className="md:hidden fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-40">
