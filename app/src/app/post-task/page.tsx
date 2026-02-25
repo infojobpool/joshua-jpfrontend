@@ -33,6 +33,7 @@ import {
 import { Toaster } from "../../components/ui/sonner";
 import { toast } from "sonner";
 import { IndianRupee, Loader, Upload, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import axiosInstance from "../../lib/axiosInstance";
 import useStore from "../../lib/Zustand";
 import { handleAxiosError } from "../../lib/handleAxiosError";
@@ -82,6 +83,7 @@ export default function PostTaskPage() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [showConfirmPost, setShowConfirmPost] = useState<boolean>(false);
   const [minDate, setMinDate] = useState("");
+  const [dueDateFlexible, setDueDateFlexible] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState("");
   const { userId } = useStore();
@@ -266,9 +268,10 @@ export default function PostTaskPage() {
       !formData.title ||
       !formData.description ||
       !formData.category ||
-      !formData.budget
+      !formData.budget ||
+      !formData.location?.trim()
     ) {
-      toast.error("Please fill in all required fields");
+      toast.error("Please fill in all required fields (including Location)");
       return;
     }
 
@@ -330,6 +333,11 @@ export default function PostTaskPage() {
       }
     }
 
+    if (!formData.location?.trim()) {
+      toast.error("Please enter or detect your location");
+      return;
+    }
+
     setIsSubmitting(true);
     setShowConfirmPost(false);
 
@@ -340,7 +348,7 @@ export default function PostTaskPage() {
     formDataToSubmit.append("category", formData.category);
     formDataToSubmit.append("budget", formData.budget.toString());
     formDataToSubmit.append("location", formData.location);
-    formDataToSubmit.append("due_date", formData.dueDate);
+    formDataToSubmit.append("due_date", dueDateFlexible ? "" : formData.dueDate);
 
     images.forEach((image) => {
       formDataToSubmit.append("images", image.file);
@@ -531,7 +539,7 @@ export default function PostTaskPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="location">Location</Label>
+                    <Label htmlFor="location">Location <span className="text-red-500">*</span></Label>
                     <div className="flex flex-col sm:flex-row gap-2 items-start">
                       <div className="w-full sm:w-auto">
                         <LocationDetector
@@ -543,7 +551,20 @@ export default function PostTaskPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="dueDate">Due Date (Optional)</Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor="dueDate">Due Date (Optional)</Label>
+                      <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground hover:text-foreground">
+                        <Checkbox
+                          id="dueDateFlexible"
+                          checked={dueDateFlexible}
+                          onCheckedChange={(checked) => {
+                            setDueDateFlexible(!!checked);
+                            if (checked) setFormData((prev) => ({ ...prev, dueDate: "" }));
+                          }}
+                        />
+                        <span>Flexible</span>
+                      </label>
+                    </div>
                     <Input
                       id="dueDate"
                       name="dueDate"
@@ -551,6 +572,7 @@ export default function PostTaskPage() {
                       min={minDate}
                       value={formData.dueDate}
                       onChange={handleChange}
+                      disabled={dueDateFlexible}
                       className="w-full"
                     />
                   </div>
