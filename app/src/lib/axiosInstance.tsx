@@ -124,28 +124,32 @@ axiosInstance.interceptors.response.use(
     }
     
     if (error.response?.status === 401) {
-      // Unauthorized
-      // Handle token refresh logic here
-      // This might involve calling a refresh endpoint and updating the token
+      const url = (error.config?.url || '').toLowerCase();
+      const isAuthEndpoint = url.includes('signin') || url.includes('refresh-token');
+      if (isAuthEndpoint || !localStorage.getItem('token')) {
+        return Promise.reject(error);
+      }
+      const apiBase = axiosInstance.defaults.baseURL || 'https://api.jobpool.in/api/v1';
       try {
         const refreshResponse = await axios.post(
-          '/refresh-token/',
+          `${apiBase}/refresh-token/`,
           {},
-          {
-            withCredentials: true,
-          }
+          { withCredentials: true }
         );
-        const newToken = refreshResponse.data.token;
-        localStorage.setItem('token', newToken);
-        if (error.config?.headers) {
-          error.config.headers['Authorization'] = `Bearer ${newToken}`;
+        const newToken = refreshResponse.data?.token;
+        if (newToken) {
+          localStorage.setItem('token', newToken);
+          if (error.config?.headers) {
+            error.config.headers['Authorization'] = `Bearer ${newToken}`;
+            error.config.headers['X-Access-Token'] = newToken;
+          }
+          return axiosInstance(error.config);
         }
-        return axiosInstance(error.config);
       } catch (refreshError) {
         // Do not auto-logout: only clear session when user clicks Logout.
-        // Token is left in storage so the UI stays logged in; user can retry or sign out manually.
         return Promise.reject(refreshError);
       }
+      return Promise.reject(error);
     }
     return Promise.reject(error);
   }

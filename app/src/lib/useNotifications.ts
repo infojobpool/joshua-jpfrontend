@@ -23,6 +23,10 @@ export function useNotifications(isAuthenticated: boolean) {
 
   const fetchNotifications = useCallback(async () => {
     if (!isAuthenticated) return;
+    const token =
+      (typeof window !== "undefined" && localStorage.getItem("token")) ||
+      (typeof window !== "undefined" && sessionStorage.getItem("token"));
+    if (!token) return;
     try {
       setLoading(true);
       const { data } = await axiosInstance.get<{

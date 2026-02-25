@@ -76,7 +76,13 @@ export function NotificationPoller() {
   useEffect(() => {
     if (!effectiveUserId) return;
 
+    const getToken = () =>
+      (typeof window !== "undefined" && localStorage.getItem("token")) ||
+      (typeof window !== "undefined" && sessionStorage.getItem("token")) ||
+      null;
+
     const fetchNotifications = async () => {
+      if (!getToken()) return;
       try {
         // Try common notification endpoints (backend may use get-notifications or get-user-notifications)
         const endpoints = [
@@ -121,6 +127,8 @@ export function NotificationPoller() {
     if (!effectiveUserId) return;
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") {
+        const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+        if (!token) return;
         axiosInstance.get("/get-notifications/").then((res) => {
           const data = res.data;
           const list = data?.data ?? data?.notifications ?? (Array.isArray(data) ? data : []);
