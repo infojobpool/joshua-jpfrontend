@@ -838,9 +838,9 @@ export default function ProfilePage() {
                                     <span className="text-sm font-medium text-slate-600 ml-1">{review.rating}/5</span>
                                   </div>
                                   {review.jobTitle && (
-                                    <div className="flex items-center gap-2 text-sm text-slate-500 mb-2 px-2 py-1 rounded-lg bg-slate-50/80">
+                                    <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-100">
                                       <Briefcase className="h-4 w-4 shrink-0 text-emerald-600" />
-                                      {review.jobTitle}
+                                      <span className="text-sm font-semibold text-emerald-800">{review.jobTitle}</span>
                                     </div>
                                   )}
                                   <blockquote className="text-sm text-slate-600 leading-relaxed pl-2 border-l-2 border-emerald-200 italic">
@@ -889,9 +889,9 @@ export default function ProfilePage() {
                                     <span className="text-sm font-medium text-slate-600 ml-1">{review.rating}/5</span>
                                   </div>
                                   {review.jobTitle && (
-                                    <div className="flex items-center gap-2 text-sm text-slate-500 mb-2 px-2 py-1 rounded-lg bg-slate-50/80">
+                                    <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-cyan-50 border border-cyan-100">
                                       <Briefcase className="h-4 w-4 shrink-0 text-cyan-600" />
-                                      {review.jobTitle}
+                                      <span className="text-sm font-semibold text-cyan-800">{review.jobTitle}</span>
                                     </div>
                                   )}
                                   <blockquote className="text-sm text-slate-600 leading-relaxed pl-2 border-l-2 border-cyan-200 italic">

@@ -128,7 +128,7 @@ export default function ProfilePageClient() {
               date: review.timestamp ? formatDate(review.timestamp) : "",
               rating: review.rating || 0,
               comment: review.comment || "",
-              project: review.project || "",
+              project: review.job_title || review.task_title || review.title || review?.job?.job_title || review.project || "",
               role: review.role || "tasker",
             }))
           );
@@ -302,9 +302,9 @@ function ReviewCard({ review }: { review: Review }) {
             <span className="text-sm font-medium text-slate-600 ml-1">{review.rating}/5</span>
           </div>
           {review.project && (
-            <div className="flex items-center gap-2 text-sm text-slate-500 mb-2 px-2 py-1 rounded-lg bg-slate-50/80">
+            <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-100">
               <Briefcase className="h-4 w-4 shrink-0 text-emerald-600" />
-              <span>{review.project}</span>
+              <span className="text-sm font-semibold text-emerald-800">{review.project}</span>
             </div>
           )}
           <blockquote className="text-sm text-slate-600 leading-relaxed pl-2 border-l-2 border-emerald-200 italic">

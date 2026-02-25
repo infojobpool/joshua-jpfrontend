@@ -182,7 +182,7 @@ const Footer: React.FC = () => {
 
         {/* Bottom bar */}
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-slate-800 pt-8 md:flex-row">
-          <p className="text-center text-sm text-slate-500 md:text-left">
+          <p className="text-center text-sm font-semibold text-white md:text-left">
             © 2023 Klughire Pvt Limited. All rights reserved.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm">

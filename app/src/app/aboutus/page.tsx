@@ -153,8 +153,8 @@ export default function AboutUs() {
         </div>
       </section>
 
-      <footer className="border-t border-slate-200 py-8 text-center">
-        <p className="text-sm text-slate-500">
+      <footer className="border-t border-slate-200 py-8 text-center bg-slate-50">
+        <p className="text-sm font-semibold text-slate-700">
           © 2023 Klughire Pvt Limited. All rights reserved.
         </p>
       </footer>
