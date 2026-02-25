@@ -8,6 +8,7 @@ import { MobileBottomNav } from "@/components/mobile/MobileBottomNav";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { InAppNotificationProvider } from "@/components/InAppNotificationProvider";
 import { NotificationPoller } from "@/components/NotificationPoller";
+import { PromoPopup } from "@/components/PromoPopup";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -69,6 +70,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}>
         <InAppNotificationProvider />
         <NotificationPoller />
+        <PromoPopup imageSrc="/images/promo-popup.png" />
         <MobileLayout>
           <MainHeader />
           <main className="min-h-screen pb-[calc(env(safe-area-inset-bottom)+72px)] md:pb-0">
