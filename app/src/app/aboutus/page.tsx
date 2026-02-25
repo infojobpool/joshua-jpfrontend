@@ -152,6 +152,12 @@ export default function AboutUs() {
           </motion.div>
         </div>
       </section>
+
+      <footer className="border-t border-slate-200 py-8 text-center">
+        <p className="text-sm text-slate-500">
+          © 2023 Klughire Pvt Limited. All rights reserved.
+        </p>
+      </footer>
     </div>
     
   );

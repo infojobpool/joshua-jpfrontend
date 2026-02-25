@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Star, MapPin } from "lucide-react";
+import { Star, MapPin, Briefcase } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
@@ -154,23 +154,24 @@ export default function ProfilePageClient() {
   if (error) return <div>Error: {error}</div>;
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 via-slate-100/30 to-white">
       {/* Main content */}
-      <main className="flex-1 container py-6 md:py-10 px-4 md:px-6">
+      <main className="flex-1 container py-6 md:py-10 px-4 md:px-6 max-w-6xl mx-auto">
         <Link
           href="/dashboard"
-          className="text-sm text-muted-foreground hover:underline mb-4 inline-block"
+          className="text-sm text-slate-600 hover:text-emerald-600 font-medium mb-4 inline-block transition-colors"
         >
           ← Back to Dashboard
         </Link>
         <div className="grid gap-8 md:grid-cols-3">
           {/* Profile Information */}
-          <Card className="md:col-span-1">
-            <CardHeader className="flex flex-col items-center text-center">
-              <div className="relative w-32 h-32 mb-4">
-                <Avatar className="w-32 h-32">
+          <Card className="md:col-span-1 border-0 shadow-xl rounded-2xl overflow-hidden ring-1 ring-slate-200/50">
+            <div className="h-20 bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700" />
+            <CardHeader className="flex flex-col items-center text-center -mt-12 relative">
+              <div className="relative w-28 h-28 mb-4">
+                <Avatar className="w-28 h-28 ring-4 ring-white shadow-xl">
                   <AvatarImage src={profileUser.avatar} alt={profileUser.name} />
-                  <AvatarFallback>
+                  <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-xl font-semibold">
                     {profileUser.name
                       .split(" ")
                       .map((n) => n[0])
@@ -208,19 +209,22 @@ export default function ProfilePageClient() {
 
           {/* Reviews */}
           <div className="md:col-span-2 space-y-6">
+            <Card className="border-0 shadow-xl rounded-2xl overflow-hidden ring-1 ring-slate-200/50">
+              <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white py-5">
+                <CardTitle className="text-xl font-bold text-slate-800">Reviews</CardTitle>
+                <CardDescription>What others say about {profileUser.name}</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
             <Tabs
               defaultValue="tasker"
               onValueChange={(value) =>
                 setActiveTab(value as "tasker" | "taskmaster")
               }
             >
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold">Reviews</h2>
-                <TabsList>
-                  <TabsTrigger value="tasker">As Tasker</TabsTrigger>
-                  <TabsTrigger value="taskmaster">As Taskmaster</TabsTrigger>
-                </TabsList>
-              </div>
+              <TabsList className="w-full grid grid-cols-2 rounded-xl bg-slate-100 p-1.5 mb-6">
+                <TabsTrigger value="tasker" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">As Tasker</TabsTrigger>
+                <TabsTrigger value="taskmaster" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">As Taskmaster</TabsTrigger>
+              </TabsList>
 
               <TabsContent value="tasker" className="space-y-4">
                 {reviews
@@ -230,9 +234,11 @@ export default function ProfilePageClient() {
                   ))}
                 {reviews.filter((review) => review.role === "tasker").length ===
                   0 && (
-                  <p className="text-sm text-muted-foreground">
-                    No tasker reviews available.
-                  </p>
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
+                    <Star className="h-12 w-12 mx-auto text-slate-300 mb-3" />
+                    <p className="text-slate-500 font-medium">No tasker reviews available.</p>
+                    <p className="text-sm text-slate-400 mt-1">Reviews will appear when tasks are completed.</p>
+                  </div>
                 )}
                 <div className="text-center mt-6">
                   <Button variant="outline">Load More Reviews</Button>
@@ -247,15 +253,19 @@ export default function ProfilePageClient() {
                   ))}
                 {reviews.filter((review) => review.role === "taskmaster").length ===
                   0 && (
-                  <p className="text-sm text-muted-foreground">
-                    No taskmaster reviews available.
-                  </p>
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
+                    <Star className="h-12 w-12 mx-auto text-slate-300 mb-3" />
+                    <p className="text-slate-500 font-medium">No taskmaster reviews available.</p>
+                    <p className="text-sm text-slate-400 mt-1">Reviews will appear when posted tasks are completed.</p>
+                  </div>
                 )}
                 <div className="text-center mt-6">
                   <Button variant="outline">Load More Reviews</Button>
                 </div>
               </TabsContent>
             </Tabs>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>
@@ -265,40 +275,43 @@ export default function ProfilePageClient() {
 
 function ReviewCard({ review }: { review: Review }) {
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex items-center">
-            <Avatar className="h-10 w-10 mr-3">
-              <AvatarImage src={review.avatar} alt={review.name} />
-              <AvatarFallback>{review.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div>
-              <h4 className="font-medium">{review.name}</h4>
-              <p className="text-sm text-muted-foreground">{review.date}</p>
-            </div>
+    <div className="group rounded-2xl border border-slate-100 bg-gradient-to-br from-white to-slate-50/50 p-5 shadow-sm hover:shadow-lg hover:border-emerald-100 transition-all duration-300">
+      <div className="flex items-start gap-4">
+        <Avatar className="h-14 w-14 shrink-0 ring-2 ring-white shadow-md">
+          <AvatarImage src={review.avatar} alt={review.name} />
+          <AvatarFallback className="bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-700 text-lg font-semibold">
+            {review.name.charAt(0)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <h4 className="font-semibold text-slate-800">{review.name}</h4>
+            <p className="text-xs text-slate-500 font-medium">{review.date}</p>
           </div>
-          <div className="flex">
+          <div className="flex items-center gap-1.5 mb-2">
             {[...Array(5)].map((_, i) => (
               <Star
                 key={i}
                 className={`w-4 h-4 ${
                   i < review.rating
-                    ? "text-yellow-500 fill-yellow-500"
-                    : "text-gray-300"
+                    ? "fill-amber-400 text-amber-400 drop-shadow-sm"
+                    : "text-slate-200"
                 }`}
               />
             ))}
+            <span className="text-sm font-medium text-slate-600 ml-1">{review.rating}/5</span>
           </div>
+          {review.project && (
+            <div className="flex items-center gap-2 text-sm text-slate-500 mb-2 px-2 py-1 rounded-lg bg-slate-50/80">
+              <Briefcase className="h-4 w-4 shrink-0 text-emerald-600" />
+              <span>{review.project}</span>
+            </div>
+          )}
+          <blockquote className="text-sm text-slate-600 leading-relaxed pl-2 border-l-2 border-emerald-200 italic">
+            {review.comment}
+          </blockquote>
         </div>
-        <p className="text-sm">{review.comment}</p>
-        {review.project && (
-          <div className="mt-3 text-sm">
-            <span className="font-medium">Project: </span>
-            <span className="text-muted-foreground">{review.project}</span>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

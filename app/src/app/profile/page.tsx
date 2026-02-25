@@ -405,24 +405,24 @@ export default function ProfilePage() {
   // Use unified profile page for both mobile and desktop so data is consistent
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 to-white">
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 via-slate-100/30 to-white">
       <Header user={profileuser} onSignOut={handleSignOut} />
       <main className="flex-1 container mx-auto max-w-6xl py-6 md:py-10 px-4 md:px-6">
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-emerald-600 transition-colors mb-6"
+          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-emerald-600 transition-colors mb-6 font-medium"
         >
           ← Back to Dashboard
         </Link>
 
-        <div className="grid gap-6 md:grid-cols-3 mt-2">
+        <div className="grid gap-8 md:grid-cols-3 mt-2">
           {/* Profile card - left column */}
-          <Card className="md:col-span-1 border-0 shadow-lg rounded-2xl overflow-hidden bg-white">
-            <div className="h-24 bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600" />
-            <CardHeader className="flex flex-col items-center -mt-14 relative pb-2">
+          <Card className="md:col-span-1 border-0 shadow-xl rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200/50">
+            <div className="h-28 bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700" />
+            <CardHeader className="flex flex-col items-center -mt-16 relative pb-2">
               {profileuser.isEditing ? (
                 <div className="relative">
-                  <Avatar className="h-28 w-28 ring-4 ring-white shadow-xl">
+                  <Avatar className="h-32 w-32 ring-4 ring-white shadow-2xl border-2 border-white/20">
                     <AvatarImage
                       src={tempAvatar || profileuser.avatar}
                       alt={profileuser.name}
@@ -461,7 +461,7 @@ export default function ProfilePage() {
                   )}
                 </div>
               ) : (
-                <Avatar className="h-28 w-28 ring-4 ring-white shadow-xl">
+                <Avatar className="h-32 w-32 ring-4 ring-white shadow-2xl border-2 border-white/20">
                   <AvatarImage
                     src={profileuser.avatar}
                     alt={profileuser.name}
@@ -492,20 +492,26 @@ export default function ProfilePage() {
             <CardContent className="space-y-6 pt-2">
               {!profileuser.isEditing && (
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 p-4 text-center border border-slate-100">
-                    <Calendar className="h-5 w-5 mx-auto mb-2 text-emerald-600" />
+                  <div className="rounded-xl bg-gradient-to-br from-slate-50 to-white p-4 text-center border border-slate-100 shadow-sm">
+                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
+                      <Calendar className="h-5 w-5 text-emerald-600" />
+                    </div>
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Member since</p>
                     <p className="text-sm font-bold text-slate-800 mt-1">{profileuser.joinDate || "—"}</p>
                   </div>
-                  <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 p-4 text-center border border-emerald-100">
-                    <CheckCircle className="h-5 w-5 mx-auto mb-2 text-emerald-600" />
+                  <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50/80 p-4 text-center border border-emerald-100 shadow-sm">
+                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-200/60">
+                      <CheckCircle className="h-5 w-5 text-emerald-700" />
+                    </div>
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Verification</p>
                     <p className={`text-sm font-bold mt-1 ${verificationStatus.bank.completed ? "text-emerald-700" : "text-slate-600"}`}>
                       {verificationStatus.bank.completed ? "Verified" : verificationStatus.aadhar.completed ? "Aadhar" : verificationStatus.pan.completed ? "PAN" : "Pending"}
                     </p>
                   </div>
-                  <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 p-4 text-center border border-slate-100">
-                    <Phone className="h-5 w-5 mx-auto mb-2 text-emerald-600" />
+                  <div className="rounded-xl bg-gradient-to-br from-slate-50 to-white p-4 text-center border border-slate-100 shadow-sm">
+                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
+                      <Phone className="h-5 w-5 text-emerald-600" />
+                    </div>
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Contact</p>
                     <p className="text-sm font-bold text-slate-800 mt-1">{profileuser.phone || "—"}</p>
                   </div>
@@ -703,16 +709,16 @@ export default function ProfilePage() {
               )}
             </CardContent>
           </Card>
-          <Card className="md:col-span-2 border-0 shadow-lg rounded-2xl overflow-hidden bg-white">
-            <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
-              <CardTitle className="text-xl font-bold text-slate-800">Profile Details</CardTitle>
+          <Card className="md:col-span-2 border-0 shadow-xl rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200/50">
+            <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-emerald-50/30 py-6">
+              <CardTitle className="text-xl font-bold text-slate-800 tracking-tight">Profile Details</CardTitle>
               <CardDescription className="text-slate-500">Manage your verification and reviews</CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
               <Tabs defaultValue="bank">
-                <TabsList className="w-full grid grid-cols-2 rounded-xl bg-slate-100 p-1.5 h-12">
-                  <TabsTrigger value="bank" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">Bank Account</TabsTrigger>
-                  <TabsTrigger value="reviews" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">Reviews</TabsTrigger>
+                <TabsList className="w-full grid grid-cols-2 rounded-xl bg-slate-100/80 p-1.5 h-12">
+                  <TabsTrigger value="bank" className="rounded-lg font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">Bank Account</TabsTrigger>
+                  <TabsTrigger value="reviews" className="rounded-lg font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">Reviews</TabsTrigger>
                 </TabsList>
                 <TabsContent value="bank" className="space-y-6 pt-6">
                   <div className="flex flex-col gap-6 md:flex-row">
@@ -793,102 +799,114 @@ export default function ProfilePage() {
                 </TabsContent>
                 <TabsContent value="reviews" className="space-y-4 pt-6">
                   <Tabs defaultValue="tasker" className="space-y-4">
-                    <TabsList className="w-full grid grid-cols-2 rounded-xl bg-slate-100 p-1.5 h-12">
-                      <TabsTrigger value="tasker" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">
+                    <TabsList className="w-full grid grid-cols-2 rounded-xl bg-slate-100/80 p-1.5 h-12">
+                      <TabsTrigger value="tasker" className="rounded-lg font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">
                         Reviews as Tasker
                       </TabsTrigger>
-                      <TabsTrigger value="taskmaster" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">
+                      <TabsTrigger value="taskmaster" className="rounded-lg font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">
                         Reviews as Taskmaster
                       </TabsTrigger>
                     </TabsList>
-                    <TabsContent value="tasker" className="space-y-4 mt-0">
+                    <TabsContent value="tasker" className="space-y-5 mt-0">
                       {reviews.filter((r) => (r.role || "tasker") === "tasker").length > 0 ? (
                         reviews
                           .filter((r) => (r.role || "tasker") === "tasker")
                           .map((review) => (
                             <div
                               key={review.id}
-                              className="rounded-xl border border-slate-100 p-4 space-y-3 bg-white shadow-sm hover:shadow-md transition-shadow"
+                              className="group rounded-2xl border border-slate-100 bg-gradient-to-br from-white to-slate-50/50 p-5 space-y-3 shadow-sm hover:shadow-lg hover:border-emerald-100 transition-all duration-300"
                             >
                               <div className="flex items-start gap-4">
-                                <Avatar className="h-12 w-12 shrink-0">
+                                <Avatar className="h-14 w-14 shrink-0 ring-2 ring-white shadow-md">
                                   <AvatarImage src={review.reviewer_avatar} alt={review.reviewer_name} />
-                                  <AvatarFallback className="bg-emerald-100 text-emerald-700">
+                                  <AvatarFallback className="bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-700 text-lg font-semibold">
                                     {(review.reviewer_name || "A").charAt(0)}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                                    <span className="font-medium">{review.reviewer_name || "Anonymous"}</span>
-                                    <span className="text-xs text-muted-foreground">{review.date}</span>
+                                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                    <span className="font-semibold text-slate-800">{review.reviewer_name || "Anonymous"}</span>
+                                    <span className="text-xs text-slate-500 font-medium">{review.date}</span>
                                   </div>
-                                  <div className="flex items-center gap-1 mb-2">
+                                  <div className="flex items-center gap-1.5 mb-2">
                                     {[...Array(5)].map((_, i) => (
                                       <Star
                                         key={i}
-                                        className={`h-4 w-4 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                                        className={`h-4 w-4 ${i < review.rating ? "fill-amber-400 text-amber-400 drop-shadow-sm" : "text-slate-200"}`}
                                       />
                                     ))}
-                                    <span className="text-sm text-muted-foreground ml-1">{review.rating}/5</span>
+                                    <span className="text-sm font-medium text-slate-600 ml-1">{review.rating}/5</span>
                                   </div>
                                   {review.jobTitle && (
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                                      <Briefcase className="h-4 w-4 shrink-0" />
+                                    <div className="flex items-center gap-2 text-sm text-slate-500 mb-2 px-2 py-1 rounded-lg bg-slate-50/80">
+                                      <Briefcase className="h-4 w-4 shrink-0 text-emerald-600" />
                                       {review.jobTitle}
                                     </div>
                                   )}
-                                  <p className="text-sm">{review.comment}</p>
+                                  <blockquote className="text-sm text-slate-600 leading-relaxed pl-2 border-l-2 border-emerald-200 italic">
+                                    {review.comment}
+                                  </blockquote>
                                 </div>
                               </div>
                             </div>
                           ))
                       ) : (
-                        <p className="text-sm text-muted-foreground">No reviews as tasker yet.</p>
+                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
+                          <Star className="h-12 w-12 mx-auto text-slate-300 mb-3" />
+                          <p className="text-slate-500 font-medium">No reviews as tasker yet.</p>
+                          <p className="text-sm text-slate-400 mt-1">Complete tasks to receive reviews.</p>
+                        </div>
                       )}
                     </TabsContent>
-                    <TabsContent value="taskmaster" className="space-y-4 mt-0">
+                    <TabsContent value="taskmaster" className="space-y-5 mt-0">
                       {reviews.filter((r) => r.role === "taskmaster").length > 0 ? (
                         reviews
                           .filter((r) => r.role === "taskmaster")
                           .map((review) => (
                             <div
                               key={review.id}
-                              className="rounded-xl border border-slate-100 p-4 space-y-3 bg-white shadow-sm hover:shadow-md transition-shadow"
+                              className="group rounded-2xl border border-slate-100 bg-gradient-to-br from-white to-slate-50/50 p-5 space-y-3 shadow-sm hover:shadow-lg hover:border-cyan-100 transition-all duration-300"
                             >
                               <div className="flex items-start gap-4">
-                                <Avatar className="h-12 w-12 shrink-0">
+                                <Avatar className="h-14 w-14 shrink-0 ring-2 ring-white shadow-md">
                                   <AvatarImage src={review.reviewer_avatar} alt={review.reviewer_name} />
-                                  <AvatarFallback className="bg-blue-100 text-blue-700">
+                                  <AvatarFallback className="bg-gradient-to-br from-cyan-100 to-teal-100 text-cyan-700 text-lg font-semibold">
                                     {(review.reviewer_name || "A").charAt(0)}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                                    <span className="font-medium">{review.reviewer_name || "Anonymous"}</span>
-                                    <span className="text-xs text-muted-foreground">{review.date}</span>
+                                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                    <span className="font-semibold text-slate-800">{review.reviewer_name || "Anonymous"}</span>
+                                    <span className="text-xs text-slate-500 font-medium">{review.date}</span>
                                   </div>
-                                  <div className="flex items-center gap-1 mb-2">
+                                  <div className="flex items-center gap-1.5 mb-2">
                                     {[...Array(5)].map((_, i) => (
                                       <Star
                                         key={i}
-                                        className={`h-4 w-4 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                                        className={`h-4 w-4 ${i < review.rating ? "fill-amber-400 text-amber-400 drop-shadow-sm" : "text-slate-200"}`}
                                       />
                                     ))}
-                                    <span className="text-sm text-muted-foreground ml-1">{review.rating}/5</span>
+                                    <span className="text-sm font-medium text-slate-600 ml-1">{review.rating}/5</span>
                                   </div>
                                   {review.jobTitle && (
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                                      <Briefcase className="h-4 w-4 shrink-0" />
+                                    <div className="flex items-center gap-2 text-sm text-slate-500 mb-2 px-2 py-1 rounded-lg bg-slate-50/80">
+                                      <Briefcase className="h-4 w-4 shrink-0 text-cyan-600" />
                                       {review.jobTitle}
                                     </div>
                                   )}
-                                  <p className="text-sm">{review.comment}</p>
+                                  <blockquote className="text-sm text-slate-600 leading-relaxed pl-2 border-l-2 border-cyan-200 italic">
+                                    {review.comment}
+                                  </blockquote>
                                 </div>
                               </div>
                             </div>
                           ))
                       ) : (
-                        <p className="text-sm text-muted-foreground">No reviews as taskmaster yet.</p>
+                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
+                          <Star className="h-12 w-12 mx-auto text-slate-300 mb-3" />
+                          <p className="text-slate-500 font-medium">No reviews as taskmaster yet.</p>
+                          <p className="text-sm text-slate-400 mt-1">Post tasks and complete them to receive reviews.</p>
+                        </div>
                       )}
                     </TabsContent>
                   </Tabs>
