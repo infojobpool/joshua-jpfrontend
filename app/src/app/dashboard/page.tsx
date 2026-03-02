@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CompletionReviewModal } from "@/components/CompletionReviewModal";
 import dynamic from "next/dynamic";
@@ -74,6 +74,7 @@ interface Task {
   review_comment?: string;
   offers: number;
   posted_by: string;
+  posted_by_profile_image?: string;
   category: string;
   job_completion_status?: string | number;
   tasker_completed?: boolean;
@@ -321,6 +322,15 @@ export default function Dashboard() {
 
   // Safe user for UI (prevents null TS checks in JSX)
   const safeUser = user ?? { name: "User", email: "", profile_image: "" } as any;
+
+  // Shorten long location strings (e.g. "Area, Ward X, City, State, Pin, India" -> "Area" or first locality)
+  const shortLocation = (loc: string | undefined) => {
+    if (!loc || loc === "Unknown") return loc || "—";
+    const parts = loc.split(",").map(p => p.trim()).filter(Boolean);
+    if (parts.length === 0) return "—";
+    const first = parts[0];
+    return first.length > 28 ? first.slice(0, 25) + "…" : first;
+  };
 
   // Close profile dropdown when clicking outside
   useEffect(() => {
@@ -1080,6 +1090,7 @@ export default function Dashboard() {
                   : "Unknown",
                 offers: job.offers || 0, // Use original offers field as fallback
                 posted_by: job.posted_by || "Unknown",
+                posted_by_profile_image: job.posted_by_profile_image || job.taskmanager_profile_image || job.poster?.profile_img,
                 category: job.job_category || "general",
                 job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
                 deletion_status: job.deletion_status || false,
@@ -3051,7 +3062,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-white overflow-x-hidden">
+    <div className="flex min-h-screen flex-col bg-white dark:bg-slate-950 overflow-x-hidden">
       <style jsx>{`
         @keyframes fadeInUp {
           from {
@@ -3133,7 +3144,7 @@ export default function Dashboard() {
                 <div className="relative">
                   <button
                     onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                    className="flex items-center gap-3 bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md"
+                    className="flex items-center gap-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-800 dark:text-slate-200 px-4 py-2.5 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md dark:hover:bg-slate-700/80"
                   >
                     <div className="relative">
                       {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
@@ -3151,19 +3162,19 @@ export default function Dashboard() {
                     </div>
                     <div className="flex flex-col items-start">
                       <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-medium text-gray-900">{safeUser.name || "User"}</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-slate-100">{safeUser.name || "User"}</span>
                         {user?.verification_status >= 3 && (
                           <span title="Verified Account">
                             <CheckCircle className="h-4 w-4 text-blue-600" />
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-gray-500">Online</span>
+                      <span className="text-xs text-gray-500 dark:text-slate-400">Online</span>
                     </div>
                     <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {profileDropdownOpen && (
-                    <div className="absolute right-0 mt-3 w-64 max-w-[80vw] bg-white rounded-2xl shadow-xl border border-gray-200 py-2 z-50 animate-fade-in-up">
+                    <div className="absolute right-0 mt-3 w-64 max-w-[80vw] bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-700 py-2 z-50 animate-fade-in-up">
                       <div className="px-4 py-3 border-b border-gray-100">
                         <div className="flex items-center gap-3">
                           {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
@@ -3179,7 +3190,7 @@ export default function Dashboard() {
                           )}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <p className="font-medium text-gray-900 text-sm truncate">
+                              <p className="font-medium text-gray-900 dark:text-slate-100 text-sm truncate">
                                 {safeUser.name || "User"}
                               </p>
                               {user?.verification_status >= 3 && (
@@ -3189,7 +3200,7 @@ export default function Dashboard() {
                               )}
                             </div>
                             {safeUser.email && (
-                              <p className="mt-0.5 text-xs text-gray-500 break-all">
+                              <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400 break-all">
                                 {safeUser.email}
                               </p>
                             )}
@@ -3201,13 +3212,13 @@ export default function Dashboard() {
                           <div className="p-2 rounded-lg bg-[#eff6ff]">
                             <User className="h-4 w-4 text-[#2563eb]" />
                           </div>
-                          <span className="text-gray-800 font-medium">My Profile</span>
+                          <span className="text-gray-800 dark:text-slate-200 font-medium">My Profile</span>
                         </Link>
                         <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
                           <div className="p-2 rounded-lg bg-gray-100">
                             <Settings className="h-4 w-4 text-gray-600" />
                           </div>
-                          <span className="text-gray-800 font-medium">Settings</span>
+                          <span className="text-gray-800 dark:text-slate-200 font-medium">Settings</span>
                         </Link>
                         <div className="border-t border-gray-100 my-2"></div>
                         <button 
@@ -3225,17 +3236,17 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="mt-2 text-left">
-                <h1 className="text-xl font-semibold tracking-tight text-gray-900">Dashboard</h1>
-                <p className="text-xs text-gray-600 mt-0.5">Tasks and bids</p>
+                <h1 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-slate-100">Dashboard</h1>
+                <p className="text-xs text-gray-600 dark:text-slate-400 mt-0.5">Tasks and bids</p>
               </div>
             </div>
           )}
           {!isMobile && (
             <div className="animate-slide-in-right">
-              <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-gray-900">
+              <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-gray-900 dark:text-slate-100">
                 Dashboard
               </h1>
-              <p className="text-sm text-gray-600 mt-1">Manage your tasks and bids</p>
+              <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">Manage your tasks and bids</p>
             </div>
           )}
           <div className="hidden md:flex items-center gap-4 animate-slide-in-right">
@@ -3249,7 +3260,7 @@ export default function Dashboard() {
             <div className="relative">
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="flex items-center gap-3 bg-white border border-gray-200 text-gray-800 px-5 py-3 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md"
+                className="flex items-center gap-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-800 dark:text-slate-200 px-5 py-3 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md dark:hover:bg-slate-700/80"
               >
                 <div className="relative">
                   {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
@@ -3277,7 +3288,7 @@ export default function Dashboard() {
               </button>
               
               {profileDropdownOpen && (
-                  <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-xl border border-gray-200 py-2 z-50 animate-fade-in-up">
+                  <div className="absolute right-0 mt-3 w-64 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-700 py-2 z-50 animate-fade-in-up">
                   <div className="px-4 py-3 border-b border-gray-100">
                     <div className="flex items-center gap-3">
                       {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
@@ -3293,14 +3304,14 @@ export default function Dashboard() {
                       )}
                       <div className="flex-1">
                         <div className="flex items-center gap-1.5">
-                        <p className="font-medium text-gray-900 text-lg">{safeUser.name || "User"}</p>
+                        <p className="font-medium text-gray-900 dark:text-slate-100 text-lg">{safeUser.name || "User"}</p>
                           {user?.verification_status >= 3 && (
                             <span title="Verified Account">
                               <CheckCircle className="h-5 w-5 text-blue-600" />
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-500">{safeUser.email || ""}</p>
+                        <p className="text-sm text-gray-500 dark:text-slate-400">{safeUser.email || ""}</p>
                       </div>
                     </div>
                   </div>
@@ -3309,13 +3320,13 @@ export default function Dashboard() {
                       <div className="p-2 rounded-lg bg-blue-100">
                         <User className="h-4 w-4 text-blue-600" />
                       </div>
-                      <span className="text-gray-700 font-medium">My Profile</span>
+                      <span className="text-gray-700 dark:text-slate-200 font-medium">My Profile</span>
                     </Link>
                     <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
                       <div className="p-2 rounded-lg bg-gray-100">
                         <Settings className="h-4 w-4 text-gray-600" />
                       </div>
-                      <span className="text-gray-700 font-medium">Settings</span>
+                      <span className="text-gray-700 dark:text-slate-200 font-medium">Settings</span>
                     </Link>
                     <div className="border-t border-gray-100 my-2"></div>
                     <button
@@ -3379,7 +3390,7 @@ export default function Dashboard() {
                       )}
                       <div>
                         <p className="font-medium text-gray-900">{safeUser.name || "User"}</p>
-                        <p className="text-sm text-gray-500">{safeUser.email || ""}</p>
+                        <p className="text-sm text-gray-500 dark:text-slate-400">{safeUser.email || ""}</p>
                       </div>
                     </div>
                   </div>
@@ -3388,13 +3399,13 @@ export default function Dashboard() {
                       <div className="p-2 rounded-lg bg-blue-100">
                         <User className="h-4 w-4 text-blue-600" />
                       </div>
-                      <span className="text-gray-700 font-medium">My Profile</span>
+                      <span className="text-gray-700 dark:text-slate-200 font-medium">My Profile</span>
                     </Link>
                     <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
                       <div className="p-2 rounded-lg bg-gray-100">
                         <Settings className="h-4 w-4 text-gray-600" />
                       </div>
-                      <span className="text-gray-700 font-medium">Settings</span>
+                      <span className="text-gray-700 dark:text-slate-200 font-medium">Settings</span>
                     </Link>
                     <div className="border-t border-gray-100 my-2"></div>
                     <button 
@@ -3425,11 +3436,11 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowNotifications((s) => !s)}
-                className="relative inline-flex items-center justify-center h-10 w-10 rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200"
+                className="relative inline-flex items-center justify-center h-10 w-10 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-all duration-200"
                 aria-label="Notifications"
                 title="Notifications"
               >
-                <Bell className={`h-5 w-5 text-gray-700 ${bellAnimating ? "animate-bell-ring" : ""}`} />
+                <Bell className={`h-5 w-5 text-gray-700 dark:text-slate-300 ${bellAnimating ? "animate-bell-ring" : ""}`} />
                 {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full text-[10px] font-medium bg-emerald-600 text-white">
                     {unreadCount > 99 ? "99+" : unreadCount}
@@ -3446,7 +3457,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between w-full gap-4">
             <button
               onClick={() => setShowNotifications((s) => !s)}
-              className="relative inline-flex items-center justify-center h-10 w-10 rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200"
+              className="relative inline-flex items-center justify-center h-10 w-10 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-all duration-200"
               aria-label="Notifications"
               title="Notifications"
             >
@@ -3466,7 +3477,7 @@ export default function Dashboard() {
         </div>
 
         {showNotifications && (
-          <div className="fixed right-6 top-24 z-50 w-[340px] max-w-[92vw] bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden">
+          <div className="fixed right-6 top-24 z-50 w-[340px] max-w-[92vw] bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-xl overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
               <div className="font-semibold text-gray-800">Notifications</div>
               <button
@@ -3479,7 +3490,7 @@ export default function Dashboard() {
             </div>
             <div className="max-h-[60vh] overflow-auto">
               {notificationItems.length === 0 ? (
-                <div className="px-4 py-8 text-center text-gray-500 text-sm">No notifications yet</div>
+                <div className="px-4 py-8 text-center text-gray-500 dark:text-slate-400 text-sm">No notifications yet</div>
               ) : (
                 notificationItems.map((n) => {
                   const href = n.link || "/notifications";
@@ -3506,11 +3517,11 @@ export default function Dashboard() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <div className={`font-medium truncate ${!n.read ? "text-gray-900" : "text-gray-600"}`}>{n.title}</div>
-                          <div className="text-xs text-gray-500 whitespace-nowrap">{formatTimeAgo(createdAt)}</div>
+                          <div className={`font-medium truncate ${!n.read ? "text-gray-900 dark:text-slate-100" : "text-gray-600 dark:text-slate-400"}`}>{n.title}</div>
+                          <div className="text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">{formatTimeAgo(createdAt)}</div>
                         </div>
                         {n.description && (
-                          <div className="text-sm text-gray-600 line-clamp-2 mt-0.5">{n.description}</div>
+                          <div className="text-sm text-gray-600 dark:text-slate-400 line-clamp-2 mt-0.5">{n.description}</div>
                         )}
                       </div>
                     </Link>
@@ -3552,49 +3563,49 @@ export default function Dashboard() {
         >
           <TabsList className={
             isMobile
-              ? "grid grid-cols-5 w-full p-2 bg-gray-100 border border-gray-200 rounded-2xl shadow-sm z-20 gap-1.5 sticky top-[calc(env(safe-area-inset-top)+48px)]"
-              : "flex w-full bg-gray-100 p-2 rounded-2xl gap-2"
+              ? "grid grid-cols-5 w-full p-3 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-sm z-20 gap-2 min-h-[64px] items-stretch sticky top-[calc(env(safe-area-inset-top)+48px)]"
+              : "flex w-full bg-gray-100 dark:bg-slate-800 p-2 rounded-2xl gap-2"
           }>
             <TabsTrigger value="my-tasks" className={
               isMobile 
-                ? "flex flex-col items-center gap-1 px-1.5 py-3 rounded-xl text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 transition-all duration-200 active:scale-[0.98]"
-                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center justify-center gap-1.5 px-2 py-2.5 min-w-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98]"
+                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
               <Briefcase className="h-4 w-4 md:hidden shrink-0" />
-              <span className="truncate">My Tasks</span>
+              <span className="block text-center w-full overflow-hidden text-ellipsis whitespace-nowrap">My Tasks</span>
             </TabsTrigger>
             <TabsTrigger value="available" className={
               isMobile 
-                ? "flex flex-col items-center gap-1 px-1.5 py-3 rounded-xl text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 transition-all duration-200 active:scale-[0.98]"
-                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center justify-center gap-1.5 px-2 py-2.5 min-w-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98]"
+                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
               <Search className="h-4 w-4 md:hidden shrink-0" />
-              <span className="truncate">Available</span>
+              <span className="block text-center w-full overflow-hidden text-ellipsis whitespace-nowrap">Available</span>
             </TabsTrigger>
             <TabsTrigger value="assigned" className={
               isMobile 
-                ? "flex flex-col items-center gap-1 px-1.5 py-3 rounded-xl text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 transition-all duration-200 active:scale-[0.98]"
-                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center justify-center gap-1.5 px-2 py-2.5 min-w-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98]"
+                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
               <CheckCircle className="h-4 w-4 md:hidden shrink-0" />
-              <span className="truncate">{isMobile ? "Assign" : "Assigned"}</span>
+              <span className="block text-center w-full overflow-hidden text-ellipsis whitespace-nowrap">{isMobile ? "Assign" : "Assigned"}</span>
             </TabsTrigger>
             <TabsTrigger value="completed" className={
               isMobile 
-                ? "flex flex-col items-center gap-1 px-1.5 py-3 rounded-xl text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 transition-all duration-200 active:scale-[0.98]"
-                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center justify-center gap-1.5 px-2 py-2.5 min-w-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98]"
+                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
               <Star className="h-4 w-4 md:hidden shrink-0" />
-              <span className="truncate">{isMobile ? "Done" : "Completed"}</span>
+              <span className="block text-center w-full overflow-hidden text-ellipsis whitespace-nowrap">{isMobile ? "Done" : "Completed"}</span>
             </TabsTrigger>
             <TabsTrigger value="my-bids" className={
               isMobile 
-                ? "flex flex-col items-center gap-1 px-1.5 py-3 rounded-xl text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 transition-all duration-200 active:scale-[0.98]"
-                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center justify-center gap-1.5 px-2 py-2.5 min-w-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98]"
+                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
-              <IndianRupee className="h-4 w-4 md:hidden" />
+              <IndianRupee className="h-4 w-4 md:hidden shrink-0" />
               <span className="hidden md:inline">My Bids</span>
-              <span className="md:hidden">Bids</span>
+              <span className="md:hidden block text-center w-full overflow-hidden text-ellipsis whitespace-nowrap">Bids</span>
             </TabsTrigger>
           </TabsList>
 
@@ -3668,9 +3679,9 @@ export default function Dashboard() {
           )}
 
           <TabsContent value="my-tasks" forceMount className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-lg font-semibold text-gray-900 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks You've Posted</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks You've Posted</h2>
             {/* Premium Toolbar */}
-            <div className={`mb-3 rounded-2xl border border-gray-200 bg-white px-3 py-2 shadow-sm transition-all duration-200`}> 
+            <div className={`mb-3 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 shadow-sm transition-all duration-200`}> 
               <div className={`flex ${isMobile ? "flex-col gap-2" : "items-center gap-3"}`}>
               <div className={`relative ${isMobile ? "w-full" : "w-80"}`}>
                 <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -3707,7 +3718,7 @@ export default function Dashboard() {
               </div>
             </div>
             {postedTasks.length === 0 ? (
-                  <Card className="bg-white border border-gray-200 shadow-md rounded-2xl">
+                  <Card className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-md rounded-2xl">
                 <CardContent className="flex flex-col items-center justify-center py-10">
                   <p className="text-muted-foreground mb-4">
                     You haven't posted any tasks yet
@@ -3760,7 +3771,7 @@ export default function Dashboard() {
                   .map((task) => (
                     <Card
                       key={task.id}
-                      className={`relative bg-white border border-gray-200 shadow-md hover:shadow-lg transition-all duration-200 rounded-2xl overflow-hidden group border-l-4 border-l-[#3b82f6]/50 ${
+                      className={`relative bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-md hover:shadow-lg transition-all duration-200 rounded-2xl overflow-hidden group border-l-4 border-l-[#3b82f6]/50 ${
                         task.deletion_status || task.cancel_status ? "opacity-60 cursor-not-allowed" : ""
                       }`}
                     >
@@ -3973,7 +3984,7 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="available" forceMount className="space-y-6 mt-12 pt-2 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-lg font-semibold text-gray-900 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Available Tasks</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Available Tasks</h2>
             <div className={`grid gap-6 ${isMobile ? "grid-cols-1" : "md:grid-cols-4"}`} style={{zIndex:1, position:'relative'}}>
               <div className={`${isMobile ? "hidden" : "md:col-span-1"} space-y-6`}>
                 <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
@@ -4159,16 +4170,16 @@ export default function Dashboard() {
                       const hasUserBid = requestedTasks.some(bid => bid.task_id === task.id);
                       
                       return (
-                        <Card key={task.id} className="flex flex-col bg-white border border-gray-200 shadow-md hover:shadow-lg transition-all duration-200 rounded-2xl overflow-hidden border-l-4 border-l-[#3b82f6]/50">
+                        <Card key={task.id} className="flex flex-col bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-md hover:shadow-lg transition-all duration-200 rounded-2xl overflow-hidden border-l-4 border-l-[#3b82f6]/50">
                           {/* Mobile-optimized layout */}
                           <div className={isMobile ? "p-4" : "p-6"}>
                             {/* Header with title and status */}
                             <div className="flex justify-between items-start mb-3">
                               <div className="flex-1 min-w-0">
-                                <h3 className={`font-semibold text-gray-900 line-clamp-2 ${isMobile ? "text-base" : "text-lg"}`}>
+                                <h3 className={`font-bold text-gray-900 dark:text-slate-100 line-clamp-2 ${isMobile ? "text-base" : "text-lg"} leading-tight`}>
                                   {task.title}
                                 </h3>
-                                <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                                <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-slate-400">
                                   <Clock className="h-3 w-3 text-gray-400" />
                                   <span>Posted: {task.postedAt}</span>
                                   {task.dueDate && task.dueDate !== "Unknown" && (
@@ -4187,36 +4198,39 @@ export default function Dashboard() {
                             </div>
 
                             {/* Description */}
-                            <p className="text-sm text-gray-600 line-clamp-2 mb-3">
+                            <p className="text-sm text-gray-600 dark:text-slate-400 line-clamp-2 mb-3">
                               {task.description}
                             </p>
 
                             {/* Mobile-optimized info row */}
                             <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"}`}>
-                              <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1 bg-[#eff6ff] px-2.5 py-1 rounded-lg border border-[#3b82f6]/30">
-                                  <IndianRupee className="h-4 w-4 text-[#2563eb]" />
-                                  <span className="font-semibold text-[#1d4ed8]">{task.budget}</span>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <div className="flex items-center gap-1 bg-[#eff6ff] dark:bg-slate-700 px-2.5 py-1 rounded-lg border border-[#3b82f6]/30 dark:border-slate-600">
+                                  <IndianRupee className="h-4 w-4 text-[#2563eb] dark:text-[#60a5fa]" />
+                                  <span className="font-semibold text-[#1d4ed8] dark:text-[#93c5fd]">{task.budget}</span>
                                 </div>
-                                <div className="flex items-center gap-1 text-gray-500">
-                                  <MapPin className="h-3 w-3" />
-                                  <span className="text-xs">{task.location}</span>
+                                <div className="flex items-center gap-1 text-gray-500 dark:text-slate-400 min-w-0">
+                                  <MapPin className="h-3 w-3 shrink-0" />
+                                  <span className="text-xs truncate" title={task.location}>{shortLocation(task.location)}</span>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-1 text-gray-500">
-                                <Avatar className="h-4 w-4">
-                                  <AvatarFallback className="text-xs">
-                                    {task.posted_by?.charAt(0) || "?"}
+                              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[#eff6ff]/80 dark:bg-slate-700/80 border border-[#3b82f6]/20 dark:border-slate-600/50">
+                                <Avatar className="h-6 w-6 shrink-0">
+                                  {(task as any).posted_by_profile_image && (
+                                    <AvatarImage src={resolveProfileImageUrl((task as any).posted_by_profile_image) || (task as any).posted_by_profile_image} alt="" />
+                                  )}
+                                  <AvatarFallback className="text-[10px] bg-[#2563eb] text-white font-semibold">
+                                    {task.posted_by?.charAt(0)?.toUpperCase() || "?"}
                                   </AvatarFallback>
                                 </Avatar>
-                                <span className="text-xs">{task.posted_by || "Unknown"}</span>
+                                <span className="text-xs font-medium text-gray-800 dark:text-slate-200 truncate">{task.posted_by || "Unknown"}</span>
                               </div>
                             </div>
 
                             {/* Action button */}
                             <div className="mt-4">
                               <Link href={`/tasks/${task.id}`} className="w-full">
-                                <Button variant="outline" className={`w-full border-[#3b82f6]/50 text-[#2563eb] hover:bg-[#eff6ff] font-medium rounded-xl transition-all duration-200 ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
+                                <Button variant="outline" className={`w-full border-[#3b82f6]/50 dark:border-slate-600 text-[#2563eb] dark:text-[#60a5fa] hover:bg-[#eff6ff] dark:hover:bg-slate-700 font-medium rounded-xl transition-all duration-200 ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
                                   <span>{hasUserBid ? "View Offer" : "Make an Offer"}</span>
                                 </Button>
                               </Link>
@@ -4232,7 +4246,7 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="assigned" forceMount className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-lg font-semibold text-gray-900 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks Assigned to You</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks Assigned to You</h2>
             {assignedTasks.length === 0 ? (
               <div className="min-h-[400px] flex items-center justify-center">
                 <EmptyState
@@ -4252,7 +4266,7 @@ export default function Dashboard() {
                   const waitingForTaskmaster = !isCancelled && task.tasker_completed && !task.taskmaster_completed && task.job_completion_status !== 1 && task.job_completion_status !== "1";
                   
                   return (
-                  <Card key={task.id} className={`flex flex-col bg-white border border-gray-200 shadow-md hover:shadow-lg transition-all duration-200 rounded-2xl overflow-hidden border-l-4 border-l-[#3b82f6]/50 ${isCancelled ? 'opacity-60' : ''}`}>
+                  <Card key={task.id} className={`flex flex-col bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-md hover:shadow-lg transition-all duration-200 rounded-2xl overflow-hidden border-l-4 border-l-[#3b82f6]/50 ${isCancelled ? 'opacity-60' : ''}`}>
                     {/* Mobile-optimized layout */}
                     <div className={isMobile ? "p-4" : "p-6"}>
                       {/* Header with title and status */}
@@ -4429,7 +4443,7 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="completed" forceMount className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-lg font-semibold text-gray-900 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Completed</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Completed</h2>
             {completedTasksLoading ? (
               <div className="min-h-[400px] flex items-center justify-center">
                 <div className="text-center">
@@ -4526,7 +4540,7 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="my-bids" forceMount className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-lg font-semibold text-gray-900 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />My Bids</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />My Bids</h2>
             {requestedTasks.length === 0 ? (
               <EmptyState
                 icon={ClipboardList}
