@@ -156,7 +156,7 @@ function formatTimestampValue(raw: any): {
 export default function Dashboard() {
   const router = useRouter();
   const { user, userId, isAuthenticated, logout, addNotifications } = useStore();
-  const { items: notificationItems, unreadCount, markAsRead } = useNotifications(!!isAuthenticated);
+  const { items: notificationItems, unreadCount, markAsRead, bellAnimating } = useNotifications(!!isAuthenticated);
   const { isMobile } = useIsMobile();
   // Prevent SSR → CSR flicker on mobile by delaying mobile-only UI until mounted
   const [mounted, setMounted] = useState(false);
@@ -3448,7 +3448,7 @@ export default function Dashboard() {
                 aria-label="Notifications"
                 title="Notifications"
               >
-                <Bell className="h-5 w-5 text-gray-700" />
+                <Bell className={`h-5 w-5 text-gray-700 ${bellAnimating ? "animate-bell-ring" : ""}`} />
                 {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full text-[10px] font-medium bg-emerald-600 text-white">
                     {unreadCount > 99 ? "99+" : unreadCount}
@@ -3469,7 +3469,7 @@ export default function Dashboard() {
               aria-label="Notifications"
               title="Notifications"
             >
-              <Bell className="h-5 w-5 text-gray-700" />
+              <Bell className={`h-5 w-5 text-gray-700 ${bellAnimating ? "animate-bell-ring" : ""}`} />
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full text-[10px] font-medium bg-emerald-600 text-white">
                   {unreadCount > 99 ? "99+" : unreadCount}

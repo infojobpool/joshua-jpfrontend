@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import jwt from "jsonwebtoken";
+import { playNotificationSound } from "./notificationSound";
 
 // 🔹 Types
 interface UserData {
@@ -337,6 +338,8 @@ const useStore = create<StoreState>((set) => ({
     }),
   addNotifications: (items: NotificationItem[]) =>
     set((state) => {
+      const prevIds = new Set(state.items.map((n) => n.id));
+      const hasNew = items.some((n) => !prevIds.has(n.id));
       const byId: Record<string, NotificationItem> = {};
       [...items, ...state.items].forEach((n) => {
         byId[n.id] = n;
@@ -357,6 +360,12 @@ const useStore = create<StoreState>((set) => ({
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
         .slice(0, 20);
       const unread = compact.filter((n) => !n.read).length;
+      if (hasNew && unread > state.unreadCount && typeof window !== "undefined") {
+        try {
+          playNotificationSound();
+          window.dispatchEvent(new CustomEvent("notification-arrived"));
+        } catch {}
+      }
       return {
         items: compact,
         unreadCount: unread,

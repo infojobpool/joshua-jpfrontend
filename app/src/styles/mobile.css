@@ -105,6 +105,38 @@
       transform: translateY(0);
     }
   }
+
+  /* App open animation - slide up from bottom (native-like) */
+  .mobile-app-open {
+    animation: mobileAppOpen 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  /* Mobile loading - logo reveal */
+  .mobile-loading-logo {
+    animation: mobileLoadingLogo 0.6s ease-out;
+  }
+  
+  @keyframes mobileAppOpen {
+    from {
+      opacity: 0;
+      transform: translateY(24px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  
+  @keyframes mobileLoadingLogo {
+    from {
+      opacity: 0;
+      transform: scale(0.85);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
   
   /* Mobile-optimized touch targets */
   .mobile-touch-target {
@@ -131,6 +163,11 @@
   
   .mobile-only {
     display: none !important;
+  }
+
+  /* No entrance animation on desktop */
+  .mobile-app-open {
+    animation: none;
   }
 }
 

@@ -9,6 +9,7 @@ import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { InAppNotificationProvider } from "@/components/InAppNotificationProvider";
 import { NotificationPoller } from "@/components/NotificationPoller";
 import { PromoPopup } from "@/components/PromoPopup";
+import { AppEntranceWrapper } from "@/components/mobile/AppEntranceWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -72,13 +73,14 @@ export default function RootLayout({
         <NotificationPoller />
         <PromoPopup imageSrc="/images/promo-popup.png" />
         <MobileLayout>
-          <MainHeader />
-          <main className="min-h-screen pb-[calc(env(safe-area-inset-bottom)+72px)] md:pb-0">
-            {children}
-          </main>
-          <Footer />
-          <MobileBottomNav />
-        </MobileLayout>
+          <AppEntranceWrapper>
+            <MainHeader />
+            <main className="min-h-screen pb-[calc(env(safe-area-inset-bottom)+72px)] md:pb-0">
+              {children}
+            </main>
+            <Footer />
+            <MobileBottomNav />
+          </AppEntranceWrapper>
         <Toaster />
       </body>
     </html>

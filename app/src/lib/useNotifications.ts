@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import axiosInstance from "./axiosInstance";
+import { playNotificationSound } from "./notificationSound";
 
 export interface NotificationItem {
   id: string;
@@ -20,6 +21,9 @@ export function useNotifications(isAuthenticated: boolean) {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [bellAnimating, setBellAnimating] = useState(false);
+  const prevUnreadRef = useRef(0);
+  const firstFetchDoneRef = useRef(false);
 
   const fetchNotifications = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -52,9 +56,21 @@ export function useNotifications(isAuthenticated: boolean) {
             const merged = Array.from(byId.values())
               .sort((a, b) => new Date((b as any).created_at ?? b.createdAt ?? 0).getTime() - new Date((a as any).created_at ?? a.createdAt ?? 0).getTime())
               .slice(0, 50);
-            setUnreadCount(merged.filter((n) => !n.read).length);
+            const newUnread = merged.filter((n) => !n.read).length;
+            const hadNew = firstFetchDoneRef.current && newUnread > prevUnreadRef.current;
+            firstFetchDoneRef.current = true;
+            prevUnreadRef.current = newUnread;
+            setUnreadCount(newUnread);
+            if (hadNew) {
+              playNotificationSound();
+              setTimeout(() => setBellAnimating(true), 0);
+              setTimeout(() => setBellAnimating(false), 1500);
+            }
             return merged;
           });
+        } else {
+          firstFetchDoneRef.current = true;
+          prevUnreadRef.current = 0;
         }
       }
     } catch {
@@ -72,7 +88,15 @@ export function useNotifications(isAuthenticated: boolean) {
     }
     fetchNotifications();
     const interval = setInterval(fetchNotifications, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
+    const onArrival = () => {
+      setBellAnimating(true);
+      setTimeout(() => setBellAnimating(false), 1500);
+    };
+    window.addEventListener("notification-arrived", onArrival);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("notification-arrived", onArrival);
+    };
   }, [isAuthenticated, fetchNotifications]);
 
   const markAsRead = useCallback(
@@ -95,5 +119,5 @@ export function useNotifications(isAuthenticated: boolean) {
     setUnreadCount(0);
   }, []);
 
-  return { items, unreadCount, loading, fetchNotifications, markAsRead, clearAll };
+  return { items, unreadCount, loading, fetchNotifications, markAsRead, clearAll, bellAnimating };
 }
