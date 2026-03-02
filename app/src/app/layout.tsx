@@ -70,20 +70,21 @@ export default function RootLayout({
         <link rel="mask-icon" href="/icons/icon-192x192.png" color="#1e3a8a" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}>
-        <InAppNotificationProvider />
-        <NotificationPoller />
-        <PromoPopup imageSrc="/images/promo-popup.png" />
-        <MobileLayout>
-          <AppEntranceWrapper>
-            <MainHeader />
-            <main className="min-h-screen pb-[calc(env(safe-area-inset-bottom)+72px)] md:pb-0">
-              {children}
-            </main>
-            <Footer />
-          </AppEntranceWrapper>
-          <MobileBottomNav />
-        </MobileLayout>
-        <Toaster />
+        <ThemeProvider>
+          <InAppNotificationProvider />
+          <NotificationPoller />
+          <PromoPopup imageSrc="/images/promo-popup.png" />
+          <MobileLayout>
+            <AppEntranceWrapper>
+              <MainHeader />
+              <main className="min-h-screen pb-[calc(env(safe-area-inset-bottom)+72px)] md:pb-0">
+                {children}
+              </main>
+              <Footer />
+            </AppEntranceWrapper>
+            <MobileBottomNav />
+          </MobileLayout>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>
