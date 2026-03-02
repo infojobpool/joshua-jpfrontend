@@ -4,7 +4,7 @@
 import { MobileDashboard } from "../../components/mobile/MobileDashboard";
 import { useIsMobile } from "../../components/mobile/MobileWrapper";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -75,6 +75,7 @@ interface Task {
   offers: number;
   posted_by: string;
   posted_by_profile_image?: string;
+  posted_by_id?: string | number;
   category: string;
   job_completion_status?: string | number;
   tasker_completed?: boolean;
@@ -319,6 +320,8 @@ export default function Dashboard() {
   const [refetchAvailableTrigger, setRefetchAvailableTrigger] = useState(0);
   const [refetchCompletedTrigger, setRefetchCompletedTrigger] = useState(0);
   const [refetchBidsTrigger, setRefetchBidsTrigger] = useState(0);
+  const [posterProfileCache, setPosterProfileCache] = useState<Record<string, string>>({});
+  const fetchedPosterIds = useRef<Set<string>>(new Set());
 
   // Safe user for UI (prevents null TS checks in JSX). Support both profile_image and profile_img from API.
   const safeUser = user ? { ...user, profile_image: user.profile_image || (user as any).profile_img || "" } : { name: "User", email: "", profile_image: "" } as any;
@@ -444,6 +447,40 @@ export default function Dashboard() {
     })();
     return () => controller.abort();
   }, [effectiveUserId, updateUserProfileImage]);
+
+  // Fetch poster profile images when get-all-jobs API doesn't return them
+  useEffect(() => {
+    const tasks = availableTasks.filter(
+      (t) => (t as any).posted_by_id && !(t as any).posted_by_profile_image
+    );
+    if (tasks.length === 0) return;
+    const uniqueIds = [...new Set(tasks.map((t) => String((t as any).posted_by_id)))];
+    const toFetch = uniqueIds.filter((id) => !fetchedPosterIds.current.has(id));
+    if (toFetch.length === 0) return;
+    toFetch.forEach((id) => fetchedPosterIds.current.add(id));
+    const controller = new AbortController();
+    (async () => {
+      const results: Record<string, string> = {};
+      await Promise.all(
+        toFetch.map(async (pid) => {
+          try {
+            const res = await axiosInstance.get(`/profile?user_id=${pid}`, {
+              signal: controller.signal,
+            });
+            const payload = res.data?.data ?? res.data;
+            const img = payload?.profile_img || payload?.profile_image;
+            if (img) results[pid] = img;
+          } catch {
+            fetchedPosterIds.current.delete(pid);
+          }
+        })
+      );
+      if (Object.keys(results).length > 0) {
+        setPosterProfileCache((prev) => ({ ...prev, ...results }));
+      }
+    })();
+    return () => controller.abort();
+  }, [availableTasks]);
 
   // Auto-refresh: refetch current tab's data periodically and when user returns to the tab
   const refreshActiveTab = () => {
@@ -1106,6 +1143,7 @@ export default function Dashboard() {
                 offers: job.offers || 0, // Use original offers field as fallback
                 posted_by: job.posted_by || "Unknown",
                 posted_by_profile_image: job.posted_by_profile_image || job.taskmanager_profile_image || job.taskmanager_profile_img || job.poster?.profile_img || job.poster?.profile_image || job.profile_img || job.user_profile_img,
+                posted_by_id: job.user_ref_id || job.posted_by_id || job.user_id,
                 category: job.job_category || "general",
                 job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
                 deletion_status: job.deletion_status || false,
@@ -4231,9 +4269,11 @@ export default function Dashboard() {
                               </div>
                               <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[#eff6ff]/80 dark:bg-slate-700/80 border border-[#3b82f6]/20 dark:border-slate-600/50">
                                 <Avatar className="h-6 w-6 shrink-0">
-                                  {(task as any).posted_by_profile_image && (
-                                    <AvatarImage src={resolveProfileImageUrl((task as any).posted_by_profile_image) || (task as any).posted_by_profile_image} alt="" />
-                                  )}
+                                  {(() => {
+                                    const raw = (task as any).posted_by_profile_image || posterProfileCache[String((task as any).posted_by_id)];
+                                    const url = raw ? (resolveProfileImageUrl(raw) || raw) : undefined;
+                                    return url ? <AvatarImage src={url} alt="" /> : null;
+                                  })()}
                                   <AvatarFallback className="text-[10px] bg-[#2563eb] text-white font-semibold">
                                     {task.posted_by?.charAt(0)?.toUpperCase() || "?"}
                                   </AvatarFallback>
