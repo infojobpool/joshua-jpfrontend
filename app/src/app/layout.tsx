@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import MainHeader from "@/components/MainHeader";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import Footer from "@/components/Footer";
 import { MobileBottomNav } from "@/components/mobile/MobileBottomNav";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
@@ -60,7 +61,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png" />
@@ -83,6 +84,7 @@ export default function RootLayout({
           <MobileBottomNav />
         </MobileLayout>
         <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

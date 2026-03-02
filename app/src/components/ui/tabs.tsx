@@ -60,6 +60,9 @@ function TabsContent({
       className={cn(
         // Keep mounted panels from displaying when inactive
         "flex-1 outline-none data-[state=inactive]:hidden",
+        // Animate in when tab becomes active (runs each time state switches to active)
+        "data-[state=active]:animate-in data-[state=active]:fade-in-0 data-[state=active]:slide-in-from-bottom-2",
+        "data-[state=active]:duration-300 data-[state=active]:ease-out",
         className
       )}
       {...props}
