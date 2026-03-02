@@ -79,8 +79,8 @@ export default function RootLayout({
               {children}
             </main>
             <Footer />
-            <MobileBottomNav />
           </AppEntranceWrapper>
+          <MobileBottomNav />
         </MobileLayout>
         <Toaster />
       </body>

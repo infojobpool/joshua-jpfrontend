@@ -106,20 +106,26 @@
     }
   }
 
-  /* App open animation - slide up from bottom (native-like) */
+  /* App open animation - slide up from bottom with gentle fade (native-like) */
   .mobile-app-open {
-    animation: mobileAppOpen 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: mobileAppOpen 0.55s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
   }
 
   /* Mobile loading - logo reveal */
   .mobile-loading-logo {
-    animation: mobileLoadingLogo 0.6s ease-out;
+    animation: mobileLoadingLogo 0.6s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+  }
+
+  /* Bottom nav entrance - slides up with content */
+  .mobile-nav-appear {
+    animation: mobileNavAppear 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) 0.1s forwards;
+    opacity: 0;
   }
   
   @keyframes mobileAppOpen {
     from {
       opacity: 0;
-      transform: translateY(24px) scale(0.98);
+      transform: translateY(32px) scale(0.97);
     }
     to {
       opacity: 1;
@@ -130,11 +136,22 @@
   @keyframes mobileLoadingLogo {
     from {
       opacity: 0;
-      transform: scale(0.85);
+      transform: scale(0.8);
     }
     to {
       opacity: 1;
       transform: scale(1);
+    }
+  }
+
+  @keyframes mobileNavAppear {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
   }
   
@@ -168,6 +185,10 @@
   /* No entrance animation on desktop */
   .mobile-app-open {
     animation: none;
+  }
+  .mobile-nav-appear {
+    animation: none;
+    opacity: 1;
   }
 }
 

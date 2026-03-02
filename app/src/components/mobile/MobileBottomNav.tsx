@@ -22,7 +22,7 @@ export function MobileBottomNav() {
 
   return (
     <div 
-      className="fixed left-0 right-0 bottom-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 z-50 md:hidden"
+      className="fixed left-0 right-0 bottom-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 z-50 md:hidden mobile-nav-appear"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="flex justify-around items-center py-2">
