@@ -77,7 +77,7 @@ export default function RootLayout({
           <MobileLayout>
             <AppEntranceWrapper>
               <MainHeader />
-              <main className="min-h-screen pb-[calc(env(safe-area-inset-bottom)+72px)] md:pb-0">
+              <main className="min-h-screen pb-[calc(env(safe-area-inset-bottom)+96px)] md:pb-0">
                 {children}
               </main>
               <Footer />

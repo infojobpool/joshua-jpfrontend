@@ -87,7 +87,7 @@
   
   /* Mobile-optimized spacing for bottom navigation */
   .mobile-content {
-    padding-bottom: 5rem; /* Space for bottom nav */
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); /* Space for bottom nav + FAB */
   }
   
   /* Mobile-optimized animations */

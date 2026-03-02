@@ -3051,7 +3051,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 via-white to-slate-50/80 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 overflow-x-hidden">
+    <div className="flex min-h-screen flex-col bg-white overflow-x-hidden">
       <style jsx>{`
         @keyframes fadeInUp {
           from {
@@ -3123,7 +3123,7 @@ export default function Dashboard() {
         }
       `}</style>
       
-      <main className="flex-1 w-full max-w-none mx-auto py-3 md:py-10 px-4 md:px-8 lg:px-12">
+      <main className="flex-1 w-full max-w-none mx-auto py-3 md:py-10 px-4 md:px-8 lg:px-12 pb-28 md:pb-10">
         <PullToRefresh onRefresh={handleRefresh}>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 md:mb-8 gap-3 md:gap-4 animate-fade-in-up">
           {/* Move profile block up on mobile */}
@@ -3133,7 +3133,7 @@ export default function Dashboard() {
                 <div className="relative">
                   <button
                     onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                    className="flex items-center gap-3 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm border border-slate-200/80 dark:border-slate-700/50 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-2xl shadow-sm shadow-slate-200/50 dark:shadow-black/20 transition-all duration-200 hover:shadow-md hover:shadow-slate-200/60"
+                    className="flex items-center gap-3 bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md"
                   >
                     <div className="relative">
                       {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
@@ -3163,7 +3163,7 @@ export default function Dashboard() {
                     <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {profileDropdownOpen && (
-                    <div className="absolute right-0 mt-3 w-64 max-w-[80vw] bg-white/98 dark:bg-slate-900/98 backdrop-blur-xl rounded-2xl shadow-xl shadow-slate-300/30 dark:shadow-black/30 border border-slate-200/80 dark:border-slate-700/50 py-2 z-50 animate-fade-in-up">
+                    <div className="absolute right-0 mt-3 w-64 max-w-[80vw] bg-white rounded-2xl shadow-xl border border-gray-200 py-2 z-50 animate-fade-in-up">
                       <div className="px-4 py-3 border-b border-gray-100">
                         <div className="flex items-center gap-3">
                           {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
@@ -3197,17 +3197,17 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div className="py-2">
-                        <Link href="/profile" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200">
-                          <div className="p-2 rounded-lg bg-blue-100 dark:bg-slate-700">
-                            <User className="h-4 w-4 text-blue-600 dark:text-slate-300" />
+                        <Link href="/profile" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
+                          <div className="p-2 rounded-lg bg-[#eff6ff]">
+                            <User className="h-4 w-4 text-[#2563eb]" />
                           </div>
-                          <span className="text-gray-700 dark:text-slate-200 font-medium">My Profile</span>
+                          <span className="text-gray-800 font-medium">My Profile</span>
                         </Link>
-                        <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200">
+                        <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
                           <div className="p-2 rounded-lg bg-gray-100">
                             <Settings className="h-4 w-4 text-gray-600" />
                           </div>
-                          <span className="text-gray-700 font-medium">Settings</span>
+                          <span className="text-gray-800 font-medium">Settings</span>
                         </Link>
                         <div className="border-t border-gray-100 my-2"></div>
                         <button 
@@ -3225,17 +3225,17 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="mt-2 text-left">
-                <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">Dashboard</h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Tasks and bids</p>
+                <h1 className="text-xl font-semibold tracking-tight text-gray-900">Dashboard</h1>
+                <p className="text-xs text-gray-600 mt-0.5">Tasks and bids</p>
               </div>
             </div>
           )}
           {!isMobile && (
             <div className="animate-slide-in-right">
-              <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+              <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-gray-900">
                 Dashboard
               </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage your tasks and bids</p>
+              <p className="text-sm text-gray-600 mt-1">Manage your tasks and bids</p>
             </div>
           )}
           <div className="hidden md:flex items-center gap-4 animate-slide-in-right">
@@ -3249,7 +3249,7 @@ export default function Dashboard() {
             <div className="relative">
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="flex items-center gap-3 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm border border-slate-200/80 dark:border-slate-700/50 text-slate-700 dark:text-slate-200 px-5 py-3 rounded-2xl shadow-sm shadow-slate-200/50 dark:shadow-black/20 transition-all duration-200 hover:shadow-md hover:shadow-slate-200/60"
+                className="flex items-center gap-3 bg-white border border-gray-200 text-gray-800 px-5 py-3 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md"
               >
                 <div className="relative">
                   {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
@@ -3277,7 +3277,7 @@ export default function Dashboard() {
               </button>
               
               {profileDropdownOpen && (
-                  <div className="absolute right-0 mt-3 w-64 bg-white/98 dark:bg-slate-900/98 backdrop-blur-xl rounded-2xl shadow-xl shadow-slate-300/30 dark:shadow-black/30 border border-slate-200/80 dark:border-slate-700/50 py-2 z-50 animate-fade-in-up">
+                  <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-xl border border-gray-200 py-2 z-50 animate-fade-in-up">
                   <div className="px-4 py-3 border-b border-gray-100">
                     <div className="flex items-center gap-3">
                       {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
@@ -3418,14 +3418,14 @@ export default function Dashboard() {
           <div className="md:hidden mb-3 flex items-center gap-3">
             <ThemeToggle />
             <Link href="/post-task" className="flex-1">
-              <Button className="w-full h-10 rounded-xl bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 text-white font-medium shadow-lg shadow-slate-900/20 transition-all duration-200">
+              <Button className="w-full h-10 rounded-xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-medium shadow-md transition-all duration-200">
                 Post a Task
               </Button>
             </Link>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowNotifications((s) => !s)}
-                className="relative inline-flex items-center justify-center h-10 w-10 rounded-xl border border-slate-200/80 dark:border-slate-700/50 bg-white/95 dark:bg-slate-800/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200"
+                className="relative inline-flex items-center justify-center h-10 w-10 rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200"
                 aria-label="Notifications"
                 title="Notifications"
               >
@@ -3446,7 +3446,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between w-full gap-4">
             <button
               onClick={() => setShowNotifications((s) => !s)}
-              className="relative inline-flex items-center justify-center h-10 w-10 rounded-xl border border-slate-200/80 dark:border-slate-700/50 bg-white/95 dark:bg-slate-800/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200"
+              className="relative inline-flex items-center justify-center h-10 w-10 rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200"
               aria-label="Notifications"
               title="Notifications"
             >
@@ -3458,7 +3458,7 @@ export default function Dashboard() {
               )}
             </button>
             <Link href="/post-task" passHref className="ml-auto">
-              <Button className="bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 text-white font-medium px-6 py-3 rounded-xl shadow-lg shadow-slate-900/25 transition-all duration-200">
+              <Button className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-medium px-6 py-3 rounded-xl shadow-md transition-all duration-200">
                 Post a Task
               </Button>
             </Link>
@@ -3466,7 +3466,7 @@ export default function Dashboard() {
         </div>
 
         {showNotifications && (
-          <div className="fixed right-6 top-24 z-50 w-[340px] max-w-[92vw] bg-white/98 dark:bg-slate-900/98 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/50 rounded-2xl shadow-xl shadow-slate-300/30 dark:shadow-black/30 overflow-hidden">
+          <div className="fixed right-6 top-24 z-50 w-[340px] max-w-[92vw] bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
               <div className="font-semibold text-gray-800">Notifications</div>
               <button
@@ -3552,45 +3552,45 @@ export default function Dashboard() {
         >
           <TabsList className={
             isMobile
-              ? "grid grid-cols-5 w-full p-2 bg-white/95 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/80 dark:border-slate-700/50 rounded-2xl shadow-lg shadow-slate-200/40 z-20 gap-2 sticky top-[calc(env(safe-area-inset-top)+48px)]"
-              : "flex w-full bg-slate-100/80 dark:bg-slate-800/60 p-2 rounded-2xl gap-2 shadow-inner"
+              ? "grid grid-cols-5 w-full p-2 bg-gray-100 border border-gray-200 rounded-2xl shadow-sm z-20 gap-1.5 sticky top-[calc(env(safe-area-inset-top)+48px)]"
+              : "flex w-full bg-gray-100 p-2 rounded-2xl gap-2"
           }>
             <TabsTrigger value="my-tasks" className={
               isMobile 
-                ? "flex flex-col items-center gap-1 px-2 py-3 rounded-xl text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-slate-200/80 data-[state=active]:text-slate-900 data-[state=active]:dark:text-white data-[state=inactive]:text-slate-500 transition-all duration-200 active:scale-[0.98]"
-                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-slate-200/80 data-[state=active]:text-slate-900 data-[state=active]:dark:text-white data-[state=inactive]:text-slate-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center gap-1 px-1.5 py-3 rounded-xl text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 transition-all duration-200 active:scale-[0.98]"
+                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
-              <Briefcase className="h-4 w-4 md:hidden" />
-              <span>My Tasks</span>
+              <Briefcase className="h-4 w-4 md:hidden shrink-0" />
+              <span className="truncate">My Tasks</span>
             </TabsTrigger>
             <TabsTrigger value="available" className={
               isMobile 
-                ? "flex flex-col items-center gap-1 px-2 py-3 rounded-xl text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-slate-200/80 data-[state=active]:text-slate-900 data-[state=active]:dark:text-white data-[state=inactive]:text-slate-500 transition-all duration-200 active:scale-[0.98]"
-                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-slate-200/80 data-[state=active]:text-slate-900 data-[state=active]:dark:text-white data-[state=inactive]:text-slate-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center gap-1 px-1.5 py-3 rounded-xl text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 transition-all duration-200 active:scale-[0.98]"
+                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
-              <Search className="h-4 w-4 md:hidden" />
-              <span>Available</span>
+              <Search className="h-4 w-4 md:hidden shrink-0" />
+              <span className="truncate">Available</span>
             </TabsTrigger>
             <TabsTrigger value="assigned" className={
               isMobile 
-                ? "flex flex-col items-center gap-1 px-2 py-3 rounded-xl text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-slate-200/80 data-[state=active]:text-slate-900 data-[state=active]:dark:text-white data-[state=inactive]:text-slate-500 transition-all duration-200 active:scale-[0.98]"
-                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-slate-200/80 data-[state=active]:text-slate-900 data-[state=active]:dark:text-white data-[state=inactive]:text-slate-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center gap-1 px-1.5 py-3 rounded-xl text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 transition-all duration-200 active:scale-[0.98]"
+                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
-              <CheckCircle className="h-4 w-4 md:hidden" />
-              <span>Assigned</span>
+              <CheckCircle className="h-4 w-4 md:hidden shrink-0" />
+              <span className="truncate">{isMobile ? "Assign" : "Assigned"}</span>
             </TabsTrigger>
             <TabsTrigger value="completed" className={
               isMobile 
-                ? "flex flex-col items-center gap-1 px-2 py-3 rounded-xl text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-slate-200/80 data-[state=active]:text-slate-900 data-[state=active]:dark:text-white data-[state=inactive]:text-slate-500 transition-all duration-200 active:scale-[0.98]"
-                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-slate-200/80 data-[state=active]:text-slate-900 data-[state=active]:dark:text-white data-[state=inactive]:text-slate-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center gap-1 px-1.5 py-3 rounded-xl text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 transition-all duration-200 active:scale-[0.98]"
+                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
-              <Star className="h-4 w-4 md:hidden" />
-              <span>Completed</span>
+              <Star className="h-4 w-4 md:hidden shrink-0" />
+              <span className="truncate">{isMobile ? "Done" : "Completed"}</span>
             </TabsTrigger>
             <TabsTrigger value="my-bids" className={
               isMobile 
-                ? "flex flex-col items-center gap-1 px-2 py-3 rounded-xl text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-slate-200/80 data-[state=active]:text-slate-900 data-[state=active]:dark:text-white data-[state=inactive]:text-slate-500 transition-all duration-200 active:scale-[0.98]"
-                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-slate-200/80 data-[state=active]:text-slate-900 data-[state=active]:dark:text-white data-[state=inactive]:text-slate-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center gap-1 px-1.5 py-3 rounded-xl text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 transition-all duration-200 active:scale-[0.98]"
+                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
               <IndianRupee className="h-4 w-4 md:hidden" />
               <span className="hidden md:inline">My Bids</span>
@@ -3668,9 +3668,9 @@ export default function Dashboard() {
           )}
 
           <TabsContent value="my-tasks" forceMount className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-slate-900 dark:bg-slate-100" />Tasks You've Posted</h2>
+            <h2 className="text-lg font-semibold text-gray-900 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks You've Posted</h2>
             {/* Premium Toolbar */}
-            <div className={`mb-3 rounded-2xl border border-slate-200/80 dark:border-slate-700/50 bg-white/90 dark:bg-slate-800/60 backdrop-blur-sm px-3 py-2 shadow-md shadow-slate-200/30 dark:shadow-black/20 transition-all duration-200`}> 
+            <div className={`mb-3 rounded-2xl border border-gray-200 bg-white px-3 py-2 shadow-sm transition-all duration-200`}> 
               <div className={`flex ${isMobile ? "flex-col gap-2" : "items-center gap-3"}`}>
               <div className={`relative ${isMobile ? "w-full" : "w-80"}`}>
                 <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -3707,13 +3707,13 @@ export default function Dashboard() {
               </div>
             </div>
             {postedTasks.length === 0 ? (
-                  <Card className="bg-white/95 dark:bg-slate-800/50 border-slate-200/80 dark:border-slate-700/50 shadow-md rounded-2xl">
+                  <Card className="bg-white border border-gray-200 shadow-md rounded-2xl">
                 <CardContent className="flex flex-col items-center justify-center py-10">
                   <p className="text-muted-foreground mb-4">
                     You haven't posted any tasks yet
                   </p>
                   <Link href="/post-task">
-                    <Button className="bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 shadow-lg">Post Your First Task</Button>
+                    <Button className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white shadow-md">Post Your First Task</Button>
                   </Link>
                 </CardContent>
               </Card>
@@ -3760,7 +3760,7 @@ export default function Dashboard() {
                   .map((task) => (
                     <Card
                       key={task.id}
-                      className={`relative bg-white dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/50 shadow-md shadow-slate-200/40 hover:shadow-lg hover:shadow-slate-300/50 dark:shadow-black/20 transition-all duration-200 rounded-2xl overflow-hidden group border-l-4 border-l-slate-900/20 dark:border-l-slate-400/30 ${
+                      className={`relative bg-white border border-gray-200 shadow-md hover:shadow-lg transition-all duration-200 rounded-2xl overflow-hidden group border-l-4 border-l-[#3b82f6]/50 ${
                         task.deletion_status || task.cancel_status ? "opacity-60 cursor-not-allowed" : ""
                       }`}
                     >
@@ -3944,8 +3944,8 @@ export default function Dashboard() {
                                     disabled={completingTaskId === task.id}
                                   >
                                     <div className="flex items-center gap-1">
-                                      <span className="text-base">✅</span>
-                                      <span>{completingTaskId === task.id ? "Updating..." : "Confirm completion (Taskmaster)"}</span>
+                                      <span className="text-base shrink-0">✅</span>
+                                      <span className="truncate">{completingTaskId === task.id ? "Updating..." : isMobile ? "Confirm (you)" : "Confirm completion (Taskmaster)"}</span>
                                     </div>
                                   </Button>
                                 )}
@@ -3973,13 +3973,13 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="available" forceMount className="space-y-6 mt-12 pt-2 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-slate-900 dark:bg-slate-100" />Available Tasks</h2>
+            <h2 className="text-lg font-semibold text-gray-900 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Available Tasks</h2>
             <div className={`grid gap-6 ${isMobile ? "grid-cols-1" : "md:grid-cols-4"}`} style={{zIndex:1, position:'relative'}}>
               <div className={`${isMobile ? "hidden" : "md:col-span-1"} space-y-6`}>
                 <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
                   <CardHeader className="bg-gray-50 border-b border-gray-200 p-6">
                     <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-gray-800 shadow-sm">
+                      <div className="p-2 rounded-lg bg-[#2563eb] shadow-sm">
                         <Filter className="w-4 h-4 text-white" />
                       </div>
                       Filters
@@ -4159,7 +4159,7 @@ export default function Dashboard() {
                       const hasUserBid = requestedTasks.some(bid => bid.task_id === task.id);
                       
                       return (
-                        <Card key={task.id} className="flex flex-col bg-white dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/50 shadow-md shadow-slate-200/40 hover:shadow-lg hover:shadow-slate-300/50 dark:shadow-black/20 transition-all duration-200 rounded-2xl overflow-hidden border-l-4 border-l-slate-900/20 dark:border-l-slate-400/30">
+                        <Card key={task.id} className="flex flex-col bg-white border border-gray-200 shadow-md hover:shadow-lg transition-all duration-200 rounded-2xl overflow-hidden border-l-4 border-l-[#3b82f6]/50">
                           {/* Mobile-optimized layout */}
                           <div className={isMobile ? "p-4" : "p-6"}>
                             {/* Header with title and status */}
@@ -4194,9 +4194,9 @@ export default function Dashboard() {
                             {/* Mobile-optimized info row */}
                             <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"}`}>
                               <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700/60 px-2.5 py-1 rounded-lg border border-slate-200/60 dark:border-slate-600/40">
-                                  <IndianRupee className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                                  <span className="font-semibold text-slate-800 dark:text-slate-200">{task.budget}</span>
+                                <div className="flex items-center gap-1 bg-[#eff6ff] px-2.5 py-1 rounded-lg border border-[#3b82f6]/30">
+                                  <IndianRupee className="h-4 w-4 text-[#2563eb]" />
+                                  <span className="font-semibold text-[#1d4ed8]">{task.budget}</span>
                                 </div>
                                 <div className="flex items-center gap-1 text-gray-500">
                                   <MapPin className="h-3 w-3" />
@@ -4216,7 +4216,7 @@ export default function Dashboard() {
                             {/* Action button */}
                             <div className="mt-4">
                               <Link href={`/tasks/${task.id}`} className="w-full">
-                                <Button variant="outline" className={`w-full border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 font-medium rounded-xl transition-all duration-200 ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
+                                <Button variant="outline" className={`w-full border-[#3b82f6]/50 text-[#2563eb] hover:bg-[#eff6ff] font-medium rounded-xl transition-all duration-200 ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
                                   <span>{hasUserBid ? "View Offer" : "Make an Offer"}</span>
                                 </Button>
                               </Link>
@@ -4232,7 +4232,7 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="assigned" forceMount className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-slate-900 dark:bg-slate-100" />Tasks Assigned to You</h2>
+            <h2 className="text-lg font-semibold text-gray-900 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks Assigned to You</h2>
             {assignedTasks.length === 0 ? (
               <div className="min-h-[400px] flex items-center justify-center">
                 <EmptyState
@@ -4252,7 +4252,7 @@ export default function Dashboard() {
                   const waitingForTaskmaster = !isCancelled && task.tasker_completed && !task.taskmaster_completed && task.job_completion_status !== 1 && task.job_completion_status !== "1";
                   
                   return (
-                  <Card key={task.id} className={`flex flex-col bg-white dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/50 shadow-md shadow-slate-200/40 hover:shadow-lg hover:shadow-slate-300/50 dark:shadow-black/20 transition-all duration-200 rounded-2xl overflow-hidden border-l-4 border-l-slate-900/20 dark:border-l-slate-400/30 ${isCancelled ? 'opacity-60' : ''}`}>
+                  <Card key={task.id} className={`flex flex-col bg-white border border-gray-200 shadow-md hover:shadow-lg transition-all duration-200 rounded-2xl overflow-hidden border-l-4 border-l-[#3b82f6]/50 ${isCancelled ? 'opacity-60' : ''}`}>
                     {/* Mobile-optimized layout */}
                     <div className={isMobile ? "p-4" : "p-6"}>
                       {/* Header with title and status */}
@@ -4429,7 +4429,7 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="completed" forceMount className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-slate-900 dark:bg-slate-100" />Completed</h2>
+            <h2 className="text-lg font-semibold text-gray-900 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Completed</h2>
             {completedTasksLoading ? (
               <div className="min-h-[400px] flex items-center justify-center">
                 <div className="text-center">
@@ -4526,7 +4526,7 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="my-bids" forceMount className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-slate-900 dark:bg-slate-100" />My Bids</h2>
+            <h2 className="text-lg font-semibold text-gray-900 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />My Bids</h2>
             {requestedTasks.length === 0 ? (
               <EmptyState
                 icon={ClipboardList}
@@ -4728,7 +4728,7 @@ export default function Dashboard() {
         {/* Floating Post a Task (mobile only) */}
         <div className="md:hidden fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-40">
           <Link href="/post-task">
-            <Button className="rounded-full h-12 w-12 p-0 shadow-xl shadow-slate-900/30 bg-gradient-to-br from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 active:scale-95 transition-all duration-200">
+            <Button className="rounded-full h-12 w-12 p-0 shadow-lg bg-[#2563eb] hover:bg-[#1d4ed8] active:scale-95 transition-all duration-200">
               <span className="text-2xl leading-none">+</span>
             </Button>
           </Link>
