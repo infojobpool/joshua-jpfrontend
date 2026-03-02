@@ -474,7 +474,7 @@ export default function ChatPageClient() {
   const taskId = searchParams?.get('task_id') || chatInfo?.task?.id || ''
 
   return (
-    <div className="flex flex-col bg-[#f8fafc] overflow-hidden fixed inset-0 z-50">
+    <div className="flex flex-col bg-[#f8fafc] overflow-hidden h-[calc(100dvh-env(safe-area-inset-bottom)-72px)] md:h-screen md:fixed md:inset-0 md:z-50">
       <Toaster position="top-right" />
       
       {/* Chat Header */}
@@ -612,13 +612,7 @@ export default function ChatPageClient() {
       </ScrollArea>
 
       {/* Message Input */}
-      <div 
-        className="bg-white border-t border-slate-200/80 p-3 flex-shrink-0 fixed left-0 right-0 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]"
-        style={{
-          bottom: 'calc(env(safe-area-inset-bottom) + 60px)',
-          zIndex: 51,
-        }}
-      >
+      <div className="bg-white border-t border-slate-200/80 p-3 flex-shrink-0 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center gap-2">
             <input
