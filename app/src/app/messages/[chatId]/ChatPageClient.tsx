@@ -447,9 +447,9 @@ export default function ChatPageClient() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#f8fafc]">
+      <div className="flex h-screen items-center justify-center bg-white">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 rounded-xl border-2 border-indigo-200 border-t-indigo-600 animate-spin" />
+          <div className="w-10 h-10 rounded-full border border-slate-200 border-t-blue-500 animate-spin" style={{ animationDuration: "0.85s" }} />
           <span className="text-sm text-slate-500 font-medium">Loading chat...</span>
         </div>
       </div>

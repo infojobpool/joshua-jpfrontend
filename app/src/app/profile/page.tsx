@@ -33,6 +33,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import useStore from "../../lib/Zustand";
+import { resolveProfileImageUrl } from "@/lib/profileImage";
 import Header from "@/components/Header"; // Import the Header component
 
 interface Address {
@@ -70,6 +71,7 @@ interface User {
   accountType: string;
   isLoggedIn: boolean;
   verification_status: number;
+  profile_image?: string;
 }
 
 interface Review {
@@ -91,8 +93,11 @@ export default function ProfilePage() {
   const [tempAvatar, setTempAvatar] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { userId, logout } = useStore();
+  const { userId, logout, user: storeUser, updateUserProfileImage } = useStore();
   const [user, setUser] = useState<User | null>(null);
+
+  const resolveAvatarUrl = (url: string | undefined) =>
+    (url && resolveProfileImageUrl(url)) || url;
 
   const [profileuser, setProfileUser] = useState<UserProfile>({
     profile_id: "",
@@ -194,7 +199,7 @@ export default function ProfilePage() {
               }))
             : [{ id: 1, address: "", isDefault: true }],
           avatar:
-            payload.profile_img || "/images/placeholder.svg?height=128&width=128",
+            payload.profile_img || (storeUser && storeUser.profile_image) || "",
           joinDate: payload.tstamp ? formatDate(payload.tstamp) : "",
           bank_info: payload.bank_info
             ? {
@@ -252,7 +257,7 @@ export default function ProfilePage() {
       }
     }, 4000);
     return () => clearTimeout(retry);
-  }, [userId, logout, router]);
+  }, [userId, logout, router, storeUser?.profile_image]);
 
   const handleSignOut = () => {
     logout();
@@ -385,6 +390,9 @@ export default function ProfilePage() {
         avatar: data.data.file_path || profileuser.avatar,
         isEditing: false,
       });
+      if (data.data.file_path) {
+        updateUserProfileImage(data.data.file_path);
+      }
       setTempAvatar(null);
     } catch (err: any) {
       setError("Failed to update profile");
@@ -398,13 +406,10 @@ export default function ProfilePage() {
   };
 
   if (isLoading) return (
-    <div className="flex h-screen items-center justify-center">
-      <div className="flex flex-col items-center gap-3">
-        <div className="relative">
-          <div className="h-12 w-12 rounded-full border-4 border-blue-500/20 border-t-blue-600 animate-spin" />
-          <div className="absolute inset-0 m-auto h-5 w-5 rounded-full bg-blue-600/10 animate-ping" />
-        </div>
-        <span className="text-sm text-muted-foreground animate-pulse">Loading profile...</span>
+    <div className="flex h-screen items-center justify-center bg-white">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-10 h-10 rounded-full border border-slate-200 border-t-blue-500 animate-spin" style={{ animationDuration: "0.85s" }} />
+        <span className="text-sm text-slate-500 font-medium">Loading profile...</span>
       </div>
     </div>
   );
@@ -414,7 +419,7 @@ export default function ProfilePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 via-slate-100/30 to-white">
-      <Header user={profileuser} onSignOut={handleSignOut} />
+      <Header user={{ ...profileuser, avatar: resolveAvatarUrl(profileuser.avatar) || profileuser.avatar }} onSignOut={handleSignOut} />
       <main className="flex-1 container mx-auto max-w-6xl py-6 md:py-10 px-4 md:px-6">
         <Link
           href="/dashboard"
@@ -424,17 +429,17 @@ export default function ProfilePage() {
         </Link>
 
         <div className="grid gap-8 md:grid-cols-3 mt-2">
-          {/* Profile card - left column */}
-          <Card className="md:col-span-1 border-0 shadow-xl rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200/50">
-            <div className="h-28 bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700" />
-            <CardHeader className="flex flex-col items-center -mt-16 relative pb-2">
+          {/* Profile card - left column with overlapping avatar */}
+          <Card className="md:col-span-1 border-0 shadow-xl rounded-2xl overflow-visible bg-white ring-1 ring-slate-200/50 relative z-10 md:-mr-4">
+            <div className="h-32 bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-700" />
+            <CardHeader className="flex flex-col items-center -mt-20 relative pb-2">
               {profileuser.isEditing ? (
-                <div className="relative">
-                  <Avatar className="h-32 w-32 ring-4 ring-white shadow-2xl border-2 border-white/20">
+                <div className="relative -mt-1">
+                  <Avatar className="h-36 w-36 ring-4 ring-white shadow-2xl border-2 border-white/30 overflow-hidden">
                     <AvatarImage
-                      src={tempAvatar || profileuser.avatar}
+                      src={tempAvatar || resolveAvatarUrl(profileuser.avatar) || profileuser.avatar}
                       alt={profileuser.name}
-                      className="object-cover"
+                      className="object-cover aspect-square"
                     />
                     <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-2xl">
                       {profileuser.name
@@ -469,11 +474,11 @@ export default function ProfilePage() {
                   )}
                 </div>
               ) : (
-                <Avatar className="h-32 w-32 ring-4 ring-white shadow-2xl border-2 border-white/20">
+                <Avatar className="h-36 w-36 ring-4 ring-white shadow-2xl border-2 border-white/30 overflow-hidden">
                   <AvatarImage
-                    src={profileuser.avatar}
+                    src={resolveAvatarUrl(profileuser.avatar) || profileuser.avatar}
                     alt={profileuser.name}
-                    className="object-cover"
+                    className="object-cover aspect-square"
                   />
                   <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-2xl">
                     {profileuser.name
@@ -717,7 +722,7 @@ export default function ProfilePage() {
               )}
             </CardContent>
           </Card>
-          <Card className="md:col-span-2 border-0 shadow-xl rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200/50">
+          <Card className="md:col-span-2 border-0 shadow-xl rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200/50 relative z-0 md:ml-[-1rem] md:shadow-2xl">
             <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-emerald-50/30 py-6">
               <CardTitle className="text-xl font-bold text-slate-800 tracking-tight">Profile Details</CardTitle>
               <CardDescription className="text-slate-500">Manage your verification and reviews</CardDescription>

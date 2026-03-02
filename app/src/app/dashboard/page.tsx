@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
+import { resolveProfileImageUrl } from "@/lib/profileImage";
 import { useNotifications } from "@/lib/useNotifications";
 
 interface Image {
@@ -3157,9 +3158,9 @@ export default function Dashboard() {
                     className="flex items-center gap-3 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 px-4 py-3 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200"
                   >
                     <div className="relative">
-                      {safeUser.profile_image ? (
+                      {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
                         <img 
-                          src={safeUser.profile_image} 
+                          src={resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image} 
                           alt={safeUser.name || "Profile"} 
                           className="h-8 w-8 rounded-full object-cover border-2 border-gray-200"
                         />
@@ -3187,9 +3188,9 @@ export default function Dashboard() {
                     <div className="absolute right-0 mt-3 w-64 max-w-[80vw] bg-white rounded-2xl shadow-2xl border border-gray-200 py-3 z-50 animate-fade-in-up">
                       <div className="px-4 py-3 border-b border-gray-100">
                         <div className="flex items-center gap-3">
-                          {safeUser.profile_image ? (
+                          {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
                             <img 
-                              src={safeUser.profile_image || ""} 
+                              src={resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image || ""} 
                               alt={safeUser.name || "Profile"} 
                               className="h-10 w-10 rounded-full object-cover border-2 border-gray-200"
                             />
@@ -3272,9 +3273,9 @@ export default function Dashboard() {
                 className="flex items-center gap-3 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 font-medium px-6 py-4 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
               >
                 <div className="relative">
-                  {safeUser.profile_image ? (
+                  {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
                     <img 
-                      src={safeUser.profile_image} 
+                      src={resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image} 
                       alt={safeUser.name || "Profile"} 
                       className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
                     />
@@ -3300,9 +3301,9 @@ export default function Dashboard() {
                 <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl border border-gray-200 py-3 z-50 animate-fade-in-up">
                   <div className="px-4 py-3 border-b border-gray-100">
                     <div className="flex items-center gap-3">
-                      {safeUser.profile_image ? (
+                      {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
                         <img 
-                          src={safeUser.profile_image} 
+                          src={resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image} 
                           alt={safeUser.name || "Profile"} 
                           className="h-12 w-12 rounded-full object-cover border-2 border-gray-200"
                         />
@@ -3363,9 +3364,9 @@ export default function Dashboard() {
                 className="flex items-center gap-3 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 px-4 py-3 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200"
               >
                 <div className="relative">
-                  {safeUser.profile_image ? (
+                  {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
                     <img 
-                      src={safeUser.profile_image} 
+                      src={resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image} 
                       alt={safeUser.name || "Profile"} 
                       className="h-8 w-8 rounded-full object-cover border-2 border-gray-200"
                     />
@@ -3386,9 +3387,9 @@ export default function Dashboard() {
                 <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl border border-gray-200 py-3 z-50 animate-fade-in-up">
                   <div className="px-4 py-3 border-b border-gray-100">
                     <div className="flex items-center gap-3">
-                      {safeUser && safeUser.profile_image ? (
+                      {safeUser && (resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
                         <img 
-                          src={safeUser.profile_image || ""} 
+                          src={resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image || ""} 
                           alt={(safeUser.name) || "Profile"} 
                           className="h-10 w-10 rounded-full object-cover border-2 border-gray-200"
                         />

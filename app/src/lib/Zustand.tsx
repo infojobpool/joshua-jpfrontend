@@ -27,6 +27,7 @@ interface AuthState {
   user: UserData | null;
   login: (token: string, user: UserData) => void;
   logout: () => void;
+  updateUserProfileImage: (url: string) => void;
   checkAuth: () => void;
   clearAllStorage: () => void;
 }
@@ -140,6 +141,23 @@ const useStore = create<StoreState>((set) => ({
     } catch (error) {
       console.error("Error decoding token:", error);
     }
+  },
+
+  updateUserProfileImage: (url: string) => {
+    set((state) => {
+      const updatedUser = state.user ? { ...state.user, profile_image: url } : null;
+      if (typeof window !== "undefined" && updatedUser) {
+        const stored = localStorage.getItem("user");
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            parsed.profile_image = url;
+            localStorage.setItem("user", JSON.stringify(parsed));
+          } catch {}
+        }
+      }
+      return { user: updatedUser };
+    });
   },
 
   logout: () => {
