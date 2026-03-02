@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, Paperclip, MoreVertical, Search, MessageSquare } from "lucide-react"
+import { Send, Paperclip, MoreVertical, Search, MessageSquare, Plus, List } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import axiosInstance from "@/lib/axiosInstance"
 import useStore from "@/lib/Zustand"
@@ -237,28 +237,46 @@ export default function MessagesPage() {
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-3xl font-bold text-gray-900">Your Messages</h1>
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search conversations..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64"
-                />
+            {chats.length > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search conversations..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 w-64"
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </div>
           
           {chats.length === 0 ? (
-            <Card className="text-center py-12">
-              <CardContent>
-                <MessageSquare className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No messages yet</h3>
-                <p className="text-gray-500 mb-4">Start a conversation by messaging someone about a task</p>
-                <Link href="/browse">
-                  <Button>Browse Tasks</Button>
-                </Link>
+            <Card className="text-center py-12 px-6">
+              <CardContent className="space-y-6">
+                <MessageSquare className="h-16 w-16 text-gray-300 mx-auto" />
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No chats yet</h3>
+                  <p className="text-gray-500 mb-6">Here&apos;s how you can start a conversation:</p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Link href="/post-task">
+                    <Button variant="default" className="w-full sm:w-auto gap-2">
+                      <Plus className="h-4 w-4" />
+                      Post a Task
+                    </Button>
+                  </Link>
+                  <Link href="/dashboard">
+                    <Button variant="outline" className="w-full sm:w-auto gap-2">
+                      <List className="h-4 w-4" />
+                      Browse Tasks
+                    </Button>
+                  </Link>
+                </div>
+                <p className="text-sm text-gray-400">
+                  Message taskers who bid on your task, or contact taskers about their listings.
+                </p>
               </CardContent>
             </Card>
           ) : (
