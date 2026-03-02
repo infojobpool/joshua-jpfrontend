@@ -162,7 +162,7 @@ function formatTimestampValue(raw: any): {
 
 export default function Dashboard() {
   const router = useRouter();
-  const { user, userId, isAuthenticated, logout, addNotifications } = useStore();
+  const { user, userId, isAuthenticated, logout, addNotifications, updateUserProfileImage } = useStore();
   const { items: notificationItems, unreadCount, markAsRead, bellAnimating } = useNotifications(!!isAuthenticated);
   const { isMobile } = useIsMobile();
   // Prevent SSR → CSR flicker on mobile by delaying mobile-only UI until mounted
@@ -320,8 +320,8 @@ export default function Dashboard() {
   const [refetchCompletedTrigger, setRefetchCompletedTrigger] = useState(0);
   const [refetchBidsTrigger, setRefetchBidsTrigger] = useState(0);
 
-  // Safe user for UI (prevents null TS checks in JSX)
-  const safeUser = user ?? { name: "User", email: "", profile_image: "" } as any;
+  // Safe user for UI (prevents null TS checks in JSX). Support both profile_image and profile_img from API.
+  const safeUser = user ? { ...user, profile_image: user.profile_image || (user as any).profile_img || "" } : { name: "User", email: "", profile_image: "" } as any;
 
   // Shorten long location strings (e.g. "Area, Ward X, City, State, Pin, India" -> "Area" or first locality)
   const shortLocation = (loc: string | undefined) => {
@@ -429,6 +429,21 @@ export default function Dashboard() {
     const timeoutId = setTimeout(checkPendingPayment, 1500);
     return () => clearTimeout(timeoutId);
   }, [effectiveUserId, router]);
+
+  // Fetch profile image on load (API uses profile_img; login may not return it)
+  useEffect(() => {
+    if (!effectiveUserId || !updateUserProfileImage) return;
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await axiosInstance.get(`/profile?user_id=${effectiveUserId}`, { signal: controller.signal });
+        const payload = res.data?.data ?? res.data;
+        const img = payload?.profile_img;
+        if (img) updateUserProfileImage(img);
+      } catch {}
+    })();
+    return () => controller.abort();
+  }, [effectiveUserId, updateUserProfileImage]);
 
   // Auto-refresh: refetch current tab's data periodically and when user returns to the tab
   const refreshActiveTab = () => {
@@ -1090,7 +1105,7 @@ export default function Dashboard() {
                   : "Unknown",
                 offers: job.offers || 0, // Use original offers field as fallback
                 posted_by: job.posted_by || "Unknown",
-                posted_by_profile_image: job.posted_by_profile_image || job.taskmanager_profile_image || job.poster?.profile_img,
+                posted_by_profile_image: job.posted_by_profile_image || job.taskmanager_profile_image || job.taskmanager_profile_img || job.poster?.profile_img || job.poster?.profile_image || job.profile_img || job.user_profile_img,
                 category: job.job_category || "general",
                 job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
                 deletion_status: job.deletion_status || false,
@@ -3563,49 +3578,49 @@ export default function Dashboard() {
         >
           <TabsList className={
             isMobile
-              ? "grid grid-cols-5 w-full p-3 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-sm z-20 gap-2 min-h-[64px] items-stretch sticky top-[calc(env(safe-area-inset-top)+48px)]"
+              ? "flex w-full p-2.5 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-sm z-20 gap-1.5 min-h-[56px] overflow-x-auto overflow-y-hidden flex-nowrap justify-start sticky top-[calc(env(safe-area-inset-top)+48px)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               : "flex w-full bg-gray-100 dark:bg-slate-800 p-2 rounded-2xl gap-2"
           }>
             <TabsTrigger value="my-tasks" className={
               isMobile 
-                ? "flex flex-col items-center justify-center gap-1.5 px-2 py-2.5 min-w-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center justify-center gap-1 px-3 py-2 flex-shrink-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
                 : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
               <Briefcase className="h-4 w-4 md:hidden shrink-0" />
-              <span className="block text-center w-full overflow-hidden text-ellipsis whitespace-nowrap">My Tasks</span>
+              <span>My Tasks</span>
             </TabsTrigger>
             <TabsTrigger value="available" className={
               isMobile 
-                ? "flex flex-col items-center justify-center gap-1.5 px-2 py-2.5 min-w-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center justify-center gap-1 px-3 py-2 flex-shrink-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
                 : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
               <Search className="h-4 w-4 md:hidden shrink-0" />
-              <span className="block text-center w-full overflow-hidden text-ellipsis whitespace-nowrap">Available</span>
+              <span>Available</span>
             </TabsTrigger>
             <TabsTrigger value="assigned" className={
               isMobile 
-                ? "flex flex-col items-center justify-center gap-1.5 px-2 py-2.5 min-w-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center justify-center gap-1 px-3 py-2 flex-shrink-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
                 : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
               <CheckCircle className="h-4 w-4 md:hidden shrink-0" />
-              <span className="block text-center w-full overflow-hidden text-ellipsis whitespace-nowrap">{isMobile ? "Assign" : "Assigned"}</span>
+              <span>Assigned</span>
             </TabsTrigger>
             <TabsTrigger value="completed" className={
               isMobile 
-                ? "flex flex-col items-center justify-center gap-1.5 px-2 py-2.5 min-w-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center justify-center gap-1 px-3 py-2 flex-shrink-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
                 : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
               <Star className="h-4 w-4 md:hidden shrink-0" />
-              <span className="block text-center w-full overflow-hidden text-ellipsis whitespace-nowrap">{isMobile ? "Done" : "Completed"}</span>
+              <span>Completed</span>
             </TabsTrigger>
             <TabsTrigger value="my-bids" className={
               isMobile 
-                ? "flex flex-col items-center justify-center gap-1.5 px-2 py-2.5 min-w-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center justify-center gap-1 px-3 py-2 flex-shrink-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
                 : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
               <IndianRupee className="h-4 w-4 md:hidden shrink-0" />
               <span className="hidden md:inline">My Bids</span>
-              <span className="md:hidden block text-center w-full overflow-hidden text-ellipsis whitespace-nowrap">Bids</span>
+              <span className="md:hidden">My Bids</span>
             </TabsTrigger>
           </TabsList>
 

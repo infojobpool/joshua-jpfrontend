@@ -128,7 +128,7 @@ const useStore = create<StoreState>((set) => ({
             accountType: user.accountType,
             isLoggedIn: user.isLoggedIn,
             verification_status: user.verification_status,
-            profile_image: user.profile_image,
+            profile_image: user.profile_image || (user as any).profile_img,
           },
         });
         if (typeof window !== "undefined") {
@@ -240,7 +240,7 @@ const useStore = create<StoreState>((set) => ({
                 accountType: parsedUser.accountType,
                 isLoggedIn: parsedUser.isLoggedIn,
                 verification_status: parsedUser.verification_status,
-                profile_image: parsedUser.profile_image,
+                profile_image: parsedUser.profile_image || (parsedUser as any).profile_img,
               },
             });
           }
