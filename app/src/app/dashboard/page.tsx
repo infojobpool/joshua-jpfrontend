@@ -3074,7 +3074,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-50 to-gray-100 overflow-x-hidden">
+    <div className="flex min-h-screen flex-col bg-slate-50/50 overflow-x-hidden">
       <style jsx>{`
         @keyframes fadeInUp {
           from {
@@ -3155,7 +3155,7 @@ export default function Dashboard() {
                 <div className="relative">
                   <button
                     onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                    className="flex items-center gap-3 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 px-4 py-3 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200"
+                    className="flex items-center gap-3 bg-white/90 border border-slate-200/80 text-slate-700 px-4 py-2.5 rounded-xl transition-all duration-200 hover:shadow-sm"
                   >
                     <div className="relative">
                       {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
@@ -3185,7 +3185,7 @@ export default function Dashboard() {
                     <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {profileDropdownOpen && (
-                    <div className="absolute right-0 mt-3 w-64 max-w-[80vw] bg-white rounded-2xl shadow-2xl border border-gray-200 py-3 z-50 animate-fade-in-up">
+                    <div className="absolute right-0 mt-3 w-64 max-w-[80vw] bg-white rounded-xl shadow-lg border border-slate-200/80 py-2 z-50 animate-fade-in-up">
                       <div className="px-4 py-3 border-b border-gray-100">
                         <div className="flex items-center gap-3">
                           {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
@@ -3247,17 +3247,17 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="mt-2 text-left">
-                <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">Dashboard</h1>
-                <p className="text-xs text-gray-600 mt-1">Manage your tasks and bids efficiently</p>
+                <h1 className="text-xl font-semibold tracking-tight text-slate-900">Dashboard</h1>
+                <p className="text-xs text-slate-500 mt-0.5">Tasks and bids</p>
               </div>
             </div>
           )}
           {!isMobile && (
             <div className="animate-slide-in-right">
-              <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-gray-900">
+              <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-slate-900">
                 Dashboard
               </h1>
-              <p className="text-sm md:text-xl text-gray-600 mt-2 md:mt-3 font-medium">Manage your tasks and bids efficiently</p>
+              <p className="text-sm text-slate-500 mt-1">Manage your tasks and bids</p>
             </div>
           )}
           <div className="hidden md:flex items-center gap-6 animate-slide-in-right">
@@ -3270,7 +3270,7 @@ export default function Dashboard() {
             <div className="relative">
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="flex items-center gap-3 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 font-medium px-6 py-4 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
+                className="flex items-center gap-3 bg-white/90 border border-slate-200/80 text-slate-700 px-5 py-3 rounded-xl transition-all duration-200 hover:shadow-sm"
               >
                 <div className="relative">
                   {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
@@ -3298,7 +3298,7 @@ export default function Dashboard() {
               </button>
               
               {profileDropdownOpen && (
-                <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl border border-gray-200 py-3 z-50 animate-fade-in-up">
+                <div className="absolute right-0 mt-3 w-64 bg-white rounded-xl shadow-lg border border-slate-200/80 py-2 z-50 animate-fade-in-up">
                   <div className="px-4 py-3 border-b border-gray-100">
                     <div className="flex items-center gap-3">
                       {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
@@ -3445,7 +3445,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowNotifications((s) => !s)}
-                className="relative inline-flex items-center justify-center h-10 w-10 rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow transition"
+                className="relative inline-flex items-center justify-center h-10 w-10 rounded-lg border border-slate-200/80 bg-white hover:shadow-sm transition"
                 aria-label="Notifications"
                 title="Notifications"
               >
@@ -3466,7 +3466,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between w-full gap-4">
             <button
               onClick={() => setShowNotifications((s) => !s)}
-              className="relative inline-flex items-center justify-center h-12 w-12 rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow transition"
+              className="relative inline-flex items-center justify-center h-10 w-10 rounded-lg border border-slate-200/80 bg-white hover:shadow-sm transition"
               aria-label="Notifications"
               title="Notifications"
             >
@@ -3478,19 +3478,16 @@ export default function Dashboard() {
               )}
             </button>
             <Link href="/post-task" passHref className="ml-auto">
-              <Button className="group bg-gray-900 hover:bg-gray-800 text-white font-semibold px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 text-lg">
-                <span className="flex items-center gap-3">
-                  <span className="text-xl group-hover:rotate-90 transition-transform duration-300">+</span>
-                  Post a Task
-                </span>
+              <Button className="bg-slate-900 hover:bg-slate-800 text-white font-medium px-6 py-3 rounded-lg">
+                Post a Task
               </Button>
             </Link>
           </div>
         </div>
 
         {showNotifications && (
-          <div className="fixed right-6 top-24 z-50 w-[360px] max-w-[92vw] bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-emerald-50 to-green-50">
+          <div className="fixed right-6 top-24 z-50 w-[340px] max-w-[92vw] bg-white border border-slate-200/80 rounded-xl shadow-lg overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
               <div className="font-semibold text-gray-800">Notifications</div>
               <button
                 className="h-8 w-8 inline-flex items-center justify-center rounded-full hover:bg-gray-100"
@@ -3575,53 +3572,49 @@ export default function Dashboard() {
         >
           <TabsList className={
             isMobile
-              ? "grid grid-cols-5 w-full p-2 bg-white border border-gray-100 rounded-3xl shadow-sm z-20 gap-2 sticky top-[calc(env(safe-area-inset-top)+48px)]"
-              : "flex w-full bg-transparent p-0 border-0 gap-2"
+              ? "grid grid-cols-5 w-full p-2 bg-white/90 border border-slate-200/60 rounded-xl z-20 gap-1.5 sticky top-[calc(env(safe-area-inset-top)+48px)]"
+              : "flex w-full bg-slate-100/60 p-1.5 rounded-xl gap-1"
           }>
             <TabsTrigger value="my-tasks" className={
               isMobile 
-                ? "flex flex-col items-center gap-1 px-3 py-4 rounded-2xl text-[11px] font-medium border border-gray-100 bg-white shadow-sm hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-2 data-[state=active]:ring-gray-200"
-                : "px-4 py-2 rounded-xl text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm whitespace-nowrap"
+                ? "flex flex-col items-center gap-1 px-2 py-3 rounded-lg text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 data-[state=inactive]:text-slate-500"
+                : "px-4 py-2 rounded-lg text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 data-[state=inactive]:text-slate-600 whitespace-nowrap"
             }>
-              <span className="text-2xl">📋</span>
-              <span className="hidden md:inline">My Tasks</span>
-              <span className="md:hidden">My Tasks</span>
+              <Briefcase className="h-4 w-4 md:hidden" />
+              <span>My Tasks</span>
             </TabsTrigger>
             <TabsTrigger value="available" className={
               isMobile 
-                ? "flex flex-col items-center gap-1 px-3 py-4 rounded-2xl text-[11px] font-medium border border-gray-100 bg-white shadow-sm hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-2 data-[state=active]:ring-gray-200"
-                : "px-4 py-2 rounded-xl text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm whitespace-nowrap"
+                ? "flex flex-col items-center gap-1 px-2 py-3 rounded-lg text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 data-[state=inactive]:text-slate-500"
+                : "px-4 py-2 rounded-lg text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 data-[state=inactive]:text-slate-600 whitespace-nowrap"
             }>
-              <span className="text-2xl">🔍</span>
-              <span className="hidden md:inline">Available</span>
-              <span className="md:hidden">Available</span>
+              <Search className="h-4 w-4 md:hidden" />
+              <span>Available</span>
             </TabsTrigger>
             <TabsTrigger value="assigned" className={
               isMobile 
-                ? "flex flex-col items-center gap-1 px-3 py-4 rounded-2xl text-[11px] font-medium border border-gray-100 bg-white shadow-sm hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-2 data-[state=active]:ring-gray-200"
-                : "px-4 py-2 rounded-xl text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm whitespace-nowrap"
+                ? "flex flex-col items-center gap-1 px-2 py-3 rounded-lg text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 data-[state=inactive]:text-slate-500"
+                : "px-4 py-2 rounded-lg text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 data-[state=inactive]:text-slate-600 whitespace-nowrap"
             }>
-              <span className="text-2xl">✅</span>
-              <span className="hidden md:inline">Assigned</span>
-              <span className="md:hidden">Assigned</span>
+              <CheckCircle className="h-4 w-4 md:hidden" />
+              <span>Assigned</span>
             </TabsTrigger>
             <TabsTrigger value="completed" className={
               isMobile 
-                ? "flex flex-col items-center gap-1 px-3 py-4 rounded-2xl text-[11px] font-medium border border-gray-100 bg-white shadow-sm hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-2 data-[state=active]:ring-gray-200"
-                : "px-4 py-2 rounded-xl text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm whitespace-nowrap"
+                ? "flex flex-col items-center gap-1 px-2 py-3 rounded-lg text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 data-[state=inactive]:text-slate-500"
+                : "px-4 py-2 rounded-lg text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 data-[state=inactive]:text-slate-600 whitespace-nowrap"
             }>
-              <span className="text-2xl">🎉</span>
-              <span className="hidden md:inline">Completed</span>
-              <span className="md:hidden">Completed</span>
+              <Star className="h-4 w-4 md:hidden" />
+              <span>Completed</span>
             </TabsTrigger>
             <TabsTrigger value="my-bids" className={
               isMobile 
-                ? "flex flex-col items-center gap-1 px-3 py-4 rounded-2xl text-[11px] font-medium border border-gray-100 bg-white shadow-sm hover:bg-white data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:ring-2 data-[state=active]:ring-gray-200"
-                : "px-4 py-2 rounded-xl text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm whitespace-nowrap"
+                ? "flex flex-col items-center gap-1 px-2 py-3 rounded-lg text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 data-[state=inactive]:text-slate-500"
+                : "px-4 py-2 rounded-lg text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 data-[state=inactive]:text-slate-600 whitespace-nowrap"
             }>
-              <span className="text-2xl">💰</span>
-              <span className="hidden md:inline">My All Bids</span>
-              <span className="md:hidden">All Bids</span>
+              <IndianRupee className="h-4 w-4 md:hidden" />
+              <span className="hidden md:inline">My Bids</span>
+              <span className="md:hidden">Bids</span>
             </TabsTrigger>
           </TabsList>
 
@@ -3787,14 +3780,8 @@ export default function Dashboard() {
                   .map((task) => (
                     <Card
                       key={task.id}
-                      className={`relative transition-all duration-300 hover:shadow-lg hover:-translate-y-1 rounded-2xl overflow-hidden group border ${
-                        task.deletion_status || task.cancel_status
-                          ? "opacity-50 bg-gray-50 border-gray-200 cursor-not-allowed"
-                          : task.status === "in_progress"
-                          ? "shadow-md border-emerald-200 bg-white hover:border-emerald-300"
-                          : task.status === "completed"
-                          ? "shadow-sm border-gray-200 bg-gray-50"
-                          : "shadow-sm border-gray-200 bg-white hover:border-gray-300"
+                      className={`relative bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-all duration-200 rounded-xl overflow-hidden group ${
+                        task.deletion_status || task.cancel_status ? "opacity-60 cursor-not-allowed" : ""
                       }`}
                     >
                       {/* In Progress Task Banner */}
@@ -4006,7 +3993,7 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="available" forceMount className="space-y-6 mt-12 pt-2 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-2xl font-bold text-gray-900 pb-2">Available Tasks</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Available Tasks</h2>
             <div className={`grid gap-6 ${isMobile ? "grid-cols-1" : "md:grid-cols-4"}`} style={{zIndex:1, position:'relative'}}>
               <div className={`${isMobile ? "hidden" : "md:col-span-1"} space-y-6`}>
                 <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
@@ -4019,7 +4006,7 @@ export default function Dashboard() {
                     </CardTitle>
                     <CardDescription className="text-gray-600 font-medium">Refine your search</CardDescription>
                   </CardHeader>
-                  <CardContent className="p-6">
+                  <CardContent className="p-4">
                     <div className="space-y-8">
                       {/* Category Filter */}
                       <div className="group">
@@ -4135,7 +4122,7 @@ export default function Dashboard() {
                     </div>
                     <Button 
                       type="submit" 
-                      className="bg-gray-900 hover:bg-gray-800 text-white font-medium px-6 py-2.5 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                      className="bg-slate-900 hover:bg-slate-800 text-white font-medium px-5 py-2.5 rounded-lg"
                     >
                       Search
                     </Button>
@@ -4171,28 +4158,23 @@ export default function Dashboard() {
 
                 {sortedAvailableTasks.length === 0 ? (
                   <div className="min-h-[400px] flex items-center justify-center">
-                    <Card className="w-full max-w-2xl mx-auto shadow-lg border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
-                      <CardContent className="flex flex-col items-center justify-center py-20 px-12 text-center">
-                        <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-6">
-                          <span className="text-4xl">📝</span>
-                        </div>
-                        <h3 className="text-xl font-semibold text-gray-800 mb-2">No Tasks Found</h3>
-                        <p className="text-gray-600 mb-6 leading-relaxed">
-                          No tasks match your current filter criteria. Try adjusting your filters or clear them to see all tasks.
-                      </p>
-                      <Button
-                        onClick={() => {
-                          setSearchTerm("");
-                          setCategory("all");
-                          setPriceRange([0, 50000]);
-                          setLocation("");
-                        }}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-                      >
-                          Clear All Filters
-                      </Button>
-                    </CardContent>
-                  </Card>
+                <Card className="w-full max-w-lg mx-auto border border-slate-200/80 bg-white">
+                  <CardContent className="flex flex-col items-center justify-center py-16 px-8 text-center">
+                    <p className="text-slate-600 mb-4">No tasks match your filters.</p>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSearchTerm("");
+                        setCategory("all");
+                        setPriceRange([0, 50000]);
+                        setLocation("");
+                      }}
+                      className="border-slate-200 text-slate-700"
+                    >
+                      Clear filters
+                    </Button>
+                  </CardContent>
+                </Card>
                   </div>
                 ) : (
                   <div className={`grid gap-4 ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
@@ -4200,7 +4182,7 @@ export default function Dashboard() {
                       const hasUserBid = requestedTasks.some(bid => bid.task_id === task.id);
                       
                       return (
-                        <Card key={task.id} className="flex flex-col bg-gradient-to-br from-pink-50 via-rose-50 to-red-50 border-l-4 border-l-pink-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden">
+                        <Card key={task.id} className="flex flex-col bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-all duration-200 rounded-xl overflow-hidden">
                           {/* Mobile-optimized layout */}
                           <div className={isMobile ? "p-4" : "p-6"}>
                             {/* Header with title and status */}
@@ -4220,7 +4202,7 @@ export default function Dashboard() {
                                   )}
                                 </div>
                               </div>
-                              <Badge variant="outline" className="border-pink-500 text-pink-600 font-medium text-xs px-2 py-1">
+                              <Badge variant="outline" className="border-slate-200 text-slate-600 font-medium text-xs px-2 py-1">
                                 {task.status === "open" ? "🔓 Open" : 
                                  task.status === "completed" ? "✅ Completed" :
                                  task.status.charAt(0).toUpperCase() + task.status.slice(1)}
@@ -4235,9 +4217,9 @@ export default function Dashboard() {
                             {/* Mobile-optimized info row */}
                             <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"}`}>
                               <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1 bg-pink-100 px-2 py-1 rounded-lg">
-                                  <IndianRupee className="h-4 w-4 text-pink-700 font-bold" />
-                                  <span className="font-bold text-pink-800">{task.budget}</span>
+                                <div className="flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-lg">
+                                  <IndianRupee className="h-4 w-4 text-slate-600" />
+                                  <span className="font-semibold text-slate-800">{task.budget}</span>
                                 </div>
                                 <div className="flex items-center gap-1 text-gray-500">
                                   <MapPin className="h-3 w-3" />
@@ -4257,11 +4239,8 @@ export default function Dashboard() {
                             {/* Action button */}
                             <div className="mt-4">
                               <Link href={`/tasks/${task.id}`} className="w-full">
-                                <Button variant="outline" className={`w-full border-2 border-pink-300 hover:border-pink-400 text-pink-700 hover:text-pink-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-lg">💰</span>
-                                    <span>{hasUserBid ? "View Offer" : "Make an Offer"}</span>
-                                  </div>
+                                <Button variant="outline" className={`w-full border-slate-200 text-slate-700 hover:bg-slate-50 font-medium rounded-lg ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
+                                  <span>{hasUserBid ? "View Offer" : "Make an Offer"}</span>
                                 </Button>
                               </Link>
                             </div>
@@ -4275,36 +4254,30 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
-          <TabsContent value="assigned" forceMount className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-orange-200 pb-2">Tasks Assigned to You</h2>
+          <TabsContent value="assigned" forceMount className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
+            <h2 className="text-lg font-semibold text-slate-900">Tasks Assigned to You</h2>
             {assignedTasks.length === 0 ? (
               <div className="min-h-[400px] flex items-center justify-center">
-                <Card className="w-full max-w-2xl mx-auto shadow-lg border-0 bg-gradient-to-br from-orange-50 to-amber-50">
-                  <CardContent className="flex flex-col items-center justify-center py-20 px-12 text-center">
-                    <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mb-6">
-                      <span className="text-4xl">📋</span>
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">No Assigned Tasks</h3>
-                    <p className="text-gray-600 mb-6 leading-relaxed">
-                      You don't have any tasks assigned to you yet. Check back later or browse available tasks to submit bids.
-                    </p>
+                <Card className="w-full max-w-lg mx-auto border border-slate-200/80 bg-white">
+                  <CardContent className="flex flex-col items-center justify-center py-16 px-8 text-center">
+                    <p className="text-slate-600 mb-4">No tasks assigned to you yet.</p>
                     <div className="flex gap-3">
                       <Button 
                         onClick={() => setActiveTab("available")} 
-                        className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                        className="bg-slate-900 hover:bg-slate-800"
                       >
-                        Browse Available Tasks
+                        Browse tasks
                       </Button>
                       <Button 
                         onClick={() => setActiveTab("my-tasks")} 
                         variant="outline" 
-                        className="border-orange-200 text-orange-700 hover:bg-orange-50 px-6 py-2 rounded-lg font-medium transition-colors"
+                        className="border-slate-200 text-slate-700"
                       >
-                        View My Tasks
+                        My tasks
                       </Button>
                     </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
               </div>
             ) : (
               <div className={`grid gap-4 ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
@@ -4315,7 +4288,7 @@ export default function Dashboard() {
                   const waitingForTaskmaster = !isCancelled && task.tasker_completed && !task.taskmaster_completed && task.job_completion_status !== 1 && task.job_completion_status !== "1";
                   
                   return (
-                  <Card key={task.id} className={`${isCancelled ? 'opacity-60 bg-gray-100 border-l-4 border-l-gray-400' : waitingForTaskmaster ? 'bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50 border-l-4 border-l-blue-500' : 'bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 border-l-4 border-l-amber-500'} shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-xl overflow-hidden`}>
+                  <Card key={task.id} className={`flex flex-col bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-all duration-200 rounded-xl overflow-hidden ${isCancelled ? 'opacity-60' : ''}`}>
                     {/* Mobile-optimized layout */}
                     <div className={isMobile ? "p-4" : "p-6"}>
                       {/* Header with title and status */}
@@ -4491,8 +4464,8 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="completed" forceMount className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-green-200 pb-2">Tasks Completed by You (As Tasker)</h2>
+          <TabsContent value="completed" forceMount className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
+            <h2 className="text-lg font-semibold text-slate-900">Completed</h2>
             {completedTasksLoading ? (
               <div className="min-h-[400px] flex items-center justify-center">
                 <div className="text-center">
@@ -4601,8 +4574,8 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="my-bids" forceMount className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-purple-200 pb-2">My All Bids</h2>
+          <TabsContent value="my-bids" forceMount className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
+            <h2 className="text-lg font-semibold text-slate-900">My Bids</h2>
             {requestedTasks.length === 0 ? (
               <div className="min-h-[400px] flex items-center justify-center">
                 <Card className="w-full max-w-2xl mx-auto shadow-lg border-0 bg-gradient-to-br from-purple-50 to-violet-50">
@@ -4817,7 +4790,7 @@ export default function Dashboard() {
         {/* Floating Post a Task (mobile only) */}
         <div className="md:hidden fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-40">
           <Link href="/post-task">
-            <Button className="rounded-full h-14 w-14 p-0 shadow-xl bg-blue-600 hover:bg-blue-700 active:scale-95 transition-transform">
+            <Button className="rounded-full h-12 w-12 p-0 shadow-lg bg-slate-900 hover:bg-slate-800 active:scale-95 transition-transform">
               <span className="text-2xl leading-none">+</span>
             </Button>
           </Link>
