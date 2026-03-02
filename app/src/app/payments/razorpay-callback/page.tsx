@@ -74,6 +74,26 @@ export default function RazorpayCallbackPage() {
         sessionStorage.removeItem("paymentData");
         sessionStorage.removeItem("payment_page_visited");
 
+        // Add chat to userChats so taskmaster sees it in Messages tab
+        try {
+          const chatResp = await axiosInstance.post("/get-chat-id/", {
+            sender: pending.taskmanager_id,
+            receiver: pending.tasker_id,
+            job_id: pending.postId,
+          });
+          if (chatResp.data?.status_code === 200 && chatResp.data?.data?.chat_id) {
+            const chatId = chatResp.data.data.chat_id;
+            const stored = localStorage.getItem("userChats");
+            const chatIds: string[] = stored ? JSON.parse(stored) : [];
+            if (!chatIds.includes(chatId)) {
+              chatIds.push(chatId);
+              localStorage.setItem("userChats", JSON.stringify(chatIds));
+            }
+          }
+        } catch (_) {
+          // Non-blocking; chat can be opened from task page
+        }
+
         setTimeout(() => openInAppOrWeb("/dashboard"), 1500);
       } catch (err: any) {
         setStatus("error");

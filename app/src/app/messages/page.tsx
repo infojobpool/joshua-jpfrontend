@@ -76,24 +76,84 @@ export default function MessagesPage() {
       try {
         setLoading(true);
         
-        // Get chat IDs from localStorage
+        // 1. Get chat IDs from localStorage
         const storedChats = localStorage.getItem("userChats");
-        if (!storedChats) {
-          setChats([]);
-          setLoading(false);
-          return;
+        let chatIds: string[] = storedChats ? JSON.parse(storedChats) : [];
+
+        // 2. Also derive chat IDs from in-progress/assigned tasks (taskmaster + tasker)
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const uid = userId?.toString() || "";
+
+        if (token && uid) {
+          try {
+            const tasksWithChats: { posterId: string; taskerId: string; jobId: string; otherUserName: string }[] = [];
+            // My posted tasks (in progress) - I'm taskmaster, chat with tasker
+            const jobsRes = await fetch(`${API_BASE}/get-user-jobs/${uid}/`, {
+              headers: { Authorization: `Bearer ${token}` },
+              credentials: "omit",
+            });
+            if (jobsRes.ok) {
+              const jobsData = await jobsRes.json();
+              const jobs = jobsData?.data?.jobs || [];
+              for (const j of jobs) {
+                const posterId = String(j.user_ref_id || j.posted_by_id || j.user_id || "");
+                const taskerId = String(j.assigned_tasker_id || j.assigned_user_id || j.accepted_bidder_id || "");
+                const isInProgress = j.status === "in_progress" || j.bid_accepted || j.offer_accepted || j.assigned_tasker_id || j.payment_status;
+                if (posterId && taskerId && isInProgress) {
+                  tasksWithChats.push({ posterId, taskerId, jobId: String(j.job_id), otherUserName: String(j.assigned_tasker_name || j.tasker_name || j.posted_by || "Tasker") });
+                }
+              }
+            }
+            // Assigned to me - I'm tasker, chat with taskmaster
+            const assignedRes = await fetch(`${API_BASE}/get-user-assigned-bids/${uid}/`, {
+              headers: { Authorization: `Bearer ${token}` },
+              credentials: "omit",
+            });
+            if (assignedRes.ok) {
+              const assignedData = await assignedRes.json();
+              const assignedJobs = assignedData?.data?.jobs || assignedData?.data?.assigned_jobs || assignedData?.jobs || [];
+              for (const j of Array.isArray(assignedJobs) ? assignedJobs : []) {
+                const posterId = String(j.user_ref_id || j.posted_by_id || j.poster_id || j.user_id || "");
+                const taskerId = String(j.assigned_tasker_id || j.assigned_user_id || uid);
+                if (posterId && taskerId) {
+                  tasksWithChats.push({ posterId, taskerId, jobId: String(j.job_id || j.id), otherUserName: String(j.posted_by || j.poster_name || "Task Poster") });
+                }
+              }
+            }
+            // Get chat_id for each task and add to chatIds
+            for (const { posterId, taskerId, jobId, otherUserName } of tasksWithChats) {
+              try {
+                const chatResp = await axiosInstance.post("/get-chat-id/", {
+                  sender: posterId,
+                  receiver: taskerId,
+                  job_id: jobId,
+                });
+                if (chatResp.data?.status_code === 200 && chatResp.data?.data?.chat_id) {
+                  const cid = chatResp.data.data.chat_id;
+                  if (cid && !chatIds.includes(cid)) {
+                    chatIds.push(cid);
+                    taskChatOtherUser[cid] = otherUserName;
+                  }
+                }
+              } catch (_) { /* skip */ }
+            }
+            if (chatIds.length > 0) {
+              try { localStorage.setItem("userChats", JSON.stringify(chatIds)); } catch {}
+            }
+          } catch (_) {
+            // Non-blocking
+          }
         }
 
-        const chatIds: string[] = JSON.parse(storedChats);
-        const chatSummaries: ChatSummary[] = [];
-
         // Fetch details for each chat
+        const chatSummaries: ChatSummary[] = [];
         const validChatIds: string[] = [];
         for (const chatId of chatIds) {
           try {
             const response = await axiosInstance.get(`/get-messages/${chatId}`);
-            if (response.data.status_code === 200 && response.data.data.messages) {
-              const messages = response.data.data.messages;
+            if (response.data.status_code === 200 && response.data.data) {
+              const messages = response.data.data.messages || [];
               if (messages.length > 0) {
                 const lastMessage = messages[messages.length - 1];
                 const otherUserId = lastMessage.sender_id === userId 
@@ -109,6 +169,16 @@ export default function MessagesPage() {
                   otherUser: otherUserName,
                   lastMessage: lastMessage.description,
                   lastMessageTime: lastMessage.tstamp,
+                });
+                validChatIds.push(chatId);
+              } else if (taskChatOtherUser[chatId]) {
+                // Empty chat from assigned/in-progress task - show so user can start conversation
+                chatSummaries.push({
+                  chatid: chatId,
+                  otherUserId: "",
+                  otherUser: taskChatOtherUser[chatId],
+                  lastMessage: "No messages yet",
+                  lastMessageTime: "",
                 });
                 validChatIds.push(chatId);
               }

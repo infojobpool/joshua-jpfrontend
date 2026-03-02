@@ -113,6 +113,8 @@ export default function ProfilePage() {
   });
 
   const [reviews, setReviews] = useState<Review[]>([]);
+  const fetchProfileRef = useRef(false);
+  const fetchSuccessRef = useRef(false);
 
   const formatDate = (dateString: string): string => {
     if (!dateString) return "";
@@ -150,7 +152,9 @@ export default function ProfilePage() {
   }, [user]);
 
   useEffect(() => {
+    fetchSuccessRef.current = false;
     const fetchProfile = async () => {
+      if (fetchProfileRef.current) return;
       // Derive userId from localStorage as a fallback for slow hydration
       let effectiveUserId = userId as any;
       if (!effectiveUserId) {
@@ -168,6 +172,7 @@ export default function ProfilePage() {
         return;
       }
 
+      fetchProfileRef.current = true;
       try {
         setIsLoading(true);
         const response = await axiosInstance.get(`/profile?user_id=${effectiveUserId}`);
@@ -204,6 +209,7 @@ export default function ProfilePage() {
           job_title: payload.job_title || "",
         });
 
+        fetchSuccessRef.current = true;
         if (Array.isArray(payload.reviews)) {
           setReviews(
             payload.reviews.map((review: any, index: number) => ({
@@ -225,6 +231,7 @@ export default function ProfilePage() {
           err?.message ||
           "Failed to load profile";
         setError(message);
+        fetchProfileRef.current = false;
         if (err.response?.status === 401) {
           logout();
           router.push("/signin");
@@ -234,15 +241,16 @@ export default function ProfilePage() {
       }
     };
 
-    // Run immediately and again when store userId changes
+    fetchProfileRef.current = false;
     fetchProfile();
 
-    // Safety fallback: reattempt after 2s if still loading and no data
+    // Single retry after 4s only if first fetch didn't succeed (avoid duplicate fetches / rate limit)
     const retry = setTimeout(() => {
-      if (!profileuser.profile_id) {
+      if (!fetchSuccessRef.current) {
+        fetchProfileRef.current = false;
         fetchProfile();
       }
-    }, 2000);
+    }, 4000);
     return () => clearTimeout(retry);
   }, [userId, logout, router]);
 
@@ -745,11 +753,11 @@ export default function ProfilePage() {
                           <div className="grid gap-4 md:grid-cols-2">
                             <div className="rounded-xl bg-slate-50 px-4 py-3 border border-slate-100">
                               <p className="text-xs font-semibold uppercase text-slate-500">Account Number</p>
-                              <p className="font-medium text-slate-800 mt-1">{profileuser.bank_info.bank_account_number}</p>
+                              <p className="font-medium text-slate-800 mt-1">{maskString(profileuser.bank_info.bank_account_number, 0, 4)}</p>
                             </div>
                             <div className="rounded-xl bg-slate-50 px-4 py-3 border border-slate-100">
                               <p className="text-xs font-semibold uppercase text-slate-500">IFSC Code</p>
-                              <p className="font-medium text-slate-800 mt-1">{profileuser.bank_info.ifsc_code}</p>
+                              <p className="font-medium text-slate-800 mt-1">{maskString(profileuser.bank_info.ifsc_code, 0, 4)}</p>
                             </div>
                             {/* <div>
                               <p className="text-sm font-medium text-muted-foreground">

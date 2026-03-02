@@ -17,13 +17,14 @@ const circuitBreaker = {
   isOpen: false
 };
 
-// Request throttling to prevent API overload
+// Request throttling - CLIENT-SIDE ONLY (prevents accidental overload, NOT a security control)
+// Real API protection must be server-side (rate limit on api.jobpool.in per IP/user)
+// Env overrides: NEXT_PUBLIC_THROTTLE_WINDOW_MS, NEXT_PUBLIC_THROTTLE_MAX_REQUESTS
 const requestThrottle = {
   requests: 0,
   windowStart: Date.now(),
-  // Relax throttling in development to avoid interrupting local work
-  windowSize: isDev ? 1000 : 10000, // 1s in dev, 10s in prod
-  maxRequests: isDev ? 1000 : 20 // effectively off in dev, strict in prod
+  windowSize: isDev ? 1000 : Number(process.env.NEXT_PUBLIC_THROTTLE_WINDOW_MS) || 15000, // 15s in prod
+  maxRequests: isDev ? 1000 : Number(process.env.NEXT_PUBLIC_THROTTLE_MAX_REQUESTS) || 35, // conservative: dashboard+profile+notifications
 };
 
 const axiosInstance = axios.create({
