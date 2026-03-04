@@ -7,18 +7,17 @@ import {
   Twitter,
   Instagram,
   Linkedin,
-  Smartphone,
   Mail,
 } from "lucide-react";
 
-const APP_STORE_URL = "#"; // Replace with your iOS app link
-const PLAY_STORE_URL = "#"; // Replace with your Android app link
+const APP_STORE_URL = "https://apps.apple.com/in/app/jobpool-official/id6757442431";
+const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=in.jobpool.www.twa&hl=en_IN";
 
 const socialLinks = [
-  { name: "Facebook", href: "https://www.facebook.com/profile.php?id=100095047053131", icon: Facebook },
-  { name: "X (Twitter)", href: "https://x.com/jobpoolindia", icon: Twitter },
+  { name: "Facebook", href: "https://www.facebook.com/people/Job-Pool-India/100095047053131/", icon: Facebook },
+  { name: "X (Twitter)", href: "https://x.com/jobpoolindia?s=21", icon: Twitter },
   { name: "Instagram", href: "https://www.instagram.com/jobpool_bharat/", icon: Instagram },
-  { name: "LinkedIn", href: "https://www.linkedin.com/in/jobpool-bharath-449b33282/", icon: Linkedin },
+  { name: "LinkedIn", href: "https://www.linkedin.com/company/job-pool/posts/?feedView=all", icon: Linkedin },
 ];
 
 const Footer: React.FC = () => {
@@ -156,25 +155,26 @@ const Footer: React.FC = () => {
               <h3 className="text-sm font-semibold uppercase tracking-wider text-white">
                 Get the app
               </h3>
-              <div className="mt-4 flex flex-col gap-3">
+              <div className="mt-4 relative w-full max-w-[200px]">
+                <img
+                  src="/images/app-download-buttons.png"
+                  alt="Download on the App Store and Get it on Google Play"
+                  className="w-full h-auto"
+                />
                 <a
                   href={APP_STORE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-600 bg-slate-800/50 px-4 py-3 text-sm font-medium text-white transition hover:border-slate-500 hover:bg-slate-700"
-                >
-                  <Smartphone className="h-5 w-5 shrink-0" />
-                  <span>Download on the App Store</span>
-                </a>
+                  className="absolute inset-x-0 top-0 h-1/2 cursor-pointer"
+                  aria-label="Download on the App Store"
+                />
                 <a
                   href={PLAY_STORE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-600 bg-slate-800/50 px-4 py-3 text-sm font-medium text-white transition hover:border-slate-500 hover:bg-slate-700"
-                >
-                  <Smartphone className="h-5 w-5 shrink-0" />
-                  <span>Get it on Google Play</span>
-                </a>
+                  className="absolute inset-x-0 top-1/2 h-1/2 cursor-pointer"
+                  aria-label="Get it on Google Play"
+                />
               </div>
             </div>
           </div>
@@ -192,6 +192,36 @@ const Footer: React.FC = () => {
             <Link href="/termsandconditions" className="text-slate-400 transition hover:text-white">
               Terms
             </Link>
+            <a
+              href="https://www.facebook.com/people/Job-Pool-India/100095047053131/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-slate-400 transition hover:text-white"
+              aria-label="Facebook"
+            >
+              <Facebook className="h-4 w-4" />
+              Facebook
+            </a>
+            <a
+              href="https://www.instagram.com/jobpool_bharat/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-slate-400 transition hover:text-white"
+              aria-label="Instagram"
+            >
+              <Instagram className="h-4 w-4" />
+              Instagram
+            </a>
+            <a
+              href="https://www.linkedin.com/company/job-pool/posts/?feedView=all"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-slate-400 transition hover:text-white"
+              aria-label="LinkedIn"
+            >
+              <Linkedin className="h-4 w-4" />
+              LinkedIn
+            </a>
             <a
               href="mailto:info@jobpool.in"
               className="inline-flex items-center gap-1.5 text-slate-400 transition hover:text-white"

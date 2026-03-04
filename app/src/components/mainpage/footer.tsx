@@ -197,7 +197,9 @@ export function Footer() {
             </p>
             <div className="flex space-x-4">
               <motion.a
-                href="https://www.facebook.com/profile.php?id=100095047053131"
+                href="https://www.facebook.com/people/Job-Pool-India/100095047053131/"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-slate-400 hover:text-white transition-colors"
                 whileHover={{ scale: 1.2 }}
                 whileTap={{ scale: 0.9 }}
@@ -206,7 +208,9 @@ export function Footer() {
                 <span className="sr-only">Facebook</span>
               </motion.a>
               <motion.a
-                href="https://x.com/jobpoolindia"
+                href="https://x.com/jobpoolindia?s=21"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-slate-400 hover:text-white transition-colors"
                 whileHover={{ scale: 1.2 }}
                 whileTap={{ scale: 0.9 }}
@@ -216,6 +220,8 @@ export function Footer() {
               </motion.a>
               <motion.a
                 href="https://www.instagram.com/jobpool_bharat/"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-slate-400 hover:text-white transition-colors"
                 whileHover={{ scale: 1.2 }}
                 whileTap={{ scale: 0.9 }}
@@ -224,7 +230,9 @@ export function Footer() {
                 <span className="sr-only">Instagram</span>
               </motion.a>
               <motion.a
-                href="https://www.linkedin.com/in/jobpool-bharath-449b33282/"
+                href="https://www.linkedin.com/company/job-pool/posts/?feedView=all"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-slate-400 hover:text-white transition-colors"
                 whileHover={{ scale: 1.2 }}
                 whileTap={{ scale: 0.9 }}
