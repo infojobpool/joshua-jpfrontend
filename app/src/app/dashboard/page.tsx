@@ -128,6 +128,7 @@ interface BidRequest {
   images?: Image[];
   task_cancelled?: boolean;
   task_deleted?: boolean;
+  created_at_sort_value?: number;
 }
 
 interface Category {
@@ -299,6 +300,10 @@ export default function Dashboard() {
   // Mobile-only extra filter UI state
   const [sortBy, setSortBy] = useState<string>("newest");
   const [availableSortBy, setAvailableSortBy] = useState<string>("newest");
+  const [completedSortBy, setCompletedSortBy] = useState<string>("newest");
+  const [myTasksSortBy, setMyTasksSortBy] = useState<string>("newest");
+  const [assignedSortBy, setAssignedSortBy] = useState<string>("newest");
+  const [myBidsSortBy, setMyBidsSortBy] = useState<string>("newest");
   const [onlyOpen, setOnlyOpen] = useState<boolean>(true);
   const [withImages, setWithImages] = useState<boolean>(false);
 
@@ -947,6 +952,10 @@ export default function Dashboard() {
               postedAt: job.job_due_date
                 ? new Date(job.job_due_date).toLocaleDateString("en-GB")
                 : "Unknown",
+              postedAtSortValue: (() => {
+                const raw = job.created_at || job.timestamp || job.job_due_date;
+                try { return raw ? new Date(raw).getTime() : 0; } catch { return 0; }
+              })(),
               offers: job.offers || 0, // Use original offers field as fallback
               posted_by: job.posted_by || "Unknown",
               category: job.job_category || "general",
@@ -1728,6 +1737,7 @@ export default function Dashboard() {
             created_at: bid.created_at
               ? new Date(bid.created_at).toLocaleDateString("en-GB")
               : "Unknown",
+            created_at_sort_value: bid.created_at ? new Date(bid.created_at).getTime() : 0,
             task_location: bid.task_location || "Unknown",
             task_description: bid.task_description || "No description provided.",
             posted_by: bid.posted_by || "Unknown",
@@ -1980,6 +1990,10 @@ export default function Dashboard() {
                   } catch {
                     return typeof raw === "string" && raw ? raw : "Unknown";
                   }
+                })(),
+                postedAtSortValue: (() => {
+                  const raw = job.updated_at || job.completed_at || job.completed_date || job.created_at || job.timestamp || job.job_due_date;
+                  try { return raw ? new Date(raw).getTime() : 0; } catch { return 0; }
                 })(),
                 dueDate: job.job_due_date || job.dueDate
                   ? new Date(job.job_due_date || job.dueDate).toLocaleDateString("en-GB")
@@ -2490,6 +2504,7 @@ export default function Dashboard() {
               job_completion_status:
                 payload?.job_completion_status ?? "1",
               completedDate: new Date().toLocaleDateString("en-GB"),
+              postedAtSortValue: completedTask.postedAtSortValue ?? Date.now(),
               assignedToMe: true,
               _posterIsMe: false,
               confirmed_bid_id: userId,
@@ -2672,7 +2687,7 @@ export default function Dashboard() {
         const payload = { job_completion_status: 1, tasker_completed: true, taskmaster_completed: true };
         const completedTask = postedTasks.find((t) => t.id === jobId);
         if (completedTask) {
-          const updated = { ...completedTask, ...payload, status: "completed" } as Task;
+          const updated = { ...completedTask, ...payload, status: "completed", postedAtSortValue: completedTask.postedAtSortValue ?? Date.now() } as Task;
           setCompletedTasks((prev) => [...prev.filter((t) => String(t.id) !== String(jobId)), updated]);
         }
         setPostedTasks((prev) =>
@@ -2684,7 +2699,7 @@ export default function Dashboard() {
         const completedTask = assignedTasks.find((t) => t.id === jobId);
         if (completedTask) {
           setAssignedTasks((prev) => prev.filter((t) => String(t.id) !== String(jobId)));
-          setCompletedTasks((prev) => [...prev, { ...completedTask, status: "completed" } as Task]);
+          setCompletedTasks((prev) => [...prev, { ...completedTask, status: "completed", postedAtSortValue: completedTask.postedAtSortValue ?? Date.now() } as Task]);
           setActiveTab("completed");
         }
       }
@@ -3076,6 +3091,83 @@ export default function Dashboard() {
     });
     return copy;
   }, [filteredTasks, availableSortBy]);
+
+  // Sort completed tasks by selected option (newest, oldest)
+  const sortedCompletedTasks = useMemo(() => {
+    const copy = [...completedTasks];
+    copy.sort((a, b) => {
+      const aVal = a.postedAtSortValue ?? 0;
+      const bVal = b.postedAtSortValue ?? 0;
+      return completedSortBy === "newest" ? bVal - aVal : aVal - bVal;
+    });
+    return copy;
+  }, [completedTasks, completedSortBy]);
+
+  // Sort My Tasks (posted) by newest/oldest
+  const sortedPostedTasksForMyTasks = useMemo(() => {
+    const filtered = postedTasks
+      .filter((t) => {
+        if (myTasksFilter === "all") return true;
+        if (myTasksFilter === "in_progress") return t.status === "in_progress" && !t.deletion_status && !t.cancel_status;
+        if (myTasksFilter === "open") return t.status === "open" && !t.deletion_status && !t.cancel_status;
+        if (myTasksFilter === "completed") return t.status === "completed";
+        return true;
+      })
+      .filter((t) => {
+        const q = myTasksQuery.trim().toLowerCase();
+        if (!q) return true;
+        return (
+          String(t.title || "").toLowerCase().includes(q) ||
+          String(t.description || "").toLowerCase().includes(q) ||
+          String(t.location || "").toLowerCase().includes(q)
+        );
+      })
+      .filter((t) => {
+        if (!dateRange?.from && !dateRange?.to) return true;
+        const d = t.postedAt ? new Date(t.postedAt.split("/").reverse().join("-")) : undefined;
+        if (!d || isNaN(d as unknown as number)) return true;
+        if (dateRange?.from && d < new Date(dateRange.from.toDateString())) return false;
+        if (dateRange?.to && d > new Date(dateRange.to.toDateString())) return false;
+        return true;
+      });
+    const copy = [...filtered];
+    copy.sort((a, b) => {
+      const aTop = a.status === "in_progress" && !a.deletion_status && !a.cancel_status;
+      const bTop = b.status === "in_progress" && !b.deletion_status && !b.cancel_status;
+      if (aTop && !bTop) return -1;
+      if (bTop && !aTop) return 1;
+      if (a.deletion_status && !b.deletion_status) return 1;
+      if (!a.deletion_status && b.deletion_status) return -1;
+      if (a.cancel_status && !b.cancel_status) return 1;
+      if (!a.cancel_status && b.cancel_status) return -1;
+      const aVal = a.postedAtSortValue ?? 0;
+      const bVal = b.postedAtSortValue ?? 0;
+      return myTasksSortBy === "newest" ? bVal - aVal : aVal - bVal;
+    });
+    return copy;
+  }, [postedTasks, myTasksFilter, myTasksQuery, dateRange, myTasksSortBy]);
+
+  // Sort assigned tasks by newest/oldest
+  const sortedAssignedTasks = useMemo(() => {
+    const copy = [...assignedTasks];
+    copy.sort((a, b) => {
+      const aVal = a.postedAtSortValue ?? 0;
+      const bVal = b.postedAtSortValue ?? 0;
+      return assignedSortBy === "newest" ? bVal - aVal : aVal - bVal;
+    });
+    return copy;
+  }, [assignedTasks, assignedSortBy]);
+
+  // Sort My Bids by newest/oldest
+  const sortedRequestedTasks = useMemo(() => {
+    const copy = [...requestedTasks];
+    copy.sort((a, b) => {
+      const aVal = a.created_at_sort_value ?? 0;
+      const bVal = b.created_at_sort_value ?? 0;
+      return myBidsSortBy === "newest" ? bVal - aVal : aVal - bVal;
+    });
+    return copy;
+  }, [requestedTasks, myBidsSortBy]);
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -3745,7 +3837,7 @@ export default function Dashboard() {
                   className={`pl-9 ${isMobile ? "h-10" : "h-9"}`}
                 />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Select value={myTasksFilter} onValueChange={(v) => setMyTasksFilter(v as any)}>
                   <SelectTrigger className={`${isMobile ? "h-10" : "h-9"} w-44`}>
                     <SelectValue placeholder="Status" />
@@ -3757,7 +3849,15 @@ export default function Dashboard() {
                     <SelectItem value="completed">Completed</SelectItem>
                   </SelectContent>
                 </Select>
-                {/* Date range temporarily removed */}
+                <Select value={myTasksSortBy} onValueChange={setMyTasksSortBy}>
+                  <SelectTrigger className={`${isMobile ? "h-10" : "h-9"} w-40`}>
+                    <SelectValue placeholder="Sort" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest first</SelectItem>
+                    <SelectItem value="oldest">Oldest first</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Button variant="outline" className={`${isMobile ? "h-10" : "h-9"} border-gray-300`} onClick={() => { setMyTasksFilter("all"); setMyTasksQuery(""); }}>Clear</Button>
               </div>
               {!isMobile && (
@@ -3783,45 +3883,7 @@ export default function Dashboard() {
               </Card>
             ) : (
               <div className={`grid gap-4 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
-                {postedTasks
-                  .filter((t) => {
-                    if (myTasksFilter === "all") return true;
-                    if (myTasksFilter === "in_progress") return t.status === "in_progress" && !t.deletion_status && !t.cancel_status;
-                    if (myTasksFilter === "open") return t.status === "open" && !t.deletion_status && !t.cancel_status;
-                    if (myTasksFilter === "completed") return t.status === "completed";
-                    return true;
-                  })
-                  .filter((t) => {
-                    const q = myTasksQuery.trim().toLowerCase();
-                    if (!q) return true;
-                    return (
-                      String(t.title || "").toLowerCase().includes(q) ||
-                      String(t.description || "").toLowerCase().includes(q) ||
-                      String(t.location || "").toLowerCase().includes(q)
-                    );
-                  })
-                  .filter((t) => {
-                    if (!dateRange?.from && !dateRange?.to) return true;
-                    const d = t.postedAt ? new Date(t.postedAt.split('/').reverse().join('-')) : undefined;
-                    if (!d || isNaN(d as any)) return true;
-                    if (dateRange?.from && d < new Date(dateRange.from.toDateString())) return false;
-                    if (dateRange?.to && d > new Date(dateRange.to.toDateString())) return false;
-                    return true;
-                  })
-                  .sort((a, b) => {
-                    // Prioritize actively in-progress (accepted/paid) tasks to the top
-                    const aTop = a.status === "in_progress" && !a.deletion_status && !a.cancel_status;
-                    const bTop = b.status === "in_progress" && !b.deletion_status && !b.cancel_status;
-                    if (aTop && !bTop) return -1;
-                    if (bTop && !aTop) return 1;
-                    // Push deleted/canceled to bottom
-                    if (a.deletion_status && !b.deletion_status) return 1;
-                    if (!a.deletion_status && b.deletion_status) return -1;
-                    if (a.cancel_status && !b.cancel_status) return 1;
-                    if (!a.cancel_status && b.cancel_status) return -1;
-                    return 0;
-                  })
-                  .map((task) => (
+                {sortedPostedTasksForMyTasks.map((task) => (
                     <Card
                       key={task.id}
                       className={`relative bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-md hover:shadow-lg transition-all duration-200 rounded-2xl overflow-hidden group border-l-4 border-l-[#3b82f6]/50 ${
@@ -4301,7 +4363,20 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="assigned" forceMount className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks Assigned to You</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks Assigned to You</h2>
+              {assignedTasks.length > 0 && (
+                <Select value={assignedSortBy} onValueChange={setAssignedSortBy}>
+                  <SelectTrigger className="w-[160px] sm:w-[180px] border-gray-200 dark:border-slate-600">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest first</SelectItem>
+                    <SelectItem value="oldest">Oldest first</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
             {assignedTasks.length === 0 ? (
               <div className="min-h-[400px] flex items-center justify-center">
                 <EmptyState
@@ -4314,7 +4389,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className={`grid gap-4 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
-                {assignedTasks.map((task) => {
+                {sortedAssignedTasks.map((task) => {
                   const isCancelled = task.cancel_status || task.cancelled || task.status === "canceled" || task.status === "cancelled";
                   const cancelledByTasker = task.cancelled_by_role === "tasker";
                   const cancelledByTaskmaster = task.cancelled_by_role === "taskmaster";
@@ -4498,7 +4573,20 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="completed" forceMount className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Completed</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Completed</h2>
+              {completedTasks.length > 0 && (
+                <Select value={completedSortBy} onValueChange={setCompletedSortBy}>
+                  <SelectTrigger className="w-[160px] sm:w-[180px] border-gray-200 dark:border-slate-600">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest first</SelectItem>
+                    <SelectItem value="oldest">Oldest first</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
             {completedTasksLoading ? (
               <div className="min-h-[400px] flex items-center justify-center">
                 <div className="text-center">
@@ -4527,7 +4615,7 @@ export default function Dashboard() {
               />
             ) : (
               <div className={`grid gap-4 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
-                {completedTasks.map((task) => (
+                {sortedCompletedTasks.map((task) => (
                   <Card key={task.id} className="bg-gradient-to-br from-emerald-50 via-green-50 to-lime-50 dark:from-emerald-950/40 dark:via-slate-800/60 dark:to-slate-800/40 border-l-4 border-l-emerald-500 dark:border-l-emerald-400 shadow-lg shadow-slate-200/40 hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 rounded-2xl overflow-hidden">
                     {/* Mobile-optimized layout */}
                     <div className={isMobile ? "p-4" : "p-6"}>
@@ -4595,7 +4683,20 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="my-bids" forceMount className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />My Bids</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />My Bids</h2>
+              {requestedTasks.length > 0 && (
+                <Select value={myBidsSortBy} onValueChange={setMyBidsSortBy}>
+                  <SelectTrigger className="w-[160px] sm:w-[180px] border-gray-200 dark:border-slate-600">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest first</SelectItem>
+                    <SelectItem value="oldest">Oldest first</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
             {requestedTasks.length === 0 ? (
               <EmptyState
                 icon={ClipboardList}
@@ -4605,7 +4706,7 @@ export default function Dashboard() {
               />
             ) : (
               <div className={`grid gap-4 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
-                {requestedTasks.map((bid) => (
+                {sortedRequestedTasks.map((bid) => (
                   <Card key={bid.bid_id} className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-800/80 dark:via-slate-800/60 dark:to-indigo-900/30 border-l-4 border-l-blue-500 dark:border-l-indigo-400 shadow-lg shadow-slate-200/40 hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 rounded-2xl overflow-hidden">
                     {/* Mobile-optimized layout */}
                     <div className={isMobile ? "p-4" : "p-6"}>
