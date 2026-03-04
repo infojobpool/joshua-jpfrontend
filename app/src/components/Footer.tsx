@@ -8,6 +8,8 @@ import {
   Instagram,
   Linkedin,
   Mail,
+  Apple,
+  Play,
 } from "lucide-react";
 
 const APP_STORE_URL = "https://apps.apple.com/in/app/jobpool-official/id6757442431";
@@ -155,26 +157,33 @@ const Footer: React.FC = () => {
               <h3 className="text-sm font-semibold uppercase tracking-wider text-white">
                 Get the app
               </h3>
-              <div className="mt-4 relative w-full max-w-[320px]">
-                <img
-                  src="/images/app-store-playstore-badges.png"
-                  alt="Download on the App Store and Get it on Google Play"
-                  className="w-full h-auto object-contain mix-blend-multiply"
-                />
+              <div className="mt-4 flex flex-col sm:flex-row gap-3">
                 <a
                   href={PLAY_STORE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="absolute inset-y-0 left-0 w-1/2 cursor-pointer"
-                  aria-label="Get it on Google Play"
-                />
+                  className="inline-flex items-center gap-3 rounded-lg border border-slate-500 bg-slate-800/80 px-4 py-3 text-white transition hover:bg-slate-700 hover:border-slate-400"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center [&>svg]:fill-current">
+                    <Play className="h-6 w-6" strokeWidth={2} />
+                  </div>
+                  <div className="flex flex-col items-start leading-tight">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-slate-300">Get it on</span>
+                    <span className="text-sm font-bold">Google Play</span>
+                  </div>
+                </a>
                 <a
                   href={APP_STORE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="absolute inset-y-0 right-0 w-1/2 cursor-pointer"
-                  aria-label="Download on the App Store"
-                />
+                  className="inline-flex items-center gap-3 rounded-lg border border-slate-500 bg-slate-800/80 px-4 py-3 text-white transition hover:bg-slate-700 hover:border-slate-400"
+                >
+                  <Apple className="h-8 w-8 shrink-0 text-white" />
+                  <div className="flex flex-col items-start leading-tight">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-slate-300">Download on the</span>
+                    <span className="text-sm font-bold">App Store</span>
+                  </div>
+                </a>
               </div>
             </div>
           </div>
