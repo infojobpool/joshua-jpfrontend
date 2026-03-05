@@ -164,6 +164,7 @@ function parseDateSafe(raw: any): Date | null {
 }
 
 // Helper to normalize timestamp fields for display & sorting
+// Uses same field order and Date check as TaskPageClient for consistency
 function formatTimestampValue(raw: any): {
   formatted: string;
   sortValue: number;
@@ -174,10 +175,24 @@ function formatTimestampValue(raw: any): {
     return { formatted: "—", sortValue: 0, iso: "" };
   }
   return {
-    formatted: date.toLocaleDateString("en-GB"),
+    formatted: date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" }),
     sortValue: date.getTime(),
     iso: date.toISOString(),
   };
+}
+
+// Get displayed postedAt for a task card - use cache if list has no date (get-job has full data)
+function getCardPostedAt(task: { id: string; postedAt: string }): string {
+  if (task.postedAt && task.postedAt !== "—" && task.postedAt !== "Unknown") return task.postedAt;
+  try {
+    const cached = typeof window !== "undefined" ? localStorage.getItem(`task_${task.id}`) : null;
+    if (cached) {
+      const data = JSON.parse(cached);
+      const cachedPosted = data?.task?.postedAt;
+      if (cachedPosted && cachedPosted !== "N/A" && cachedPosted !== "—") return cachedPosted;
+    }
+  } catch {}
+  return task.postedAt || "—";
 }
 
 export default function Dashboard() {
@@ -3952,7 +3967,7 @@ export default function Dashboard() {
                             </h3>
                             <div className="flex items-center gap-2 mt-1">
                               <Clock className="h-3 w-3 text-gray-400" />
-                              <span className={`text-xs ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-400" : "text-gray-500"}`}>{task.postedAt}</span>
+                              <span className={`text-xs ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-400" : "text-gray-500"}`}>{getCardPostedAt(task)}</span>
                             </div>
                           </div>
                           <div className="flex flex-col items-end gap-2 ml-3">
@@ -4337,7 +4352,7 @@ export default function Dashboard() {
                                 </h3>
                                 <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-slate-400">
                                   <Clock className="h-3 w-3 text-gray-400" />
-                                  <span>Posted: {task.postedAt}</span>
+                                  <span>Posted: {getCardPostedAt(task)}</span>
                                   {task.dueDate && task.dueDate !== "Unknown" && (
                                     <>
                                       <span className="mx-1 text-gray-300">•</span>
@@ -4449,7 +4464,7 @@ export default function Dashboard() {
                           </h3>
                           <div className="flex items-center gap-2 mt-1">
                             <Clock className={`h-3 w-3 ${isCancelled ? 'text-gray-400' : 'text-gray-400'}`} />
-                            <span className={`text-xs ${isCancelled ? 'text-gray-400' : 'text-gray-500'}`}>{task.postedAt}</span>
+                            <span className={`text-xs ${isCancelled ? 'text-gray-400' : 'text-gray-500'}`}>{getCardPostedAt(task)}</span>
                             {isCancelled && cancelledByTasker && (
                               <Badge variant="outline" className="text-xs border-gray-400 text-gray-600">
                                 ❌ Cancelled by you
