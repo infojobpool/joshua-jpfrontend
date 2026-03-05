@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
@@ -35,6 +35,8 @@ export function TaskExamples() {
   const [isLoading, setIsLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const router = useRouter();
+  const sectionRef = useRef<HTMLElement>(null);
+  const hasFetchedRef = useRef(false);
 
   const formatDate = (dateString?: string): string => {
     if (!dateString) return "No due date";
@@ -49,9 +51,11 @@ export function TaskExamples() {
   };
 
   const fetchJobs = async () => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
     try {
       setIsLoading(true);
-      const response = await axiosInstance.get("/get-all-jobs/");
+      const response = await axiosInstance.get("/get-all-jobs/?limit=8");
       if (response.data.status_code === 200) {
         const mappedJobs = response.data.data.jobs.map((job: any) => ({
           id: job.job_id,
@@ -81,7 +85,21 @@ export function TaskExamples() {
 
   useEffect(() => {
     setIsClient(true);
-    fetchJobs();
+  }, []);
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !hasFetchedRef.current) {
+          fetchJobs();
+        }
+      },
+      { rootMargin: "100px", threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   const containerVariants = {
@@ -120,7 +138,7 @@ export function TaskExamples() {
   }
 
   return (
-    <section id="browse" className="py-16 bg-gradient-to-br from-blue-50 to-indigo-50">
+    <section id="browse" ref={sectionRef} className="py-16 bg-gradient-to-br from-blue-50 to-indigo-50">
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
         <motion.div
           className="text-center mb-12"
@@ -150,7 +168,7 @@ export function TaskExamples() {
             whileInView="visible"
             viewport={{ once: true }}
           >
-            {jobs.slice(0, 8).map((job, index) => (
+            {jobs.map((job, index) => (
               <motion.div
                 key={index}
                 variants={itemVariants}
@@ -223,7 +241,7 @@ export function TaskExamples() {
           </motion.div>
         )}
         
-        {jobs.length > 8 && (
+        {jobs.length > 0 && (
           <motion.div
             className="text-center mt-8"
             initial={{ opacity: 0 }}

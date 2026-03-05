@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -86,6 +86,7 @@ export default function PostTaskPage() {
   const [dueDateFlexible, setDueDateFlexible] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState("");
+  const submitInProgressRef = useRef(false);
   const { userId } = useStore();
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
 
@@ -338,6 +339,11 @@ export default function PostTaskPage() {
       return;
     }
 
+    if (submitInProgressRef.current) {
+      toast.error("Please wait, task is being posted...");
+      return;
+    }
+    submitInProgressRef.current = true;
     setIsSubmitting(true);
     setShowConfirmPost(false);
 
@@ -390,6 +396,7 @@ export default function PostTaskPage() {
         handleAxiosError(error);
       }
     } finally {
+      submitInProgressRef.current = false;
       setIsSubmitting(false);
     }
   };
