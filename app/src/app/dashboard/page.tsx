@@ -143,7 +143,7 @@ interface APIResponse<T> {
   data: T;
 }
 
-// Parse date that might be dd/mm/yyyy (en-GB), ISO, Unix timestamp, or other formats
+// Parse date that might be dd/mm/yyyy (en-GB), yyyy-mm-dd, ISO, Unix timestamp, or other formats
 function parseDateSafe(raw: any): Date | null {
   if (raw == null || raw === "") return null;
   const s = String(raw).trim();
@@ -151,6 +151,12 @@ function parseDateSafe(raw: any): Date | null {
   const dmY = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s);
   if (dmY) {
     const [, d, m, y] = dmY;
+    const parsed = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+  const yMd = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);
+  if (yMd) {
+    const [, y, m, d] = yMd;
     const parsed = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
     return isNaN(parsed.getTime()) ? null : parsed;
   }
@@ -190,6 +196,30 @@ function dedupeTasksById<T extends { id: string }>(tasks: T[]): T[] {
     seen.add(id);
     return true;
   });
+}
+
+// Deduplicate by content (same title+description = likely duplicate from double submit or API)
+function dedupeTasksByContent(tasks: Task[]): Task[] {
+  const byKey = new Map<string, Task>();
+  for (const t of tasks) {
+    const key = `${(t.title || "").trim().toLowerCase()}|${(t.description || "").trim().toLowerCase()}|${t.budget ?? 0}`;
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, t);
+    } else {
+      // Keep the one with a valid date, or higher id (newer)
+      const existingHasDate = (existing.postedAtSortValue ?? 0) > 0 || (existing.postedAt && existing.postedAt !== "—" && existing.postedAt !== "Unknown");
+      const currHasDate = (t.postedAtSortValue ?? 0) > 0 || (t.postedAt && t.postedAt !== "—" && t.postedAt !== "Unknown");
+      if (currHasDate && !existingHasDate) {
+        byKey.set(key, t);
+      } else if (existingHasDate && !currHasDate) {
+        // keep existing
+      } else if (Number(t.id) > Number(existing.id)) {
+        byKey.set(key, t); // prefer higher id (newer)
+      }
+    }
+  }
+  return Array.from(byKey.values());
 }
 
 // Get displayed postedAt for a task card - use cache if list has no date (get-job has full data)
@@ -587,7 +617,7 @@ export default function Dashboard() {
     } catch {}
     try {
       const p = sessionStorage.getItem("postedTasks");
-      if (p) setPostedTasks(dedupeTasksById(JSON.parse(p) as Task[]));
+      if (p) setPostedTasks(dedupeTasksByContent(dedupeTasksById(JSON.parse(p) as Task[])));
     } catch {}
     try {
       const r = sessionStorage.getItem("requestedTasks");
@@ -833,7 +863,7 @@ export default function Dashboard() {
           const cacheAge = Date.now() - cachedData.timestamp;
           if (cacheAge < 30000) { // 30 second cache
             console.log("Using cached user tasks");
-            setPostedTasks(dedupeTasksById(cachedData.tasks));
+            setPostedTasks(dedupeTasksByContent(dedupeTasksById(cachedData.tasks as Task[])));
             return;
           }
         }
@@ -1010,8 +1040,14 @@ export default function Dashboard() {
               });
             }
 
-            // Use creation date for "posted" (prefer created_at; fallback to due date)
-            const postedRaw = job.created_at || job.job_created_at || job.created_date || job.date_created || job.timestamp || job.tstamp || job.job_tstamp || job.updated_at || job.job_due_date || job.due_date;
+            // Use creation date for "posted" - check all known API date fields (get-user-jobs may use different names)
+            const inner = (job as any).job || job;
+            const postedRaw = inner.created_at || inner.job_created_at || inner.created_date || inner.date_created ||
+              inner.timestamp || inner.tstamp || inner.job_tstamp || inner.posted_at || inner.postedAt ||
+              inner.date || inner.updated_at || inner.job_due_date || inner.due_date ||
+              job.created_at || job.job_created_at || job.created_date || job.date_created ||
+              job.timestamp || job.tstamp || job.job_tstamp || (job as any).posted_at || (job as any).postedAt ||
+              (job as any).date || job.updated_at || job.job_due_date || job.due_date;
             const postedMeta = formatTimestampValue(postedRaw);
             return {
               id: job.job_id.toString(),
@@ -1047,7 +1083,7 @@ export default function Dashboard() {
             };
           });
 
-          const deduped = dedupeTasksById(tasks);
+          const deduped = dedupeTasksByContent(dedupeTasksById(tasks));
           setPostedTasks(deduped);
           try { sessionStorage.setItem("postedTasks", JSON.stringify(deduped)); } catch {}
           
@@ -1068,7 +1104,7 @@ export default function Dashboard() {
           try {
             const cachedTasks = localStorage.getItem('postedTasks');
             if (cachedTasks) {
-              const tasks = dedupeTasksById(JSON.parse(cachedTasks) as Task[]);
+              const tasks = dedupeTasksByContent(dedupeTasksById(JSON.parse(cachedTasks) as Task[]));
               setPostedTasks(tasks);
               console.log("Loaded user tasks from cache after timeout");
             }
@@ -2967,7 +3003,13 @@ export default function Dashboard() {
                     jobStatus = "in_progress";
                   }
                   
-                  const postedRaw = job.created_at || job.job_created_at || job.created_date || job.date_created || job.timestamp || job.tstamp || job.job_tstamp || job.updated_at || job.job_due_date || job.due_date;
+                  const innerR = (job as any).job || job;
+                  const postedRaw = innerR.created_at || innerR.job_created_at || innerR.created_date || innerR.date_created ||
+                    innerR.timestamp || innerR.tstamp || innerR.job_tstamp || innerR.posted_at || innerR.postedAt ||
+                    innerR.date || innerR.updated_at || innerR.job_due_date || innerR.due_date ||
+                    job.created_at || job.job_created_at || job.created_date || job.date_created ||
+                    job.timestamp || job.tstamp || job.job_tstamp || (job as any).posted_at || (job as any).postedAt ||
+                    (job as any).date || job.updated_at || job.job_due_date || job.due_date;
                   const postedMeta = formatTimestampValue(postedRaw);
                   return {
                     id: job.job_id.toString(),
@@ -3008,7 +3050,7 @@ export default function Dashboard() {
                   cancelledTaskIds: tasks.filter(t => t.status === "canceled" || t.cancel_status).map(t => t.id)
                 });
                 
-                const dedupedRefresh = dedupeTasksById(tasks);
+                const dedupedRefresh = dedupeTasksByContent(dedupeTasksById(tasks));
                 setPostedTasks(dedupedRefresh);
                 try { sessionStorage.setItem("postedTasks", JSON.stringify(dedupedRefresh)); } catch {}
                 localStorage.setItem(cacheKey, JSON.stringify({
