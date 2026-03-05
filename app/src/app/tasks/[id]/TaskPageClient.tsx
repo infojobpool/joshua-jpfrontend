@@ -150,7 +150,7 @@ export default function TaskDetailPage() {
         if (!userId) return;
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout - more reasonable
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
           
           // Try to get verification status from profile endpoint
           const response = await axiosInstance.get(`/profile?user_id=${userId}`, {
@@ -383,7 +383,7 @@ export default function TaskDetailPage() {
         const timeoutId = setTimeout(() => {
           console.log("Task loading timeout reached, aborting request");
           controller.abort();
-        }, 12000); // 12s timeout – faster feedback
+        }, 6000); // 6s timeout – faster feedback
 
         let data: ApiJobResponse;
         try {
@@ -622,7 +622,7 @@ export default function TaskDetailPage() {
         // Use fetch API for better performance
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
 
         // Check if current user is the task poster
         const isTaskPoster = task && task.poster && task.poster.id === userId;
