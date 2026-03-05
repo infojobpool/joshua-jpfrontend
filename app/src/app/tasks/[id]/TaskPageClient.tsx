@@ -13,7 +13,7 @@ import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Task, User, Bid, Offer, ApiBidResponse, ApiJobResponse } from "../../types";
 import { Button } from "@/components/ui/button";
@@ -58,64 +58,18 @@ export default function TaskDetailPage() {
   const [showCancelDialog, setShowCancelDialog] = useState<boolean>(false);
   const [cancelReason, setCancelReason] = useState<string>("");
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
-  // Initialize verification from localStorage to avoid flash (verificationChecked + isVerified)
-  const [isVerified, setIsVerified] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      const u = localStorage.getItem("user");
-      if (u) {
-        const p = JSON.parse(u);
-        const s = p?.verification_status;
-        if (s !== undefined && s !== null) {
-          const n = typeof s === "string" ? parseInt(s, 10) : Number(s);
-          return !isNaN(n) && n >= 2;
-        }
-      }
-    } catch {}
-    return false;
-  });
-  const [verificationChecked, setVerificationChecked] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      const u = localStorage.getItem("user");
-      if (u) {
-        const p = JSON.parse(u);
-        return p?.verification_status !== undefined && p?.verification_status !== null;
-      }
-    } catch {}
-    return false;
-  });
+  const [isVerified, setIsVerified] = useState<boolean>(false);
+  const [verificationChecked, setVerificationChecked] = useState<boolean>(false);
   const [isPaymentPending, setIsPaymentPending] = useState<boolean>(false);
-  const [paymentCheckDone, setPaymentCheckDone] = useState<boolean>(false);
-  const paymentToastShownRef = useRef<boolean>(false);
   const [taskRefreshKey, setTaskRefreshKey] = useState<number>(0);
-  const loadRetryCountRef = useRef<number>(0);
-  const [bidsRetryKey, setBidsRetryKey] = useState<number>(0);
-  const prefetchedBidsRef = useRef<{ id: string; data: any } | null>(null);
   const [completeReviewOpen, setCompleteReviewOpen] = useState(false);
-
-  // Reset retries and payment check when switching to a different task
-  useEffect(() => {
-    setBidsRetryKey(0);
-    loadRetryCountRef.current = 0;
-    setPaymentCheckDone(false);
-    paymentToastShownRef.current = false;
-  }, [id]);
-
-  // Refetch bids when tab becomes visible and taskmaster has 0 offers (after initial load)
-  useEffect(() => {
-    const handleFocus = () => {
-      if (typeof document === "undefined" || document.visibilityState !== "visible") return;
-      const isPoster = task && task.poster && task.poster.id === userId;
-      if (isPoster && !bidsLoading && offers.length === 0 && !task?.assignedTasker?.id) {
-        setBidsRetryKey((k) => k + 1);
-      }
-    };
-    document.addEventListener("visibilitychange", handleFocus);
-    return () => document.removeEventListener("visibilitychange", handleFocus);
-  }, [task, userId, offers.length, bidsLoading]);
   const [completeReviewAsTaskmaster, setCompleteReviewAsTaskmaster] = useState(false);
   const taskerId = offers.length > 0 ? offers[0].tasker.id : (task?.assignedTasker?.id ? String(task.assignedTasker.id) : null);
+
+  // Debug: Log verification state changes
+  useEffect(() => {
+    console.log("🔍 Verification state changed:", { isVerified, verificationChecked });
+  }, [isVerified, verificationChecked]);
 
   // Check for existing review in localStorage when task loads
   useEffect(() => {
@@ -183,20 +137,7 @@ export default function TaskDetailPage() {
         joinedDate: null,
       };
       setUser(authUser);
-      // Preserve verification_status - store user lacks it; overwriting causes "Verification Required" to flicker
-      try {
-        const existing = localStorage.getItem("user");
-        const toSave = { ...authUser } as any;
-        if (existing) {
-          const prev = JSON.parse(existing);
-          if (prev.verification_status !== undefined && prev.verification_status !== null) {
-            toSave.verification_status = prev.verification_status;
-          }
-        }
-        localStorage.setItem("user", JSON.stringify(toSave));
-      } catch {
-        localStorage.setItem("user", JSON.stringify(authUser));
-      }
+      localStorage.setItem("user", JSON.stringify(authUser));
       console.log("Loaded user from store:", authUser);
     } else if (!storedUser) {
       console.log("No authenticated user, redirecting to signin");
@@ -421,90 +362,53 @@ export default function TaskDetailPage() {
     const loadTaskData = async () => {
       try {
         setLoading(true);
-
-        // Always fetch fresh task + bids – cache caused stale "Offers (0)" when bids existed
+        
+        // Use cache immediately if we have it (even stale) – then refresh in background
         const cacheKey = `task_${id}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          try {
+            const cachedData = JSON.parse(cached);
+            if (cachedData?.task) {
+              console.log("Showing cached task data (will refresh in background)");
+              setTask(cachedData.task);
+              setLoading(false);
+            }
+          } catch {}
+        }
+
+        // Primary request (fetch) with reasonable timeout and Axios fallback
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const bidsController = new AbortController();
         const timeoutId = setTimeout(() => {
           console.log("Task loading timeout reached, aborting request");
           controller.abort();
         }, 6000); // 6s timeout – faster feedback
 
-        // Backend uses task_{sno} for job_id – try task_X first for get-bids (required format)
-        const taskIdFormat = id.startsWith("task_") ? id : `task_${id}`;
-        const numericPart = id.replace(/^task_/, "");
-        const tryIds = [
-          taskIdFormat,
-          id,
-          numericPart,
-        ].filter((x, i, arr) => arr.indexOf(x) === i);
-
-        // Start get-bids in parallel – try task_X first; try Render backend if primary returns 404 (poster sees bids)
-        const API_BASES = [
-          process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1",
-          "https://jobpoolbackend.onrender.com/api/v1",
-        ].filter((x, i, arr) => arr.indexOf(x) === i);
-        const bidsPromise = (async () => {
-          let lastData: any = null;
-          for (const base of API_BASES) {
-            for (const tryId of tryIds) {
-              try {
-                const r = await fetch(`${base.replace(/\/?$/, "")}/get-bids/${tryId}/`, {
-                  method: "GET",
-                  headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-                  credentials: "omit",
-                  signal: bidsController.signal,
-                });
-                const ct = r.headers.get("content-type") || "";
-                const data = ct.includes("json") ? await r.json() : null;
-                lastData = data;
-                if (data?.status_code === 200) return data;
-                // Backend returns 404 JSON when no bids – try next base in case other has data
-                if (data?.status_code === 404 && data?.message) lastData = { ...data, data: data?.data ?? [] };
-              } catch { /* try next */ }
-            }
-            if (lastData?.status_code === 200) return lastData;
-          }
-          return lastData;
-        })();
-
-        let data: ApiJobResponse | undefined;
-        let lastErr: any;
-        for (const tryId of tryIds) {
-          try {
-            const response = await fetch(`https://api.jobpool.in/api/v1/get-job/${tryId}/`, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-              },
-              credentials: 'omit',
-              signal: controller.signal
-            });
-            if (response.ok) {
-              clearTimeout(timeoutId);
-              data = await response.json();
-              break;
-            }
-            if (response.status === 404 && tryId !== tryIds[tryIds.length - 1]) {
-              console.warn(`get-job/${tryId}/ returned 404, trying next ID format`);
-              continue;
-            }
-            throw new Error(`HTTP ${response.status}`);
-          } catch (err) {
-            lastErr = err;
-            if ((err as any)?.name === "AbortError") break;
-          }
-        }
-        if (!data) {
+        let data: ApiJobResponse;
+        try {
+          const response = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            credentials: 'omit',
+            signal: controller.signal
+          });
           clearTimeout(timeoutId);
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          data = await response.json();
+        } catch (primaryErr) {
+          // Fallback to axios instance (may have different infra/routing)
+          console.warn("Primary task fetch failed, trying fallback via axiosInstance", primaryErr);
           try {
             const axiosResp = await axiosInstance.get(`/get-job/${id}/`);
             data = axiosResp.data as ApiJobResponse;
           } catch (fallbackErr) {
-            throw lastErr || fallbackErr;
+            throw fallbackErr;
           }
         }
 
@@ -667,115 +571,39 @@ export default function TaskDetailPage() {
             joinedDate: job.joined_date ?? null,
           },
           offers: [],
-          _jobBids: ((job as any).bids ?? (job as any).offers ?? (job as any).job_bids) || undefined,
-          assignedTasker: assignedId
-            ? {
-                id: String(assignedId),
-                name:
-                  (job as any).assigned_tasker_name ||
-                  (job as any).tasker_name ||
-                  (job as any).accepted_bidder_name ||
-                  "Assigned tasker",
-                avatar: "/images/placeholder.svg",
-                rating: null,
-                taskCount: null,
-                joinedDate: null,
-              }
-            : undefined,
+          assignedTasker: assignedId ? { id: String(assignedId) } as any : undefined,
         };
         setTask(mappedTask);
         console.log("Mapped Task:", mappedTask);
-
-        // Use bids from parallel fetch; fallback to get-job embedded bids when get-bids is empty
-        let fetchedBids: any[] = [];
-        const jobBids = ((job as any).bids ?? (job as any).job_bids ?? (job as any).offers) || [];
-        try {
-          const bidsData = await bidsPromise;
-          if (bidsData?.status_code === 200 || bidsData?.status_code === 404) {
-            const raw = bidsData.data?.bids ?? bidsData.data?.job_bids ?? bidsData.data?.data
-              ?? (Array.isArray(bidsData.data) ? bidsData.data : null)
-              ?? bidsData.bids ?? bidsData.data ?? [];
-            let taskBids = Array.isArray(raw) ? raw : (raw && typeof raw === "object" && !Array.isArray(raw) ? Object.values(raw) : []);
-            // Fallback: use bids from get-job when get-bids returned empty but job has bids
-            if (taskBids.length === 0 && Array.isArray(jobBids) && jobBids.length > 0) {
-              taskBids = jobBids;
-              console.log("✅ Using bids from get-job response (get-bids was empty):", taskBids.length);
-            }
-            fetchedBids = taskBids;
-            const posterIdStr = String(job.user_ref_id || "").trim();
-            const validBids = taskBids.filter((b: any) => {
-              const bidderId = String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? "").trim();
-              return !bidderId || !posterIdStr || bidderId !== posterIdStr;
-            });
-            const norm = (b: any) => ({
-              bidder_id: b.bidder_id ?? b.user_id ?? b.tasker_id ?? "",
-              bidder_name: b.bidder_name ?? b.user_name ?? b.tasker_name ?? "Unknown",
-              bid_amount: Number(b.bid_amount ?? b.amount ?? 0),
-              bid_description: b.bid_description ?? b.message ?? "",
-            });
-            const newOffers: Offer[] = validBids.map((b: any, i: number) => {
-              const n = norm(b);
-              return {
-                id: `bid${i + 1}`,
-                tasker: {
-                  id: String(n.bidder_id),
-                  name: n.bidder_name || "Unknown",
-                  avatar: "/images/placeholder.svg",
-                  rating: null,
-                  taskCount: null,
-                  joinedDate: null,
-                },
-                amount: n.bid_amount,
-                message: n.bid_description || "",
-                createdAt: (b.created_at ?? b.createdAt ?? new Date().toISOString()) as string,
-                status: (b.status ?? "pending") as string,
-              };
-            });
-            setOffers(newOffers);
-            setBids(taskBids);
-            prefetchedBidsRef.current = { id, data: bidsData };
-            console.log("✅ Bids loaded from parallel fetch:", newOffers.length);
-          }
-        } catch (e) {
-          console.warn("Parallel bids fetch failed, loadBids will retry:", e);
-        }
         
-        // Cache task + bids for dashboard date fallback & error recovery (not used on next load – we always fetch fresh)
+        // Cache the task data
         localStorage.setItem(cacheKey, JSON.stringify({
           task: mappedTask,
-          bids: fetchedBids,
           timestamp: Date.now()
         }));
       } catch (error: any) {
         console.error("Error loading task data:", error);
-        try {
-          const cached = localStorage.getItem(`task_${id}`);
-          if (cached) {
-            const cachedData = JSON.parse(cached);
-            if (cachedData?.task) {
+        if ((error as any)?.name === 'AbortError') {
+          console.log("Task loading was aborted due to timeout");
+          // Try to load from cache as fallback
+          try {
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+              const cachedData = JSON.parse(cached);
               setTask(cachedData.task);
-              if ((error as any)?.name !== "AbortError") {
-                toast.error(
-                  error?.response?.data?.detail || "Couldn't refresh – showing cached data"
-                );
-              }
-              return;
+              console.log("Loaded task from cache after timeout");
+              return; // Don't set task to null if we loaded from cache
             }
+          } catch (cacheError) {
+            console.warn("Failed to load from cache:", cacheError);
           }
-        } catch (cacheError) {
-          console.warn("Failed to load from cache:", cacheError);
+          setTask(null); // Only set to null if no cache available
+        } else {
+          toast.error(
+            error.response?.data?.detail || "Failed to load task details"
+          );
+          setTask(null);
         }
-        const isRetryable = (error as any)?.name === "AbortError" || (error?.response?.status >= 500) || (error?.code === "ERR_NETWORK" || error?.message?.includes("Network"));
-        if (isRetryable && loadRetryCountRef.current < 1) {
-          loadRetryCountRef.current += 1;
-          setTimeout(() => setTaskRefreshKey((k) => k + 1), 2000);
-          toast.error("Connection issue. Retrying in 2 seconds…");
-          return;
-        }
-        toast.error(
-          error?.response?.data?.detail || "Failed to load task details"
-        );
-        setTask(null);
       } finally {
         setLoading(false);
       }
@@ -784,16 +612,11 @@ export default function TaskDetailPage() {
     loadTaskData();
   }, [id, taskRefreshKey]);
 
-  // Load bids/offers (skipped if already loaded from parallel fetch in loadTaskData)
+  // Load bids/offers
   useEffect(() => {
     if (!userId || !task) return;
 
     async function loadBids() {
-      if (prefetchedBidsRef.current?.id === id) {
-        prefetchedBidsRef.current = null;
-        setBidsLoading(false);
-        return;
-      }
       try {
         setBidsLoading(true);
         // Use fetch API for better performance
@@ -806,70 +629,30 @@ export default function TaskDetailPage() {
         
         let response;
         if (isTaskPoster) {
-          // Task poster: try task_X first (backend expects job_id format); use task.id from get-job when set
+          // Task poster: try to fetch all bids for this task using axiosInstance
           console.log("Fetching all bids for task (user is poster)");
-          const token = localStorage.getItem("token");
-          const primaryId = task?.id || id;
-          const taskIdFormat = primaryId.startsWith("task_") ? primaryId : `task_${primaryId}`;
-          const bidTryIds = [taskIdFormat, primaryId, id, primaryId.replace(/^task_/, "")].filter(
-            (x, i, arr) => arr.indexOf(x) === i
-          );
-          const apiBases = [
-            process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1",
-            "https://jobpoolbackend.onrender.com/api/v1",
-          ].filter((x, i, arr) => arr.indexOf(x) === i);
-          bidFetch: for (const base of apiBases) {
-            for (const tryId of bidTryIds) {
-              try {
-                const fetchRes = await fetch(`${base.replace(/\/?$/, "")}/get-bids/${tryId}/`, {
-                  method: "GET",
-                  headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-                  credentials: "omit",
-                  signal: controller.signal,
-                });
-                const ct = fetchRes.headers.get("content-type") || "";
-                if (ct.includes("json")) {
-                  const data = await fetchRes.json();
-                  if (data?.status_code === 200) {
-                    response = { ok: true, json: () => Promise.resolve(data) } as any;
-                    break bidFetch;
-                  }
-                  if (data?.status_code === 404 && data?.message) {
-                    response = { ok: true, json: () => Promise.resolve({ ...data, data: data?.data ?? [] }) } as any;
-                  }
-                } else if (fetchRes.ok) {
-                  response = { ok: true, json: () => fetchRes.json() } as any;
-                  break bidFetch;
-                }
-              } catch { /* try next id */ }
-            }
-          }
-          if (!response?.ok) {
-            for (const tryId of bidTryIds) {
-              try {
-                const axiosResponse = await axiosInstance.get(`/get-bids/${tryId}/`, {
-                  signal: controller.signal
-                });
-                if (axiosResponse.data?.status_code === 200 || axiosResponse.data?.status_code === 404) {
-                  response = {
-                    ok: true,
-                    json: () => Promise.resolve(
-                      axiosResponse.data?.status_code === 404 && axiosResponse.data?.message
-                        ? { ...axiosResponse.data, data: axiosResponse.data?.data ?? [] }
-                        : axiosResponse.data
-                    )
-                  } as any;
-                  break;
-                }
-              } catch { /* try next id */ }
-            }
-            if (!response?.ok) {
-              console.error("❌ Both get-bids attempts failed");
-              setOffers([]);
-              setBids([]);
-              setBidsLoading(false);
-              return;
-            }
+          try {
+            const axiosResponse = await axiosInstance.get(`/get-bids/${id}/`, {
+              signal: controller.signal
+            });
+            // Convert axios response to fetch-like response
+            response = {
+              ok: true,
+              json: () => Promise.resolve(axiosResponse.data)
+            } as any;
+          } catch (error: any) {
+            console.error("❌ Failed to fetch task bids endpoint /get-bids/:", {
+              error: error.message,
+              status: error.response?.status,
+              url: `/get-bids/${id}/`
+            });
+            // DON'T fallback to user bids for poster - that would show their own bids
+            // Instead, set empty bids and show error
+            console.warn("⚠️ Cannot fetch task bids - endpoint not available. Showing empty bids.");
+            setOffers([]);
+            setBids([]);
+            setBidsLoading(false);
+            return; // Exit early - don't process user bids
           }
         } else {
           // Non-poster: try to fetch all bids for this task (amounts hidden in UI)
@@ -906,50 +689,28 @@ export default function TaskDetailPage() {
         const data: ApiBidResponse = await response.json();
         console.log("Raw API response for bids:", data); // Debug log
 
-        // 404 with "No Bids found yet" is valid – backend returns this when job has no bids
-        if (data.status_code !== 200 && !(data.status_code === 404 && data?.message)) {
+        if (data.status_code !== 200) {
           throw new Error(data.message || "Failed to fetch bids");
         }
 
         let taskBids: Bid[] = [];
         if (isTaskPoster) {
-          // For task poster, use all bids – try every possible response structure from backend
-          const raw =
-            data.data?.bids ??
-            data.data?.job_bids ??
-            data.data?.data ??
-            (Array.isArray(data.data) ? data.data : null) ??
-            data.bids ??
-            data.data ??
-            [];
-          taskBids = Array.isArray(raw) ? raw : (raw && typeof raw === "object" ? Object.values(raw) : []);
-          // If data.data is object with job_id key, it might be { [job_id]: bids }
-          if (taskBids.length === 0 && data.data && typeof data.data === "object" && !Array.isArray(data.data)) {
-            const tryIdsBids = [id, `task_${id}`, id.replace(/^task_/, "")];
-            for (const tid of tryIdsBids) {
-              const maybeBids = (data.data as any)[tid] ?? (data.data as any).bids ?? (data.data as any).job_bids;
-              if (Array.isArray(maybeBids) && maybeBids.length > 0) {
-                taskBids = maybeBids;
-                break;
-              }
-            }
-            if (taskBids.length === 0) {
-            const vals = Object.values((data.data as Record<string, unknown>) || {});
-            const arr = vals.find((v): v is unknown[] => Array.isArray(v) && v.length > 0);
-            if (arr) taskBids = arr as Bid[];
-          }
-          }
-          // Fallback: use bids nested in get-job response if get-bids returned empty
-          if (taskBids.length === 0 && (task as any)?._jobBids && Array.isArray((task as any)._jobBids)) {
-            taskBids = (task as any)._jobBids;
-            console.log("Using bids from get-job response:", taskBids);
+          // For task poster, use all bids directly from the task bids endpoint
+          // The data structure might be data.data.bids or data.data
+          if (Array.isArray(data.data?.bids)) {
+            taskBids = data.data.bids;
+          } else if (Array.isArray(data.data)) {
+            taskBids = data.data;
+          } else if (Array.isArray(data.bids)) {
+            taskBids = data.bids;
+          } else {
+            taskBids = [];
           }
           console.log("Fetched all task bids for poster:", taskBids);
         } else {
-          // For non-poster, filter user's bids for this task (get-user-bids may return data.data.bids or data.data)
-          const raw = data.data?.bids ?? data.data;
-          const allUserBids: any[] = Array.isArray(raw) ? raw : [];
-          taskBids = allUserBids.filter((b) => String(b.job_id ?? b.task_id ?? "") === String(id));
+          // For non-poster, filter user's bids for this task
+          const allUserBids: Bid[] = Array.isArray(data.data) ? data.data : [];
+          taskBids = allUserBids.filter((bid) => bid.job_id === id);
           console.log("Filtered user's task bids:", taskBids);
         }
 
@@ -970,29 +731,12 @@ export default function TaskDetailPage() {
           console.log("Updated user's bids:", allBids);
         }
 
-        // When task has assigned tasker but get-bids returned empty, synthesize an offer so taskmaster sees who they're confirming
-        let taskBidsToUse = taskBids || [];
-        if (taskBidsToUse.length === 0 && task?.assignedTasker?.id) {
-          taskBidsToUse = [
-            {
-              bidder_id: task.assignedTasker.id,
-              bidder_name: (task.assignedTasker as any).name || "Assigned tasker",
-              bid_amount: 0,
-              bid_description: "Accepted offer",
-              job_id: id,
-              created_at: new Date().toISOString(),
-              status: "accepted",
-            } as Bid,
-          ];
-          console.log("Synthesized offer from assigned tasker:", taskBidsToUse);
-        }
-
         // Map all task bids to offers
         // Filter out bids where the bidder is the same as the poster (users can't bid on their own tasks)
         const posterId = task?.poster?.id;
-        const posterIdStr = String(posterId || "").trim();
-        const validBids = (taskBidsToUse || []).filter((bid: any) => {
-          const bidderId = String(bid.bidder_id ?? bid.user_id ?? bid.tasker_id ?? "").trim();
+        const validBids = (taskBids || []).filter((bid: Bid) => {
+          const bidderId = String(bid.bidder_id || "").trim();
+          const posterIdStr = String(posterId || "").trim();
           
           // Log bid details for debugging
           console.log("🔍 Bid mapping:", {
@@ -1004,8 +748,8 @@ export default function TaskDetailPage() {
             task_id: id
           });
           
-          // Exclude bids where bidder is the poster (compare as strings for type coercion)
-          if (bidderId && posterIdStr && String(bidderId) === String(posterIdStr)) {
+          // Exclude bids where bidder is the poster
+          if (bidderId && posterIdStr && bidderId === posterIdStr) {
             console.warn("⚠️ Excluding bid: bidder is the same as poster", {
               bidder_id: bidderId,
               bidder_name: bid.bidder_name,
@@ -1016,35 +760,22 @@ export default function TaskDetailPage() {
           return true;
         });
         
-        // Normalize bid fields (API may use user_id/tasker_id, task_id instead of bidder_id, job_id)
-        const norm = (b: any) => ({
-          bidder_id: b.bidder_id ?? b.user_id ?? b.tasker_id ?? "",
-          bidder_name: b.bidder_name ?? b.user_name ?? b.tasker_name ?? "Unknown",
-          bid_amount: Number(b.bid_amount ?? b.amount ?? 0),
-          bid_description: b.bid_description ?? b.message ?? "",
-          job_id: String(b.job_id ?? b.task_id ?? id),
-          created_at: b.created_at ?? b.createdAt ?? new Date().toISOString(),
-          status: b.status ?? "pending",
-        });
-
-        const newOffers: Offer[] = validBids.map((bid: any, index: number) => {
-          const b = norm(bid);
-          return {
+        const newOffers: Offer[] = validBids.map((bid: Bid, index: number) => ({
           id: `bid${index + 1}`,
           tasker: {
-            id: String(b.bidder_id),
-            name: b.bidder_name || "Unknown",
+            id: bid.bidder_id,
+            name: bid.bidder_name || "Unknown",
             avatar: "/images/placeholder.svg",
             rating: null,
             taskCount: null,
             joinedDate: null,
           },
-          amount: b.bid_amount,
-          message: b.bid_description || "",
-          createdAt: b.created_at,
-          status: b.status,
-        };
-        });
+          amount: bid.bid_amount,
+          message: bid.bid_description || "",
+          // Keep raw timestamp; format in component to avoid stale "Just now" labels
+          createdAt: bid.created_at || new Date().toISOString(),
+          status: bid.status || "pending",
+        }));
         
         console.log("✅ Mapped offers (after filtering):", {
           total_bids: taskBids?.length || 0,
@@ -1059,13 +790,6 @@ export default function TaskDetailPage() {
 
         setOffers(newOffers);
         setBids(taskBids);
-
-        // Taskmaster with 0 offers – retry once after 2s (handles intermittent API failures)
-        const isPoster = task && task.poster && task.poster.id === userId;
-        if (isPoster && newOffers.length === 0 && !task?.assignedTasker?.id && bidsRetryKey === 0) {
-          setTimeout(() => setBidsRetryKey((k) => k + 1), 2000);
-        }
-
         // If any bid is accepted/assigned, force task status to in_progress for UI consistency
         try {
           const hasAccepted = taskBids.some((b) => {
@@ -1095,7 +819,7 @@ export default function TaskDetailPage() {
     }
 
     loadBids();
-  }, [id, task, userId, bidsRetryKey]);
+  }, [id, task, userId]);
 
   const handleSubmitOffer = async (e: FormEvent) => {
     e.preventDefault();
@@ -1356,64 +1080,21 @@ export default function TaskDetailPage() {
         headers["Authorization"] = `Bearer ${token}`;
         headers["X-Access-Token"] = token;
       }
-
-      const tryIds = [task.id, task.id.startsWith("task_") ? task.id.replace(/^task_/, "") : `task_${task.id}`].filter((x, i, arr) => arr.indexOf(x) === i);
-      let resp: any = null;
-      let lastErr: any = null;
-
-      for (const jobId of tryIds) {
-        try {
-          if (completeReviewAsTaskmaster) {
-            resp = await axiosInstance.put(`/mark-complete-by-taskmaster/${jobId}/`, reviewBody, { headers });
-          } else {
-            resp = await axiosInstance.put(`/mark-complete/${jobId}/`, reviewBody, { headers });
-          }
-          break;
-        } catch (e: any) {
-          lastErr = e;
-          if (e?.response?.status === 404 && jobId !== tryIds[tryIds.length - 1]) continue;
-          throw e;
-        }
+      if (completeReviewAsTaskmaster) {
+        await axiosInstance.put(`/mark-complete-by-taskmaster/${task.id}/`, reviewBody, { headers });
+      } else {
+        await axiosInstance.put(`/mark-complete/${task.id}/`, reviewBody, { headers });
       }
-      if (!resp && lastErr) throw lastErr;
-
-      const data = resp?.data?.data ?? resp?.data;
-      const jobStatus = data?.job_completion_status;
-      const taskerDone = data?.tasker_completed ?? (completeReviewAsTaskmaster ? task.tasker_completed : true);
-      const taskmasterDone = data?.taskmaster_completed ?? (completeReviewAsTaskmaster ? true : task.taskmaster_completed);
-
-      setTask((prev) =>
-        prev
-          ? {
-              ...prev,
-              job_completion_status: jobStatus === 1 ? 1 : prev.job_completion_status,
-              tasker_completed: taskerDone,
-              taskmaster_completed: taskmasterDone,
-              status: jobStatus === 1 ? "completed" : prev.status,
-            }
-          : prev
-      );
-
+      toast.success("Task marked complete and review submitted!");
       setCompleteReviewOpen(false);
+      const payload = {
+        job_completion_status: 1,
+        tasker_completed: true,
+        taskmaster_completed: true,
+      };
+      setTask((prev) => (prev ? { ...prev, ...payload } : prev));
       localStorage.removeItem(`task_${task.id}`);
       setTaskRefreshKey((k) => k + 1);
-
-      if (jobStatus === 1) {
-        toast.success("Task completed! Both parties have confirmed.");
-        try {
-          sessionStorage.setItem("refresh_tasks", "1");
-        } catch {}
-      } else if (completeReviewAsTaskmaster) {
-        toast.success("Review submitted. Task will show as completed once the tasker also marks it done.");
-        try {
-          sessionStorage.setItem("refresh_tasks", "1");
-        } catch {}
-      } else {
-        toast.success("Task marked complete and review submitted!");
-        try {
-          sessionStorage.setItem("refresh_tasks", "1");
-        } catch {}
-      }
     } catch (error: any) {
       const errMsg =
         error?.response?.data?.message ||
@@ -1592,9 +1273,8 @@ export default function TaskDetailPage() {
   };
 
   // Check if user accepted an offer but didn't complete payment
-  // Only show payment pending AFTER async API check completes to avoid flicker
   useEffect(() => {
-    if (!id || !userId || !task) return;
+    if (!id || !userId) return;
     
     const checkPendingPayment = async () => {
       try {
@@ -1602,85 +1282,81 @@ export default function TaskDetailPage() {
         const paymentPageVisited = sessionStorage.getItem("payment_page_visited");
         const pendingVerification = localStorage.getItem("pending_payment_verification");
         
-        if (!paymentData || !paymentPageVisited) {
-          setIsPaymentPending(false);
-          setPaymentCheckDone(true);
-          return;
-        }
-        
-        const data = JSON.parse(paymentData);
-        if (data.taskId !== id) {
-          setIsPaymentPending(false);
-          setPaymentCheckDone(true);
-          return;
-        }
-        
-        // Always fetch API first to avoid showing "pending" then hiding (flicker)
-        let paymentCompleted = false;
-        try {
-          const token = localStorage.getItem("token");
-          const res = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
-            method: "GET",
-            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            credentials: "omit",
-          });
-          if (res.ok) {
-            const json = await res.json();
-            const job = json?.data;
-            const assignedId = job?.assigned_tasker_id || job?.assigned_user_id || job?.assigned_to || job?.accepted_bidder_id || job?.worker_id;
-            const status = (job?.status || "").toLowerCase();
-            if (status === "in_progress" || assignedId || job?.payment_status === "success" || job?.payment_status === true) {
-              paymentCompleted = true;
+        if (paymentData && paymentPageVisited) {
+          const data = JSON.parse(paymentData);
+          if (data.taskId !== id) {
+            setIsPaymentPending(false);
+            return;
+          }
+          // For this task: get fresh status from API so we don't show "payment pending" after user just paid
+          let paymentCompleted = false;
+          if (task?.status === "in_progress" || task?.assignedTasker) {
+            paymentCompleted = true;
+          } else {
+            try {
+              const token = localStorage.getItem("token");
+              const res = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
+                method: "GET",
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                credentials: "omit",
+              });
+              if (res.ok) {
+                const json = await res.json();
+                const job = json?.data;
+                const assignedId = job?.assigned_tasker_id || job?.assigned_user_id || job?.assigned_to || job?.accepted_bidder_id || job?.worker_id;
+                const status = (job?.status || "").toLowerCase();
+                if (status === "in_progress" || assignedId || job?.payment_status === "success" || job?.payment_status === true) {
+                  paymentCompleted = true;
+                }
+              }
+            } catch (_) {
+              // Fall back to current task state
+              if (task?.status === "in_progress" || task?.assignedTasker) paymentCompleted = true;
             }
           }
-        } catch (_) {
-          if (task?.status === "in_progress" || task?.assignedTasker) paymentCompleted = true;
-        }
-        
-        if (paymentCompleted) {
-          sessionStorage.removeItem("paymentData");
-          sessionStorage.removeItem("payment_page_visited");
-          localStorage.removeItem("pending_payment_verification");
-          setIsPaymentPending(false);
-          paymentToastShownRef.current = false;
-        } else {
+          if (paymentCompleted) {
+            console.log("✅ Payment completed for task:", id, "- clearing flags");
+            sessionStorage.removeItem("paymentData");
+            sessionStorage.removeItem("payment_page_visited");
+            localStorage.removeItem("pending_payment_verification");
+            setIsPaymentPending(false);
+            return;
+          }
           const isTaskOpen = task?.status === "open" || task?.status === "Open" || !task?.status || task?.status === true;
           if (isTaskOpen) {
+            console.warn("⚠️ Payment pending for task:", id, "- task is still open");
             setIsPaymentPending(true);
-            if (!paymentToastShownRef.current) {
-              paymentToastShownRef.current = true;
-              toast.error("⚠️ Payment was not completed. Please complete payment to confirm the assignment.", {
-                duration: 6000,
-                action: {
-                  label: "Complete Payment",
-                  onClick: () => router.push("/payments"),
-                },
-              });
-            }
+            toast.error("⚠️ Payment was not completed. Please complete payment to confirm the assignment.", {
+              duration: 6000,
+              action: {
+                label: "Complete Payment",
+                onClick: () => router.push("/payments"),
+              },
+            });
           } else if (pendingVerification) {
+            console.warn("⚠️ Payment verification pending for task:", id);
             setIsPaymentPending(true);
-            if (!paymentToastShownRef.current) {
-              paymentToastShownRef.current = true;
-              toast.error("⚠️ Payment verification pending. Please wait for confirmation.", {
-                duration: 6000,
-              });
-            }
+            toast.error("⚠️ Payment verification pending. Please wait for confirmation.", {
+              duration: 6000,
+            });
           } else {
             setIsPaymentPending(false);
           }
+        } else {
+          setIsPaymentPending(false);
         }
-        setPaymentCheckDone(true);
       } catch (e) {
         console.error("Error checking pending payment:", e);
         setIsPaymentPending(false);
-        setPaymentCheckDone(true);
       }
     };
     
-    const delay = task ? 150 : 800;
-    const timeoutId = setTimeout(checkPendingPayment, delay);
+    const timeoutId = setTimeout(() => {
+      checkPendingPayment();
+    }, task ? 100 : 1000);
+    
     return () => clearTimeout(timeoutId);
-  }, [id, userId, task]);
+  }, [id, userId, router, task]);
 
   if (authLoading) {
     return (
@@ -1785,8 +1461,8 @@ export default function TaskDetailPage() {
         </div>
       </div>
 
-      <main className="container mx-auto max-w-6xl px-4 md:px-6 py-4 md:py-6 min-h-[60vh]">
-        <div className="grid gap-4 lg:grid-cols-3 lg:min-h-[400px]">
+      <main className="container mx-auto max-w-6xl px-4 md:px-6 py-4 md:py-6">
+        <div className="grid gap-4 lg:grid-cols-3">
           {/* Main Content - Left Column */}
           <div className="lg:col-span-2 space-y-4">
             <TaskInfo
@@ -1796,8 +1472,6 @@ export default function TaskDetailPage() {
               isTaskPoster={isTaskPoster}
               isEditing={isEditing}
               setIsEditing={setIsEditing}
-              isPaymentPending={isPaymentPending}
-              paymentCheckDone={paymentCheckDone}
             />
             {/* Poster can leave review only after final completion */}
             <ReviewSection
@@ -1844,7 +1518,7 @@ export default function TaskDetailPage() {
                     }}
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? "Updating..." : "Confirm work done"}
+                    {isSubmitting ? "Updating..." : "Confirm completion (Taskmaster)"}
                   </Button>
                 )}
 
@@ -1853,13 +1527,9 @@ export default function TaskDetailPage() {
                 task.job_completion_status !== 1 && (
                   <p className="text-xs text-muted-foreground">
                     {task.tasker_completed && !task.taskmaster_completed
-                      ? (isTaskPoster
-                          ? "The tasker says they're done. As the task owner, confirm above to close this task."
-                          : "You marked this complete. Waiting for the task owner to confirm.")
+                      ? "Tasker has marked the task as completed. Waiting for taskmaster confirmation."
                       : !task.tasker_completed && task.taskmaster_completed
-                      ? (isTaskPoster
-                          ? "You've confirmed. Waiting for the tasker to mark their work as done."
-                          : "The task owner has confirmed. Mark your work as done above to close this task.")
+                      ? "Taskmaster has confirmed completion. Waiting for tasker to mark as completed."
                       : null}
                   </p>
                 )}
@@ -1888,8 +1558,6 @@ export default function TaskDetailPage() {
               blockSubmitInitial={!isTaskPoster && (task.status === "in_progress" || !!task.assignedTasker)}
               isVerified={isVerified}
               verificationChecked={verificationChecked}
-              isPaymentPending={isPaymentPending}
-              paymentCheckDone={paymentCheckDone}
             />
           </div>
           

@@ -125,60 +125,22 @@ export function prefetchTask(taskId: string): void {
 
   PREFETCH_IN_FLIGHT.add(taskId);
   const token = localStorage.getItem("token");
-  const taskIdFormat = taskId.startsWith("task_") ? taskId : `task_${taskId}`;
 
-  // Fetch task and bids in parallel; try task_X first for both (backend job_id format)
-  const jobTryIds = [taskIdFormat, taskId].filter((x, i, arr) => arr.indexOf(x) === i);
-  const jobPromise = (async () => {
-    for (const tryId of jobTryIds) {
-      const r = await fetch(`https://api.jobpool.in/api/v1/get-job/${tryId}/`, {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        credentials: "omit",
-      });
-      if (r.ok) return r.json();
-    }
-    throw new Error("fetch failed");
-  })();
-
-  const apiBases = [
-    process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1",
-    "https://jobpoolbackend.onrender.com/api/v1",
-  ].filter((x, i, arr) => arr.indexOf(x) === i);
-  const bidsPromise = (async () => {
-    let lastData: any = null;
-    for (const base of apiBases) {
-      for (const tryId of [taskIdFormat, taskId, taskId.replace(/^task_/, "")]) {
-        try {
-          const r = await fetch(`${base.replace(/\/?$/, "")}/get-bids/${tryId}/`, {
-            method: "GET",
-            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            credentials: "omit",
-          });
-          const ct = r.headers.get("content-type") || "";
-          if (!ct.includes("json")) continue;
-          const data = await r.json();
-          if (data?.status_code === 200) return data;
-          if (data?.status_code === 404 && data?.message) lastData = { ...data, data: data?.data ?? [] };
-        } catch {}
-      }
-    }
-    return lastData;
-  })();
-
-  Promise.all([jobPromise, bidsPromise])
-    .then(([jobData, bidsData]) => {
-      if (jobData?.status_code === 200 && jobData?.data) {
-        const mapped = mapJobToTask(jobData.data);
-        const bidsRaw =
-          bidsData?.data?.bids ??
-          (Array.isArray(bidsData?.data) ? bidsData.data : null) ??
-          bidsData?.bids ??
-          [];
-        const bids = Array.isArray(bidsRaw) ? bidsRaw : [];
+  fetch(`https://api.jobpool.in/api/v1/get-job/${taskId}/`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    credentials: "omit",
+  })
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error("fetch failed"))))
+    .then((data) => {
+      if (data?.status_code === 200 && data?.data) {
+        const mapped = mapJobToTask(data.data);
         localStorage.setItem(
           cacheKey,
-          JSON.stringify({ task: mapped, bids, timestamp: Date.now() })
+          JSON.stringify({ task: mapped, timestamp: Date.now() })
         );
       }
     })
