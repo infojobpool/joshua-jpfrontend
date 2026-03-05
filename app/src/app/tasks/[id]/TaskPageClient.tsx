@@ -432,14 +432,16 @@ export default function TaskDetailPage() {
           controller.abort();
         }, 6000); // 6s timeout – faster feedback
 
-        // Backend may expect "task_139" or "139" – try both for get-job and get-bids
+        // Backend uses task_{sno} for job_id – try task_X first for get-bids (required format)
+        const taskIdFormat = id.startsWith("task_") ? id : `task_${id}`;
+        const numericPart = id.replace(/^task_/, "");
         const tryIds = [
+          taskIdFormat,
           id,
-          id.startsWith("task_") ? id.replace(/^task_/, "") : `task_${id}`,
-          id.replace(/^task_/, ""),
+          numericPart,
         ].filter((x, i, arr) => arr.indexOf(x) === i);
 
-        // Start get-bids in parallel – try multiple ID formats
+        // Start get-bids in parallel – try task_X first (backend uses task_{sno})
         const bidsPromise = (async () => {
           let lastData: any = null;
           for (const tryId of tryIds) {
@@ -450,9 +452,12 @@ export default function TaskDetailPage() {
                 credentials: "omit",
                 signal: bidsController.signal,
               });
-              const data = r.ok ? await r.json() : null;
+              const ct = r.headers.get("content-type") || "";
+              const data = ct.includes("json") ? await r.json() : null;
               lastData = data;
               if (data?.status_code === 200) return data;
+              // Backend returns 404 JSON {"status_code":404,"message":"No Bids found yet.","data":null} – valid response
+              if (data?.status_code === 404 && data?.message) return { ...data, data: data?.data ?? [] };
             } catch { /* try next id */ }
           }
           return lastData;
@@ -678,7 +683,7 @@ export default function TaskDetailPage() {
         let fetchedBids: any[] = [];
         try {
           const bidsData = await bidsPromise;
-          if (bidsData?.status_code === 200) {
+          if (bidsData?.status_code === 200 || bidsData?.status_code === 404) {
             const raw = bidsData.data?.bids ?? bidsData.data?.job_bids ?? bidsData.data?.data
               ?? (Array.isArray(bidsData.data) ? bidsData.data : null)
               ?? bidsData.bids ?? bidsData.data ?? [];
