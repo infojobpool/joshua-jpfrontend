@@ -143,17 +143,28 @@ interface APIResponse<T> {
   data: T;
 }
 
+// Parse date that might be dd/mm/yyyy (en-GB) - new Date() treats "06/12/2025" as mm/dd (US) = June 12
+function parseDateSafe(raw: any): Date | null {
+  if (!raw) return null;
+  const s = String(raw).trim();
+  const dmY = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s);
+  if (dmY) {
+    const [, d, m, y] = dmY;
+    const parsed = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+  const parsed = new Date(raw);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
 // Helper to normalize timestamp fields for display & sorting
 function formatTimestampValue(raw: any): {
   formatted: string;
   sortValue: number;
   iso: string;
 } {
-  if (!raw) {
-    return { formatted: "Unknown", sortValue: 0, iso: "" };
-  }
-  const date = new Date(raw);
-  if (isNaN(date.getTime())) {
+  const date = parseDateSafe(raw);
+  if (!date) {
     return { formatted: "Unknown", sortValue: 0, iso: "" };
   }
   return {
@@ -978,8 +989,9 @@ export default function Dashboard() {
                 ? new Date(job.job_due_date).toLocaleDateString("en-GB")
                 : "Unknown",
               postedAtSortValue: (() => {
-                const raw = job.created_at || job.timestamp || job.job_due_date;
-                try { return raw ? new Date(raw).getTime() : 0; } catch { return 0; }
+                const raw = job.created_at || job.timestamp || job.tstamp || job.job_tstamp || job.job_due_date;
+                const d = parseDateSafe(raw);
+                return d ? d.getTime() : 0;
               })(),
               offers: job.offers || 0, // Use original offers field as fallback
               posted_by: job.posted_by || "Unknown",
@@ -1464,22 +1476,13 @@ export default function Dashboard() {
               let postedAtFormatted = "Unknown";
               let postedAtSortValue = 0;
               let postedAtISO = "";
-              
-              try {
-                if (rawDate) {
-                  const dateObj = new Date(rawDate);
-                  if (!isNaN(dateObj.getTime())) {
-                    postedAtFormatted = dateObj.toLocaleDateString("en-GB");
-                    postedAtSortValue = dateObj.getTime();
-                    postedAtISO = dateObj.toISOString();
-                  } else if (typeof rawDate === "string") {
-                    postedAtFormatted = rawDate;
-                  }
-                }
-              } catch {
-                if (typeof rawDate === "string") {
-                  postedAtFormatted = rawDate;
-                }
+              const dateObj = parseDateSafe(rawDate);
+              if (dateObj) {
+                postedAtFormatted = dateObj.toLocaleDateString("en-GB");
+                postedAtSortValue = dateObj.getTime();
+                postedAtISO = dateObj.toISOString();
+              } else if (typeof rawDate === "string") {
+                postedAtFormatted = rawDate;
               }
 
               // Check if cancelled - comprehensive check (same as in rendering)
@@ -1611,22 +1614,13 @@ export default function Dashboard() {
                   let postedAtFormatted = "Unknown";
                   let postedAtSortValue = 0;
                   let postedAtISO = "";
-                  
-                  try {
-                    if (rawDate) {
-                      const dateObj = new Date(rawDate);
-                      if (!isNaN(dateObj.getTime())) {
-                        postedAtFormatted = dateObj.toLocaleDateString("en-GB");
-                        postedAtSortValue = dateObj.getTime();
-                        postedAtISO = dateObj.toISOString();
-                      } else if (typeof rawDate === "string") {
-                        postedAtFormatted = rawDate;
-                      }
-                    }
-                  } catch {
-                    if (typeof rawDate === "string") {
-                      postedAtFormatted = rawDate;
-                    }
+                  const dateObj = parseDateSafe(rawDate);
+                  if (dateObj) {
+                    postedAtFormatted = dateObj.toLocaleDateString("en-GB");
+                    postedAtSortValue = dateObj.getTime();
+                    postedAtISO = dateObj.toISOString();
+                  } else if (typeof rawDate === "string") {
+                    postedAtFormatted = rawDate;
                   }
 
                   // Check if cancelled - comprehensive check (same as above)

@@ -126,21 +126,38 @@ export function prefetchTask(taskId: string): void {
   PREFETCH_IN_FLIGHT.add(taskId);
   const token = localStorage.getItem("token");
 
-  fetch(`https://api.jobpool.in/api/v1/get-job/${taskId}/`, {
+  // Fetch task and bids in parallel for faster load
+  const jobPromise = fetch(`https://api.jobpool.in/api/v1/get-job/${taskId}/`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
     credentials: "omit",
-  })
-    .then((r) => (r.ok ? r.json() : Promise.reject(new Error("fetch failed"))))
-    .then((data) => {
-      if (data?.status_code === 200 && data?.data) {
-        const mapped = mapJobToTask(data.data);
+  }).then((r) => (r.ok ? r.json() : Promise.reject(new Error("fetch failed"))));
+
+  const bidsPromise = fetch(`https://api.jobpool.in/api/v1/get-bids/${taskId}/`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    credentials: "omit",
+  }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+
+  Promise.all([jobPromise, bidsPromise])
+    .then(([jobData, bidsData]) => {
+      if (jobData?.status_code === 200 && jobData?.data) {
+        const mapped = mapJobToTask(jobData.data);
+        const bidsRaw =
+          bidsData?.data?.bids ??
+          (Array.isArray(bidsData?.data) ? bidsData.data : null) ??
+          bidsData?.bids ??
+          [];
+        const bids = Array.isArray(bidsRaw) ? bidsRaw : [];
         localStorage.setItem(
           cacheKey,
-          JSON.stringify({ task: mapped, timestamp: Date.now() })
+          JSON.stringify({ task: mapped, bids, timestamp: Date.now() })
         );
       }
     })

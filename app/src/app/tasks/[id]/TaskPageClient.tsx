@@ -183,7 +183,20 @@ export default function TaskDetailPage() {
         joinedDate: null,
       };
       setUser(authUser);
-      localStorage.setItem("user", JSON.stringify(authUser));
+      // Preserve verification_status - store user lacks it; overwriting causes "Verification Required" to flicker
+      try {
+        const existing = localStorage.getItem("user");
+        const toSave = { ...authUser } as any;
+        if (existing) {
+          const prev = JSON.parse(existing);
+          if (prev.verification_status !== undefined && prev.verification_status !== null) {
+            toSave.verification_status = prev.verification_status;
+          }
+        }
+        localStorage.setItem("user", JSON.stringify(toSave));
+      } catch {
+        localStorage.setItem("user", JSON.stringify(authUser));
+      }
       console.log("Loaded user from store:", authUser);
     } else if (!storedUser) {
       console.log("No authenticated user, redirecting to signin");
