@@ -573,6 +573,7 @@ export default function TaskDetailPage() {
             joinedDate: job.joined_date ?? null,
           },
           offers: [],
+          _jobBids: ((job as any).bids ?? (job as any).offers ?? (job as any).job_bids) || undefined,
           assignedTasker: assignedId
             ? {
                 id: String(assignedId),
@@ -598,27 +599,29 @@ export default function TaskDetailPage() {
         }));
       } catch (error: any) {
         console.error("Error loading task data:", error);
-        if ((error as any)?.name === 'AbortError') {
-          console.log("Task loading was aborted due to timeout");
-          // Try to load from cache as fallback
-          try {
-            const cached = localStorage.getItem(cacheKey);
-            if (cached) {
-              const cachedData = JSON.parse(cached);
+        // On any error, try cache first so we don't show "Task not found" if we have stale data
+        try {
+          const cached = localStorage.getItem(cacheKey);
+          if (cached) {
+            const cachedData = JSON.parse(cached);
+            if (cachedData?.task) {
               setTask(cachedData.task);
-              console.log("Loaded task from cache after timeout");
-              return; // Don't set task to null if we loaded from cache
+              console.log("Loaded task from cache after API error");
+              if ((error as any)?.name !== "AbortError") {
+                toast.error(
+                  error?.response?.data?.detail || "Couldn't refresh – showing cached data"
+                );
+              }
+              return;
             }
-          } catch (cacheError) {
-            console.warn("Failed to load from cache:", cacheError);
           }
-          setTask(null); // Only set to null if no cache available
-        } else {
-          toast.error(
-            error.response?.data?.detail || "Failed to load task details"
-          );
-          setTask(null);
+        } catch (cacheError) {
+          console.warn("Failed to load from cache:", cacheError);
         }
+        toast.error(
+          error?.response?.data?.detail || "Failed to load task details"
+        );
+        setTask(null);
       } finally {
         setLoading(false);
       }
@@ -644,30 +647,43 @@ export default function TaskDetailPage() {
         
         let response;
         if (isTaskPoster) {
-          // Task poster: try to fetch all bids for this task using axiosInstance
+          // Task poster: fetch all bids – try api.jobpool.in first (primary backend with get-bids)
+          // jobpoolbackend.onrender.com returns 404 for get-bids, so we bypass axios baseURL
           console.log("Fetching all bids for task (user is poster)");
+          const token = localStorage.getItem("token");
+          const primaryUrl = `https://api.jobpool.in/api/v1/get-bids/${id}/`;
           try {
-            const axiosResponse = await axiosInstance.get(`/get-bids/${id}/`, {
-              signal: controller.signal
+            const fetchRes = await fetch(primaryUrl, {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              credentials: "omit",
+              signal: controller.signal,
             });
-            // Convert axios response to fetch-like response
-            response = {
-              ok: true,
-              json: () => Promise.resolve(axiosResponse.data)
-            } as any;
-          } catch (error: any) {
-            console.error("❌ Failed to fetch task bids endpoint /get-bids/:", {
-              error: error.message,
-              status: error.response?.status,
-              url: `/get-bids/${id}/`
-            });
-            // DON'T fallback to user bids for poster - that would show their own bids
-            // Instead, set empty bids and show error
-            console.warn("⚠️ Cannot fetch task bids - endpoint not available. Showing empty bids.");
-            setOffers([]);
-            setBids([]);
-            setBidsLoading(false);
-            return; // Exit early - don't process user bids
+            if (fetchRes.ok) {
+              response = { ok: true, json: () => fetchRes.json() } as any;
+            } else {
+              throw new Error(`HTTP ${fetchRes.status}`);
+            }
+          } catch (primaryErr: any) {
+            console.warn("api.jobpool.in get-bids failed, trying axios baseURL:", primaryErr?.message);
+            try {
+              const axiosResponse = await axiosInstance.get(`/get-bids/${id}/`, {
+                signal: controller.signal
+              });
+              response = {
+                ok: true,
+                json: () => Promise.resolve(axiosResponse.data)
+              } as any;
+            } catch (axiosErr: any) {
+              console.error("❌ Both get-bids attempts failed");
+              setOffers([]);
+              setBids([]);
+              setBidsLoading(false);
+              return;
+            }
           }
         } else {
           // Non-poster: try to fetch all bids for this task (amounts hidden in UI)
@@ -711,7 +727,7 @@ export default function TaskDetailPage() {
         let taskBids: Bid[] = [];
         if (isTaskPoster) {
           // For task poster, use all bids directly from the task bids endpoint
-          // Try multiple possible response structures from backend
+          // Try multiple possible response structures from backend (matches admin)
           const raw =
             data.data?.bids ??
             data.data?.data ??
@@ -725,11 +741,17 @@ export default function TaskDetailPage() {
             const maybeBids = (data.data as any)[id] ?? (data.data as any).bids ?? Object.values(data.data);
             taskBids = Array.isArray(maybeBids) ? maybeBids : [];
           }
+          // Fallback: use bids nested in get-job response if get-bids returned empty
+          if (taskBids.length === 0 && (task as any)?._jobBids && Array.isArray((task as any)._jobBids)) {
+            taskBids = (task as any)._jobBids;
+            console.log("Using bids from get-job response:", taskBids);
+          }
           console.log("Fetched all task bids for poster:", taskBids);
         } else {
-          // For non-poster, filter user's bids for this task
-          const allUserBids: Bid[] = Array.isArray(data.data) ? data.data : [];
-          taskBids = allUserBids.filter((bid) => bid.job_id === id);
+          // For non-poster, filter user's bids for this task (get-user-bids may return data.data.bids or data.data)
+          const raw = data.data?.bids ?? data.data;
+          const allUserBids: any[] = Array.isArray(raw) ? raw : [];
+          taskBids = allUserBids.filter((b) => String(b.job_id ?? b.task_id ?? "") === String(id));
           console.log("Filtered user's task bids:", taskBids);
         }
 
@@ -770,9 +792,9 @@ export default function TaskDetailPage() {
         // Map all task bids to offers
         // Filter out bids where the bidder is the same as the poster (users can't bid on their own tasks)
         const posterId = task?.poster?.id;
-        const validBids = (taskBidsToUse || []).filter((bid: Bid) => {
-          const bidderId = String(bid.bidder_id || "").trim();
-          const posterIdStr = String(posterId || "").trim();
+        const posterIdStr = String(posterId || "").trim();
+        const validBids = (taskBidsToUse || []).filter((bid: any) => {
+          const bidderId = String(bid.bidder_id ?? bid.user_id ?? bid.tasker_id ?? "").trim();
           
           // Log bid details for debugging
           console.log("🔍 Bid mapping:", {
@@ -784,8 +806,8 @@ export default function TaskDetailPage() {
             task_id: id
           });
           
-          // Exclude bids where bidder is the poster
-          if (bidderId && posterIdStr && bidderId === posterIdStr) {
+          // Exclude bids where bidder is the poster (compare as strings for type coercion)
+          if (bidderId && posterIdStr && String(bidderId) === String(posterIdStr)) {
             console.warn("⚠️ Excluding bid: bidder is the same as poster", {
               bidder_id: bidderId,
               bidder_name: bid.bidder_name,
@@ -796,22 +818,35 @@ export default function TaskDetailPage() {
           return true;
         });
         
-        const newOffers: Offer[] = validBids.map((bid: Bid, index: number) => ({
+        // Normalize bid fields (API may use user_id/tasker_id, task_id instead of bidder_id, job_id)
+        const norm = (b: any) => ({
+          bidder_id: b.bidder_id ?? b.user_id ?? b.tasker_id ?? "",
+          bidder_name: b.bidder_name ?? b.user_name ?? b.tasker_name ?? "Unknown",
+          bid_amount: Number(b.bid_amount ?? b.amount ?? 0),
+          bid_description: b.bid_description ?? b.message ?? "",
+          job_id: String(b.job_id ?? b.task_id ?? id),
+          created_at: b.created_at ?? b.createdAt ?? new Date().toISOString(),
+          status: b.status ?? "pending",
+        });
+
+        const newOffers: Offer[] = validBids.map((bid: any, index: number) => {
+          const b = norm(bid);
+          return {
           id: `bid${index + 1}`,
           tasker: {
-            id: bid.bidder_id,
-            name: bid.bidder_name || "Unknown",
+            id: String(b.bidder_id),
+            name: b.bidder_name || "Unknown",
             avatar: "/images/placeholder.svg",
             rating: null,
             taskCount: null,
             joinedDate: null,
           },
-          amount: bid.bid_amount,
-          message: bid.bid_description || "",
-          // Keep raw timestamp; format in component to avoid stale "Just now" labels
-          createdAt: bid.created_at || new Date().toISOString(),
-          status: bid.status || "pending",
-        }));
+          amount: b.bid_amount,
+          message: b.bid_description || "",
+          createdAt: b.created_at,
+          status: b.status,
+        };
+        });
         
         console.log("✅ Mapped offers (after filtering):", {
           total_bids: taskBids?.length || 0,
