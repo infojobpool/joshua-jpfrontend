@@ -628,55 +628,39 @@ export default function TaskDetailPage() {
         const isTaskPoster = task && task.poster && task.poster.id === userId;
         
         let response;
+        // Use api.jobpool.in for get-bids (backend fix deployed there; axiosInstance may point elsewhere)
+        const bidsUrl = `https://api.jobpool.in/api/v1/get-bids/${id}/`;
+        const fetchRes = await fetch(bidsUrl, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal
+        });
+        if (fetchRes.status === 404) {
+          // Backend returns 404 when no bids; treat as empty
+          setOffers([]);
+          setBids([]);
+          setBidsLoading(false);
+          return;
+        }
         if (isTaskPoster) {
-          // Task poster: try to fetch all bids for this task using axiosInstance
-          console.log("Fetching all bids for task (user is poster)");
-          try {
-            const axiosResponse = await axiosInstance.get(`/get-bids/${id}/`, {
-              signal: controller.signal
-            });
-            // Convert axios response to fetch-like response
-            response = {
-              ok: true,
-              json: () => Promise.resolve(axiosResponse.data)
-            } as any;
-          } catch (error: any) {
-            console.error("❌ Failed to fetch task bids endpoint /get-bids/:", {
-              error: error.message,
-              status: error.response?.status,
-              url: `/get-bids/${id}/`
-            });
-            // DON'T fallback to user bids for poster - that would show their own bids
-            // Instead, set empty bids and show error
-            console.warn("⚠️ Cannot fetch task bids - endpoint not available. Showing empty bids.");
-            setOffers([]);
-            setBids([]);
-            setBidsLoading(false);
-            return; // Exit early - don't process user bids
-          }
+          response = fetchRes;
         } else {
-          // Non-poster: try to fetch all bids for this task (amounts hidden in UI)
-          console.log("Fetching all task bids for non-poster (privacy enforced in UI)");
-          try {
-            const axiosResponse = await axiosInstance.get(`/get-bids/${id}/`, {
-              signal: controller.signal
-            });
-            // Convert axios response to fetch-like response
-            response = {
-              ok: true,
-              json: () => Promise.resolve(axiosResponse.data)
-            } as any;
-          } catch (error) {
-            console.warn("Failed to fetch all task bids, falling back to user's bids:", error);
+          if (!fetchRes.ok) {
             response = await fetch(`https://api.jobpool.in/api/v1/get-user-bids/${userId}/`, {
               method: 'GET',
               headers: {
-                'Authorization': `Bearer ${token}`,
+                Authorization: `Bearer ${token}`,
                 'Content-Type': 'application/json',
               },
               credentials: 'omit',
               signal: controller.signal
             });
+          } else {
+            response = fetchRes;
           }
         }
 
