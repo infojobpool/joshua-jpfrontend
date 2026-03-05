@@ -1812,7 +1812,7 @@ export default function TaskDetailPage() {
                     }}
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? "Updating..." : "Confirm completion (Taskmaster)"}
+                    {isSubmitting ? "Updating..." : "Confirm work done"}
                   </Button>
                 )}
 
@@ -1821,9 +1821,13 @@ export default function TaskDetailPage() {
                 task.job_completion_status !== 1 && (
                   <p className="text-xs text-muted-foreground">
                     {task.tasker_completed && !task.taskmaster_completed
-                      ? "Tasker has marked the task as completed. Waiting for taskmaster confirmation."
+                      ? (isTaskPoster
+                          ? "The tasker says they're done. As the task owner, confirm above to close this task."
+                          : "You marked this complete. Waiting for the task owner to confirm.")
                       : !task.tasker_completed && task.taskmaster_completed
-                      ? "Taskmaster has confirmed completion. Waiting for tasker to mark as completed."
+                      ? (isTaskPoster
+                          ? "You've confirmed. Waiting for the tasker to mark their work as done."
+                          : "The task owner has confirmed. Mark your work as done above to close this task.")
                       : null}
                   </p>
                 )}

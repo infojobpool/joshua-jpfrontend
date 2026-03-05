@@ -4097,12 +4097,12 @@ export default function Dashboard() {
                                   >
                                     <div className="flex items-center gap-1">
                                       <span className="text-base shrink-0">✅</span>
-                                      <span className="truncate">{completingTaskId === task.id ? "Updating..." : isMobile ? "Confirm (you)" : "Confirm completion (Taskmaster)"}</span>
+                                      <span className="truncate">{completingTaskId === task.id ? "Updating..." : "Confirm work done"}</span>
                                     </div>
                                   </Button>
                                 )}
                                 {(task.tasker_completed && !task.taskmaster_completed) && (
-                                  <span className="text-xs text-muted-foreground">Tasker marked done — confirm above to complete</span>
+                                  <span className="text-xs text-muted-foreground">The tasker says they're done. Confirm above to close this task.</span>
                                 )}
                               </div>
                             </>

@@ -58,11 +58,13 @@ export function CompletionReviewModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Mark as complete</DialogTitle>
+          <DialogTitle>
+            {isTaskmasterReviewingTasker ? "Confirm task completed" : "Mark task as complete"}
+          </DialogTitle>
           <DialogDescription>
             {isTaskmasterReviewingTasker
-              ? `Rate ${revieweeName} and add a short review.`
-              : `Rate the taskmaster and add a short review.`}
+              ? `As the task owner, you're confirming the work was done. Rate ${revieweeName} and add a short review.`
+              : `Rate the task owner and add a short review to mark this task complete.`}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -101,7 +103,7 @@ export function CompletionReviewModal({
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? "Submitting..." : "Submit"}
+            {isSubmitting ? "Submitting..." : isTaskmasterReviewingTasker ? "Confirm & submit review" : "Submit review"}
           </Button>
         </DialogFooter>
       </DialogContent>
