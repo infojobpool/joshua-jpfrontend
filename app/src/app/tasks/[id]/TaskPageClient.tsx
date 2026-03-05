@@ -421,48 +421,9 @@ export default function TaskDetailPage() {
     const loadTaskData = async () => {
       try {
         setLoading(true);
-        
-        // Use cache only if fresh (< 5 min) – stale cache can have wrong assignedTasker/offers state
-        const cacheKey = `task_${id}`;
-        const cached = localStorage.getItem(cacheKey);
-        if (cached) {
-          try {
-            const cachedData = JSON.parse(cached);
-            const cacheAge = Date.now() - (cachedData?.timestamp || 0);
-            if (cachedData?.task && cacheAge < 300000) {
-              console.log("Using fresh cached task data");
-              setTask(cachedData.task);
-              setLoading(false);
-              // Use prefetched bids if available (from hover prefetch)
-              if (Array.isArray(cachedData.bids) && cachedData.bids.length > 0) {
-                const posterIdStr = String(cachedData.task?.poster?.id || "").trim();
-                const validBids = cachedData.bids.filter((b: any) => {
-                  const bidderId = String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? "").trim();
-                  return !bidderId || !posterIdStr || bidderId !== posterIdStr;
-                });
-                const newOffers = validBids.map((b: any, i: number) => ({
-                  id: `bid${i + 1}`,
-                  tasker: {
-                    id: String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? ""),
-                    name: b.bidder_name ?? b.user_name ?? b.tasker_name ?? "Unknown",
-                    avatar: "/images/placeholder.svg",
-                    rating: null,
-                    taskCount: null,
-                    joinedDate: null,
-                  },
-                  amount: Number(b.bid_amount ?? b.amount ?? 0),
-                  message: b.bid_description ?? b.message ?? "",
-                  createdAt: b.created_at ?? b.createdAt ?? new Date().toISOString(),
-                  status: b.status ?? "pending",
-                }));
-                setOffers(newOffers);
-                setBids(cachedData.bids);
-              }
-            }
-          } catch {}
-        }
 
-        // Primary request – fetch get-job and get-bids in parallel for faster load
+        // Always fetch fresh task + bids – cache caused stale "Offers (0)" when bids existed
+        const cacheKey = `task_${id}`;
         const token = localStorage.getItem('token');
         const controller = new AbortController();
         const bidsController = new AbortController();
@@ -704,12 +665,14 @@ export default function TaskDetailPage() {
         setTask(mappedTask);
         console.log("Mapped Task:", mappedTask);
 
-        // Use bids from parallel fetch (already in flight)
+        // Use bids from parallel fetch (always fetch fresh – no cache on load)
+        let fetchedBids: any[] = [];
         try {
           const bidsData = await bidsPromise;
           if (bidsData?.status_code === 200) {
             const raw = bidsData.data?.bids ?? bidsData.data ?? (Array.isArray(bidsData.data) ? bidsData.data : []);
             const taskBids = Array.isArray(raw) ? raw : [];
+            fetchedBids = taskBids;
             const posterIdStr = String(job.user_ref_id || "").trim();
             const validBids = taskBids.filter((b: any) => {
               const bidderId = String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? "").trim();
@@ -748,9 +711,10 @@ export default function TaskDetailPage() {
           console.warn("Parallel bids fetch failed, loadBids will retry:", e);
         }
         
-        // Cache the task data
+        // Cache task + bids for dashboard date fallback & error recovery (not used on next load – we always fetch fresh)
         localStorage.setItem(cacheKey, JSON.stringify({
           task: mappedTask,
+          bids: fetchedBids,
           timestamp: Date.now()
         }));
       } catch (error: any) {
