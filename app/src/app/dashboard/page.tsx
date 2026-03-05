@@ -1187,9 +1187,9 @@ export default function Dashboard() {
               }
               // All other tasks remain "open" for bidding
               
-              // Posted date should come from creation timestamp, not due date
+              // Posted date: use creation timestamp only (not job_due_date – that's when task is due)
               const postedMeta = formatTimestampValue(
-                job.tstamp || job.timestamp || job.created_at || job.job_tstamp || job.job_due_date
+                job.created_at || job.tstamp || job.timestamp || job.job_tstamp || job.job_created_at || job.created_date
               );
 
               return {
@@ -3109,12 +3109,12 @@ export default function Dashboard() {
       if (availableSortBy === "newest") {
         const aVal = a.postedAtSortValue ?? 0;
         const bVal = b.postedAtSortValue ?? 0;
-        return bVal - aVal;
+        return bVal - aVal; // descending: larger (newer) timestamps first
       }
       if (availableSortBy === "oldest") {
         const aVal = a.postedAtSortValue ?? 0;
         const bVal = b.postedAtSortValue ?? 0;
-        return aVal - bVal;
+        return aVal - bVal; // ascending: smaller (older) timestamps first
       }
       if (availableSortBy === "highest") {
         const aBudget = typeof a.budget === "number" ? a.budget : 0;

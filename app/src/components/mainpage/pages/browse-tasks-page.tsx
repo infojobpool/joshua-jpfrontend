@@ -956,15 +956,21 @@ export function BrowseTasksPage() {
       return budget >= priceRange[0] && budget <= priceRange[1];
     });
 
+  const toSortTime = (t: Task) => {
+    const raw = t.postedAt || "";
+    if (!raw) return 0;
+    const d = new Date(raw);
+    return isNaN(d.getTime()) ? 0 : d.getTime();
+  };
   const sortedTasks = [...filteredTasks].sort((a, b) => {
     if (sortBy === "newest") {
-      return a.id < b.id ? 1 : -1;
+      return toSortTime(b) - toSortTime(a);
     } else if (sortBy === "oldest") {
-      return a.id > b.id ? 1 : -1;
+      return toSortTime(a) - toSortTime(b);
     } else if (sortBy === "price-high") {
-      return a.budget < b.budget ? 1 : -1;
+      return (b.budget ?? 0) - (a.budget ?? 0);
     } else if (sortBy === "price-low") {
-      return a.budget > b.budget ? 1 : -1;
+      return (a.budget ?? 0) - (b.budget ?? 0);
     }
     return 0;
   });
