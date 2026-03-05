@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Plus, User, MessageCircle } from "lucide-react";
+import { Home, Search, User, MessageCircle } from "lucide-react";
 import { useIsMobile } from "./MobileWrapper";
 
 export function MobileBottomNav() {
@@ -15,7 +15,6 @@ export function MobileBottomNav() {
   const navItems = [
     { href: "/", icon: Home, label: "Home" },
     { href: "/dashboard", icon: Search, label: "Browse" },
-    { href: "/post-task", icon: Plus, label: "Post" },
     { href: "/messages", icon: MessageCircle, label: "Messages" },
     { href: "/profile", icon: User, label: "Profile" },
   ];

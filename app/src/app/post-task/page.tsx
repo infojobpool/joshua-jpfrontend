@@ -263,6 +263,7 @@ export default function PostTaskPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     if (
       !formData.title ||

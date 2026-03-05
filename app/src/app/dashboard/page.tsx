@@ -181,6 +181,17 @@ function formatTimestampValue(raw: any): {
   };
 }
 
+// Deduplicate tasks by id (API may return same job twice)
+function dedupeTasksById<T extends { id: string }>(tasks: T[]): T[] {
+  const seen = new Set<string>();
+  return tasks.filter((t) => {
+    const id = String(t.id);
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
 // Get displayed postedAt for a task card - use cache if list has no date (get-job has full data)
 function getCardPostedAt(task: { id: string; postedAt: string }): string {
   if (task.postedAt && task.postedAt !== "—" && task.postedAt !== "Unknown") return task.postedAt;
@@ -576,7 +587,7 @@ export default function Dashboard() {
     } catch {}
     try {
       const p = sessionStorage.getItem("postedTasks");
-      if (p) setPostedTasks(JSON.parse(p));
+      if (p) setPostedTasks(dedupeTasksById(JSON.parse(p) as Task[]));
     } catch {}
     try {
       const r = sessionStorage.getItem("requestedTasks");
@@ -822,7 +833,7 @@ export default function Dashboard() {
           const cacheAge = Date.now() - cachedData.timestamp;
           if (cacheAge < 30000) { // 30 second cache
             console.log("Using cached user tasks");
-            setPostedTasks(cachedData.tasks);
+            setPostedTasks(dedupeTasksById(cachedData.tasks));
             return;
           }
         }
@@ -1036,12 +1047,13 @@ export default function Dashboard() {
             };
           });
 
-          setPostedTasks(tasks);
-          try { sessionStorage.setItem("postedTasks", JSON.stringify(tasks)); } catch {}
+          const deduped = dedupeTasksById(tasks);
+          setPostedTasks(deduped);
+          try { sessionStorage.setItem("postedTasks", JSON.stringify(deduped)); } catch {}
           
           // Cache the user tasks
           localStorage.setItem(cacheKey, JSON.stringify({
-            tasks: tasks,
+            tasks: deduped,
             timestamp: Date.now()
           }));
         } else {
@@ -1056,7 +1068,7 @@ export default function Dashboard() {
           try {
             const cachedTasks = localStorage.getItem('postedTasks');
             if (cachedTasks) {
-              const tasks = JSON.parse(cachedTasks);
+              const tasks = dedupeTasksById(JSON.parse(cachedTasks) as Task[]);
               setPostedTasks(tasks);
               console.log("Loaded user tasks from cache after timeout");
             }
@@ -2996,8 +3008,9 @@ export default function Dashboard() {
                   cancelledTaskIds: tasks.filter(t => t.status === "canceled" || t.cancel_status).map(t => t.id)
                 });
                 
-                setPostedTasks(tasks);
-                try { sessionStorage.setItem("postedTasks", JSON.stringify(tasks)); } catch {}
+                const dedupedRefresh = dedupeTasksById(tasks);
+                setPostedTasks(dedupedRefresh);
+                try { sessionStorage.setItem("postedTasks", JSON.stringify(dedupedRefresh)); } catch {}
                 localStorage.setItem(cacheKey, JSON.stringify({
                   tasks: tasks,
                   timestamp: Date.now()
@@ -4963,14 +4976,6 @@ export default function Dashboard() {
           isTaskmasterReviewingTasker={completeReviewAsTaskmaster}
         />
 
-        {/* Floating Post a Task (mobile only) */}
-        <div className="md:hidden fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-40">
-          <Link href="/post-task">
-            <Button className="rounded-full h-12 w-12 p-0 shadow-lg bg-[#2563eb] hover:bg-[#1d4ed8] active:scale-95 transition-all duration-200">
-              <span className="text-2xl leading-none">+</span>
-            </Button>
-          </Link>
-        </div>
         </PullToRefresh>
       </main>
     </div>
