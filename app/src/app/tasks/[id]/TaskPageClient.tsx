@@ -432,22 +432,31 @@ export default function TaskDetailPage() {
           controller.abort();
         }, 6000); // 6s timeout – faster feedback
 
-        // Start get-bids in parallel (taskmaster endpoint – works for poster; non-poster will refetch in loadBids)
-        const bidsPromise = fetch(`https://api.jobpool.in/api/v1/get-bids/${id}/`, {
-          method: "GET",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          credentials: "omit",
-          signal: bidsController.signal,
-        })
-          .then((r) => (r.ok ? r.json() : null))
-          .catch(() => null);
-
-        // Backend may expect "task_139" or "139" – try both if first attempt fails
+        // Backend may expect "task_139" or "139" – try both for get-job and get-bids
         const tryIds = [
           id,
           id.startsWith("task_") ? id.replace(/^task_/, "") : `task_${id}`,
           id.replace(/^task_/, ""),
         ].filter((x, i, arr) => arr.indexOf(x) === i);
+
+        // Start get-bids in parallel – try multiple ID formats
+        const bidsPromise = (async () => {
+          let lastData: any = null;
+          for (const tryId of tryIds) {
+            try {
+              const r = await fetch(`https://api.jobpool.in/api/v1/get-bids/${tryId}/`, {
+                method: "GET",
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                credentials: "omit",
+                signal: bidsController.signal,
+              });
+              const data = r.ok ? await r.json() : null;
+              lastData = data;
+              if (data?.status_code === 200) return data;
+            } catch { /* try next id */ }
+          }
+          return lastData;
+        })();
 
         let data: ApiJobResponse | undefined;
         let lastErr: any;
@@ -670,8 +679,10 @@ export default function TaskDetailPage() {
         try {
           const bidsData = await bidsPromise;
           if (bidsData?.status_code === 200) {
-            const raw = bidsData.data?.bids ?? bidsData.data ?? (Array.isArray(bidsData.data) ? bidsData.data : []);
-            const taskBids = Array.isArray(raw) ? raw : [];
+            const raw = bidsData.data?.bids ?? bidsData.data?.job_bids ?? bidsData.data?.data
+              ?? (Array.isArray(bidsData.data) ? bidsData.data : null)
+              ?? bidsData.bids ?? bidsData.data ?? [];
+            const taskBids = Array.isArray(raw) ? raw : (raw && typeof raw === "object" && !Array.isArray(raw) ? Object.values(raw) : []);
             fetchedBids = taskBids;
             const posterIdStr = String(job.user_ref_id || "").trim();
             const validBids = taskBids.filter((b: any) => {
@@ -720,7 +731,7 @@ export default function TaskDetailPage() {
       } catch (error: any) {
         console.error("Error loading task data:", error);
         try {
-          const cached = localStorage.getItem(cacheKey);
+          const cached = localStorage.getItem(`task_${id}`);
           if (cached) {
             const cachedData = JSON.parse(cached);
             if (cachedData?.task) {
@@ -781,24 +792,22 @@ export default function TaskDetailPage() {
           // jobpoolbackend.onrender.com returns 404 for get-bids, so we bypass axios baseURL
           console.log("Fetching all bids for task (user is poster)");
           const token = localStorage.getItem("token");
-          const primaryUrl = `https://api.jobpool.in/api/v1/get-bids/${id}/`;
-          try {
-            const fetchRes = await fetch(primaryUrl, {
-              method: "GET",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-              credentials: "omit",
-              signal: controller.signal,
-            });
-            if (fetchRes.ok) {
-              response = { ok: true, json: () => fetchRes.json() } as any;
-            } else {
-              throw new Error(`HTTP ${fetchRes.status}`);
-            }
-          } catch (primaryErr: any) {
-            console.warn("api.jobpool.in get-bids failed, trying axios baseURL:", primaryErr?.message);
+          const bidTryIds = [id, id.startsWith("task_") ? id.replace(/^task_/, "") : `task_${id}`];
+          for (const tryId of bidTryIds) {
+            try {
+              const fetchRes = await fetch(`https://api.jobpool.in/api/v1/get-bids/${tryId}/`, {
+                method: "GET",
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                credentials: "omit",
+                signal: controller.signal,
+              });
+              if (fetchRes.ok) {
+                response = { ok: true, json: () => fetchRes.json() } as any;
+                break;
+              }
+            } catch { /* try next id */ }
+          }
+          if (!response?.ok) {
             try {
               const axiosResponse = await axiosInstance.get(`/get-bids/${id}/`, {
                 signal: controller.signal
@@ -856,20 +865,31 @@ export default function TaskDetailPage() {
 
         let taskBids: Bid[] = [];
         if (isTaskPoster) {
-          // For task poster, use all bids directly from the task bids endpoint
-          // Try multiple possible response structures from backend (matches admin)
+          // For task poster, use all bids – try every possible response structure from backend
           const raw =
             data.data?.bids ??
+            data.data?.job_bids ??
             data.data?.data ??
             (Array.isArray(data.data) ? data.data : null) ??
             data.bids ??
             data.data ??
             [];
-          taskBids = Array.isArray(raw) ? raw : [];
+          taskBids = Array.isArray(raw) ? raw : (raw && typeof raw === "object" ? Object.values(raw) : []);
           // If data.data is object with job_id key, it might be { [job_id]: bids }
           if (taskBids.length === 0 && data.data && typeof data.data === "object" && !Array.isArray(data.data)) {
-            const maybeBids = (data.data as any)[id] ?? (data.data as any).bids ?? Object.values(data.data);
-            taskBids = Array.isArray(maybeBids) ? maybeBids : [];
+            const tryIdsBids = [id, `task_${id}`, id.replace(/^task_/, "")];
+            for (const tid of tryIdsBids) {
+              const maybeBids = (data.data as any)[tid] ?? (data.data as any).bids ?? (data.data as any).job_bids;
+              if (Array.isArray(maybeBids) && maybeBids.length > 0) {
+                taskBids = maybeBids;
+                break;
+              }
+            }
+            if (taskBids.length === 0) {
+            const vals = Object.values((data.data as Record<string, unknown>) || {});
+            const arr = vals.find((v): v is unknown[] => Array.isArray(v) && v.length > 0);
+            if (arr) taskBids = arr as Bid[];
+          }
           }
           // Fallback: use bids nested in get-job response if get-bids returned empty
           if (taskBids.length === 0 && (task as any)?._jobBids && Array.isArray((task as any)._jobBids)) {
