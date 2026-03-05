@@ -679,15 +679,21 @@ export default function TaskDetailPage() {
         setTask(mappedTask);
         console.log("Mapped Task:", mappedTask);
 
-        // Use bids from parallel fetch (always fetch fresh – no cache on load)
+        // Use bids from parallel fetch; fallback to get-job embedded bids when get-bids is empty
         let fetchedBids: any[] = [];
+        const jobBids = ((job as any).bids ?? (job as any).job_bids ?? (job as any).offers) || [];
         try {
           const bidsData = await bidsPromise;
           if (bidsData?.status_code === 200 || bidsData?.status_code === 404) {
             const raw = bidsData.data?.bids ?? bidsData.data?.job_bids ?? bidsData.data?.data
               ?? (Array.isArray(bidsData.data) ? bidsData.data : null)
               ?? bidsData.bids ?? bidsData.data ?? [];
-            const taskBids = Array.isArray(raw) ? raw : (raw && typeof raw === "object" && !Array.isArray(raw) ? Object.values(raw) : []);
+            let taskBids = Array.isArray(raw) ? raw : (raw && typeof raw === "object" && !Array.isArray(raw) ? Object.values(raw) : []);
+            // Fallback: use bids from get-job when get-bids returned empty but job has bids
+            if (taskBids.length === 0 && Array.isArray(jobBids) && jobBids.length > 0) {
+              taskBids = jobBids;
+              console.log("✅ Using bids from get-job response (get-bids was empty):", taskBids.length);
+            }
             fetchedBids = taskBids;
             const posterIdStr = String(job.user_ref_id || "").trim();
             const validBids = taskBids.filter((b: any) => {
@@ -793,11 +799,14 @@ export default function TaskDetailPage() {
         
         let response;
         if (isTaskPoster) {
-          // Task poster: fetch all bids – try api.jobpool.in first (primary backend with get-bids)
-          // jobpoolbackend.onrender.com returns 404 for get-bids, so we bypass axios baseURL
+          // Task poster: try task_X first (backend expects job_id format); use task.id from get-job when set
           console.log("Fetching all bids for task (user is poster)");
           const token = localStorage.getItem("token");
-          const bidTryIds = [id, id.startsWith("task_") ? id.replace(/^task_/, "") : `task_${id}`];
+          const primaryId = task?.id || id;
+          const taskIdFormat = primaryId.startsWith("task_") ? primaryId : `task_${primaryId}`;
+          const bidTryIds = [taskIdFormat, primaryId, id, primaryId.replace(/^task_/, "")].filter(
+            (x, i, arr) => arr.indexOf(x) === i
+          );
           for (const tryId of bidTryIds) {
             try {
               const fetchRes = await fetch(`https://api.jobpool.in/api/v1/get-bids/${tryId}/`, {
@@ -806,6 +815,18 @@ export default function TaskDetailPage() {
                 credentials: "omit",
                 signal: controller.signal,
               });
+              const ct = fetchRes.headers.get("content-type") || "";
+              if (ct.includes("json")) {
+                const data = await fetchRes.json();
+                if (data?.status_code === 200) {
+                  response = { ok: true, json: () => Promise.resolve(data) } as any;
+                  break;
+                }
+                if (data?.status_code === 404 && data?.message) {
+                  response = { ok: true, json: () => Promise.resolve({ ...data, data: data?.data ?? [] }) } as any;
+                  break;
+                }
+              }
               if (fetchRes.ok) {
                 response = { ok: true, json: () => fetchRes.json() } as any;
                 break;
@@ -813,15 +834,25 @@ export default function TaskDetailPage() {
             } catch { /* try next id */ }
           }
           if (!response?.ok) {
-            try {
-              const axiosResponse = await axiosInstance.get(`/get-bids/${id}/`, {
-                signal: controller.signal
-              });
-              response = {
-                ok: true,
-                json: () => Promise.resolve(axiosResponse.data)
-              } as any;
-            } catch (axiosErr: any) {
+            for (const tryId of bidTryIds) {
+              try {
+                const axiosResponse = await axiosInstance.get(`/get-bids/${tryId}/`, {
+                  signal: controller.signal
+                });
+                if (axiosResponse.data?.status_code === 200 || axiosResponse.data?.status_code === 404) {
+                  response = {
+                    ok: true,
+                    json: () => Promise.resolve(
+                      axiosResponse.data?.status_code === 404 && axiosResponse.data?.message
+                        ? { ...axiosResponse.data, data: axiosResponse.data?.data ?? [] }
+                        : axiosResponse.data
+                    )
+                  } as any;
+                  break;
+                }
+              } catch { /* try next id */ }
+            }
+            if (!response?.ok) {
               console.error("❌ Both get-bids attempts failed");
               setOffers([]);
               setBids([]);

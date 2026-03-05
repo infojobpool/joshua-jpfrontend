@@ -125,25 +125,39 @@ export function prefetchTask(taskId: string): void {
 
   PREFETCH_IN_FLIGHT.add(taskId);
   const token = localStorage.getItem("token");
+  const taskIdFormat = taskId.startsWith("task_") ? taskId : `task_${taskId}`;
 
-  // Fetch task and bids in parallel for faster load
-  const jobPromise = fetch(`https://api.jobpool.in/api/v1/get-job/${taskId}/`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    credentials: "omit",
-  }).then((r) => (r.ok ? r.json() : Promise.reject(new Error("fetch failed"))));
+  // Fetch task and bids in parallel; try task_X first for both (backend job_id format)
+  const jobTryIds = [taskIdFormat, taskId].filter((x, i, arr) => arr.indexOf(x) === i);
+  const jobPromise = (async () => {
+    for (const tryId of jobTryIds) {
+      const r = await fetch(`https://api.jobpool.in/api/v1/get-job/${tryId}/`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        credentials: "omit",
+      });
+      if (r.ok) return r.json();
+    }
+    throw new Error("fetch failed");
+  })();
 
-  const bidsPromise = fetch(`https://api.jobpool.in/api/v1/get-bids/${taskId}/`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    credentials: "omit",
-  }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const bidsPromise = (async () => {
+    for (const tryId of [taskIdFormat, taskId, taskId.replace(/^task_/, "")]) {
+      try {
+        const r = await fetch(`https://api.jobpool.in/api/v1/get-bids/${tryId}/`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          credentials: "omit",
+        });
+        const ct = r.headers.get("content-type") || "";
+        if (!ct.includes("json")) continue;
+        const data = await r.json();
+        if (data?.status_code === 200 || (data?.status_code === 404 && data?.message))
+          return data?.status_code === 404 ? { ...data, data: data?.data ?? [] } : data;
+      } catch {}
+    }
+    return null;
+  })();
 
   Promise.all([jobPromise, bidsPromise])
     .then(([jobData, bidsData]) => {
