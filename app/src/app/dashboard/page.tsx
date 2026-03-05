@@ -506,11 +506,35 @@ export default function Dashboard() {
 
   useEffect(() => {
     const onVisibilityChange = () => {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") refreshActiveTab();
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        refreshActiveTab();
+        try {
+          if (sessionStorage.getItem("refresh_tasks") === "1") {
+            sessionStorage.removeItem("refresh_tasks");
+            setRefetchPostedTrigger((t) => t + 1);
+            setRefetchAssignedTrigger((t) => t + 1);
+            setRefetchCompletedTrigger((t) => t + 1);
+            try { localStorage.removeItem(`user_tasks_${userId || effectiveUserId}`); } catch {}
+          }
+        } catch {}
+      }
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, [activeTab, userId, effectiveUserId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (sessionStorage.getItem("refresh_tasks") === "1") {
+        sessionStorage.removeItem("refresh_tasks");
+        setRefetchPostedTrigger((t) => t + 1);
+        setRefetchAssignedTrigger((t) => t + 1);
+        setRefetchCompletedTrigger((t) => t + 1);
+        try { localStorage.removeItem(`user_tasks_${userId || effectiveUserId}`); } catch {}
+      }
+    } catch {}
+  }, [userId, effectiveUserId]);
 
   useEffect(() => {
     // Hydrate from session to reduce flicker on tab switches

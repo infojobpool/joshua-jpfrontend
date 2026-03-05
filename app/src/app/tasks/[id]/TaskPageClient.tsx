@@ -89,13 +89,15 @@ export default function TaskDetailPage() {
   const [paymentCheckDone, setPaymentCheckDone] = useState<boolean>(false);
   const paymentToastShownRef = useRef<boolean>(false);
   const [taskRefreshKey, setTaskRefreshKey] = useState<number>(0);
+  const loadRetryCountRef = useRef<number>(0);
   const [bidsRetryKey, setBidsRetryKey] = useState<number>(0);
   const prefetchedBidsRef = useRef<{ id: string; data: any } | null>(null);
   const [completeReviewOpen, setCompleteReviewOpen] = useState(false);
 
-  // Reset bids retry and payment check when switching to a different task
+  // Reset retries and payment check when switching to a different task
   useEffect(() => {
     setBidsRetryKey(0);
+    loadRetryCountRef.current = 0;
     setPaymentCheckDone(false);
     paymentToastShownRef.current = false;
   }, [id]);
@@ -740,14 +742,12 @@ export default function TaskDetailPage() {
         }));
       } catch (error: any) {
         console.error("Error loading task data:", error);
-        // On any error, try cache first so we don't show "Task not found" if we have stale data
         try {
           const cached = localStorage.getItem(cacheKey);
           if (cached) {
             const cachedData = JSON.parse(cached);
             if (cachedData?.task) {
               setTask(cachedData.task);
-              console.log("Loaded task from cache after API error");
               if ((error as any)?.name !== "AbortError") {
                 toast.error(
                   error?.response?.data?.detail || "Couldn't refresh – showing cached data"
@@ -758,6 +758,13 @@ export default function TaskDetailPage() {
           }
         } catch (cacheError) {
           console.warn("Failed to load from cache:", cacheError);
+        }
+        const isRetryable = (error as any)?.name === "AbortError" || (error?.response?.status >= 500) || (error?.code === "ERR_NETWORK" || error?.message?.includes("Network"));
+        if (isRetryable && loadRetryCountRef.current < 1) {
+          loadRetryCountRef.current += 1;
+          setTimeout(() => setTaskRefreshKey((k) => k + 1), 2000);
+          toast.error("Connection issue. Retrying in 2 seconds…");
+          return;
         }
         toast.error(
           error?.response?.data?.detail || "Failed to load task details"
@@ -1304,21 +1311,64 @@ export default function TaskDetailPage() {
         headers["Authorization"] = `Bearer ${token}`;
         headers["X-Access-Token"] = token;
       }
-      if (completeReviewAsTaskmaster) {
-        await axiosInstance.put(`/mark-complete-by-taskmaster/${task.id}/`, reviewBody, { headers });
-      } else {
-        await axiosInstance.put(`/mark-complete/${task.id}/`, reviewBody, { headers });
+
+      const tryIds = [task.id, task.id.startsWith("task_") ? task.id.replace(/^task_/, "") : `task_${task.id}`].filter((x, i, arr) => arr.indexOf(x) === i);
+      let resp: any = null;
+      let lastErr: any = null;
+
+      for (const jobId of tryIds) {
+        try {
+          if (completeReviewAsTaskmaster) {
+            resp = await axiosInstance.put(`/mark-complete-by-taskmaster/${jobId}/`, reviewBody, { headers });
+          } else {
+            resp = await axiosInstance.put(`/mark-complete/${jobId}/`, reviewBody, { headers });
+          }
+          break;
+        } catch (e: any) {
+          lastErr = e;
+          if (e?.response?.status === 404 && jobId !== tryIds[tryIds.length - 1]) continue;
+          throw e;
+        }
       }
-      toast.success("Task marked complete and review submitted!");
+      if (!resp && lastErr) throw lastErr;
+
+      const data = resp?.data?.data ?? resp?.data;
+      const jobStatus = data?.job_completion_status;
+      const taskerDone = data?.tasker_completed ?? (completeReviewAsTaskmaster ? task.tasker_completed : true);
+      const taskmasterDone = data?.taskmaster_completed ?? (completeReviewAsTaskmaster ? true : task.taskmaster_completed);
+
+      setTask((prev) =>
+        prev
+          ? {
+              ...prev,
+              job_completion_status: jobStatus === 1 ? 1 : prev.job_completion_status,
+              tasker_completed: taskerDone,
+              taskmaster_completed: taskmasterDone,
+              status: jobStatus === 1 ? "completed" : prev.status,
+            }
+          : prev
+      );
+
       setCompleteReviewOpen(false);
-      const payload = {
-        job_completion_status: 1,
-        tasker_completed: true,
-        taskmaster_completed: true,
-      };
-      setTask((prev) => (prev ? { ...prev, ...payload } : prev));
       localStorage.removeItem(`task_${task.id}`);
       setTaskRefreshKey((k) => k + 1);
+
+      if (jobStatus === 1) {
+        toast.success("Task completed! Both parties have confirmed.");
+        try {
+          sessionStorage.setItem("refresh_tasks", "1");
+        } catch {}
+      } else if (completeReviewAsTaskmaster) {
+        toast.success("Review submitted. Task will show as completed once the tasker also marks it done.");
+        try {
+          sessionStorage.setItem("refresh_tasks", "1");
+        } catch {}
+      } else {
+        toast.success("Task marked complete and review submitted!");
+        try {
+          sessionStorage.setItem("refresh_tasks", "1");
+        } catch {}
+      }
     } catch (error: any) {
       const errMsg =
         error?.response?.data?.message ||
