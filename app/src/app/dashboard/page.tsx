@@ -978,6 +978,9 @@ export default function Dashboard() {
               });
             }
 
+            // Use creation date for "posted" (prefer created_at; fallback to due date)
+            const postedRaw = job.created_at || job.job_created_at || job.timestamp || job.tstamp || job.job_tstamp || job.updated_at || job.job_due_date;
+            const postedMeta = formatTimestampValue(postedRaw);
             return {
               id: job.job_id.toString(),
               title: job.job_title || "Untitled",
@@ -985,14 +988,9 @@ export default function Dashboard() {
               budget: Number(job.job_budget) || 0,
               location: job.job_location || "Unknown",
               status: jobStatus,
-              postedAt: job.job_due_date
-                ? new Date(job.job_due_date).toLocaleDateString("en-GB")
-                : "Unknown",
-              postedAtSortValue: (() => {
-                const raw = job.created_at || job.timestamp || job.tstamp || job.job_tstamp || job.job_due_date;
-                const d = parseDateSafe(raw);
-                return d ? d.getTime() : 0;
-              })(),
+              postedAt: postedMeta.formatted,
+              postedAtSortValue: postedMeta.sortValue,
+              postedAtISO: postedMeta.iso,
               offers: job.offers || 0, // Use original offers field as fallback
               posted_by: job.posted_by || "Unknown",
               category: job.job_category || "general",
@@ -2011,8 +2009,9 @@ export default function Dashboard() {
                   }
                 })(),
                 postedAtSortValue: (() => {
-                  const raw = job.updated_at || job.completed_at || job.completed_date || job.created_at || job.timestamp || job.job_due_date;
-                  try { return raw ? new Date(raw).getTime() : 0; } catch { return 0; }
+                  const raw = job.created_at || job.updated_at || job.completed_at || job.completed_date || job.timestamp || job.job_tstamp || job.tstamp || job.job_due_date;
+                  const d = parseDateSafe(raw);
+                  return d ? d.getTime() : 0;
                 })(),
                 dueDate: job.job_due_date || job.dueDate
                   ? new Date(job.job_due_date || job.dueDate).toLocaleDateString("en-GB")
@@ -2935,6 +2934,8 @@ export default function Dashboard() {
                     jobStatus = "in_progress";
                   }
                   
+                  const postedRaw = job.created_at || job.job_created_at || job.timestamp || job.tstamp || job.job_tstamp || job.updated_at || job.job_due_date;
+                  const postedMeta = formatTimestampValue(postedRaw);
                   return {
                     id: job.job_id.toString(),
                     title: job.job_title || "Untitled",
@@ -2942,9 +2943,9 @@ export default function Dashboard() {
                     budget: Number(job.job_budget) || 0,
                     location: job.job_location || "Unknown",
                     status: jobStatus,
-                    postedAt: job.job_due_date
-                      ? new Date(job.job_due_date).toLocaleDateString("en-GB")
-                      : "Unknown",
+                    postedAt: postedMeta.formatted,
+                    postedAtSortValue: postedMeta.sortValue,
+                    postedAtISO: postedMeta.iso,
                     offers: job.offers || 0,
                     posted_by: job.posted_by || "Unknown",
                     category: job.job_category || "general",
@@ -3143,10 +3144,16 @@ export default function Dashboard() {
       })
       .filter((t) => {
         if (!dateRange?.from && !dateRange?.to) return true;
-        const d = t.postedAt ? new Date(t.postedAt.split("/").reverse().join("-")) : undefined;
-        if (!d || isNaN(d as unknown as number)) return true;
-        if (dateRange?.from && d < new Date(dateRange.from.toDateString())) return false;
-        if (dateRange?.to && d > new Date(dateRange.to.toDateString())) return false;
+        const sortVal = t.postedAtSortValue ?? (t.postedAtISO ? new Date(t.postedAtISO).getTime() : 0);
+        if (!sortVal) return true;
+        if (dateRange?.from) {
+          const fromStart = new Date(dateRange.from.getFullYear(), dateRange.from.getMonth(), dateRange.from.getDate()).getTime();
+          if (sortVal < fromStart) return false;
+        }
+        if (dateRange?.to) {
+          const toEnd = new Date(dateRange.to.getFullYear(), dateRange.to.getMonth(), dateRange.to.getDate(), 23, 59, 59, 999).getTime();
+          if (sortVal > toEnd) return false;
+        }
         return true;
       });
     const copy = [...filtered];

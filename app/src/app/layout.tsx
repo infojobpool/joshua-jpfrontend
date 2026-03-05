@@ -9,6 +9,7 @@ import { MobileBottomNav } from "@/components/mobile/MobileBottomNav";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { InAppNotificationProvider } from "@/components/InAppNotificationProvider";
 import { NotificationPoller } from "@/components/NotificationPoller";
+import { SessionExpiredHandler } from "@/components/SessionExpiredHandler";
 import { PromoPopup } from "@/components/PromoPopup";
 import { AppEntranceWrapper } from "@/components/mobile/AppEntranceWrapper";
 
@@ -72,6 +73,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden bg-white dark:bg-slate-950 text-gray-900 dark:text-slate-100`}>
         <ThemeProvider>
           <InAppNotificationProvider />
+          <SessionExpiredHandler />
           <NotificationPoller />
           <PromoPopup imageSrc="/images/promo-popup.png" />
           <MobileLayout>

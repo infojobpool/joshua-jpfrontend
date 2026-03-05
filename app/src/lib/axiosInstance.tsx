@@ -27,9 +27,11 @@ const requestThrottle = {
   maxRequests: isDev ? 1000 : Number(process.env.NEXT_PUBLIC_THROTTLE_MAX_REQUESTS) || 35, // conservative: dashboard+profile+notifications
 };
 
+// API base URL for all requests and refresh endpoint (full URL including /api/v1)
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.jobpool.in/api/v1';
+
 const axiosInstance = axios.create({
-  // Respect env override so all environments (mobile/desktop) hit the same API
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || `https://api.jobpool.in/api/v1`,
+  baseURL: apiBaseUrl,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -117,41 +119,68 @@ axiosInstance.interceptors.response.use(
     if (error.response?.status >= 500) {
       circuitBreaker.failures++;
       circuitBreaker.lastFailureTime = Date.now();
-      
       if (circuitBreaker.failures >= circuitBreaker.threshold) {
         circuitBreaker.isOpen = true;
         console.log(`🚨 Circuit breaker OPENED after ${circuitBreaker.failures} failures`);
       }
     }
-    
-    if (error.response?.status === 401) {
-      const url = (error.config?.url || '').toLowerCase();
-      const isAuthEndpoint = url.includes('signin') || url.includes('refresh-token');
-      if (isAuthEndpoint || !localStorage.getItem('token')) {
+
+    const status = error.response?.status;
+    const config = error.config;
+    const url = (config?.url || '').toLowerCase();
+    const isRefreshRequest = url.includes('refresh-token');
+    const isAuthEndpoint = url.includes('signin') || url.includes('login');
+    const hasToken = typeof window !== 'undefined' && (localStorage.getItem('token') || sessionStorage.getItem('token'));
+
+    if (status === 401 && !isRefreshRequest && !isAuthEndpoint && hasToken) {
+      // Avoid infinite retry loop
+      if (config._retry) {
+        try {
+          localStorage.removeItem('token');
+          sessionStorage.removeItem('token');
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('session-expired'));
+          }
+        } catch {}
         return Promise.reject(error);
       }
-      const apiBase = axiosInstance.defaults.baseURL || 'https://api.jobpool.in/api/v1';
+      config._retry = true;
+
       try {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         const refreshResponse = await axios.post(
-          `${apiBase}/refresh-token/`,
+          `${apiBaseUrl.replace(/\/?$/, '')}/refresh-token/`,
           {},
-          { withCredentials: true }
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            withCredentials: true,
+          }
         );
-        const newToken = refreshResponse.data?.token;
+        const newToken = refreshResponse.data?.data?.token || refreshResponse.data?.token;
         if (newToken) {
           localStorage.setItem('token', newToken);
-          if (error.config?.headers) {
-            error.config.headers['Authorization'] = `Bearer ${newToken}`;
-            error.config.headers['X-Access-Token'] = newToken;
+          try { sessionStorage.setItem('token', newToken); } catch {}
+          if (config.headers) {
+            config.headers['Authorization'] = `Bearer ${newToken}`;
+            config.headers['X-Access-Token'] = newToken;
           }
-          return axiosInstance(error.config);
+          return axiosInstance(config);
         }
       } catch (refreshError) {
-        // Do not auto-logout: only clear session when user clicks Logout.
-        return Promise.reject(refreshError);
+        try {
+          localStorage.removeItem('token');
+          sessionStorage.removeItem('token');
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('session-expired'));
+          }
+        } catch {}
       }
       return Promise.reject(error);
     }
+
     return Promise.reject(error);
   }
 );
