@@ -5,7 +5,6 @@ import { motion } from "framer-motion"
 import Link from "next/link"
 import { ChevronLeft, ChevronRight, MapPin, Loader2, Briefcase } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
-import { prefetchTask } from "@/lib/taskPrefetch"
 
 interface Task {
   id: string
@@ -137,8 +136,6 @@ export function AvailableTasksScroller() {
                     key={task.id}
                     href={`/tasks/${task.id}`}
                     className="flex-shrink-0 scroll-snap-start w-[280px]"
-                    onMouseEnter={() => prefetchTask(task.id)}
-                    onTouchStart={() => prefetchTask(task.id)}
                   >
                     <motion.div
                       className="bg-white border border-gray-100 rounded-2xl w-[280px] h-[160px] overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col"

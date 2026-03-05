@@ -12,7 +12,6 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Clock, DollarSign, MapPin, Search, Filter, Star, Loader2 } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
-import { prefetchTask } from "@/lib/taskPrefetch"
 import { toast } from "sonner"
 
 export default function BrowseTasksPage() {
@@ -520,7 +519,7 @@ export default function BrowseTasksPage() {
                       </div>
                     </CardContent>
                     <CardFooter>
-                      <Link href={`/tasks/${task.id}`} className="w-full" onMouseEnter={() => prefetchTask(task.id)} onTouchStart={() => prefetchTask(task.id)}>
+                      <Link href={`/tasks/${task.id}`} className="w-full" >
                         <Button className="w-full">View Task</Button>
                       </Link>
                     </CardFooter>

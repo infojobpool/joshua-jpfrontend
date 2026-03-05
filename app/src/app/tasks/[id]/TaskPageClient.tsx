@@ -13,7 +13,7 @@ import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Task, User, Bid, Offer, ApiBidResponse, ApiJobResponse } from "../../types";
 import { Button } from "@/components/ui/button";
@@ -58,18 +58,64 @@ export default function TaskDetailPage() {
   const [showCancelDialog, setShowCancelDialog] = useState<boolean>(false);
   const [cancelReason, setCancelReason] = useState<string>("");
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
-  const [isVerified, setIsVerified] = useState<boolean>(false);
-  const [verificationChecked, setVerificationChecked] = useState<boolean>(false);
+  // Initialize verification from localStorage to avoid flash (verificationChecked + isVerified)
+  const [isVerified, setIsVerified] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const u = localStorage.getItem("user");
+      if (u) {
+        const p = JSON.parse(u);
+        const s = p?.verification_status;
+        if (s !== undefined && s !== null) {
+          const n = typeof s === "string" ? parseInt(s, 10) : Number(s);
+          return !isNaN(n) && n >= 2;
+        }
+      }
+    } catch {}
+    return false;
+  });
+  const [verificationChecked, setVerificationChecked] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const u = localStorage.getItem("user");
+      if (u) {
+        const p = JSON.parse(u);
+        return p?.verification_status !== undefined && p?.verification_status !== null;
+      }
+    } catch {}
+    return false;
+  });
   const [isPaymentPending, setIsPaymentPending] = useState<boolean>(false);
+  const [paymentCheckDone, setPaymentCheckDone] = useState<boolean>(false);
+  const paymentToastShownRef = useRef<boolean>(false);
   const [taskRefreshKey, setTaskRefreshKey] = useState<number>(0);
+  const loadRetryCountRef = useRef<number>(0);
+  const [bidsRetryKey, setBidsRetryKey] = useState<number>(0);
+  const prefetchedBidsRef = useRef<{ id: string; data: any } | null>(null);
   const [completeReviewOpen, setCompleteReviewOpen] = useState(false);
+
+  // Reset retries and payment check when switching to a different task
+  useEffect(() => {
+    setBidsRetryKey(0);
+    loadRetryCountRef.current = 0;
+    setPaymentCheckDone(false);
+    paymentToastShownRef.current = false;
+  }, [id]);
+
+  // Refetch bids when tab becomes visible and taskmaster has 0 offers (after initial load)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (typeof document === "undefined" || document.visibilityState !== "visible") return;
+      const isPoster = task && task.poster && task.poster.id === userId;
+      if (isPoster && !bidsLoading && offers.length === 0 && !task?.assignedTasker?.id) {
+        setBidsRetryKey((k) => k + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", handleFocus);
+    return () => document.removeEventListener("visibilitychange", handleFocus);
+  }, [task, userId, offers.length, bidsLoading]);
   const [completeReviewAsTaskmaster, setCompleteReviewAsTaskmaster] = useState(false);
   const taskerId = offers.length > 0 ? offers[0].tasker.id : (task?.assignedTasker?.id ? String(task.assignedTasker.id) : null);
-
-  // Debug: Log verification state changes
-  useEffect(() => {
-    console.log("🔍 Verification state changed:", { isVerified, verificationChecked });
-  }, [isVerified, verificationChecked]);
 
   // Check for existing review in localStorage when task loads
   useEffect(() => {
@@ -363,52 +409,107 @@ export default function TaskDetailPage() {
       try {
         setLoading(true);
         
-        // Use cache immediately if we have it (even stale) – then refresh in background
+        // Use cache only if fresh (< 5 min) – stale cache can have wrong assignedTasker/offers state
         const cacheKey = `task_${id}`;
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
           try {
             const cachedData = JSON.parse(cached);
-            if (cachedData?.task) {
-              console.log("Showing cached task data (will refresh in background)");
+            const cacheAge = Date.now() - (cachedData?.timestamp || 0);
+            if (cachedData?.task && cacheAge < 300000) {
+              console.log("Using fresh cached task data");
               setTask(cachedData.task);
               setLoading(false);
+              // Use prefetched bids if available (from hover prefetch)
+              if (Array.isArray(cachedData.bids) && cachedData.bids.length > 0) {
+                const posterIdStr = String(cachedData.task?.poster?.id || "").trim();
+                const validBids = cachedData.bids.filter((b: any) => {
+                  const bidderId = String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? "").trim();
+                  return !bidderId || !posterIdStr || bidderId !== posterIdStr;
+                });
+                const newOffers = validBids.map((b: any, i: number) => ({
+                  id: `bid${i + 1}`,
+                  tasker: {
+                    id: String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? ""),
+                    name: b.bidder_name ?? b.user_name ?? b.tasker_name ?? "Unknown",
+                    avatar: "/images/placeholder.svg",
+                    rating: null,
+                    taskCount: null,
+                    joinedDate: null,
+                  },
+                  amount: Number(b.bid_amount ?? b.amount ?? 0),
+                  message: b.bid_description ?? b.message ?? "",
+                  createdAt: b.created_at ?? b.createdAt ?? new Date().toISOString(),
+                  status: b.status ?? "pending",
+                }));
+                setOffers(newOffers);
+                setBids(cachedData.bids);
+              }
             }
           } catch {}
         }
 
-        // Primary request (fetch) with reasonable timeout and Axios fallback
+        // Primary request – fetch get-job and get-bids in parallel for faster load
         const token = localStorage.getItem('token');
         const controller = new AbortController();
+        const bidsController = new AbortController();
         const timeoutId = setTimeout(() => {
           console.log("Task loading timeout reached, aborting request");
           controller.abort();
         }, 6000); // 6s timeout – faster feedback
 
-        let data: ApiJobResponse;
-        try {
-          const response = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            credentials: 'omit',
-            signal: controller.signal
-          });
-          clearTimeout(timeoutId);
-          if (!response.ok) {
+        // Start get-bids in parallel (taskmaster endpoint – works for poster; non-poster will refetch in loadBids)
+        const bidsPromise = fetch(`https://api.jobpool.in/api/v1/get-bids/${id}/`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          credentials: "omit",
+          signal: bidsController.signal,
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null);
+
+        // Backend may expect "task_139" or "139" – try both if first attempt fails
+        const tryIds = [
+          id,
+          id.startsWith("task_") ? id.replace(/^task_/, "") : `task_${id}`,
+          id.replace(/^task_/, ""),
+        ].filter((x, i, arr) => arr.indexOf(x) === i);
+
+        let data: ApiJobResponse | undefined;
+        let lastErr: any;
+        for (const tryId of tryIds) {
+          try {
+            const response = await fetch(`https://api.jobpool.in/api/v1/get-job/${tryId}/`, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              credentials: 'omit',
+              signal: controller.signal
+            });
+            if (response.ok) {
+              clearTimeout(timeoutId);
+              data = await response.json();
+              break;
+            }
+            if (response.status === 404 && tryId !== tryIds[tryIds.length - 1]) {
+              console.warn(`get-job/${tryId}/ returned 404, trying next ID format`);
+              continue;
+            }
             throw new Error(`HTTP ${response.status}`);
+          } catch (err) {
+            lastErr = err;
+            if ((err as any)?.name === "AbortError") break;
           }
-          data = await response.json();
-        } catch (primaryErr) {
-          // Fallback to axios instance (may have different infra/routing)
-          console.warn("Primary task fetch failed, trying fallback via axiosInstance", primaryErr);
+        }
+        if (!data) {
+          clearTimeout(timeoutId);
           try {
             const axiosResp = await axiosInstance.get(`/get-job/${id}/`);
             data = axiosResp.data as ApiJobResponse;
           } catch (fallbackErr) {
-            throw fallbackErr;
+            throw lastErr || fallbackErr;
           }
         }
 
@@ -571,10 +672,68 @@ export default function TaskDetailPage() {
             joinedDate: job.joined_date ?? null,
           },
           offers: [],
-          assignedTasker: assignedId ? { id: String(assignedId) } as any : undefined,
+          _jobBids: ((job as any).bids ?? (job as any).offers ?? (job as any).job_bids) || undefined,
+          assignedTasker: assignedId
+            ? {
+                id: String(assignedId),
+                name:
+                  (job as any).assigned_tasker_name ||
+                  (job as any).tasker_name ||
+                  (job as any).accepted_bidder_name ||
+                  "Assigned tasker",
+                avatar: "/images/placeholder.svg",
+                rating: null,
+                taskCount: null,
+                joinedDate: null,
+              }
+            : undefined,
         };
         setTask(mappedTask);
         console.log("Mapped Task:", mappedTask);
+
+        // Use bids from parallel fetch (already in flight)
+        try {
+          const bidsData = await bidsPromise;
+          if (bidsData?.status_code === 200) {
+            const raw = bidsData.data?.bids ?? bidsData.data ?? (Array.isArray(bidsData.data) ? bidsData.data : []);
+            const taskBids = Array.isArray(raw) ? raw : [];
+            const posterIdStr = String(job.user_ref_id || "").trim();
+            const validBids = taskBids.filter((b: any) => {
+              const bidderId = String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? "").trim();
+              return !bidderId || !posterIdStr || bidderId !== posterIdStr;
+            });
+            const norm = (b: any) => ({
+              bidder_id: b.bidder_id ?? b.user_id ?? b.tasker_id ?? "",
+              bidder_name: b.bidder_name ?? b.user_name ?? b.tasker_name ?? "Unknown",
+              bid_amount: Number(b.bid_amount ?? b.amount ?? 0),
+              bid_description: b.bid_description ?? b.message ?? "",
+            });
+            const newOffers: Offer[] = validBids.map((b: any, i: number) => {
+              const n = norm(b);
+              return {
+                id: `bid${i + 1}`,
+                tasker: {
+                  id: String(n.bidder_id),
+                  name: n.bidder_name || "Unknown",
+                  avatar: "/images/placeholder.svg",
+                  rating: null,
+                  taskCount: null,
+                  joinedDate: null,
+                },
+                amount: n.bid_amount,
+                message: n.bid_description || "",
+                createdAt: (b.created_at ?? b.createdAt ?? new Date().toISOString()) as string,
+                status: (b.status ?? "pending") as string,
+              };
+            });
+            setOffers(newOffers);
+            setBids(taskBids);
+            prefetchedBidsRef.current = { id, data: bidsData };
+            console.log("✅ Bids loaded from parallel fetch:", newOffers.length);
+          }
+        } catch (e) {
+          console.warn("Parallel bids fetch failed, loadBids will retry:", e);
+        }
         
         // Cache the task data
         localStorage.setItem(cacheKey, JSON.stringify({
@@ -583,27 +742,34 @@ export default function TaskDetailPage() {
         }));
       } catch (error: any) {
         console.error("Error loading task data:", error);
-        if ((error as any)?.name === 'AbortError') {
-          console.log("Task loading was aborted due to timeout");
-          // Try to load from cache as fallback
-          try {
-            const cached = localStorage.getItem(cacheKey);
-            if (cached) {
-              const cachedData = JSON.parse(cached);
+        try {
+          const cached = localStorage.getItem(cacheKey);
+          if (cached) {
+            const cachedData = JSON.parse(cached);
+            if (cachedData?.task) {
               setTask(cachedData.task);
-              console.log("Loaded task from cache after timeout");
-              return; // Don't set task to null if we loaded from cache
+              if ((error as any)?.name !== "AbortError") {
+                toast.error(
+                  error?.response?.data?.detail || "Couldn't refresh – showing cached data"
+                );
+              }
+              return;
             }
-          } catch (cacheError) {
-            console.warn("Failed to load from cache:", cacheError);
           }
-          setTask(null); // Only set to null if no cache available
-        } else {
-          toast.error(
-            error.response?.data?.detail || "Failed to load task details"
-          );
-          setTask(null);
+        } catch (cacheError) {
+          console.warn("Failed to load from cache:", cacheError);
         }
+        const isRetryable = (error as any)?.name === "AbortError" || (error?.response?.status >= 500) || (error?.code === "ERR_NETWORK" || error?.message?.includes("Network"));
+        if (isRetryable && loadRetryCountRef.current < 1) {
+          loadRetryCountRef.current += 1;
+          setTimeout(() => setTaskRefreshKey((k) => k + 1), 2000);
+          toast.error("Connection issue. Retrying in 2 seconds…");
+          return;
+        }
+        toast.error(
+          error?.response?.data?.detail || "Failed to load task details"
+        );
+        setTask(null);
       } finally {
         setLoading(false);
       }
@@ -612,11 +778,16 @@ export default function TaskDetailPage() {
     loadTaskData();
   }, [id, taskRefreshKey]);
 
-  // Load bids/offers
+  // Load bids/offers (skipped if already loaded from parallel fetch in loadTaskData)
   useEffect(() => {
     if (!userId || !task) return;
 
     async function loadBids() {
+      if (prefetchedBidsRef.current?.id === id) {
+        prefetchedBidsRef.current = null;
+        setBidsLoading(false);
+        return;
+      }
       try {
         setBidsLoading(true);
         // Use fetch API for better performance
@@ -628,39 +799,68 @@ export default function TaskDetailPage() {
         const isTaskPoster = task && task.poster && task.poster.id === userId;
         
         let response;
-        // Use api.jobpool.in for get-bids (backend fix deployed there; axiosInstance may point elsewhere)
-        const bidsUrl = `https://api.jobpool.in/api/v1/get-bids/${id}/`;
-        const fetchRes = await fetch(bidsUrl, {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          credentials: 'omit',
-          signal: controller.signal
-        });
-        if (fetchRes.status === 404) {
-          // Backend returns 404 when no bids; treat as empty
-          setOffers([]);
-          setBids([]);
-          setBidsLoading(false);
-          return;
-        }
         if (isTaskPoster) {
-          response = fetchRes;
+          // Task poster: fetch all bids – try api.jobpool.in first (primary backend with get-bids)
+          // jobpoolbackend.onrender.com returns 404 for get-bids, so we bypass axios baseURL
+          console.log("Fetching all bids for task (user is poster)");
+          const token = localStorage.getItem("token");
+          const primaryUrl = `https://api.jobpool.in/api/v1/get-bids/${id}/`;
+          try {
+            const fetchRes = await fetch(primaryUrl, {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              credentials: "omit",
+              signal: controller.signal,
+            });
+            if (fetchRes.ok) {
+              response = { ok: true, json: () => fetchRes.json() } as any;
+            } else {
+              throw new Error(`HTTP ${fetchRes.status}`);
+            }
+          } catch (primaryErr: any) {
+            console.warn("api.jobpool.in get-bids failed, trying axios baseURL:", primaryErr?.message);
+            try {
+              const axiosResponse = await axiosInstance.get(`/get-bids/${id}/`, {
+                signal: controller.signal
+              });
+              response = {
+                ok: true,
+                json: () => Promise.resolve(axiosResponse.data)
+              } as any;
+            } catch (axiosErr: any) {
+              console.error("❌ Both get-bids attempts failed");
+              setOffers([]);
+              setBids([]);
+              setBidsLoading(false);
+              return;
+            }
+          }
         } else {
-          if (!fetchRes.ok) {
+          // Non-poster: try to fetch all bids for this task (amounts hidden in UI)
+          console.log("Fetching all task bids for non-poster (privacy enforced in UI)");
+          try {
+            const axiosResponse = await axiosInstance.get(`/get-bids/${id}/`, {
+              signal: controller.signal
+            });
+            // Convert axios response to fetch-like response
+            response = {
+              ok: true,
+              json: () => Promise.resolve(axiosResponse.data)
+            } as any;
+          } catch (error) {
+            console.warn("Failed to fetch all task bids, falling back to user's bids:", error);
             response = await fetch(`https://api.jobpool.in/api/v1/get-user-bids/${userId}/`, {
               method: 'GET',
               headers: {
-                Authorization: `Bearer ${token}`,
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
               },
               credentials: 'omit',
               signal: controller.signal
             });
-          } else {
-            response = fetchRes;
           }
         }
 
@@ -680,21 +880,31 @@ export default function TaskDetailPage() {
         let taskBids: Bid[] = [];
         if (isTaskPoster) {
           // For task poster, use all bids directly from the task bids endpoint
-          // The data structure might be data.data.bids or data.data
-          if (Array.isArray(data.data?.bids)) {
-            taskBids = data.data.bids;
-          } else if (Array.isArray(data.data)) {
-            taskBids = data.data;
-          } else if (Array.isArray(data.bids)) {
-            taskBids = data.bids;
-          } else {
-            taskBids = [];
+          // Try multiple possible response structures from backend (matches admin)
+          const raw =
+            data.data?.bids ??
+            data.data?.data ??
+            (Array.isArray(data.data) ? data.data : null) ??
+            data.bids ??
+            data.data ??
+            [];
+          taskBids = Array.isArray(raw) ? raw : [];
+          // If data.data is object with job_id key, it might be { [job_id]: bids }
+          if (taskBids.length === 0 && data.data && typeof data.data === "object" && !Array.isArray(data.data)) {
+            const maybeBids = (data.data as any)[id] ?? (data.data as any).bids ?? Object.values(data.data);
+            taskBids = Array.isArray(maybeBids) ? maybeBids : [];
+          }
+          // Fallback: use bids nested in get-job response if get-bids returned empty
+          if (taskBids.length === 0 && (task as any)?._jobBids && Array.isArray((task as any)._jobBids)) {
+            taskBids = (task as any)._jobBids;
+            console.log("Using bids from get-job response:", taskBids);
           }
           console.log("Fetched all task bids for poster:", taskBids);
         } else {
-          // For non-poster, filter user's bids for this task
-          const allUserBids: Bid[] = Array.isArray(data.data) ? data.data : [];
-          taskBids = allUserBids.filter((bid) => bid.job_id === id);
+          // For non-poster, filter user's bids for this task (get-user-bids may return data.data.bids or data.data)
+          const raw = data.data?.bids ?? data.data;
+          const allUserBids: any[] = Array.isArray(raw) ? raw : [];
+          taskBids = allUserBids.filter((b) => String(b.job_id ?? b.task_id ?? "") === String(id));
           console.log("Filtered user's task bids:", taskBids);
         }
 
@@ -715,12 +925,29 @@ export default function TaskDetailPage() {
           console.log("Updated user's bids:", allBids);
         }
 
+        // When task has assigned tasker but get-bids returned empty, synthesize an offer so taskmaster sees who they're confirming
+        let taskBidsToUse = taskBids || [];
+        if (taskBidsToUse.length === 0 && task?.assignedTasker?.id) {
+          taskBidsToUse = [
+            {
+              bidder_id: task.assignedTasker.id,
+              bidder_name: (task.assignedTasker as any).name || "Assigned tasker",
+              bid_amount: 0,
+              bid_description: "Accepted offer",
+              job_id: id,
+              created_at: new Date().toISOString(),
+              status: "accepted",
+            } as Bid,
+          ];
+          console.log("Synthesized offer from assigned tasker:", taskBidsToUse);
+        }
+
         // Map all task bids to offers
         // Filter out bids where the bidder is the same as the poster (users can't bid on their own tasks)
         const posterId = task?.poster?.id;
-        const validBids = (taskBids || []).filter((bid: Bid) => {
-          const bidderId = String(bid.bidder_id || "").trim();
-          const posterIdStr = String(posterId || "").trim();
+        const posterIdStr = String(posterId || "").trim();
+        const validBids = (taskBidsToUse || []).filter((bid: any) => {
+          const bidderId = String(bid.bidder_id ?? bid.user_id ?? bid.tasker_id ?? "").trim();
           
           // Log bid details for debugging
           console.log("🔍 Bid mapping:", {
@@ -732,8 +959,8 @@ export default function TaskDetailPage() {
             task_id: id
           });
           
-          // Exclude bids where bidder is the poster
-          if (bidderId && posterIdStr && bidderId === posterIdStr) {
+          // Exclude bids where bidder is the poster (compare as strings for type coercion)
+          if (bidderId && posterIdStr && String(bidderId) === String(posterIdStr)) {
             console.warn("⚠️ Excluding bid: bidder is the same as poster", {
               bidder_id: bidderId,
               bidder_name: bid.bidder_name,
@@ -744,22 +971,35 @@ export default function TaskDetailPage() {
           return true;
         });
         
-        const newOffers: Offer[] = validBids.map((bid: Bid, index: number) => ({
+        // Normalize bid fields (API may use user_id/tasker_id, task_id instead of bidder_id, job_id)
+        const norm = (b: any) => ({
+          bidder_id: b.bidder_id ?? b.user_id ?? b.tasker_id ?? "",
+          bidder_name: b.bidder_name ?? b.user_name ?? b.tasker_name ?? "Unknown",
+          bid_amount: Number(b.bid_amount ?? b.amount ?? 0),
+          bid_description: b.bid_description ?? b.message ?? "",
+          job_id: String(b.job_id ?? b.task_id ?? id),
+          created_at: b.created_at ?? b.createdAt ?? new Date().toISOString(),
+          status: b.status ?? "pending",
+        });
+
+        const newOffers: Offer[] = validBids.map((bid: any, index: number) => {
+          const b = norm(bid);
+          return {
           id: `bid${index + 1}`,
           tasker: {
-            id: bid.bidder_id,
-            name: bid.bidder_name || "Unknown",
+            id: String(b.bidder_id),
+            name: b.bidder_name || "Unknown",
             avatar: "/images/placeholder.svg",
             rating: null,
             taskCount: null,
             joinedDate: null,
           },
-          amount: bid.bid_amount,
-          message: bid.bid_description || "",
-          // Keep raw timestamp; format in component to avoid stale "Just now" labels
-          createdAt: bid.created_at || new Date().toISOString(),
-          status: bid.status || "pending",
-        }));
+          amount: b.bid_amount,
+          message: b.bid_description || "",
+          createdAt: b.created_at,
+          status: b.status,
+        };
+        });
         
         console.log("✅ Mapped offers (after filtering):", {
           total_bids: taskBids?.length || 0,
@@ -774,6 +1014,13 @@ export default function TaskDetailPage() {
 
         setOffers(newOffers);
         setBids(taskBids);
+
+        // Taskmaster with 0 offers – retry once after 2s (handles intermittent API failures)
+        const isPoster = task && task.poster && task.poster.id === userId;
+        if (isPoster && newOffers.length === 0 && !task?.assignedTasker?.id && bidsRetryKey === 0) {
+          setTimeout(() => setBidsRetryKey((k) => k + 1), 2000);
+        }
+
         // If any bid is accepted/assigned, force task status to in_progress for UI consistency
         try {
           const hasAccepted = taskBids.some((b) => {
@@ -803,7 +1050,7 @@ export default function TaskDetailPage() {
     }
 
     loadBids();
-  }, [id, task, userId]);
+  }, [id, task, userId, bidsRetryKey]);
 
   const handleSubmitOffer = async (e: FormEvent) => {
     e.preventDefault();
@@ -1064,21 +1311,64 @@ export default function TaskDetailPage() {
         headers["Authorization"] = `Bearer ${token}`;
         headers["X-Access-Token"] = token;
       }
-      if (completeReviewAsTaskmaster) {
-        await axiosInstance.put(`/mark-complete-by-taskmaster/${task.id}/`, reviewBody, { headers });
-      } else {
-        await axiosInstance.put(`/mark-complete/${task.id}/`, reviewBody, { headers });
+
+      const tryIds = [task.id, task.id.startsWith("task_") ? task.id.replace(/^task_/, "") : `task_${task.id}`].filter((x, i, arr) => arr.indexOf(x) === i);
+      let resp: any = null;
+      let lastErr: any = null;
+
+      for (const jobId of tryIds) {
+        try {
+          if (completeReviewAsTaskmaster) {
+            resp = await axiosInstance.put(`/mark-complete-by-taskmaster/${jobId}/`, reviewBody, { headers });
+          } else {
+            resp = await axiosInstance.put(`/mark-complete/${jobId}/`, reviewBody, { headers });
+          }
+          break;
+        } catch (e: any) {
+          lastErr = e;
+          if (e?.response?.status === 404 && jobId !== tryIds[tryIds.length - 1]) continue;
+          throw e;
+        }
       }
-      toast.success("Task marked complete and review submitted!");
+      if (!resp && lastErr) throw lastErr;
+
+      const data = resp?.data?.data ?? resp?.data;
+      const jobStatus = data?.job_completion_status;
+      const taskerDone = data?.tasker_completed ?? (completeReviewAsTaskmaster ? task.tasker_completed : true);
+      const taskmasterDone = data?.taskmaster_completed ?? (completeReviewAsTaskmaster ? true : task.taskmaster_completed);
+
+      setTask((prev) =>
+        prev
+          ? {
+              ...prev,
+              job_completion_status: jobStatus === 1 ? 1 : prev.job_completion_status,
+              tasker_completed: taskerDone,
+              taskmaster_completed: taskmasterDone,
+              status: jobStatus === 1 ? "completed" : prev.status,
+            }
+          : prev
+      );
+
       setCompleteReviewOpen(false);
-      const payload = {
-        job_completion_status: 1,
-        tasker_completed: true,
-        taskmaster_completed: true,
-      };
-      setTask((prev) => (prev ? { ...prev, ...payload } : prev));
       localStorage.removeItem(`task_${task.id}`);
       setTaskRefreshKey((k) => k + 1);
+
+      if (jobStatus === 1) {
+        toast.success("Task completed! Both parties have confirmed.");
+        try {
+          sessionStorage.setItem("refresh_tasks", "1");
+        } catch {}
+      } else if (completeReviewAsTaskmaster) {
+        toast.success("Review submitted. Task will show as completed once the tasker also marks it done.");
+        try {
+          sessionStorage.setItem("refresh_tasks", "1");
+        } catch {}
+      } else {
+        toast.success("Task marked complete and review submitted!");
+        try {
+          sessionStorage.setItem("refresh_tasks", "1");
+        } catch {}
+      }
     } catch (error: any) {
       const errMsg =
         error?.response?.data?.message ||
@@ -1257,8 +1547,9 @@ export default function TaskDetailPage() {
   };
 
   // Check if user accepted an offer but didn't complete payment
+  // Only show payment pending AFTER async API check completes to avoid flicker
   useEffect(() => {
-    if (!id || !userId) return;
+    if (!id || !userId || !task) return;
     
     const checkPendingPayment = async () => {
       try {
@@ -1266,81 +1557,85 @@ export default function TaskDetailPage() {
         const paymentPageVisited = sessionStorage.getItem("payment_page_visited");
         const pendingVerification = localStorage.getItem("pending_payment_verification");
         
-        if (paymentData && paymentPageVisited) {
-          const data = JSON.parse(paymentData);
-          if (data.taskId !== id) {
-            setIsPaymentPending(false);
-            return;
-          }
-          // For this task: get fresh status from API so we don't show "payment pending" after user just paid
-          let paymentCompleted = false;
-          if (task?.status === "in_progress" || task?.assignedTasker) {
-            paymentCompleted = true;
-          } else {
-            try {
-              const token = localStorage.getItem("token");
-              const res = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
-                method: "GET",
-                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-                credentials: "omit",
-              });
-              if (res.ok) {
-                const json = await res.json();
-                const job = json?.data;
-                const assignedId = job?.assigned_tasker_id || job?.assigned_user_id || job?.assigned_to || job?.accepted_bidder_id || job?.worker_id;
-                const status = (job?.status || "").toLowerCase();
-                if (status === "in_progress" || assignedId || job?.payment_status === "success" || job?.payment_status === true) {
-                  paymentCompleted = true;
-                }
-              }
-            } catch (_) {
-              // Fall back to current task state
-              if (task?.status === "in_progress" || task?.assignedTasker) paymentCompleted = true;
+        if (!paymentData || !paymentPageVisited) {
+          setIsPaymentPending(false);
+          setPaymentCheckDone(true);
+          return;
+        }
+        
+        const data = JSON.parse(paymentData);
+        if (data.taskId !== id) {
+          setIsPaymentPending(false);
+          setPaymentCheckDone(true);
+          return;
+        }
+        
+        // Always fetch API first to avoid showing "pending" then hiding (flicker)
+        let paymentCompleted = false;
+        try {
+          const token = localStorage.getItem("token");
+          const res = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            credentials: "omit",
+          });
+          if (res.ok) {
+            const json = await res.json();
+            const job = json?.data;
+            const assignedId = job?.assigned_tasker_id || job?.assigned_user_id || job?.assigned_to || job?.accepted_bidder_id || job?.worker_id;
+            const status = (job?.status || "").toLowerCase();
+            if (status === "in_progress" || assignedId || job?.payment_status === "success" || job?.payment_status === true) {
+              paymentCompleted = true;
             }
           }
-          if (paymentCompleted) {
-            console.log("✅ Payment completed for task:", id, "- clearing flags");
-            sessionStorage.removeItem("paymentData");
-            sessionStorage.removeItem("payment_page_visited");
-            localStorage.removeItem("pending_payment_verification");
-            setIsPaymentPending(false);
-            return;
-          }
+        } catch (_) {
+          if (task?.status === "in_progress" || task?.assignedTasker) paymentCompleted = true;
+        }
+        
+        if (paymentCompleted) {
+          sessionStorage.removeItem("paymentData");
+          sessionStorage.removeItem("payment_page_visited");
+          localStorage.removeItem("pending_payment_verification");
+          setIsPaymentPending(false);
+          paymentToastShownRef.current = false;
+        } else {
           const isTaskOpen = task?.status === "open" || task?.status === "Open" || !task?.status || task?.status === true;
           if (isTaskOpen) {
-            console.warn("⚠️ Payment pending for task:", id, "- task is still open");
             setIsPaymentPending(true);
-            toast.error("⚠️ Payment was not completed. Please complete payment to confirm the assignment.", {
-              duration: 6000,
-              action: {
-                label: "Complete Payment",
-                onClick: () => router.push("/payments"),
-              },
-            });
+            if (!paymentToastShownRef.current) {
+              paymentToastShownRef.current = true;
+              toast.error("⚠️ Payment was not completed. Please complete payment to confirm the assignment.", {
+                duration: 6000,
+                action: {
+                  label: "Complete Payment",
+                  onClick: () => router.push("/payments"),
+                },
+              });
+            }
           } else if (pendingVerification) {
-            console.warn("⚠️ Payment verification pending for task:", id);
             setIsPaymentPending(true);
-            toast.error("⚠️ Payment verification pending. Please wait for confirmation.", {
-              duration: 6000,
-            });
+            if (!paymentToastShownRef.current) {
+              paymentToastShownRef.current = true;
+              toast.error("⚠️ Payment verification pending. Please wait for confirmation.", {
+                duration: 6000,
+              });
+            }
           } else {
             setIsPaymentPending(false);
           }
-        } else {
-          setIsPaymentPending(false);
         }
+        setPaymentCheckDone(true);
       } catch (e) {
         console.error("Error checking pending payment:", e);
         setIsPaymentPending(false);
+        setPaymentCheckDone(true);
       }
     };
     
-    const timeoutId = setTimeout(() => {
-      checkPendingPayment();
-    }, task ? 100 : 1000);
-    
+    const delay = task ? 150 : 800;
+    const timeoutId = setTimeout(checkPendingPayment, delay);
     return () => clearTimeout(timeoutId);
-  }, [id, userId, router, task]);
+  }, [id, userId, task]);
 
   if (authLoading) {
     return (
@@ -1445,8 +1740,8 @@ export default function TaskDetailPage() {
         </div>
       </div>
 
-      <main className="container mx-auto max-w-6xl px-4 md:px-6 py-4 md:py-6">
-        <div className="grid gap-4 lg:grid-cols-3">
+      <main className="container mx-auto max-w-6xl px-4 md:px-6 py-4 md:py-6 min-h-[60vh]">
+        <div className="grid gap-4 lg:grid-cols-3 lg:min-h-[400px]">
           {/* Main Content - Left Column */}
           <div className="lg:col-span-2 space-y-4">
             <TaskInfo
@@ -1456,6 +1751,8 @@ export default function TaskDetailPage() {
               isTaskPoster={isTaskPoster}
               isEditing={isEditing}
               setIsEditing={setIsEditing}
+              isPaymentPending={isPaymentPending}
+              paymentCheckDone={paymentCheckDone}
             />
             {/* Poster can leave review only after final completion */}
             <ReviewSection
@@ -1542,6 +1839,8 @@ export default function TaskDetailPage() {
               blockSubmitInitial={!isTaskPoster && (task.status === "in_progress" || !!task.assignedTasker)}
               isVerified={isVerified}
               verificationChecked={verificationChecked}
+              isPaymentPending={isPaymentPending}
+              paymentCheckDone={paymentCheckDone}
             />
           </div>
           
