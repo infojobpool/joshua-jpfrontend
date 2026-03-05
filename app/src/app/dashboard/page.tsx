@@ -1198,7 +1198,7 @@ export default function Dashboard() {
           const maxAge = 30 * 60 * 1000; // 30 minutes
           
           if (age < maxAge) {
-            const tasks = JSON.parse(cachedTasks);
+            const tasks = dedupeTasksByContent(dedupeTasksById(JSON.parse(cachedTasks) as Task[]));
             console.log("🔄 Loading cached available tasks:", tasks.length);
             setAvailableTasks(tasks);
             
@@ -1254,7 +1254,7 @@ export default function Dashboard() {
           try {
             const cachedTasks = localStorage.getItem('availableTasks');
             if (cachedTasks) {
-              const tasks = JSON.parse(cachedTasks);
+              const tasks = dedupeTasksByContent(dedupeTasksById(JSON.parse(cachedTasks) as Task[]));
               setAvailableTasks(tasks);
               console.log("Loaded available tasks from cache after API failure");
             }
@@ -1329,7 +1329,7 @@ export default function Dashboard() {
               };
             });
 
-          const availableTasksWithBidCounts = tasks;
+          const availableTasksWithBidCounts = dedupeTasksByContent(dedupeTasksById(tasks));
           // Store in localStorage for persistence
           localStorage.setItem('availableTasks', JSON.stringify(availableTasksWithBidCounts));
           localStorage.setItem('availableTasksTimestamp', Date.now().toString());
@@ -3217,7 +3217,8 @@ export default function Dashboard() {
 
   // Sort available tasks by selected option (newest, oldest, highest budget, lowest budget)
   const sortedAvailableTasks = useMemo(() => {
-    const copy = [...filteredTasks];
+    const deduped = dedupeTasksByContent(dedupeTasksById(filteredTasks));
+    const copy = [...deduped];
     copy.sort((a, b) => {
       if (availableSortBy === "newest") {
         const aVal = a.postedAtSortValue ?? 0;
