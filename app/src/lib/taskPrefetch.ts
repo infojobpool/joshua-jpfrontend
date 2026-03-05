@@ -141,22 +141,29 @@ export function prefetchTask(taskId: string): void {
     throw new Error("fetch failed");
   })();
 
+  const apiBases = [
+    process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1",
+    "https://jobpoolbackend.onrender.com/api/v1",
+  ].filter((x, i, arr) => arr.indexOf(x) === i);
   const bidsPromise = (async () => {
-    for (const tryId of [taskIdFormat, taskId, taskId.replace(/^task_/, "")]) {
-      try {
-        const r = await fetch(`https://api.jobpool.in/api/v1/get-bids/${tryId}/`, {
-          method: "GET",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          credentials: "omit",
-        });
-        const ct = r.headers.get("content-type") || "";
-        if (!ct.includes("json")) continue;
-        const data = await r.json();
-        if (data?.status_code === 200 || (data?.status_code === 404 && data?.message))
-          return data?.status_code === 404 ? { ...data, data: data?.data ?? [] } : data;
-      } catch {}
+    let lastData: any = null;
+    for (const base of apiBases) {
+      for (const tryId of [taskIdFormat, taskId, taskId.replace(/^task_/, "")]) {
+        try {
+          const r = await fetch(`${base.replace(/\/?$/, "")}/get-bids/${tryId}/`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            credentials: "omit",
+          });
+          const ct = r.headers.get("content-type") || "";
+          if (!ct.includes("json")) continue;
+          const data = await r.json();
+          if (data?.status_code === 200) return data;
+          if (data?.status_code === 404 && data?.message) lastData = { ...data, data: data?.data ?? [] };
+        } catch {}
+      }
     }
-    return null;
+    return lastData;
   })();
 
   Promise.all([jobPromise, bidsPromise])

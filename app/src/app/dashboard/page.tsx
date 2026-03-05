@@ -1152,7 +1152,7 @@ export default function Dashboard() {
           const deduped = dedupeTasksByContent(dedupeTasksById(tasks));
           setPostedTasks(deduped);
           try { sessionStorage.setItem("postedTasks", JSON.stringify(deduped)); } catch {}
-          
+
           // Cache the user tasks
           localStorage.setItem(cacheKey, JSON.stringify({
             tasks: deduped,

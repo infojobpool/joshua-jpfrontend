@@ -441,24 +441,31 @@ export default function TaskDetailPage() {
           numericPart,
         ].filter((x, i, arr) => arr.indexOf(x) === i);
 
-        // Start get-bids in parallel – try task_X first (backend uses task_{sno})
+        // Start get-bids in parallel – try task_X first; try Render backend if primary returns 404 (poster sees bids)
+        const API_BASES = [
+          process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1",
+          "https://jobpoolbackend.onrender.com/api/v1",
+        ].filter((x, i, arr) => arr.indexOf(x) === i);
         const bidsPromise = (async () => {
           let lastData: any = null;
-          for (const tryId of tryIds) {
-            try {
-              const r = await fetch(`https://api.jobpool.in/api/v1/get-bids/${tryId}/`, {
-                method: "GET",
-                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-                credentials: "omit",
-                signal: bidsController.signal,
-              });
-              const ct = r.headers.get("content-type") || "";
-              const data = ct.includes("json") ? await r.json() : null;
-              lastData = data;
-              if (data?.status_code === 200) return data;
-              // Backend returns 404 JSON {"status_code":404,"message":"No Bids found yet.","data":null} – valid response
-              if (data?.status_code === 404 && data?.message) return { ...data, data: data?.data ?? [] };
-            } catch { /* try next id */ }
+          for (const base of API_BASES) {
+            for (const tryId of tryIds) {
+              try {
+                const r = await fetch(`${base.replace(/\/?$/, "")}/get-bids/${tryId}/`, {
+                  method: "GET",
+                  headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                  credentials: "omit",
+                  signal: bidsController.signal,
+                });
+                const ct = r.headers.get("content-type") || "";
+                const data = ct.includes("json") ? await r.json() : null;
+                lastData = data;
+                if (data?.status_code === 200) return data;
+                // Backend returns 404 JSON when no bids – try next base in case other has data
+                if (data?.status_code === 404 && data?.message) lastData = { ...data, data: data?.data ?? [] };
+              } catch { /* try next */ }
+            }
+            if (lastData?.status_code === 200) return lastData;
           }
           return lastData;
         })();
@@ -807,31 +814,35 @@ export default function TaskDetailPage() {
           const bidTryIds = [taskIdFormat, primaryId, id, primaryId.replace(/^task_/, "")].filter(
             (x, i, arr) => arr.indexOf(x) === i
           );
-          for (const tryId of bidTryIds) {
-            try {
-              const fetchRes = await fetch(`https://api.jobpool.in/api/v1/get-bids/${tryId}/`, {
-                method: "GET",
-                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-                credentials: "omit",
-                signal: controller.signal,
-              });
-              const ct = fetchRes.headers.get("content-type") || "";
-              if (ct.includes("json")) {
-                const data = await fetchRes.json();
-                if (data?.status_code === 200) {
-                  response = { ok: true, json: () => Promise.resolve(data) } as any;
-                  break;
+          const apiBases = [
+            process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1",
+            "https://jobpoolbackend.onrender.com/api/v1",
+          ].filter((x, i, arr) => arr.indexOf(x) === i);
+          bidFetch: for (const base of apiBases) {
+            for (const tryId of bidTryIds) {
+              try {
+                const fetchRes = await fetch(`${base.replace(/\/?$/, "")}/get-bids/${tryId}/`, {
+                  method: "GET",
+                  headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                  credentials: "omit",
+                  signal: controller.signal,
+                });
+                const ct = fetchRes.headers.get("content-type") || "";
+                if (ct.includes("json")) {
+                  const data = await fetchRes.json();
+                  if (data?.status_code === 200) {
+                    response = { ok: true, json: () => Promise.resolve(data) } as any;
+                    break bidFetch;
+                  }
+                  if (data?.status_code === 404 && data?.message) {
+                    response = { ok: true, json: () => Promise.resolve({ ...data, data: data?.data ?? [] }) } as any;
+                  }
+                } else if (fetchRes.ok) {
+                  response = { ok: true, json: () => fetchRes.json() } as any;
+                  break bidFetch;
                 }
-                if (data?.status_code === 404 && data?.message) {
-                  response = { ok: true, json: () => Promise.resolve({ ...data, data: data?.data ?? [] }) } as any;
-                  break;
-                }
-              }
-              if (fetchRes.ok) {
-                response = { ok: true, json: () => fetchRes.json() } as any;
-                break;
-              }
-            } catch { /* try next id */ }
+              } catch { /* try next id */ }
+            }
           }
           if (!response?.ok) {
             for (const tryId of bidTryIds) {
@@ -895,7 +906,8 @@ export default function TaskDetailPage() {
         const data: ApiBidResponse = await response.json();
         console.log("Raw API response for bids:", data); // Debug log
 
-        if (data.status_code !== 200) {
+        // 404 with "No Bids found yet" is valid – backend returns this when job has no bids
+        if (data.status_code !== 200 && !(data.status_code === 404 && data?.message)) {
           throw new Error(data.message || "Failed to fetch bids");
         }
 
