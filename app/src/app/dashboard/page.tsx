@@ -143,14 +143,20 @@ interface APIResponse<T> {
   data: T;
 }
 
-// Parse date that might be dd/mm/yyyy (en-GB) - new Date() treats "06/12/2025" as mm/dd (US) = June 12
+// Parse date that might be dd/mm/yyyy (en-GB), ISO, Unix timestamp, or other formats
 function parseDateSafe(raw: any): Date | null {
-  if (!raw) return null;
+  if (raw == null || raw === "") return null;
   const s = String(raw).trim();
+  if (!s) return null;
   const dmY = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s);
   if (dmY) {
     const [, d, m, y] = dmY;
     const parsed = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+  const num = Number(raw);
+  if (!isNaN(num) && num > 0) {
+    const parsed = num > 1e12 ? new Date(num) : new Date(num * 1000);
     return isNaN(parsed.getTime()) ? null : parsed;
   }
   const parsed = new Date(raw);
@@ -165,7 +171,7 @@ function formatTimestampValue(raw: any): {
 } {
   const date = parseDateSafe(raw);
   if (!date) {
-    return { formatted: "Unknown", sortValue: 0, iso: "" };
+    return { formatted: "—", sortValue: 0, iso: "" };
   }
   return {
     formatted: date.toLocaleDateString("en-GB"),
@@ -979,7 +985,7 @@ export default function Dashboard() {
             }
 
             // Use creation date for "posted" (prefer created_at; fallback to due date)
-            const postedRaw = job.created_at || job.job_created_at || job.timestamp || job.tstamp || job.job_tstamp || job.updated_at || job.job_due_date;
+            const postedRaw = job.created_at || job.job_created_at || job.created_date || job.date_created || job.timestamp || job.tstamp || job.job_tstamp || job.updated_at || job.job_due_date || job.due_date;
             const postedMeta = formatTimestampValue(postedRaw);
             return {
               id: job.job_id.toString(),
@@ -2934,7 +2940,7 @@ export default function Dashboard() {
                     jobStatus = "in_progress";
                   }
                   
-                  const postedRaw = job.created_at || job.job_created_at || job.timestamp || job.tstamp || job.job_tstamp || job.updated_at || job.job_due_date;
+                  const postedRaw = job.created_at || job.job_created_at || job.created_date || job.date_created || job.timestamp || job.tstamp || job.job_tstamp || job.updated_at || job.job_due_date || job.due_date;
                   const postedMeta = formatTimestampValue(postedRaw);
                   return {
                     id: job.job_id.toString(),
