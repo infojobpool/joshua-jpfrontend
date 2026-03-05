@@ -199,23 +199,34 @@ function dedupeTasksById<T extends { id: string }>(tasks: T[]): T[] {
 }
 
 // Deduplicate by content (same title+description = likely duplicate from double submit or API)
+// Prefer task_X format id – backend get-bids expects job_id like task_147; numeric id breaks offers
 function dedupeTasksByContent(tasks: Task[]): Task[] {
   const byKey = new Map<string, Task>();
+  const prefersTaskFormat = (t: Task) => String(t.id || "").startsWith("task_");
   for (const t of tasks) {
     const key = `${(t.title || "").trim().toLowerCase()}|${(t.description || "").trim().toLowerCase()}|${t.budget ?? 0}`;
     const existing = byKey.get(key);
     if (!existing) {
       byKey.set(key, t);
     } else {
-      // Keep the one with a valid date, or higher id (newer)
-      const existingHasDate = (existing.postedAtSortValue ?? 0) > 0 || (existing.postedAt && existing.postedAt !== "—" && existing.postedAt !== "Unknown");
-      const currHasDate = (t.postedAtSortValue ?? 0) > 0 || (t.postedAt && t.postedAt !== "—" && t.postedAt !== "Unknown");
-      if (currHasDate && !existingHasDate) {
+      const existingHasTaskId = prefersTaskFormat(existing);
+      const currHasTaskId = prefersTaskFormat(t);
+      // Prefer task_X format – ensures /tasks/task_147 and get-bids work (offers show)
+      if (currHasTaskId && !existingHasTaskId) {
         byKey.set(key, t);
-      } else if (existingHasDate && !currHasDate) {
-        // keep existing
-      } else if (Number(t.id) > Number(existing.id)) {
-        byKey.set(key, t); // prefer higher id (newer)
+      } else if (existingHasTaskId && !currHasTaskId) {
+        // keep existing (has task_X)
+      } else {
+        // Both same format – keep the one with a valid date, or higher id (newer)
+        const existingHasDate = (existing.postedAtSortValue ?? 0) > 0 || (existing.postedAt && existing.postedAt !== "—" && existing.postedAt !== "Unknown");
+        const currHasDate = (t.postedAtSortValue ?? 0) > 0 || (t.postedAt && t.postedAt !== "—" && t.postedAt !== "Unknown");
+        if (currHasDate && !existingHasDate) {
+          byKey.set(key, t);
+        } else if (existingHasDate && !currHasDate) {
+          // keep existing
+        } else if (Number(t.id) > Number(existing.id)) {
+          byKey.set(key, t); // prefer higher id (newer)
+        }
       }
     }
   }
