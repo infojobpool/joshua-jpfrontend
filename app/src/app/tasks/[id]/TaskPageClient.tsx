@@ -363,14 +363,16 @@ export default function TaskDetailPage() {
       try {
         setLoading(true);
         
-        // Use cache immediately if we have it (even stale) – then refresh in background
+        // Use cache only if fresh (< 5 min) – stale cache can have wrong assignedTasker/offers state
         const cacheKey = `task_${id}`;
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
           try {
             const cachedData = JSON.parse(cached);
-            if (cachedData?.task) {
-              console.log("Showing cached task data (will refresh in background)");
+            const cacheAge = Date.now() - (cachedData?.timestamp || 0);
+            if (cachedData?.task && cacheAge < 300000) {
+              // 5 min – avoid serving old task that lacks assignedTasker/bids info
+              console.log("Using fresh cached task data");
               setTask(cachedData.task);
               setLoading(false);
             }
@@ -571,7 +573,20 @@ export default function TaskDetailPage() {
             joinedDate: job.joined_date ?? null,
           },
           offers: [],
-          assignedTasker: assignedId ? { id: String(assignedId) } as any : undefined,
+          assignedTasker: assignedId
+            ? {
+                id: String(assignedId),
+                name:
+                  (job as any).assigned_tasker_name ||
+                  (job as any).tasker_name ||
+                  (job as any).accepted_bidder_name ||
+                  "Assigned tasker",
+                avatar: "/images/placeholder.svg",
+                rating: null,
+                taskCount: null,
+                joinedDate: null,
+              }
+            : undefined,
         };
         setTask(mappedTask);
         console.log("Mapped Task:", mappedTask);
@@ -696,15 +711,19 @@ export default function TaskDetailPage() {
         let taskBids: Bid[] = [];
         if (isTaskPoster) {
           // For task poster, use all bids directly from the task bids endpoint
-          // The data structure might be data.data.bids or data.data
-          if (Array.isArray(data.data?.bids)) {
-            taskBids = data.data.bids;
-          } else if (Array.isArray(data.data)) {
-            taskBids = data.data;
-          } else if (Array.isArray(data.bids)) {
-            taskBids = data.bids;
-          } else {
-            taskBids = [];
+          // Try multiple possible response structures from backend
+          const raw =
+            data.data?.bids ??
+            data.data?.data ??
+            (Array.isArray(data.data) ? data.data : null) ??
+            data.bids ??
+            data.data ??
+            [];
+          taskBids = Array.isArray(raw) ? raw : [];
+          // If data.data is object with job_id key, it might be { [job_id]: bids }
+          if (taskBids.length === 0 && data.data && typeof data.data === "object" && !Array.isArray(data.data)) {
+            const maybeBids = (data.data as any)[id] ?? (data.data as any).bids ?? Object.values(data.data);
+            taskBids = Array.isArray(maybeBids) ? maybeBids : [];
           }
           console.log("Fetched all task bids for poster:", taskBids);
         } else {
@@ -731,10 +750,27 @@ export default function TaskDetailPage() {
           console.log("Updated user's bids:", allBids);
         }
 
+        // When task has assigned tasker but get-bids returned empty, synthesize an offer so taskmaster sees who they're confirming
+        let taskBidsToUse = taskBids || [];
+        if (taskBidsToUse.length === 0 && task?.assignedTasker?.id) {
+          taskBidsToUse = [
+            {
+              bidder_id: task.assignedTasker.id,
+              bidder_name: (task.assignedTasker as any).name || "Assigned tasker",
+              bid_amount: 0,
+              bid_description: "Accepted offer",
+              job_id: id,
+              created_at: new Date().toISOString(),
+              status: "accepted",
+            } as Bid,
+          ];
+          console.log("Synthesized offer from assigned tasker:", taskBidsToUse);
+        }
+
         // Map all task bids to offers
         // Filter out bids where the bidder is the same as the poster (users can't bid on their own tasks)
         const posterId = task?.poster?.id;
-        const validBids = (taskBids || []).filter((bid: Bid) => {
+        const validBids = (taskBidsToUse || []).filter((bid: Bid) => {
           const bidderId = String(bid.bidder_id || "").trim();
           const posterIdStr = String(posterId || "").trim();
           
