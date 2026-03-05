@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
+import { prefetchTask } from "@/lib/taskPrefetch";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 import { useNotifications } from "@/lib/useNotifications";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
@@ -4049,7 +4050,7 @@ export default function Dashboard() {
                           ) : task.status === "in_progress" ? (
                             <>
                               <div className="flex flex-wrap gap-2 w-full items-center">
-                                <Link href={`/tasks/${task.id}`} className="shrink-0">
+                                <Link href={`/tasks/${task.id}`} className="shrink-0" onMouseEnter={() => prefetchTask(task.id)} onTouchStart={() => prefetchTask(task.id)}>
                                   <Button
                                     variant="outline"
                                     className={`w-auto border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-md shadow transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}
@@ -4081,7 +4082,7 @@ export default function Dashboard() {
                               </div>
                             </>
                           ) : (
-                            <Link href={`/tasks/${task.id}`} className="w-full">
+                            <Link href={`/tasks/${task.id}`} className="w-full" onMouseEnter={() => prefetchTask(task.id)} onTouchStart={() => prefetchTask(task.id)}>
                               <Button variant="outline" className={`w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
                                 <div className="flex items-center gap-2">
                                   <span className="text-lg">👁️</span>
@@ -4346,7 +4347,7 @@ export default function Dashboard() {
 
                             {/* Action button */}
                             <div className="mt-4">
-                              <Link href={`/tasks/${task.id}`} className="w-full">
+                              <Link href={`/tasks/${task.id}`} className="w-full" onMouseEnter={() => prefetchTask(task.id)} onTouchStart={() => prefetchTask(task.id)}>
                                 <Button variant="outline" className={`w-full border-[#3b82f6]/50 dark:border-slate-600 text-[#2563eb] dark:text-[#60a5fa] hover:bg-[#eff6ff] dark:hover:bg-slate-700 font-medium rounded-xl transition-all duration-200 ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
                                   <span>{hasUserBid ? "View Offer" : "Make an Offer"}</span>
                                 </Button>
@@ -4515,7 +4516,7 @@ export default function Dashboard() {
                           </>
                         ) : waitingForTaskmaster ? (
                           <>
-                        <Link href={`/tasks/${task.id}`} className="shrink-0" onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); } catch {} }}>
+                        <Link href={`/tasks/${task.id}`} className="shrink-0" onMouseEnter={() => prefetchTask(task.id)} onTouchStart={() => prefetchTask(task.id)} onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); } catch {} }}>
                           <Button variant="outline" className={`w-auto border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}>
                           <div className="flex items-center gap-2">
                             <span className="text-lg">👁️</span>
@@ -4530,7 +4531,7 @@ export default function Dashboard() {
                           </>
                         ) : (
                           <>
-                        <Link href={`/tasks/${task.id}`} className="shrink-0" onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); } catch {} }}>
+                        <Link href={`/tasks/${task.id}`} className="shrink-0" onMouseEnter={() => prefetchTask(task.id)} onTouchStart={() => prefetchTask(task.id)} onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); } catch {} }}>
                           <Button variant="outline" className={`w-auto border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}>
                             <div className="flex items-center gap-2">
                               <span className="text-lg">👁️</span>
@@ -4666,7 +4667,7 @@ export default function Dashboard() {
 
                       {/* Action button */}
                       <div className="mt-4">
-                        <Link href={`/tasks/${task.id}`} className="w-full">
+                        <Link href={`/tasks/${task.id}`} className="w-full" onMouseEnter={() => prefetchTask(task.id)} onTouchStart={() => prefetchTask(task.id)}>
                           <Button variant="outline" className={`w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
                             <div className="flex items-center gap-2">
                               <span className="text-lg">👁️</span>
@@ -4760,7 +4761,7 @@ export default function Dashboard() {
 
                       {/* Action button */}
                       <div className="mt-4">
-                        <Link href={`/tasks/${bid.task_id}`} className="w-full">
+                        <Link href={`/tasks/${bid.task_id}`} className="w-full" onMouseEnter={() => prefetchTask(bid.task_id)} onTouchStart={() => prefetchTask(bid.task_id)}>
                           <Button variant="outline" className={`w-full border-2 border-blue-300 hover:border-blue-400 text-blue-700 hover:text-blue-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
                             <div className="flex items-center gap-2">
                               <span className="text-lg">👁️</span>

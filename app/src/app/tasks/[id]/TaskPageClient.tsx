@@ -363,18 +363,18 @@ export default function TaskDetailPage() {
       try {
         setLoading(true);
         
-        // Check cache first and render immediately
+        // Use cache immediately if we have it (even stale) – then refresh in background
         const cacheKey = `task_${id}`;
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
-          const cachedData = JSON.parse(cached);
-          const cacheAge = Date.now() - cachedData.timestamp;
-          if (cacheAge < 300000) { // 5 minutes cache
-            console.log("Using cached task data");
-            setTask(cachedData.task);
-            setLoading(false);
-            // Continue to refresh in background
-          }
+          try {
+            const cachedData = JSON.parse(cached);
+            if (cachedData?.task) {
+              console.log("Showing cached task data (will refresh in background)");
+              setTask(cachedData.task);
+              setLoading(false);
+            }
+          } catch {}
         }
 
         // Primary request (fetch) with reasonable timeout and Axios fallback
@@ -1369,13 +1369,20 @@ export default function TaskDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="relative">
-            <div className="h-12 w-12 rounded-full border-4 border-blue-500/20 border-t-blue-600 animate-spin" />
-            <div className="absolute inset-0 m-auto h-5 w-5 rounded-full bg-blue-600/10 animate-ping" />
+      <div className="min-h-screen p-4 md:p-6 animate-in fade-in duration-200">
+        <div className="mx-auto max-w-3xl">
+          <div className="h-10 w-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse mb-6" />
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+            <div className="h-7 w-3/4 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse mb-4" />
+            <div className="h-4 w-full bg-slate-100 dark:bg-slate-700 rounded animate-pulse mb-2" />
+            <div className="h-4 w-2/3 bg-slate-100 dark:bg-slate-700 rounded animate-pulse mb-6" />
+            <div className="flex gap-3 mb-6">
+              <div className="h-9 w-20 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse" />
+              <div className="h-9 w-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse" />
+            </div>
+            <div className="h-24 bg-slate-100 dark:bg-slate-700 rounded-xl animate-pulse mb-6" />
+            <div className="h-12 w-full max-w-xs bg-blue-200/50 dark:bg-slate-600 rounded-xl animate-pulse" />
           </div>
-          <span className="text-sm text-muted-foreground animate-pulse">Loading task details...</span>
         </div>
       </div>
     );
@@ -1403,19 +1410,12 @@ export default function TaskDetailPage() {
     );
   }
 
-  if (!userProfile) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="relative">
-            <div className="h-12 w-12 rounded-full border-4 border-blue-500/20 border-t-blue-600 animate-spin" />
-            <div className="absolute inset-0 m-auto h-5 w-5 rounded-full bg-blue-600/10 animate-ping" />
-          </div>
-          <span className="text-sm text-muted-foreground animate-pulse">Loading task details...</span>
-        </div>
-      </div>
-    );
-  }
+  // Don't block on userProfile – use user from store/localStorage for header; profile loads in background
+  const headerUser = userProfile
+    ? { name: userProfile.name, avatar: userProfile.avatar }
+    : user
+      ? { name: user.name, avatar: user.avatar || "/images/placeholder.svg" }
+      : { name: "User", avatar: "/images/placeholder.svg" };
 
   if (!task) {
     return (
@@ -1441,7 +1441,7 @@ export default function TaskDetailPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
       <Toaster position="top-right" />
-      <Header user={{ name: userProfile.name, avatar: userProfile.avatar }} onSignOut={handleSignOut} />
+      <Header user={headerUser} onSignOut={handleSignOut} />
       
       {/* Premium Back Navigation */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 shadow-sm">
