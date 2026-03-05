@@ -13,7 +13,7 @@ import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Task, User, Bid, Offer, ApiBidResponse, ApiJobResponse } from "../../types";
 import { Button } from "@/components/ui/button";
@@ -58,16 +58,46 @@ export default function TaskDetailPage() {
   const [showCancelDialog, setShowCancelDialog] = useState<boolean>(false);
   const [cancelReason, setCancelReason] = useState<string>("");
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
-  const [isVerified, setIsVerified] = useState<boolean>(false);
-  const [verificationChecked, setVerificationChecked] = useState<boolean>(false);
+  // Initialize verification from localStorage to avoid flash (verificationChecked + isVerified)
+  const [isVerified, setIsVerified] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const u = localStorage.getItem("user");
+      if (u) {
+        const p = JSON.parse(u);
+        const s = p?.verification_status;
+        if (s !== undefined && s !== null) {
+          const n = typeof s === "string" ? parseInt(s, 10) : Number(s);
+          return !isNaN(n) && n >= 2;
+        }
+      }
+    } catch {}
+    return false;
+  });
+  const [verificationChecked, setVerificationChecked] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const u = localStorage.getItem("user");
+      if (u) {
+        const p = JSON.parse(u);
+        return p?.verification_status !== undefined && p?.verification_status !== null;
+      }
+    } catch {}
+    return false;
+  });
   const [isPaymentPending, setIsPaymentPending] = useState<boolean>(false);
+  const [paymentCheckDone, setPaymentCheckDone] = useState<boolean>(false);
+  const paymentToastShownRef = useRef<boolean>(false);
   const [taskRefreshKey, setTaskRefreshKey] = useState<number>(0);
   const [bidsRetryKey, setBidsRetryKey] = useState<number>(0);
+  const prefetchedBidsRef = useRef<{ id: string; data: any } | null>(null);
   const [completeReviewOpen, setCompleteReviewOpen] = useState(false);
 
-  // Reset bids retry when switching to a different task
+  // Reset bids retry and payment check when switching to a different task
   useEffect(() => {
     setBidsRetryKey(0);
+    setPaymentCheckDone(false);
+    paymentToastShownRef.current = false;
   }, [id]);
 
   // Refetch bids when tab becomes visible and taskmaster has 0 offers (after initial load)
@@ -84,11 +114,6 @@ export default function TaskDetailPage() {
   }, [task, userId, offers.length, bidsLoading]);
   const [completeReviewAsTaskmaster, setCompleteReviewAsTaskmaster] = useState(false);
   const taskerId = offers.length > 0 ? offers[0].tasker.id : (task?.assignedTasker?.id ? String(task.assignedTasker.id) : null);
-
-  // Debug: Log verification state changes
-  useEffect(() => {
-    console.log("🔍 Verification state changed:", { isVerified, verificationChecked });
-  }, [isVerified, verificationChecked]);
 
   // Check for existing review in localStorage when task loads
   useEffect(() => {
@@ -390,21 +415,56 @@ export default function TaskDetailPage() {
             const cachedData = JSON.parse(cached);
             const cacheAge = Date.now() - (cachedData?.timestamp || 0);
             if (cachedData?.task && cacheAge < 300000) {
-              // 5 min – avoid serving old task that lacks assignedTasker/bids info
               console.log("Using fresh cached task data");
               setTask(cachedData.task);
               setLoading(false);
+              // Use prefetched bids if available (from hover prefetch)
+              if (Array.isArray(cachedData.bids) && cachedData.bids.length > 0) {
+                const posterIdStr = String(cachedData.task?.poster?.id || "").trim();
+                const validBids = cachedData.bids.filter((b: any) => {
+                  const bidderId = String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? "").trim();
+                  return !bidderId || !posterIdStr || bidderId !== posterIdStr;
+                });
+                const newOffers = validBids.map((b: any, i: number) => ({
+                  id: `bid${i + 1}`,
+                  tasker: {
+                    id: String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? ""),
+                    name: b.bidder_name ?? b.user_name ?? b.tasker_name ?? "Unknown",
+                    avatar: "/images/placeholder.svg",
+                    rating: null,
+                    taskCount: null,
+                    joinedDate: null,
+                  },
+                  amount: Number(b.bid_amount ?? b.amount ?? 0),
+                  message: b.bid_description ?? b.message ?? "",
+                  createdAt: b.created_at ?? b.createdAt ?? new Date().toISOString(),
+                  status: b.status ?? "pending",
+                }));
+                setOffers(newOffers);
+                setBids(cachedData.bids);
+              }
             }
           } catch {}
         }
 
-        // Primary request – try api.jobpool.in first, with ID format fallbacks
+        // Primary request – fetch get-job and get-bids in parallel for faster load
         const token = localStorage.getItem('token');
         const controller = new AbortController();
+        const bidsController = new AbortController();
         const timeoutId = setTimeout(() => {
           console.log("Task loading timeout reached, aborting request");
           controller.abort();
         }, 6000); // 6s timeout – faster feedback
+
+        // Start get-bids in parallel (taskmaster endpoint – works for poster; non-poster will refetch in loadBids)
+        const bidsPromise = fetch(`https://api.jobpool.in/api/v1/get-bids/${id}/`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          credentials: "omit",
+          signal: bidsController.signal,
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null);
 
         // Backend may expect "task_139" or "139" – try both if first attempt fails
         const tryIds = [
@@ -628,6 +688,50 @@ export default function TaskDetailPage() {
         };
         setTask(mappedTask);
         console.log("Mapped Task:", mappedTask);
+
+        // Use bids from parallel fetch (already in flight)
+        try {
+          const bidsData = await bidsPromise;
+          if (bidsData?.status_code === 200) {
+            const raw = bidsData.data?.bids ?? bidsData.data ?? (Array.isArray(bidsData.data) ? bidsData.data : []);
+            const taskBids = Array.isArray(raw) ? raw : [];
+            const posterIdStr = String(job.user_ref_id || "").trim();
+            const validBids = taskBids.filter((b: any) => {
+              const bidderId = String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? "").trim();
+              return !bidderId || !posterIdStr || bidderId !== posterIdStr;
+            });
+            const norm = (b: any) => ({
+              bidder_id: b.bidder_id ?? b.user_id ?? b.tasker_id ?? "",
+              bidder_name: b.bidder_name ?? b.user_name ?? b.tasker_name ?? "Unknown",
+              bid_amount: Number(b.bid_amount ?? b.amount ?? 0),
+              bid_description: b.bid_description ?? b.message ?? "",
+            });
+            const newOffers: Offer[] = validBids.map((b: any, i: number) => {
+              const n = norm(b);
+              return {
+                id: `bid${i + 1}`,
+                tasker: {
+                  id: String(n.bidder_id),
+                  name: n.bidder_name || "Unknown",
+                  avatar: "/images/placeholder.svg",
+                  rating: null,
+                  taskCount: null,
+                  joinedDate: null,
+                },
+                amount: n.bid_amount,
+                message: n.bid_description || "",
+                createdAt: (b.created_at ?? b.createdAt ?? new Date().toISOString()) as string,
+                status: (b.status ?? "pending") as string,
+              };
+            });
+            setOffers(newOffers);
+            setBids(taskBids);
+            prefetchedBidsRef.current = { id, data: bidsData };
+            console.log("✅ Bids loaded from parallel fetch:", newOffers.length);
+          }
+        } catch (e) {
+          console.warn("Parallel bids fetch failed, loadBids will retry:", e);
+        }
         
         // Cache the task data
         localStorage.setItem(cacheKey, JSON.stringify({
@@ -667,11 +771,16 @@ export default function TaskDetailPage() {
     loadTaskData();
   }, [id, taskRefreshKey]);
 
-  // Load bids/offers
+  // Load bids/offers (skipped if already loaded from parallel fetch in loadTaskData)
   useEffect(() => {
     if (!userId || !task) return;
 
     async function loadBids() {
+      if (prefetchedBidsRef.current?.id === id) {
+        prefetchedBidsRef.current = null;
+        setBidsLoading(false);
+        return;
+      }
       try {
         setBidsLoading(true);
         // Use fetch API for better performance
@@ -1388,8 +1497,9 @@ export default function TaskDetailPage() {
   };
 
   // Check if user accepted an offer but didn't complete payment
+  // Only show payment pending AFTER async API check completes to avoid flicker
   useEffect(() => {
-    if (!id || !userId) return;
+    if (!id || !userId || !task) return;
     
     const checkPendingPayment = async () => {
       try {
@@ -1397,81 +1507,85 @@ export default function TaskDetailPage() {
         const paymentPageVisited = sessionStorage.getItem("payment_page_visited");
         const pendingVerification = localStorage.getItem("pending_payment_verification");
         
-        if (paymentData && paymentPageVisited) {
-          const data = JSON.parse(paymentData);
-          if (data.taskId !== id) {
-            setIsPaymentPending(false);
-            return;
-          }
-          // For this task: get fresh status from API so we don't show "payment pending" after user just paid
-          let paymentCompleted = false;
-          if (task?.status === "in_progress" || task?.assignedTasker) {
-            paymentCompleted = true;
-          } else {
-            try {
-              const token = localStorage.getItem("token");
-              const res = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
-                method: "GET",
-                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-                credentials: "omit",
-              });
-              if (res.ok) {
-                const json = await res.json();
-                const job = json?.data;
-                const assignedId = job?.assigned_tasker_id || job?.assigned_user_id || job?.assigned_to || job?.accepted_bidder_id || job?.worker_id;
-                const status = (job?.status || "").toLowerCase();
-                if (status === "in_progress" || assignedId || job?.payment_status === "success" || job?.payment_status === true) {
-                  paymentCompleted = true;
-                }
-              }
-            } catch (_) {
-              // Fall back to current task state
-              if (task?.status === "in_progress" || task?.assignedTasker) paymentCompleted = true;
+        if (!paymentData || !paymentPageVisited) {
+          setIsPaymentPending(false);
+          setPaymentCheckDone(true);
+          return;
+        }
+        
+        const data = JSON.parse(paymentData);
+        if (data.taskId !== id) {
+          setIsPaymentPending(false);
+          setPaymentCheckDone(true);
+          return;
+        }
+        
+        // Always fetch API first to avoid showing "pending" then hiding (flicker)
+        let paymentCompleted = false;
+        try {
+          const token = localStorage.getItem("token");
+          const res = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            credentials: "omit",
+          });
+          if (res.ok) {
+            const json = await res.json();
+            const job = json?.data;
+            const assignedId = job?.assigned_tasker_id || job?.assigned_user_id || job?.assigned_to || job?.accepted_bidder_id || job?.worker_id;
+            const status = (job?.status || "").toLowerCase();
+            if (status === "in_progress" || assignedId || job?.payment_status === "success" || job?.payment_status === true) {
+              paymentCompleted = true;
             }
           }
-          if (paymentCompleted) {
-            console.log("✅ Payment completed for task:", id, "- clearing flags");
-            sessionStorage.removeItem("paymentData");
-            sessionStorage.removeItem("payment_page_visited");
-            localStorage.removeItem("pending_payment_verification");
-            setIsPaymentPending(false);
-            return;
-          }
+        } catch (_) {
+          if (task?.status === "in_progress" || task?.assignedTasker) paymentCompleted = true;
+        }
+        
+        if (paymentCompleted) {
+          sessionStorage.removeItem("paymentData");
+          sessionStorage.removeItem("payment_page_visited");
+          localStorage.removeItem("pending_payment_verification");
+          setIsPaymentPending(false);
+          paymentToastShownRef.current = false;
+        } else {
           const isTaskOpen = task?.status === "open" || task?.status === "Open" || !task?.status || task?.status === true;
           if (isTaskOpen) {
-            console.warn("⚠️ Payment pending for task:", id, "- task is still open");
             setIsPaymentPending(true);
-            toast.error("⚠️ Payment was not completed. Please complete payment to confirm the assignment.", {
-              duration: 6000,
-              action: {
-                label: "Complete Payment",
-                onClick: () => router.push("/payments"),
-              },
-            });
+            if (!paymentToastShownRef.current) {
+              paymentToastShownRef.current = true;
+              toast.error("⚠️ Payment was not completed. Please complete payment to confirm the assignment.", {
+                duration: 6000,
+                action: {
+                  label: "Complete Payment",
+                  onClick: () => router.push("/payments"),
+                },
+              });
+            }
           } else if (pendingVerification) {
-            console.warn("⚠️ Payment verification pending for task:", id);
             setIsPaymentPending(true);
-            toast.error("⚠️ Payment verification pending. Please wait for confirmation.", {
-              duration: 6000,
-            });
+            if (!paymentToastShownRef.current) {
+              paymentToastShownRef.current = true;
+              toast.error("⚠️ Payment verification pending. Please wait for confirmation.", {
+                duration: 6000,
+              });
+            }
           } else {
             setIsPaymentPending(false);
           }
-        } else {
-          setIsPaymentPending(false);
         }
+        setPaymentCheckDone(true);
       } catch (e) {
         console.error("Error checking pending payment:", e);
         setIsPaymentPending(false);
+        setPaymentCheckDone(true);
       }
     };
     
-    const timeoutId = setTimeout(() => {
-      checkPendingPayment();
-    }, task ? 100 : 1000);
-    
+    const delay = task ? 150 : 800;
+    const timeoutId = setTimeout(checkPendingPayment, delay);
     return () => clearTimeout(timeoutId);
-  }, [id, userId, router, task]);
+  }, [id, userId, task]);
 
   if (authLoading) {
     return (
@@ -1576,8 +1690,8 @@ export default function TaskDetailPage() {
         </div>
       </div>
 
-      <main className="container mx-auto max-w-6xl px-4 md:px-6 py-4 md:py-6">
-        <div className="grid gap-4 lg:grid-cols-3">
+      <main className="container mx-auto max-w-6xl px-4 md:px-6 py-4 md:py-6 min-h-[60vh]">
+        <div className="grid gap-4 lg:grid-cols-3 lg:min-h-[400px]">
           {/* Main Content - Left Column */}
           <div className="lg:col-span-2 space-y-4">
             <TaskInfo
@@ -1587,6 +1701,8 @@ export default function TaskDetailPage() {
               isTaskPoster={isTaskPoster}
               isEditing={isEditing}
               setIsEditing={setIsEditing}
+              isPaymentPending={isPaymentPending}
+              paymentCheckDone={paymentCheckDone}
             />
             {/* Poster can leave review only after final completion */}
             <ReviewSection
@@ -1673,6 +1789,8 @@ export default function TaskDetailPage() {
               blockSubmitInitial={!isTaskPoster && (task.status === "in_progress" || !!task.assignedTasker)}
               isVerified={isVerified}
               verificationChecked={verificationChecked}
+              isPaymentPending={isPaymentPending}
+              paymentCheckDone={paymentCheckDone}
             />
           </div>
           

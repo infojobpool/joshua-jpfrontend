@@ -363,6 +363,9 @@ interface OffersSectionProps {
   blockSubmitInitial?: boolean; // hint from parent to suppress form immediately
   isVerified?: boolean; // verification status for bid submission
   verificationChecked?: boolean; // whether verification status has been checked
+  /** From parent - avoids flicker; only show payment pending after async API check */
+  isPaymentPending?: boolean;
+  paymentCheckDone?: boolean;
 }
 
 export function OffersSection({
@@ -381,6 +384,8 @@ export function OffersSection({
   blockSubmitInitial = false,
   isVerified = false,
   verificationChecked = false,
+  isPaymentPending: parentPaymentPending,
+  paymentCheckDone,
 }: OffersSectionProps) {
   const [error, setError] = useState("");
   const router = useRouter();
@@ -468,7 +473,11 @@ export function OffersSection({
     return false;
   };
 
-  const isPaymentPending = checkPaymentPending();
+  // Use parent's payment state when available - don't show pending until API check completes (avoids flicker)
+  const isPaymentPending =
+    paymentCheckDone !== undefined && parentPaymentPending !== undefined
+      ? paymentCheckDone && parentPaymentPending
+      : checkPaymentPending();
 
   // Deduplicate offers: If same user has multiple offers, keep only the most recent one
   // This prevents showing duplicate offers from the same tasker
@@ -867,7 +876,7 @@ export function OffersSection({
         </CardFooter>
       )}
       {!isTaskPoster && !shouldBlockSubmit && !hasSubmittedOffer && (
-        <CardFooter>
+        <CardFooter className="min-h-[200px]">
           {verificationChecked && !isVerified ? (
             <div className="w-full p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-sm text-yellow-800 font-medium mb-2">
