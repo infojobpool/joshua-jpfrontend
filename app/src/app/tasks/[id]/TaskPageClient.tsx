@@ -62,7 +62,26 @@ export default function TaskDetailPage() {
   const [verificationChecked, setVerificationChecked] = useState<boolean>(false);
   const [isPaymentPending, setIsPaymentPending] = useState<boolean>(false);
   const [taskRefreshKey, setTaskRefreshKey] = useState<number>(0);
+  const [bidsRetryKey, setBidsRetryKey] = useState<number>(0);
   const [completeReviewOpen, setCompleteReviewOpen] = useState(false);
+
+  // Reset bids retry when switching to a different task
+  useEffect(() => {
+    setBidsRetryKey(0);
+  }, [id]);
+
+  // Refetch bids when tab becomes visible and taskmaster has 0 offers (after initial load)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (typeof document === "undefined" || document.visibilityState !== "visible") return;
+      const isPoster = task && task.poster && task.poster.id === userId;
+      if (isPoster && !bidsLoading && offers.length === 0 && !task?.assignedTasker?.id) {
+        setBidsRetryKey((k) => k + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", handleFocus);
+    return () => document.removeEventListener("visibilitychange", handleFocus);
+  }, [task, userId, offers.length, bidsLoading]);
   const [completeReviewAsTaskmaster, setCompleteReviewAsTaskmaster] = useState(false);
   const taskerId = offers.length > 0 ? offers[0].tasker.id : (task?.assignedTasker?.id ? String(task.assignedTasker.id) : null);
 
@@ -379,7 +398,7 @@ export default function TaskDetailPage() {
           } catch {}
         }
 
-        // Primary request (fetch) with reasonable timeout and Axios fallback
+        // Primary request – try api.jobpool.in first, with ID format fallbacks
         const token = localStorage.getItem('token');
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
@@ -387,30 +406,48 @@ export default function TaskDetailPage() {
           controller.abort();
         }, 6000); // 6s timeout – faster feedback
 
-        let data: ApiJobResponse;
-        try {
-          const response = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            credentials: 'omit',
-            signal: controller.signal
-          });
-          clearTimeout(timeoutId);
-          if (!response.ok) {
+        // Backend may expect "task_139" or "139" – try both if first attempt fails
+        const tryIds = [
+          id,
+          id.startsWith("task_") ? id.replace(/^task_/, "") : `task_${id}`,
+          id.replace(/^task_/, ""),
+        ].filter((x, i, arr) => arr.indexOf(x) === i);
+
+        let data: ApiJobResponse | undefined;
+        let lastErr: any;
+        for (const tryId of tryIds) {
+          try {
+            const response = await fetch(`https://api.jobpool.in/api/v1/get-job/${tryId}/`, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              credentials: 'omit',
+              signal: controller.signal
+            });
+            if (response.ok) {
+              clearTimeout(timeoutId);
+              data = await response.json();
+              break;
+            }
+            if (response.status === 404 && tryId !== tryIds[tryIds.length - 1]) {
+              console.warn(`get-job/${tryId}/ returned 404, trying next ID format`);
+              continue;
+            }
             throw new Error(`HTTP ${response.status}`);
+          } catch (err) {
+            lastErr = err;
+            if ((err as any)?.name === "AbortError") break;
           }
-          data = await response.json();
-        } catch (primaryErr) {
-          // Fallback to axios instance (may have different infra/routing)
-          console.warn("Primary task fetch failed, trying fallback via axiosInstance", primaryErr);
+        }
+        if (!data) {
+          clearTimeout(timeoutId);
           try {
             const axiosResp = await axiosInstance.get(`/get-job/${id}/`);
             data = axiosResp.data as ApiJobResponse;
           } catch (fallbackErr) {
-            throw fallbackErr;
+            throw lastErr || fallbackErr;
           }
         }
 
@@ -861,6 +898,13 @@ export default function TaskDetailPage() {
 
         setOffers(newOffers);
         setBids(taskBids);
+
+        // Taskmaster with 0 offers – retry once after 2s (handles intermittent API failures)
+        const isPoster = task && task.poster && task.poster.id === userId;
+        if (isPoster && newOffers.length === 0 && !task?.assignedTasker?.id && bidsRetryKey === 0) {
+          setTimeout(() => setBidsRetryKey((k) => k + 1), 2000);
+        }
+
         // If any bid is accepted/assigned, force task status to in_progress for UI consistency
         try {
           const hasAccepted = taskBids.some((b) => {
@@ -890,7 +934,7 @@ export default function TaskDetailPage() {
     }
 
     loadBids();
-  }, [id, task, userId]);
+  }, [id, task, userId, bidsRetryKey]);
 
   const handleSubmitOffer = async (e: FormEvent) => {
     e.preventDefault();
