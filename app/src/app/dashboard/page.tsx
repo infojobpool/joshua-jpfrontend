@@ -222,6 +222,55 @@ function dedupeTasksByContent(tasks: Task[]): Task[] {
   return Array.from(byKey.values());
 }
 
+// Fetch get-job for tasks with missing dates and update state (no backend change needed)
+function fillMissingDatesFromGetJob(
+  tasks: Task[],
+  setter: React.Dispatch<React.SetStateAction<Task[]>>,
+  API_BASE: string
+) {
+  const needsDate = tasks.filter((t) => !t.postedAt || t.postedAt === "—" || t.postedAt === "Unknown");
+  if (needsDate.length === 0) return;
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  if (!token) return;
+  const batch = needsDate.slice(0, 8);
+  Promise.all(
+    batch.map((t) =>
+      fetch(`${API_BASE}/get-job/${t.id}/`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        credentials: "omit",
+      }).then((r) => (r.ok ? r.json() : null))
+    )
+  )
+    .then((responses) => {
+      const updates: Array<{ id: string; postedAt: string; postedAtSortValue: number; postedAtISO: string }> = [];
+      responses.forEach((res, i) => {
+        const task = batch[i];
+        if (!res || res.status_code !== 200 || !res.data) return;
+        const job = res.data;
+        const raw = job.tstamp || job.timestamp || job.created_at || job.job_tstamp || job.job_due_date;
+        const meta = formatTimestampValue(raw);
+        if (meta.formatted !== "—") {
+          updates.push({ id: task.id, postedAt: meta.formatted, postedAtSortValue: meta.sortValue, postedAtISO: meta.iso });
+        }
+      });
+      if (updates.length > 0) {
+        setter((prev) => {
+          const next = prev.map((t) => {
+            const u = updates.find((u) => u.id === t.id);
+            if (u) return { ...t, postedAt: u.postedAt, postedAtSortValue: u.postedAtSortValue, postedAtISO: u.postedAtISO };
+            return t;
+          });
+          try {
+            sessionStorage.setItem("postedTasks", JSON.stringify(next));
+          } catch {}
+          return next;
+        });
+      }
+    })
+    .catch(() => {});
+}
+
 // Get displayed postedAt for a task card - use cache if list has no date (get-job has full data)
 function getCardPostedAt(task: { id: string; postedAt: string }): string {
   if (task.postedAt && task.postedAt !== "—" && task.postedAt !== "Unknown") return task.postedAt;
@@ -617,7 +666,11 @@ export default function Dashboard() {
     } catch {}
     try {
       const p = sessionStorage.getItem("postedTasks");
-      if (p) setPostedTasks(dedupeTasksByContent(dedupeTasksById(JSON.parse(p) as Task[])));
+      if (p) {
+        const tasks = dedupeTasksByContent(dedupeTasksById(JSON.parse(p) as Task[]));
+        setPostedTasks(tasks);
+        fillMissingDatesFromGetJob(tasks, setPostedTasks, API_BASE);
+      }
     } catch {}
     try {
       const r = sessionStorage.getItem("requestedTasks");
@@ -863,7 +916,9 @@ export default function Dashboard() {
           const cacheAge = Date.now() - cachedData.timestamp;
           if (cacheAge < 30000) { // 30 second cache
             console.log("Using cached user tasks");
-            setPostedTasks(dedupeTasksByContent(dedupeTasksById(cachedData.tasks as Task[])));
+            const cachedTasks = dedupeTasksByContent(dedupeTasksById(cachedData.tasks as Task[]));
+            setPostedTasks(cachedTasks);
+            fillMissingDatesFromGetJob(cachedTasks, setPostedTasks, API_BASE);
             return;
           }
         }
@@ -1092,6 +1147,9 @@ export default function Dashboard() {
             tasks: deduped,
             timestamp: Date.now()
           }));
+
+          // If get-user-jobs didn't return dates, fetch get-job for each (backend returns full data)
+          fillMissingDatesFromGetJob(deduped, setPostedTasks, API_BASE);
         } else {
           console.warn("No jobs found or API error:", result.message);
         }
