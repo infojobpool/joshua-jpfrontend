@@ -450,7 +450,20 @@ export default function Dashboard() {
     return () => clearTimeout(timeoutId);
   }, [effectiveUserId, router]);
 
-  // Profile fetch moved to consolidated parallel load
+  // Fetch profile image on load (API uses profile_img; login may not return it)
+  useEffect(() => {
+    if (!effectiveUserId || !updateUserProfileImage) return;
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await axiosInstance.get(`/profile?user_id=${effectiveUserId}`, { signal: controller.signal });
+        const payload = res.data?.data ?? res.data;
+        const img = payload?.profile_img;
+        if (img) updateUserProfileImage(img);
+      } catch {}
+    })();
+    return () => controller.abort();
+  }, [effectiveUserId, updateUserProfileImage]);
 
   // Fetch poster profile images when get-all-jobs API doesn't return them
   useEffect(() => {
@@ -542,16 +555,7 @@ export default function Dashboard() {
     } catch {}
     try {
       const p = sessionStorage.getItem("postedTasks");
-      if (p) {
-        const parsed = JSON.parse(p) as Task[];
-        const seen = new Set<string>();
-        const deduped = parsed.filter((t) => {
-          if (seen.has(String(t.id))) return false;
-          seen.add(String(t.id));
-          return true;
-        });
-        setPostedTasks(deduped);
-      }
+      if (p) setPostedTasks(JSON.parse(p));
     } catch {}
     try {
       const r = sessionStorage.getItem("requestedTasks");
@@ -657,298 +661,1161 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestedTasks.length]);
 
-  // Consolidated parallel data load: profile, categories, task orders, user jobs, all jobs, bids, assigned, requested, completed
   useEffect(() => {
     if (!isAuthenticated || !user || !(userId || effectiveUserId)) {
-      router.push("/signin");
-      return;
-    }
-    const targetUserId = userId || effectiveUserId;
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setLoading(false);
-      return;
-    }
+        router.push("/signin");
+        return;
+      }
+    setLoading(false);
+    fetchTaskOrders(); // Fetch task orders when user is authenticated
+  }, [isAuthenticated, user, userId, effectiveUserId, router]);
 
-    let cancelled = false;
-    setLoading(true);
-
-    const runParallelLoad = async () => {
-      const API = API_BASE;
-      const headers = {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      };
-      const opts = { method: "GET" as const, headers, credentials: "omit" as RequestCredentials };
-
+  // Fetch categories - load on mount and when user is available
+  useEffect(() => {
+    if (!user && !userId) return; // Wait for user to be available
+    
+    const fetchCategories = async () => {
       try {
-        const [
-          profileRes,
-          categoriesRes,
-          taskOrdersRes,
-          userJobsRes,
-          allJobsRes,
-          bidsRes,
-          assignedRes,
-          requestedRes,
-          completedRes,
-        ] = await Promise.all([
-          fetch(`${API}/profile?user_id=${targetUserId}`, opts).then((r) => (r.ok ? r.json() : null)),
-          fetch(`${API}/get-all-categories/`, opts).then((r) => (r.ok ? r.json() : null)),
-          fetch(`${API}/get-all-task-orders/`, opts).then((r) => (r.ok ? r.json() : null)),
-          fetch(`${API}/get-user-jobs/${targetUserId}/`, opts).then((r) => (r.ok ? r.json() : null)),
-          fetch(`${API}/get-all-jobs/?limit=100`, opts).then((r) => (r.ok ? r.json() : null)),
-          fetch(`${API}/get-user-bids/${targetUserId}/`, opts).then((r) => (r.ok ? r.json() : null)),
-          fetch(`${API}/get-user-assigned-bids/${targetUserId}/`, opts).then((r) => (r.ok ? r.json() : null)),
-          fetch(`${API}/get-user-requested-bids/${targetUserId}/`, opts).then((r) => (r.ok ? r.json() : null)),
-          fetch(`${API}/fetch-completed-tasks/${targetUserId}/`, opts).then((r) => (r.ok ? r.json() : null)),
-        ]);
+        setCategoriesLoading(true);
+        const token = localStorage.getItem('token');
+        if (!token) {
+          console.warn("No token available for categories fetch");
+          setCategoriesLoading(false);
+          return;
+        }
+        
+        // Try axiosInstance first (better error handling)
+        try {
+          const response = await axiosInstance.get('/get-all-categories/');
+          console.log("📂 Categories API response:", response.data);
+          
+          if (response.data?.status_code === 200) {
+            // Try multiple possible response structures
+            const cats = response.data.data?.categories || 
+                        response.data.data || 
+                        response.data.categories ||
+                        response.data || 
+                        [];
+            
+            console.log("📂 Extracted categories:", cats);
+            
+            if (Array.isArray(cats) && cats.length > 0) {
+              // Ensure each category has id and name
+              const normalized = cats.map((cat: any) => ({
+                id: cat.id || cat.category_id || cat._id || String(cat),
+                name: cat.name || cat.category_name || cat.title || String(cat)
+              }));
+              console.log("📂 Normalized categories:", normalized);
+              setCategories(normalized);
+              setCategoriesLoading(false);
+              return;
+            } else {
+              console.warn("📂 Categories array is empty or not an array:", cats);
+            }
+          } else {
+            console.warn("📂 Categories API returned non-200 status:", response.data);
+          }
+        } catch (axiosError: any) {
+          console.warn("Axios categories fetch failed, trying fetch API:", axiosError);
+          console.warn("Error details:", axiosError.response?.data || axiosError.message);
+        }
+        
+        // Fallback to fetch API
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout // 20 second timeout
 
-        if (cancelled) return;
+        const fetchResponse = await fetch(`${API_BASE}/get-all-categories/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal
+        });
 
-        const taskOrdersArr = (taskOrdersRes?.data?.task_orders || taskOrdersRes?.task_orders || []) as any[];
-        setTaskOrders(taskOrdersArr);
+        clearTimeout(timeoutId);
 
-        const profilePayload = profileRes?.data ?? profileRes;
-        if (profilePayload?.profile_img && updateUserProfileImage) updateUserProfileImage(profilePayload.profile_img);
-
-        const cats = categoriesRes?.data?.categories || categoriesRes?.data || categoriesRes?.categories || categoriesRes || [];
-        if (Array.isArray(cats) && cats.length > 0) {
-          setCategories(cats.map((c: any) => ({ id: c.id || c.category_id || String(c), name: c.name || c.category_name || String(c) })));
+        if (!fetchResponse.ok) {
+          console.warn("Fetch categories failed with status:", fetchResponse.status);
+          setCategoriesLoading(false);
+          return;
         }
 
-        if (userJobsRes?.status_code === 200 && userJobsRes?.data?.jobs) {
-          const userJobs = userJobsRes.data.jobs.filter((j: any) => {
-            const uid = (j.user_ref_id || j.posted_by_id || j.user_id)?.toString();
-            return uid === targetUserId?.toString();
+        const result = await fetchResponse.json();
+        console.log("📂 Fetch API categories response:", result);
+        
+        // Handle different response structures
+        if (result.status_code === 200) {
+          const cats = result.data?.categories || 
+                      result.data || 
+                      result.categories ||
+                      result || 
+                      [];
+          
+          if (Array.isArray(cats) && cats.length > 0) {
+            // Ensure each category has id and name
+            const normalized = cats.map((cat: any) => ({
+              id: cat.id || cat.category_id || cat._id || String(cat),
+              name: cat.name || cat.category_name || cat.title || String(cat)
+            }));
+            console.log("📂 Normalized categories from fetch:", normalized);
+            setCategories(normalized);
+          } else {
+            console.warn("📂 Categories array is empty from fetch API:", cats);
+          }
+        } else {
+          console.warn("📂 Fetch API returned non-200 status:", result);
+        }
+      } catch (error: any) {
+        // Handle AbortError separately (don't show error for timeouts)
+        if (error?.name === 'AbortError') {
+          console.log("⏰ Fetch categories was aborted (timeout after 90s) - backend may be slow");
+        } else {
+          console.error("Failed to fetch categories:", error);
+          console.error("Error details:", error.response?.data || error.message);
+        }
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, [user, userId, API_BASE]);
+
+  // Fetch user's posted tasks
+  useEffect(() => {
+    if (!user || !(userId || effectiveUserId)) return;
+
+    const cacheKey = `user_tasks_${userId || effectiveUserId}`;
+    if (refetchPostedTrigger > 0) {
+      try { localStorage.removeItem(cacheKey); } catch {}
+    }
+
+    const fetchUserTasks = async () => {
+      try {
+        // Check cache first (skip if we just triggered a refetch)
+        const cached = refetchPostedTrigger > 0 ? null : localStorage.getItem(cacheKey);
+        if (cached) {
+          const cachedData = JSON.parse(cached);
+          const cacheAge = Date.now() - cachedData.timestamp;
+          if (cacheAge < 30000) { // 30 second cache
+            console.log("Using cached user tasks");
+            setPostedTasks(cachedData.tasks);
+            return;
+          }
+        }
+        
+        // Use the faster get-all-jobs-admin API with better filtering
+        const token = localStorage.getItem('token');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+
+        const fetchResponse = await fetch(`${API_BASE}/get-user-jobs/${userId || effectiveUserId}/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!fetchResponse.ok) {
+          console.warn("Fetch user tasks failed with status:", fetchResponse.status);
+          return;
+        }
+
+        const result = await fetchResponse.json();
+
+
+        if (result.status_code === 200 && result.data?.jobs) {
+          // Filter for tasks that belong to the current user
+          const userJobs = result.data.jobs.filter((job: any) => {
+            const jobUserId = job.user_ref_id || job.posted_by_id || job.user_id;
+            const me = (userId || effectiveUserId)?.toString();
+            return jobUserId === me;
           });
-          const seenIds = new Set<string>();
-          const tasks: Task[] = userJobs
-            .filter((job: any) => {
-              const id = String(job.job_id || job.id);
-              if (seenIds.has(id)) return false;
-              seenIds.add(id);
-              return true;
-            })
-            .map((job: any) => {
-            const hasPaidOrder = taskOrdersArr.some((o: any) => {
-              const tid = o.job_id || o.postId || o.post_id || o.task_id;
-              return String(tid) === String(job.job_id) && (o.status === 1 || o.status === "1" || o.status === 0);
-            });
+          
+          console.log(`🔍 Found ${userJobs.length} tasks for user ${userId || effectiveUserId} out of ${result.data.jobs.length} total jobs`);
+          
+          // First, get the basic task data
+          const tasks: Task[] = userJobs.map((job: any) => {
             let jobStatus = "open";
-            const isCancelled = !!job.cancel_status || job.status === "cancelled" || job.status === "Canceled" || !!job.cancelled;
-            if (isCancelled) jobStatus = "canceled";
-            else if (job.job_completion_status === 1) jobStatus = "completed";
-            else if (job.deletion_status) jobStatus = "deleted";
-            else if (job.status === "in_progress" || job.bid_accepted || job.payment_status === "paid" || job.payment_status === "PAID" || hasPaidOrder) jobStatus = "in_progress";
-            const postedMeta = formatTimestampValue(job.created_at || job.job_created_at || job.timestamp || job.job_due_date);
-            const assignedToMe = [job.assigned_tasker_id, job.accepted_bidder_id].some((v: any) => v && String(v).trim() === String(targetUserId).trim());
+            console.log(`🔍 MY TASKS - Processing task ${job.job_id} for user ${userId}`);
+            
+            // Check if this task has a paid order - use correct field name
+            const hasPaidOrder = taskOrders.some(order => {
+              const orderTaskId = order.job_id || order.postId || order.post_id || order.task_id;
+              // Status 1 = Completed/Paid, Status 0 = Processing
+              // TEMPORARY FIX: Treat status 0 as paid since backend isn't updating to status 1
+              const isPaid = order.status === 1 || order.status === "1" || order.status === 0;
+              const isMatching = orderTaskId === job.job_id.toString();
+              
+              // Only log if there's a match for debugging
+              if (isMatching) {
+                console.log(`🔍 Order ${order.order_id} matches task ${job.job_id}:`, {
+                  orderStatus: order.status,
+                  isPaid,
+                  willMatch: isMatching && isPaid,
+                  orderDetails: {
+                    order_id: order.order_id,
+                    job_id: order.job_id,
+                    status: order.status,
+                    tasker_id: order.tasker_id,
+                    poster_id: order.taskmanager_id
+                  }
+                });
+              }
+              
+              return isMatching && isPaid;
+            });
+            
+            const matchingOrders = taskOrders.filter(order => {
+              const orderTaskId = order.job_id || order.postId || order.post_id || order.task_id;
+              return orderTaskId === job.job_id.toString();
+            });
+            
+            console.log(`🔍 Task ${job.job_id} payment check:`, {
+              taskId: job.job_id,
+              hasPaidOrder,
+              matchingOrders: matchingOrders.map(order => ({
+                orderId: order.order_id || order.id,
+                job_id: order.job_id,
+                status: order.status,
+                payment_status: order.payment_status,
+                order_status: order.order_status,
+                fullOrder: order // Show the complete order object
+              })),
+              finalStatus: hasPaidOrder ? "in_progress" : "open"
+            });
+            
+            // Check cancellation status FIRST (for both pre-payment and post-payment)
+            // Backend may return cancel_status as boolean, string, or in status field
+            const isCancelled = 
+              job.cancel_status === true || 
+              job.cancel_status === "true" || 
+              job.cancel_status === 1 ||
+              job.status === "cancelled" || 
+              job.status === "Cancelled" ||
+              job.status === "canceled" ||
+              job.status === "Canceled" ||
+              job.cancelled === true ||
+              job.cancelled === "true";
+            
+            if (isCancelled) {
+              jobStatus = "canceled";
+              console.log(`✅ Task ${job.job_id} marked as cancelled (pre or post payment):`, {
+                cancel_status: job.cancel_status,
+                status: job.status,
+                cancelled: job.cancelled
+              });
+            } else if (job.job_completion_status === 1) {
+              jobStatus = "completed";
+            } else if (job.deletion_status) {
+              jobStatus = "deleted";
+            } else if (job.status === "in_progress" || job.status === "working" || job.status === "assigned" || 
+                      job.status === "accepted" || job.status === "paid" || job.status === "active" ||
+                      job.status === true) {
+              jobStatus = "in_progress";
+              console.log(`✅ Task ${job.job_id} marked as in_progress due to status: ${job.status} (type: ${typeof job.status})`);
+            } else if (job.bid_accepted === true || job.bid_accepted === "true" || 
+                      job.offer_accepted === true || job.offer_accepted === "true" ||
+                      job.payment_status === "paid" || job.payment_status === "completed" ||
+                      job.payment_status === "success" || job.payment_status === true ||
+                      job.payment_status === "PAID" || job.payment_status === "COMPLETED" ||
+                      job.payment_status === "SUCCESS" || job.payment_status === 1 ||
+                      job.payment_status === "1" || job.payment_status === "confirmed" ||
+                      job.payment_status === "CONFIRMED" || job.payment_status === "processed" ||
+                      job.payment_status === "PROCESSED" || job.payment_status === "settled" ||
+                      job.payment_status === "SETTLED" || hasPaidOrder) {
+              jobStatus = "in_progress";
+              console.log(`Task ${job.job_id} marked as in_progress due to payment/acceptance`);
+              console.log(`🔍 Task ${job.job_id} status details:`, {
+                bid_accepted: job.bid_accepted,
+                offer_accepted: job.offer_accepted,
+                payment_status: job.payment_status,
+                hasPaidOrder: hasPaidOrder,
+                assigned_tasker_id: job.assigned_tasker_id,
+                accepted_bidder_id: job.accepted_bidder_id
+              });
+            }
+            
+            // Debug logging for tasks that remain "open"
+            if (jobStatus === "open" && (job.bid_accepted || job.offer_accepted || job.assigned_tasker_id || job.accepted_bidder_id)) {
+              console.log(`⚠️ Task ${job.job_id} showing as "open" but has acceptance/assignment indicators:`, {
+                bid_accepted: job.bid_accepted,
+                offer_accepted: job.offer_accepted,
+                assigned_tasker_id: job.assigned_tasker_id,
+                accepted_bidder_id: job.accepted_bidder_id,
+                payment_status: job.payment_status,
+                status: job.status,
+                hasPaidOrder: hasPaidOrder
+              });
+            }
+            
+            // All other tasks remain "open"
+            
+
+            // Determine if this job is assigned to current user (tasker) - handle multiple backend field variants
+            const possibleTaskerIds = [
+              job.assigned_tasker_id,
+              job.assigned_user_id,
+              job.assigned_to,
+              job.accepted_bidder_id,
+              job.tasker_id,
+              job.executor_id,
+            ].filter((v: any) => v !== undefined && v !== null);
+            const normalizedUserId = userId != null ? String(userId).trim() : "";
+            const assignedToMe = possibleTaskerIds.some((v: any) => String(v).trim() === normalizedUserId);
+            if (jobStatus === "completed" && !assignedToMe) {
+              console.debug("Completed job not linked to current tasker", {
+                job_id: job.job_id,
+                possibleTaskerIds,
+                normalizedUserId,
+              });
+            }
+
+            // Use creation date for "posted" (prefer created_at; fallback to due date)
+            const postedRaw = job.created_at || job.job_created_at || job.timestamp || job.tstamp || job.job_tstamp || job.updated_at || job.job_due_date;
+            const postedMeta = formatTimestampValue(postedRaw);
             return {
-              id: String(job.job_id),
+              id: job.job_id.toString(),
               title: job.job_title || "Untitled",
-              description: job.job_description || "No description",
+              description: job.job_description || "No description provided.",
               budget: Number(job.job_budget) || 0,
               location: job.job_location || "Unknown",
               status: jobStatus,
               postedAt: postedMeta.formatted,
               postedAtSortValue: postedMeta.sortValue,
               postedAtISO: postedMeta.iso,
-              offers: job.offers || 0,
+              offers: job.offers || 0, // Use original offers field as fallback
               posted_by: job.posted_by || "Unknown",
               category: job.job_category || "general",
-              job_completion_status: job.job_completion_status === 1 ? "1" : String(job.job_completion_status ?? ""),
-              tasker_completed: Boolean(job.tasker_completed),
-              taskmaster_completed: Boolean(job.taskmaster_completed),
-              deletion_status: !!job.deletion_status,
-              cancel_status: isCancelled,
-              cancelled_by_role: job.cancelled_by_role,
-              cancellation_reason: job.cancellation_reason,
+              job_completion_status: job.job_completion_status === 1 || job.job_completion_status === "1" ? "1" : String(job.job_completion_status ?? ""),
+              tasker_completed: Boolean((job as any).tasker_completed),
+              taskmaster_completed: Boolean((job as any).taskmaster_completed),
+              deletion_status: job.deletion_status || false,
+              cancel_status: isCancelled || (job.cancel_status ?? false), // Use comprehensive cancellation check
+              cancelled_by_role: job.cancelled_by_role || job.cancelled_by || undefined,
+              cancellation_reason: job.cancellation_reason || job.cancellationReason || undefined,
+              cancelled_at: job.cancelled_at || job.cancelledAt || undefined,
               cancelled: isCancelled,
-              images: job.job_images?.urls?.length ? job.job_images.urls.map((url: string, i: number) => ({ id: `img${i + 1}`, url, alt: `Image ${i + 1}` })) : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default" }],
+              images: job.job_images?.urls?.length
+                ? job.job_images.urls.map((url: string, index: number) => ({
+                    id: `img${index + 1}`,
+                    url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
+                    alt: `Job image ${index + 1}`,
+                  }))
+                : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
               assignedToMe,
-              assigned_tasker_id: job.assigned_tasker_id || job.accepted_bidder_id,
+              assigned_tasker_id: job.assigned_tasker_id || job.accepted_bidder_id || job.assigned_user_id || job.confirmed_bid_id,
             };
           });
+
           setPostedTasks(tasks);
           try { sessionStorage.setItem("postedTasks", JSON.stringify(tasks)); } catch {}
-        }
-
-        if (allJobsRes?.status_code === 200 && allJobsRes?.data?.jobs) {
-          const currentUserId = targetUserId?.toString();
-          const tasks: Task[] = allJobsRes.data.jobs
-            .filter((j: any) => j.user_ref_id !== currentUserId && j.job_completion_status !== 1 && !j.deletion_status && !j.cancel_status)
-            .map((j: any) => {
-              const postedMeta = formatTimestampValue(j.tstamp || j.timestamp || j.created_at || j.job_due_date);
-              return { id: String(j.job_id), title: j.job_title || "Untitled", description: j.job_description || "No description", budget: Number(j.job_budget) || 0, location: j.job_location || "Unknown", status: "open", postedAt: postedMeta.formatted, postedAtSortValue: postedMeta.sortValue, postedAtISO: postedMeta.iso, offers: j.offers || 0, posted_by: j.posted_by || "Unknown", posted_by_profile_image: j.posted_by_profile_image || j.taskmanager_profile_image, posted_by_id: j.user_ref_id, category: j.job_category || "general", job_completion_status: j.job_completion_status === 1 ? "Completed" : "Not Completed", deletion_status: !!j.deletion_status, cancel_status: !!j.cancel_status, images: j.job_images?.urls?.length ? j.job_images.urls.map((u: string, i: number) => ({ id: `img${i + 1}`, url: u, alt: `Img ${i + 1}` })) : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default" }] };
-            });
-          setAvailableTasks(tasks);
-          try { localStorage.setItem("availableTasks", JSON.stringify(tasks)); localStorage.setItem("availableTasksTimestamp", String(Date.now())); } catch {}
-        }
-
-        if (bidsRes?.status_code === 200 && bidsRes?.data?.bids) {
-          setBids(bidsRes.data.bids.map((b: any) => ({ id: String(b.bid_id), task_id: String(b.task_id), task_title: b.task_title || "Untitled", bid_amount: Number(b.bid_amount) || 0, status: b.status || "pending", created_at: b.created_at ? new Date(b.created_at).toLocaleDateString("en-GB") : "Unknown", task_location: b.task_location || "Unknown", task_description: b.task_description || "No description", posted_by: b.posted_by || "Unknown" })));
-        }
-
-        if (assignedRes?.data?.jobs || assignedRes?.data) {
-          const jobsArr = Array.isArray(assignedRes.data?.jobs) ? assignedRes.data.jobs : Array.isArray(assignedRes.data) ? assignedRes.data : [];
-          if (jobsArr.length > 0) {
-            const processAssigned = async () => {
-              const mapped = await Promise.all(jobsArr.filter((j: any) => !j.deletion_status && !j.deleted).map(async (job: any) => {
-                const rawDate = job.created_at || job.timestamp || job.job_due_date;
-                const postedMeta = formatTimestampValue(rawDate);
-                const isCancelled = !!(job.cancel_status || job.cancelled);
-                return { id: String(job.job_id || job.id), title: job.job_title || job.title || "Untitled", description: job.job_description || job.description || "No description", budget: Number(job.job_budget || job.budget) || 0, location: job.job_location || job.location || "Unknown", status: isCancelled ? "canceled" : "in_progress", postedAt: postedMeta.formatted, postedAtSortValue: postedMeta.sortValue, postedAtISO: postedMeta.iso, offers: 0, posted_by: job.posted_by || job.taskmanager_name || "Unknown", category: job.job_category || "general", job_completion_status: job.job_completion_status === 1 ? "1" : String(job.job_completion_status ?? ""), tasker_completed: Boolean(job.tasker_completed), taskmaster_completed: Boolean(job.taskmaster_completed), deletion_status: !!job.deletion_status, cancel_status: isCancelled, cancelled_by_role: job.cancelled_by_role, cancellation_reason: job.cancellation_reason, cancelled: isCancelled, images: job.job_images?.urls?.length ? job.job_images.urls.map((u: string, i: number) => ({ id: `img${i + 1}`, url: u, alt: `Img ${i + 1}` })) : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default" }], assigned_tasker_id: job.assigned_tasker_id || job.accepted_bidder_id };
-              }));
-              if (!cancelled) setAssignedTasks(mapped);
-            };
-            processAssigned();
-          }
-        }
-
-        if (requestedRes?.status_code === 200 && Array.isArray(requestedRes?.data?.bids)) {
-          const bids = requestedRes.data.bids.map((b: any) => ({ bid_id: b.bid_id, task_id: String(b.task_id), task_title: b.task_title || "Untitled", bid_amount: Number(b.bid_amount) || 0, bid_description: b.bid_description || "", status: b.status || "pending", created_at: b.created_at ? new Date(b.created_at).toLocaleDateString("en-GB") : "Unknown", created_at_sort_value: b.created_at ? new Date(b.created_at).getTime() : 0, task_location: b.task_location || "Unknown", task_description: b.task_description || "", posted_by: b.posted_by || "Unknown", job_due_date: b.job_due_date ? new Date(b.job_due_date).toLocaleDateString("en-GB") : "Unknown", job_budget: Number(b.job_budget) || 0, job_category: b.job_category || "general", category_name: b.category_name || "Unknown", images: b.images?.length ? b.images.map((img: any, i: number) => ({ id: `img${i + 1}`, url: typeof img === "string" ? img : img.url, alt: `Img ${i + 1}` })) : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default" }], task_cancelled: false }));
-          Promise.allSettled(bids.map(async (b: { task_id: string }) => {
-            const r = await axiosInstance.get(`/get-job/${b.task_id}/`);
-            const j = r.data?.data?.job || r.data?.job || {};
-            return { task_id: b.task_id, cancelled: !!(j?.cancel_status || j?.status === "Cancelled"), deleted: !!(j?.deletion_status || j?.status === "Deleted") };
-          })).then((results) => {
-            if (cancelled) return;
-            const cMap: Record<string, boolean> = {};
-            const dMap: Record<string, boolean> = {};
-            results.forEach((res, i) => { if (res.status === "fulfilled" && bids[i]) { cMap[bids[i].task_id] = res.value.cancelled; dMap[bids[i].task_id] = res.value.deleted; } });
-            const enriched = bids.map((b: { task_id: string }) => ({ ...b, task_cancelled: cMap[b.task_id] ?? false, task_deleted: dMap[b.task_id] ?? false }));
-            setRequestedTasks(enriched);
-            try { sessionStorage.setItem("requestedTasks", JSON.stringify(enriched)); } catch {};
-          });
-        }
-
-        if (completedRes?.data?.jobs || completedRes?.data) {
-          let jobsArr = Array.isArray(completedRes.data?.jobs) ? completedRes.data.jobs : Array.isArray(completedRes.data) ? completedRes.data : [];
-          if (jobsArr.length > 0) {
-            const normalizedUserId = String(userId || targetUserId).trim();
-            const tasks: Task[] = jobsArr.map((job: any) => {
-              const posterIsMe = [job.user_ref_id, job.posted_by_id].some((v: any) => v && String(v).trim() === normalizedUserId);
-              const assignedToMe = [job.confirmed_bid_id, job.assigned_tasker_id].some((v: any) => v && String(v).trim() === normalizedUserId);
-              const postedMeta = formatTimestampValue(job.job_due_date || job.created_at || job.timestamp);
-              return { id: String(job.job_id || job.id), title: job.job_title || job.title || "Untitled", description: job.job_description || job.description || "No description", budget: Number(job.job_budget || job.budget) || 0, location: job.job_location || job.location || "Unknown", status: "completed", job_completion_status: job.job_completion_status?.toString(), postedAt: postedMeta.formatted, postedAtSortValue: postedMeta.sortValue, offers: 0, posted_by: job.posted_by || "Unknown", category: job.job_category || "general", images: job.job_images?.urls?.length ? job.job_images.urls.map((u: string, i: number) => ({ id: `img${i + 1}`, url: u, alt: `Img ${i + 1}` })) : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default" }], assignedToMe, _posterIsMe: posterIsMe, confirmed_bid_id: job.confirmed_bid_id, user_ref_id: job.user_ref_id } as Task;
-            });
-            const isTasker = (t: Task) => t.confirmed_bid_id && String(t.confirmed_bid_id).trim() === normalizedUserId;
-            const filtered = tasks.filter((t) => isTasker(t) || (t.assignedToMe && !t._posterIsMe));
-            setCompletedTasks(filtered);
-          }
+          
+          // Cache the user tasks
+          localStorage.setItem(cacheKey, JSON.stringify({
+            tasks: tasks,
+            timestamp: Date.now()
+          }));
+        } else {
+          console.warn("No jobs found or API error:", result.message);
         }
       } catch (err) {
-        if (!cancelled) console.error("Parallel dashboard load error:", err);
+        // Handle AbortError separately (don't show error for timeouts)
+        if ((err as any)?.name === 'AbortError') {
+          console.log("⏰ Fetch user tasks was aborted (timeout)");
+          
+          // Try to load from cache as fallback
+          try {
+            const cachedTasks = localStorage.getItem('postedTasks');
+            if (cachedTasks) {
+              const tasks = JSON.parse(cachedTasks);
+              setPostedTasks(tasks);
+              console.log("Loaded user tasks from cache after timeout");
+            }
+          } catch (cacheError) {
+            console.error("Failed to load cached tasks:", cacheError);
+          }
+          return;
+        }
+        console.error("Failed to fetch user tasks:", err);
+        toast.error("An error occurred while fetching your tasks.");
       } finally {
-        if (!cancelled) setLoading(false);
+        // Clean up
       }
     };
 
-    runParallelLoad();
-    return () => { cancelled = true; };
-  }, [isAuthenticated, user, userId, effectiveUserId, router, API_BASE, updateUserProfileImage]);
+    fetchUserTasks();
+  }, [user, userId, effectiveUserId, taskOrders, refetchPostedTrigger]);
 
-  // Refetch triggers: when user refreshes a tab, refetch the relevant data (reuse parallel load for simplicity)
+  // Test useEffect
   useEffect(() => {
-    if (!user || !(userId || effectiveUserId)) return;
-    if (refetchPostedTrigger === 0 && refetchAvailableTrigger === 0 && refetchAssignedTrigger === 0 && refetchCompletedTrigger === 0 && refetchBidsTrigger === 0) return;
-    const targetUserId = userId || effectiveUserId;
-    const token = localStorage.getItem("token");
-    if (!token) return;
-    setLoading(true);
-    let cancelled = false;
-    (async () => {
-      try {
-        const API = API_BASE;
-        const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-        const opts = { method: "GET" as const, headers, credentials: "omit" as RequestCredentials };
-        const [taskOrdersRes, userJobsRes, allJobsRes, bidsRes, assignedRes, requestedRes, completedRes] = await Promise.all([
-          fetch(`${API}/get-all-task-orders/`, opts).then((r) => (r.ok ? r.json() : null)),
-          refetchPostedTrigger > 0 ? fetch(`${API}/get-user-jobs/${targetUserId}/`, opts).then((r) => (r.ok ? r.json() : null)) : Promise.resolve(null),
-          refetchAvailableTrigger > 0 ? fetch(`${API}/get-all-jobs/?limit=100`, opts).then((r) => (r.ok ? r.json() : null)) : Promise.resolve(null),
-          refetchBidsTrigger > 0 ? fetch(`${API}/get-user-bids/${targetUserId}/`, opts).then((r) => (r.ok ? r.json() : null)) : Promise.resolve(null),
-          refetchAssignedTrigger > 0 ? fetch(`${API}/get-user-assigned-bids/${targetUserId}/`, opts).then((r) => (r.ok ? r.json() : null)) : Promise.resolve(null),
-          refetchBidsTrigger > 0 ? fetch(`${API}/get-user-requested-bids/${targetUserId}/`, opts).then((r) => (r.ok ? r.json() : null)) : Promise.resolve(null),
-          refetchCompletedTrigger > 0 ? fetch(`${API}/fetch-completed-tasks/${targetUserId}/`, opts).then((r) => (r.ok ? r.json() : null)) : Promise.resolve(null),
-        ]);
-        if (cancelled) return;
-        const taskOrdersArr = (taskOrdersRes?.data?.task_orders || taskOrdersRes?.task_orders || []) as any[];
-        if (taskOrdersRes) setTaskOrders(taskOrdersArr);
-        if (userJobsRes?.status_code === 200 && userJobsRes?.data?.jobs) {
-          const userJobs = userJobsRes.data.jobs.filter((j: any) => (j.user_ref_id || j.posted_by_id)?.toString() === targetUserId?.toString());
-          const seenIds = new Set<string>();
-          const tasks: Task[] = userJobs
-            .filter((job: any) => {
-              const id = String(job.job_id || job.id);
-              if (seenIds.has(id)) return false;
-              seenIds.add(id);
-              return true;
-            })
-            .map((job: any) => {
-            const hasPaidOrder = taskOrdersArr.some((o: any) => String(o.job_id || o.postId) === String(job.job_id) && (o.status === 1 || o.status === "1" || o.status === 0));
-            let jobStatus = "open";
-            const isCancelled = !!job.cancel_status || job.status === "cancelled" || !!job.cancelled;
-            if (isCancelled) jobStatus = "canceled";
-            else if (job.job_completion_status === 1) jobStatus = "completed";
-            else if (job.deletion_status) jobStatus = "deleted";
-            else if (job.status === "in_progress" || job.bid_accepted || job.payment_status === "paid" || hasPaidOrder) jobStatus = "in_progress";
-            const postedMeta = formatTimestampValue(job.created_at || job.timestamp || job.job_due_date);
-            return { id: String(job.job_id), title: job.job_title || "Untitled", description: job.job_description || "No description", budget: Number(job.job_budget) || 0, location: job.job_location || "Unknown", status: jobStatus, postedAt: postedMeta.formatted, postedAtSortValue: postedMeta.sortValue, postedAtISO: postedMeta.iso, offers: job.offers || 0, posted_by: job.posted_by || "Unknown", category: job.job_category || "general", job_completion_status: job.job_completion_status === 1 ? "1" : String(job.job_completion_status ?? ""), tasker_completed: Boolean(job.tasker_completed), taskmaster_completed: Boolean(job.taskmaster_completed), deletion_status: !!job.deletion_status, cancel_status: isCancelled, cancelled_by_role: job.cancelled_by_role, cancellation_reason: job.cancellation_reason, cancelled: isCancelled, images: job.job_images?.urls?.length ? job.job_images.urls.map((u: string, i: number) => ({ id: `img${i + 1}`, url: u, alt: `Img ${i + 1}` })) : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default" }], assignedToMe: [job.assigned_tasker_id, job.accepted_bidder_id].some((v: any) => v && String(v) === String(targetUserId)), assigned_tasker_id: job.assigned_tasker_id || job.accepted_bidder_id };
-          });
-          setPostedTasks(tasks);
-          try { sessionStorage.setItem("postedTasks", JSON.stringify(tasks)); } catch {};
-        }
-        if (allJobsRes?.status_code === 200 && allJobsRes?.data?.jobs) {
-          const tasks: Task[] = allJobsRes.data.jobs.filter((j: any) => j.user_ref_id !== targetUserId?.toString() && j.job_completion_status !== 1 && !j.deletion_status && !j.cancel_status).map((j: any) => {
-            const pm = formatTimestampValue(j.tstamp || j.timestamp || j.created_at || j.job_due_date);
-            return { id: String(j.job_id), title: j.job_title || "Untitled", description: j.job_description || "No description", budget: Number(j.job_budget) || 0, location: j.job_location || "Unknown", status: "open", postedAt: pm.formatted, postedAtSortValue: pm.sortValue, postedAtISO: pm.iso, offers: j.offers || 0, posted_by: j.posted_by || "Unknown", posted_by_profile_image: j.posted_by_profile_image, posted_by_id: j.user_ref_id, category: j.job_category || "general", job_completion_status: j.job_completion_status === 1 ? "Completed" : "Not Completed", deletion_status: !!j.deletion_status, cancel_status: !!j.cancel_status, images: j.job_images?.urls?.length ? j.job_images.urls.map((u: string, i: number) => ({ id: `img${i + 1}`, url: u, alt: `Img ${i + 1}` })) : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default" }] };
-          });
-          setAvailableTasks(tasks);
-          try { localStorage.setItem("availableTasks", JSON.stringify(tasks)); localStorage.setItem("availableTasksTimestamp", String(Date.now())); } catch {};
-        }
-        if (bidsRes?.status_code === 200 && bidsRes?.data?.bids) setBids(bidsRes.data.bids.map((b: any) => ({ id: String(b.bid_id), task_id: String(b.task_id), task_title: b.task_title || "Untitled", bid_amount: Number(b.bid_amount) || 0, status: b.status || "pending", created_at: b.created_at ? new Date(b.created_at).toLocaleDateString("en-GB") : "Unknown", task_location: b.task_location || "Unknown", task_description: b.task_description || "", posted_by: b.posted_by || "Unknown" })));
-        if (assignedRes?.data?.jobs || assignedRes?.data) {
-          const arr = Array.isArray(assignedRes.data?.jobs) ? assignedRes.data.jobs : Array.isArray(assignedRes.data) ? assignedRes.data : [];
-          if (arr.length > 0 && !cancelled) {
-            const mapped = await Promise.all(arr.filter((j: any) => !j.deletion_status).map(async (job: any) => {
-              const pm = formatTimestampValue(job.created_at || job.timestamp || job.job_due_date);
-              return { id: String(job.job_id || job.id), title: job.job_title || job.title || "Untitled", description: job.job_description || "No description", budget: Number(job.job_budget || job.budget) || 0, location: job.job_location || "Unknown", status: job.cancel_status || job.cancelled ? "canceled" : "in_progress", postedAt: pm.formatted, postedAtSortValue: pm.sortValue, postedAtISO: pm.iso, offers: 0, posted_by: job.posted_by || "Unknown", category: job.job_category || "general", job_completion_status: job.job_completion_status === 1 ? "1" : String(job.job_completion_status ?? ""), tasker_completed: Boolean(job.tasker_completed), taskmaster_completed: Boolean(job.taskmaster_completed), deletion_status: !!job.deletion_status, cancel_status: !!job.cancel_status, cancelled_by_role: job.cancelled_by_role, cancellation_reason: job.cancellation_reason, cancelled: !!job.cancelled, images: job.job_images?.urls?.length ? job.job_images.urls.map((u: string, i: number) => ({ id: `img${i + 1}`, url: u, alt: `Img ${i + 1}` })) : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default" }], assigned_tasker_id: job.assigned_tasker_id || job.accepted_bidder_id };
-            }));
-            setAssignedTasks(mapped);
-          }
-        }
-        if (requestedRes?.status_code === 200 && Array.isArray(requestedRes?.data?.bids)) {
-          const bids = requestedRes.data.bids.map((b: any) => ({ ...b, task_id: String(b.task_id), task_cancelled: false, task_deleted: false }));
-          const results = await Promise.allSettled(bids.map(async (b: { task_id: string }) => { const r = await axiosInstance.get(`/get-job/${b.task_id}/`); const j = r.data?.data?.job || r.data?.job || {}; return { task_id: b.task_id, cancelled: !!(j?.cancel_status || j?.status === "Cancelled"), deleted: !!(j?.deletion_status || j?.status === "Deleted") }; }));
-          const cMap: Record<string, boolean> = {}; const dMap: Record<string, boolean> = {};
-          results.forEach((res, i) => { if (res.status === "fulfilled" && bids[i]) { cMap[bids[i].task_id] = (res as PromiseFulfilledResult<any>).value.cancelled; dMap[bids[i].task_id] = (res as PromiseFulfilledResult<any>).value.deleted; } });
-          setRequestedTasks(bids.map((b: { bid_id: string; task_id: string; task_title?: string; bid_amount?: number; bid_description?: string; status?: string; created_at?: string; task_location?: string; task_description?: string; posted_by?: string; job_due_date?: string; job_budget?: number; job_category?: string; category_name?: string; images?: unknown[] }) => ({ bid_id: b.bid_id, task_id: b.task_id, task_title: b.task_title || "Untitled", bid_amount: Number(b.bid_amount) || 0, bid_description: b.bid_description || "", status: b.status || "pending", created_at: b.created_at ? new Date(b.created_at).toLocaleDateString("en-GB") : "Unknown", created_at_sort_value: b.created_at ? new Date(b.created_at).getTime() : 0, task_location: b.task_location || "Unknown", task_description: b.task_description || "", posted_by: b.posted_by || "Unknown", job_due_date: b.job_due_date ? new Date(b.job_due_date).toLocaleDateString("en-GB") : "Unknown", job_budget: Number(b.job_budget) || 0, job_category: b.job_category || "general", category_name: b.category_name || "Unknown", images: b.images || [], task_cancelled: cMap[b.task_id] ?? false, task_deleted: dMap[b.task_id] ?? false })));
-          try { sessionStorage.setItem("requestedTasks", JSON.stringify(bids)); } catch {};
-        }
-        if (completedRes?.data?.jobs || completedRes?.data) {
-          const arr = Array.isArray(completedRes.data?.jobs) ? completedRes.data.jobs : Array.isArray(completedRes.data) ? completedRes.data : [];
-          const normalizedUserId = String(userId || targetUserId).trim();
-          const tasks = arr.map((job: any) => ({ id: String(job.job_id || job.id), title: job.job_title || job.title || "Untitled", description: job.job_description || "No description", budget: Number(job.job_budget || job.budget) || 0, location: job.job_location || "Unknown", status: "completed", job_completion_status: job.job_completion_status?.toString(), postedAt: formatTimestampValue(job.timestamp || job.created_at).formatted, postedAtSortValue: formatTimestampValue(job.timestamp || job.created_at).sortValue, offers: 0, posted_by: job.posted_by || "Unknown", category: job.job_category || "general", images: [], assignedToMe: [job.confirmed_bid_id, job.assigned_tasker_id].some((v: any) => v && String(v) === normalizedUserId), _posterIsMe: [job.user_ref_id, job.posted_by_id].some((v: any) => v && String(v) === normalizedUserId), confirmed_bid_id: job.confirmed_bid_id, user_ref_id: job.user_ref_id } as Task));
-          setCompletedTasks(tasks.filter((t: Task) => (t.confirmed_bid_id && String(t.confirmed_bid_id) === normalizedUserId) || (t.assignedToMe && !t._posterIsMe)));
-        }
-      } catch (e) { console.error("Refetch error:", e); } finally { if (!cancelled) setLoading(false); }
-    })();
-    return () => { cancelled = true; };
-  }, [refetchPostedTrigger, refetchAvailableTrigger, refetchAssignedTrigger, refetchCompletedTrigger, refetchBidsTrigger, user, userId, effectiveUserId]);
-
-  // Load available tasks from cache on mount (before consolidated load populates)
-  useEffect(() => {
-    try {
-      const cached = localStorage.getItem("availableTasks");
-      const ts = localStorage.getItem("availableTasksTimestamp");
-      if (cached && ts && Date.now() - parseInt(ts) < 30 * 60 * 1000) {
-        setAvailableTasks(JSON.parse(cached));
-      }
-    } catch {}
+    console.log("🔍 TEST useEffect - This should always run");
   }, []);
 
-  // Assigned + requested: removed; consolidated + refetch effects handle both. fetchCompletedTasks kept for manual refresh after completion.
+  // Load available tasks from localStorage on mount
+  useEffect(() => {
+    const loadCachedTasks = () => {
+      try {
+        const cachedTasks = localStorage.getItem('availableTasks');
+        const timestamp = localStorage.getItem('availableTasksTimestamp');
+        
+        if (cachedTasks && timestamp) {
+          const age = Date.now() - parseInt(timestamp);
+          const maxAge = 30 * 60 * 1000; // 30 minutes
+          
+          if (age < maxAge) {
+            const tasks = JSON.parse(cachedTasks);
+            console.log("🔄 Loading cached available tasks:", tasks.length);
+            setAvailableTasks(tasks);
+            
+            // Also store in shared cache for other tabs
+            const cachedData = localStorage.getItem('all_jobs_data');
+            if (cachedData) {
+              localStorage.setItem(`all_jobs_data_${userId}`, cachedData);
+            }
+            return true;
+        } else {
+            console.log("🔄 Cached tasks are too old, will fetch fresh");
+            localStorage.removeItem('availableTasks');
+            localStorage.removeItem('availableTasksTimestamp');
+        }
+      }
+      } catch (error) {
+        console.error("Error loading cached tasks:", error);
+      }
+      return false;
+    };
 
+    loadCachedTasks();
+  }, []);
+
+  // Fetch all available tasks
+  useEffect(() => {
+    if (!user || !(userId || effectiveUserId)) return;
+
+    const fetchAllTasks = async () => {
+      try {
+        
+        // Use fetch API directly to bypass axios CORS issues
+        const token = localStorage.getItem('token');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+        
+        const fetchResponse = await fetch(`${API_BASE}/get-all-jobs/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!fetchResponse.ok) {
+          console.warn("Fetch all tasks failed with status:", fetchResponse.status);
+          
+          // Try to load from cache as fallback
+          try {
+            const cachedTasks = localStorage.getItem('availableTasks');
+            if (cachedTasks) {
+              const tasks = JSON.parse(cachedTasks);
+              setAvailableTasks(tasks);
+              console.log("Loaded available tasks from cache after API failure");
+            }
+          } catch (cacheError) {
+            console.error("Failed to load cached available tasks:", cacheError);
+          }
+          return;
+        }
+        
+        const fetchData = await fetchResponse.json();
+        const result = fetchData;
+
+
+        if (result.status_code === 200 && result.data?.jobs) {
+          const tasks: Task[] = result.data.jobs
+            .filter((job: any) => {
+              const jobPostedById = job.user_ref_id;
+              const currentUserId = (userId || effectiveUserId)?.toString();
+              const isNotPostedByUser = jobPostedById !== currentUserId;
+              const isOpen = job.job_completion_status !== 1 && 
+                           !job.deletion_status && 
+                           !job.cancel_status;
+              return isNotPostedByUser && isOpen;
+            })
+            .map((job: any) => {
+              let jobStatus = "open";
+              
+              // For available tasks, we only care about basic status
+              // All available tasks should be "open" for bidding
+              if (job.job_completion_status === 1) {
+                jobStatus = "completed";
+              } else if (job.deletion_status) {
+                jobStatus = "deleted";
+              } else if (job.cancel_status) {
+                jobStatus = "canceled";
+              }
+              // All other tasks remain "open" for bidding
+              
+              // Posted date should come from creation timestamp, not due date
+              const postedMeta = formatTimestampValue(
+                job.tstamp || job.timestamp || job.created_at || job.job_tstamp || job.job_due_date
+              );
+
+              return {
+                id: job.job_id.toString(),
+                title: job.job_title || "Untitled",
+                description: job.job_description || "No description provided.",
+                budget: Number(job.job_budget) || 0,
+                location: job.job_location || "Unknown",
+                status: jobStatus,
+                postedAt: postedMeta.formatted,
+                postedAtSortValue: postedMeta.sortValue,
+                postedAtISO: postedMeta.iso,
+                dueDate: job.job_due_date
+                  ? new Date(job.job_due_date).toLocaleDateString("en-GB")
+                  : "Unknown",
+                offers: job.offers || 0, // Use original offers field as fallback
+                posted_by: job.posted_by || "Unknown",
+                posted_by_profile_image: job.posted_by_profile_image || job.taskmanager_profile_image || job.taskmanager_profile_img || job.poster?.profile_img || job.poster?.profile_image || job.profile_img || job.user_profile_img,
+                posted_by_id: job.user_ref_id || job.posted_by_id || job.user_id,
+                category: job.job_category || "general",
+                job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
+                deletion_status: job.deletion_status || false,
+                cancel_status: job.cancel_status ?? false,
+                images: job.job_images?.urls?.length
+                  ? job.job_images.urls.map((url: string, index: number) => ({
+                      id: `img${index + 1}`,
+                      url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
+                      alt: `Job image ${index + 1}`,
+                    }))
+                  : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+              };
+            });
+
+          const availableTasksWithBidCounts = tasks;
+          // Store in localStorage for persistence
+          localStorage.setItem('availableTasks', JSON.stringify(availableTasksWithBidCounts));
+          localStorage.setItem('availableTasksTimestamp', Date.now().toString());
+          
+          setAvailableTasks(availableTasksWithBidCounts);
+          // Store shared cache for other tabs to use
+          localStorage.setItem(`all_jobs_data_${userId}`, JSON.stringify({
+            jobs: result.data.jobs,
+            timestamp: Date.now()
+          }));
+        } else {
+          console.warn("No jobs found or API error:", result.message);
+        }
+      } catch (err) {
+        // Handle AbortError separately (don't show error for timeouts)
+        if ((err as any)?.name === 'AbortError') {
+          console.log("⏰ Fetch all tasks was aborted (timeout)");
+          return; // Don't show error toast or clear tasks
+        }
+        
+        console.error("❌ Failed to fetch all tasks:", err);
+        console.error("❌ Error details:", {
+          name: (err as any)?.name,
+          message: (err as any)?.message,
+          stack: (err as any)?.stack,
+          response: (err as any)?.response?.status,
+          data: (err as any)?.response?.data
+        });
+        
+        // Don't clear available tasks on error - keep showing existing ones
+        console.log("🔄 Keeping existing available tasks due to API error");
+        // Quiet down the UI: log the issue but avoid spamming the user with toasts
+      } finally {
+        console.log("🔍 fetchAllTasks completed");
+        // avoid global loader flicker
+      }
+    };
+
+    fetchAllTasks();
+  }, [user, userId, refetchAvailableTrigger]);
+
+  // Fetch user's bids
+  useEffect(() => {
+    if (!user || !(userId || effectiveUserId)) return;
+
+    const fetchBids = async () => {
+      try {
+        // Use fetch API directly to bypass axios timeout issues
+        const token = localStorage.getItem('token');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+
+        const fetchResponse = await fetch(`${API_BASE}/get-user-bids/${userId || effectiveUserId}/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!fetchResponse.ok) {
+          console.warn("Fetch bids failed with status:", fetchResponse.status);
+          return;
+        }
+
+        const result = await fetchResponse.json();
+
+        if (result.status_code === 200 && result.data?.bids) {
+          const userBids: Bid[] = result.data.bids.map((bid: any) => ({
+            id: bid.bid_id.toString(),
+            task_id: bid.task_id.toString(),
+            task_title: bid.task_title || "Untitled",
+            bid_amount: Number(bid.bid_amount) || 0,
+            status: bid.status || "pending",
+            created_at: bid.created_at
+              ? new Date(bid.created_at).toLocaleDateString("en-GB")
+              : "Unknown",
+            task_location: bid.task_location || "Unknown",
+            task_description: bid.task_description || "No description provided.",
+            posted_by: bid.posted_by || "Unknown",
+          }));
+          setBids(userBids);
+        } else {
+          console.warn("No bids found or API error:", result.message);
+          // Removed annoying toast notification for no bids found
+        }
+      } catch (err) {
+        // Handle AbortError separately (don't show error for timeouts)
+        if ((err as any)?.name === 'AbortError') {
+          console.log("⏰ Fetch bids was aborted (timeout)");
+          return;
+        }
+        console.error("Failed to fetch bids:", err);
+      }
+    };
+
+    fetchBids();
+  }, [user, userId, effectiveUserId, refetchBidsTrigger]);
+
+  // Fetch assigned tasks
+  useEffect(() => {
+    if (!user || !(userId || effectiveUserId)) return;
+
+    const fetchAssignedBids = async () => {
+      const targetUserId = userId || effectiveUserId;
+      if (!targetUserId) {
+        console.warn("⚠️ Cannot fetch assigned tasks: No userId available");
+        return;
+      }
+
+      try {
+        // Use fetch API directly to bypass axios timeout issues
+        const token = localStorage.getItem('token');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+
+        const url = `${API_BASE}/get-user-assigned-bids/${targetUserId}/`;
+        console.log("📋 Fetching assigned tasks from:", url, "for userId:", targetUserId);
+
+        const fetchResponse = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!fetchResponse.ok) {
+          console.error("❌ Fetch assigned bids failed with status:", fetchResponse.status, fetchResponse.statusText);
+          const errorText = await fetchResponse.text();
+          console.error("Error response:", errorText);
+          return;
+        }
+
+        const result = await fetchResponse.json();
+        console.log("📋 Assigned tasks API response (FULL):", JSON.stringify(result, null, 2));
+        console.log("📋 Assigned tasks API response (SUMMARY):", {
+          status_code: result.status_code,
+          status: result.status,
+          hasData: !!result.data,
+          dataType: typeof result.data,
+          dataKeys: result.data ? Object.keys(result.data) : [],
+          jobsType: Array.isArray(result.data?.jobs) ? 'array' : typeof result.data?.jobs,
+          jobsLength: Array.isArray(result.data?.jobs) ? result.data.jobs.length : 'N/A',
+          message: result.message
+        });
+
+        // Handle different response formats - don't require status_code === 200
+        let jobsArray: any[] = [];
+        
+        // Try different possible response structures regardless of status_code
+        if (Array.isArray(result.data?.jobs)) {
+          jobsArray = result.data.jobs;
+          console.log("✅ Found jobs in result.data.jobs:", jobsArray.length);
+        } else if (Array.isArray(result.data)) {
+          jobsArray = result.data;
+          console.log("✅ Found jobs in result.data (direct array):", jobsArray.length);
+        } else if (Array.isArray(result.jobs)) {
+          jobsArray = result.jobs;
+          console.log("✅ Found jobs in result.jobs:", jobsArray.length);
+        } else if (result.data && typeof result.data === 'object' && !Array.isArray(result.data)) {
+          // Check if jobs are nested differently
+          const possibleJobs = result.data.jobs || result.data.assigned_jobs || result.data.assigned_tasks || result.data.assigned_bids || [];
+          if (Array.isArray(possibleJobs)) {
+            jobsArray = possibleJobs;
+            console.log("✅ Found jobs in nested structure:", jobsArray.length);
+          } else {
+            // Try to find any array in the data object
+            for (const key in result.data) {
+              if (Array.isArray(result.data[key])) {
+                console.log(`✅ Found array in result.data.${key}:`, result.data[key].length);
+                jobsArray = result.data[key];
+                break;
+              }
+            }
+          }
+        } else if (Array.isArray(result)) {
+          // Response might be a direct array
+          jobsArray = result;
+          console.log("✅ Response is direct array:", jobsArray.length);
+        }
+
+        console.log("📋 Processed jobs array length:", jobsArray.length);
+        
+        // If no jobs found but status_code is 200, log warning
+        if (jobsArray.length === 0 && result.status_code === 200) {
+          console.warn("⚠️ API returned status_code 200 but no jobs found. Full response:", result);
+        }
+
+        if (jobsArray.length > 0) {
+          console.log("📋 Processing", jobsArray.length, "jobs from API");
+          const taskPromises = jobsArray
+            .filter((job: any) => {
+              // Only filter out if explicitly deleted (keep cancelled tasks visible)
+              const isDeleted = job.deletion_status === true || job.deletion_status === 1 || job.deleted === true;
+              
+              // Log all tasks for debugging
+              console.log("🔍 Checking assigned task:", {
+                job_id: job.job_id || job.id,
+                title: job.job_title || job.title,
+                deletion_status: job.deletion_status,
+                cancel_status: job.cancel_status,
+                cancelled_by_role: job.cancelled_by_role,
+                isDeleted,
+                willShow: !isDeleted
+              });
+              
+              if (isDeleted) {
+                console.log("⚠️ Filtering out deleted task:", job.job_id || job.id);
+                return false;
+              }
+              return true; // Show cancelled tasks too
+            })
+            .map(async (job: any) => {
+              console.log("✅ Processing assigned task:", job.job_id, job.job_title);
+              
+              // If cancellation fields are missing, try to fetch full task details
+              let cancellationInfo = {
+                cancel_status: job.cancel_status,
+                cancelled_by_role: job.cancelled_by_role,
+                cancellation_reason: job.cancellation_reason,
+                cancelled_at: job.cancelled_at,
+                cancelled: job.cancelled
+              };
+              
+              // If cancellation info is missing, try to fetch from get-all-jobs-admin or get-user-jobs
+              if (!job.cancel_status && !job.cancelled_by_role && !job.cancelled) {
+                try {
+                  const token = localStorage.getItem('token');
+                  const fullTaskResponse = await fetch(`${API_BASE}/get-all-jobs-admin/`, {
+                    method: 'GET',
+                    headers: {
+                      'Authorization': `Bearer ${token}`,
+                      'Content-Type': 'application/json',
+                    },
+                    credentials: 'omit'
+                  });
+                  
+                  if (fullTaskResponse.ok) {
+                    const fullTaskResult = await fullTaskResponse.json();
+                    if (fullTaskResult.status_code === 200 && fullTaskResult.data?.jobs) {
+                      const fullTask = fullTaskResult.data.jobs.find((t: any) => t.job_id === job.job_id);
+                      if (fullTask) {
+                        cancellationInfo = {
+                          cancel_status: fullTask.cancel_status,
+                          cancelled_by_role: fullTask.cancelled_by_role,
+                          cancellation_reason: fullTask.cancellation_reason,
+                          cancelled_at: fullTask.cancelled_at,
+                          cancelled: fullTask.cancelled
+                        };
+                        console.log(`✅ Found cancellation info for ${job.job_id}:`, cancellationInfo);
+                      }
+                    }
+                  }
+                } catch (err) {
+                  console.warn(`⚠️ Failed to fetch full task details for ${job.job_id}:`, err);
+                }
+              }
+              
+              const rawDate = job.created_at || job.timestamp || job.job_due_date || job.updated_at || job.postedAt;
+              let postedAtFormatted = "Unknown";
+              let postedAtSortValue = 0;
+              let postedAtISO = "";
+              const dateObj = parseDateSafe(rawDate);
+              if (dateObj) {
+                postedAtFormatted = dateObj.toLocaleDateString("en-GB");
+                postedAtSortValue = dateObj.getTime();
+                postedAtISO = dateObj.toISOString();
+              } else if (typeof rawDate === "string") {
+                postedAtFormatted = rawDate;
+              }
+
+              // Check if cancelled - comprehensive check (same as in rendering)
+              // Also check if cancelled_by_role or cancellation_reason exists (indicates cancellation)
+              const isCancelled = 
+                cancellationInfo.cancel_status === true || 
+                cancellationInfo.cancel_status === "true" || 
+                cancellationInfo.cancel_status === 1 ||
+                job.status === "cancelled" || 
+                job.status === "Cancelled" ||
+                job.status === "canceled" ||
+                job.status === "Canceled" ||
+                cancellationInfo.cancelled === true ||
+                cancellationInfo.cancelled === "true" ||
+                // Check if cancelled_by_role exists (indicates cancellation even if other fields are undefined)
+                (cancellationInfo.cancelled_by_role !== undefined && cancellationInfo.cancelled_by_role !== null) ||
+                // Check if cancellation_reason exists (indicates cancellation)
+                (cancellationInfo.cancellation_reason !== undefined && cancellationInfo.cancellation_reason !== null && cancellationInfo.cancellation_reason !== "");
+              
+              console.log(`🔍 Assigned Task ${job.job_id} cancellation check:`, {
+                job_id: job.job_id,
+                cancel_status: cancellationInfo.cancel_status,
+                status: job.status,
+                status_type: typeof job.status,
+                cancelled: cancellationInfo.cancelled,
+                cancelled_by_role: cancellationInfo.cancelled_by_role,
+                cancellation_reason: cancellationInfo.cancellation_reason,
+                isCancelled,
+                willShowAsCancelled: isCancelled,
+                fullJob: job, // Log full job object to see all available fields
+                cancellationInfo: cancellationInfo
+              });
+              
+              return {
+                id: job.job_id?.toString() || job.id?.toString() || String(Math.random()),
+                title: job.job_title || job.title || "Untitled",
+                description: job.job_description || job.description || "No description provided.",
+                budget: Number(job.job_budget || job.budget || 0),
+                location: job.job_location || job.location || "Unknown",
+                // Set status based on cancellation
+                status: isCancelled ? "canceled" : (job.status ? "in_progress" : "open"),
+                postedAt: postedAtFormatted,
+                postedAtSortValue: postedAtSortValue,
+                postedAtISO: postedAtISO,
+                dueDate: job.job_due_date || job.dueDate
+                  ? new Date(job.job_due_date || job.dueDate).toLocaleDateString("en-GB")
+              : "Unknown",
+            offers: job.offers?.length || 0,
+                posted_by: job.posted_by || job.postedBy || "Unknown",
+                category: job.job_category || job.category || "general",
+                job_completion_status: job.job_completion_status?.toString() || job.status?.toString() || undefined,
+                tasker_completed: Boolean((job as any).tasker_completed),
+                taskmaster_completed: Boolean((job as any).taskmaster_completed),
+            deletion_status: job.deletion_status || false,
+                cancel_status: isCancelled || (cancellationInfo.cancel_status ?? false),
+                cancelled_by_role: cancellationInfo.cancelled_by_role || job.cancelled_by || undefined,
+                cancellation_reason: cancellationInfo.cancellation_reason || job.cancellationReason || undefined,
+                cancelled_at: cancellationInfo.cancelled_at || job.cancelledAt || undefined,
+                cancelled: isCancelled,
+                assignedToMe: true, // Mark as assigned to current user
+                user_ref_id: job.user_ref_id || job.posted_by_id || job.user_id,
+            images: job.job_images?.urls?.length
+              ? job.job_images.urls.map((url: string, index: number) => ({
+                  id: `img${index + 1}`,
+                  url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
+                  alt: `Job image ${index + 1}`,
+                }))
+                  : job.images?.length
+                  ? job.images.map((img: any, index: number) => ({
+                      id: `img${index + 1}`,
+                      url: typeof img === "string" ? img : img.url || "/images/placeholder.svg",
+                  alt: `Job image ${index + 1}`,
+                }))
+              : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+              } as Task;
+            });
+          
+          // Wait for all async operations to complete
+          const resolvedTasks: Task[] = await Promise.all(taskPromises);
+          
+          console.log("✅ Setting assigned tasks:", resolvedTasks.length, "tasks");
+          setAssignedTasks(resolvedTasks);
+          try { 
+            sessionStorage.setItem("assignedTasks", JSON.stringify(resolvedTasks)); 
+            console.log("✅ Saved assigned tasks to sessionStorage");
+          } catch (e) {
+            console.warn("⚠️ Failed to save to sessionStorage:", e);
+          }
+        } else {
+          console.warn("⚠️ No assigned tasks found. Response details:", {
+            status_code: result.status_code,
+            status: result.status,
+            message: result.message,
+            hasData: !!result.data,
+            dataType: typeof result.data,
+            dataKeys: result.data ? Object.keys(result.data) : [],
+            fullResponse: result
+          });
+          
+          // Try fallback: use axiosInstance in case fetch has issues
+          console.log("🔄 Trying fallback with axiosInstance...");
+          try {
+            const axiosResponse = await axiosInstance.get(`/get-user-assigned-bids/${targetUserId}/`);
+            const axiosResult = axiosResponse.data;
+            console.log("📋 Axios fallback response:", axiosResult);
+            
+            // Try to extract jobs from axios response
+            let fallbackJobs: any[] = [];
+            if (Array.isArray(axiosResult.data?.jobs)) {
+              fallbackJobs = axiosResult.data.jobs;
+            } else if (Array.isArray(axiosResult.data)) {
+              fallbackJobs = axiosResult.data;
+            } else if (Array.isArray(axiosResult.jobs)) {
+              fallbackJobs = axiosResult.jobs;
+            }
+            
+            if (fallbackJobs.length > 0) {
+              console.log("✅ Found", fallbackJobs.length, "jobs via axios fallback");
+              // Process fallback jobs (reuse the same mapping logic)
+              const fallbackTasks: Task[] = fallbackJobs
+                .filter((job: any) => {
+                  // Only filter out deleted tasks (keep cancelled tasks visible)
+                  const isDeleted = job.deletion_status === true || job.deletion_status === 1;
+                  return !isDeleted;
+                })
+                .map((job: any) => {
+                  // Use same mapping logic as above
+                  const rawDate = job.created_at || job.timestamp || job.job_due_date || job.updated_at || job.postedAt;
+                  let postedAtFormatted = "Unknown";
+                  let postedAtSortValue = 0;
+                  let postedAtISO = "";
+                  const dateObj = parseDateSafe(rawDate);
+                  if (dateObj) {
+                    postedAtFormatted = dateObj.toLocaleDateString("en-GB");
+                    postedAtSortValue = dateObj.getTime();
+                    postedAtISO = dateObj.toISOString();
+                  } else if (typeof rawDate === "string") {
+                    postedAtFormatted = rawDate;
+                  }
+
+                  // Check if cancelled - comprehensive check (same as above)
+                  const isCancelled = 
+                    job.cancel_status === true || 
+                    job.cancel_status === "true" || 
+                    job.cancel_status === 1 ||
+                    job.status === "cancelled" || 
+                    job.status === "Cancelled" ||
+                    job.status === "canceled" ||
+                    job.status === "Canceled" ||
+                    job.cancelled === true ||
+                    job.cancelled === "true" ||
+                    // Check if cancelled_by_role exists (indicates cancellation even if other fields are undefined)
+                    (job.cancelled_by_role !== undefined && job.cancelled_by_role !== null) ||
+                    // Check if cancellation_reason exists (indicates cancellation)
+                    (job.cancellation_reason !== undefined && job.cancellation_reason !== null && job.cancellation_reason !== "");
+
+                  return {
+                    id: job.job_id?.toString() || job.id?.toString() || String(Math.random()),
+                    title: job.job_title || job.title || "Untitled",
+                    description: job.job_description || job.description || "No description provided.",
+                    budget: Number(job.job_budget || job.budget || 0),
+                    location: job.job_location || job.location || "Unknown",
+                    status: isCancelled ? "canceled" : (job.status ? "in_progress" : "open"),
+                    postedAt: postedAtFormatted,
+                    postedAtSortValue: postedAtSortValue,
+                    postedAtISO: postedAtISO,
+                    dueDate: job.job_due_date || job.dueDate
+                      ? new Date(job.job_due_date || job.dueDate).toLocaleDateString("en-GB")
+                      : "Unknown",
+                    offers: job.offers?.length || 0,
+                    posted_by: job.posted_by || job.postedBy || "Unknown",
+                    category: job.job_category || job.category || "general",
+                    job_completion_status: job.job_completion_status?.toString() || job.status?.toString() || undefined,
+                    tasker_completed: Boolean((job as any).tasker_completed),
+                    taskmaster_completed: Boolean((job as any).taskmaster_completed),
+                    deletion_status: job.deletion_status || false,
+                    cancel_status: isCancelled || (job.cancel_status ?? false),
+                    cancelled_by_role: job.cancelled_by_role || job.cancelled_by || undefined,
+                    cancellation_reason: job.cancellation_reason || job.cancellationReason || undefined,
+                    cancelled_at: job.cancelled_at || job.cancelledAt || undefined,
+                    cancelled: isCancelled,
+                    assignedToMe: true,
+                    images: job.job_images?.urls?.length
+                      ? job.job_images.urls.map((url: string, index: number) => ({
+                          id: `img${index + 1}`,
+                          url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
+                          alt: `Job image ${index + 1}`,
+                        }))
+                      : job.images?.length
+                      ? job.images.map((img: any, index: number) => ({
+                          id: `img${index + 1}`,
+                          url: typeof img === "string" ? img : img.url || "/images/placeholder.svg",
+                          alt: `Job image ${index + 1}`,
+                        }))
+                      : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+                  } as Task;
+                });
+              
+              if (fallbackTasks.length > 0) {
+                console.log("✅ Setting assigned tasks from fallback:", fallbackTasks.length, "tasks");
+                setAssignedTasks(fallbackTasks);
+                try { 
+                  sessionStorage.setItem("assignedTasks", JSON.stringify(fallbackTasks)); 
+                } catch {}
+                return; // Exit early if fallback succeeded
+              }
+            }
+          } catch (fallbackErr) {
+            console.error("❌ Axios fallback also failed:", fallbackErr);
+          }
+          
+          // Clear assigned tasks if API returns empty and fallback failed
+          setAssignedTasks([]);
+          try { sessionStorage.removeItem("assignedTasks"); } catch {}
+        }
+      } catch (err) {
+        // Handle AbortError separately (don't show error for timeouts)
+        if ((err as any)?.name === 'AbortError') {
+          console.log("⏰ Fetch assigned bids was aborted (timeout)");
+          return;
+        }
+        console.error("❌ Failed to fetch assigned tasks:", {
+          error: err,
+          message: (err as any)?.message,
+          stack: (err as any)?.stack
+        });
+      }
+    };
+
+    fetchAssignedBids();
+  }, [user, userId, effectiveUserId, refetchAssignedTrigger]);
+
+  // Fetch requested bids
+  useEffect(() => {
+    if (!user || !userId) return;
+
+    const fetchRequestedBids = async () => {
+      try {
+        // Use fetch API directly to bypass axios timeout issues
+        const token = localStorage.getItem('token');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+
+        const fetchResponse = await fetch(`${API_BASE}/get-user-requested-bids/${userId}/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'omit',
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!fetchResponse.ok) {
+          console.warn("Fetch requested bids failed with status:", fetchResponse.status);
+          return;
+        }
+
+        const result = await fetchResponse.json();
+
+        if (result.status_code === 200 && Array.isArray(result.data?.bids)) {
+          const bids: BidRequest[] = result.data.bids.map((bid: any) => ({
+            bid_id: bid.bid_id,
+            task_id: bid.task_id.toString(),
+            task_title: bid.task_title || "Untitled",
+            bid_amount: Number(bid.bid_amount) || 0,
+            bid_description: bid.bid_description || "No description provided.",
+            status: bid.status || "pending",
+            created_at: bid.created_at
+              ? new Date(bid.created_at).toLocaleDateString("en-GB")
+              : "Unknown",
+            created_at_sort_value: bid.created_at ? new Date(bid.created_at).getTime() : 0,
+            task_location: bid.task_location || "Unknown",
+            task_description: bid.task_description || "No description provided.",
+            posted_by: bid.posted_by || "Unknown",
+            job_due_date: bid.job_due_date
+              ? new Date(bid.job_due_date).toLocaleDateString("en-GB")
+              : "Unknown",
+            job_budget: Number(bid.job_budget) || 0,
+            job_category: bid.job_category || "general",
+            category_name: bid.category_name || "Unknown",
+            images: bid.images?.length
+              ? bid.images.map((img: any, index: number) => ({
+                  id: `img${index + 1}`,
+                  url: typeof img === 'string' ? img : img.url,
+                  alt: `Job image ${index + 1}`,
+                }))
+              : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+            task_cancelled: false,
+          }));
+          // Enrich each bid with task cancel status and filter out cancelled tasks
+          try {
+            const results = await Promise.allSettled(
+              bids.map(async (b) => {
+                const r = await axiosInstance.get(`/get-job/${b.task_id}/`);
+                const job = r.data?.data?.job || r.data?.job || {};
+                const isCancelled = job?.status === true || job?.cancel_status === true || job?.status === "Cancelled" || job?.status === "cancelled";
+                const isDeleted = job?.deletion_status === true || job?.deletion_status === 1 || job?.status === "Deleted" || job?.status === "deleted";
+                return { id: b.bid_id, task_id: b.task_id, cancelled: !!isCancelled, deleted: !!isDeleted };
+              })
+            );
+            const cancelledMap: Record<string, boolean> = {};
+            const deletedMap: Record<string, boolean> = {};
+            for (const res of results) {
+              if (res.status === 'fulfilled') {
+                cancelledMap[res.value.task_id] = res.value.cancelled;
+                deletedMap[res.value.task_id] = res.value.deleted;
+              }
+            }
+            const enriched = bids
+              .map((b) => ({ ...b, task_cancelled: cancelledMap[b.task_id] ?? false, task_deleted: deletedMap[b.task_id] ?? false }));
+            setRequestedTasks(enriched);
+            try { sessionStorage.setItem("requestedTasks", JSON.stringify(enriched)); } catch {}
+          } catch {
+            // If enrichment fails, fallback to original list
+          setRequestedTasks(bids);
+            try { sessionStorage.setItem("requestedTasks", JSON.stringify(bids)); } catch {}
+          }
+        } else {
+          console.warn("No requested bids found or API error:", result.message);
+        }
+      } catch (err) {
+        // Handle AbortError separately (don't show error for timeouts)
+        if ((err as any)?.name === 'AbortError') {
+          console.log("⏰ Fetch requested bids was aborted (timeout)");
+          return;
+        }
+        console.error("Failed to fetch requested bids:", err);
+      }
+    };
+
+    fetchRequestedBids();
+  }, [user, userId, refetchBidsTrigger]);
 
   // Fetch completed tasks using the dedicated endpoint
   // Endpoint: /fetch-completed-tasks/{user_id}/
@@ -1570,7 +2437,10 @@ export default function Dashboard() {
     }
   };
 
-  // Completed tasks: initial load + refetch via consolidated/refetch effects
+  useEffect(() => {
+    if (!user || !userId) return;
+    fetchCompletedTasks();
+  }, [user, userId, taskOrders, refetchCompletedTrigger]);
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
   const [completeReviewTask, setCompleteReviewTask] = useState<Task | null>(null);
   const [completeReviewAsTaskmaster, setCompleteReviewAsTaskmaster] = useState(false);
@@ -2032,14 +2902,8 @@ export default function Dashboard() {
                   const jobUserId = job.user_ref_id || job.posted_by_id || job.user_id;
                   return jobUserId === currentUserId?.toString();
                 });
-                const seenIds = new Set<string>();
-                const uniqueUserJobs = userJobs.filter((job: any) => {
-                  const id = String(job.job_id || job.id);
-                  if (seenIds.has(id)) return false;
-                  seenIds.add(id);
-                  return true;
-                });
-                const tasks: Task[] = uniqueUserJobs.map((job: any) => {
+                
+                const tasks: Task[] = userJobs.map((job: any) => {
                   let jobStatus = "open";
                   
                   // Check cancellation status FIRST (for both pre-payment and post-payment)
