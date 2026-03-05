@@ -3918,8 +3918,14 @@ export default function Dashboard() {
                     >
                       {/* In Progress Task Banner */}
                       {task.status === "in_progress" && !task.cancel_status && (
-                        <div className="w-full bg-emerald-700 text-white text-center py-1.5 px-3 font-semibold text-xs">
-                          🚀 In Progress — Bid Accepted
+                        <div className={`w-full text-white text-center py-1.5 px-3 font-semibold text-xs ${
+                          task.taskmaster_completed && !task.tasker_completed && task.job_completion_status !== 1 && task.job_completion_status !== "1"
+                            ? "bg-amber-600"
+                            : "bg-emerald-700"
+                        }`}>
+                          {task.taskmaster_completed && !task.tasker_completed && task.job_completion_status !== 1 && task.job_completion_status !== "1"
+                            ? "✓ You've confirmed — Waiting for tasker to mark work done"
+                            : "🚀 In Progress — Bid Accepted"}
                         </div>
                       )}
                       
@@ -4103,6 +4109,9 @@ export default function Dashboard() {
                                 )}
                                 {(task.tasker_completed && !task.taskmaster_completed) && (
                                   <span className="text-xs text-muted-foreground">The tasker says they're done. Confirm above to close this task.</span>
+                                )}
+                                {(task.taskmaster_completed && !task.tasker_completed) && (
+                                  <span className="text-xs text-muted-foreground">You've confirmed. Waiting for tasker to mark work as done.</span>
                                 )}
                               </div>
                             </>
@@ -4420,6 +4429,7 @@ export default function Dashboard() {
                   const cancelledByTasker = task.cancelled_by_role === "tasker";
                   const cancelledByTaskmaster = task.cancelled_by_role === "taskmaster";
                   const waitingForTaskmaster = !isCancelled && task.tasker_completed && !task.taskmaster_completed && task.job_completion_status !== 1 && task.job_completion_status !== "1";
+                  const waitingForTasker = !isCancelled && task.taskmaster_completed && !task.tasker_completed && task.job_completion_status !== 1 && task.job_completion_status !== "1";
                   
                   return (
                   <Card key={task.id} className={`flex flex-col bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-md hover:shadow-lg transition-all duration-200 rounded-2xl overflow-hidden border-l-4 border-l-[#3b82f6]/50 ${isCancelled ? 'opacity-60' : ''}`}>
@@ -4465,6 +4475,10 @@ export default function Dashboard() {
                           return waitingForTaskmaster ? (
                             <Badge className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-2 py-1">
                               ⏳ Waiting for taskmaster
+                            </Badge>
+                          ) : waitingForTasker ? (
+                            <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-2 py-1">
+                              ✓ Task owner confirmed
                             </Badge>
                           ) : !isCancelled ? (
                         <Badge className="bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs px-2 py-1">
@@ -4516,6 +4530,13 @@ export default function Dashboard() {
                       {waitingForTaskmaster && (
                         <div className="mb-3 p-3 rounded-lg bg-blue-100 border border-blue-300 text-blue-800 text-sm">
                           <span className="font-medium">✓ You marked this complete.</span> Waiting for the task owner to confirm. The task will move to Completed once they confirm.
+                        </div>
+                      )}
+
+                      {/* Task owner confirmed — waiting for tasker to mark done */}
+                      {waitingForTasker && (
+                        <div className="mb-3 p-3 rounded-lg bg-emerald-100 border border-emerald-300 text-emerald-800 text-sm">
+                          <span className="font-medium">✓ Task owner has confirmed.</span> Mark your work as done above to close this task.
                         </div>
                       )}
 
