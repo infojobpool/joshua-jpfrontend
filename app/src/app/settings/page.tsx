@@ -22,6 +22,7 @@ import {
   UserX
 } from "lucide-react";
 import { toast } from "sonner";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import axiosInstance from "@/lib/axiosInstance";
 import {
   clearAllCache,
@@ -239,7 +240,7 @@ export default function SettingsPage() {
   // Show loading state until mounted (prevents SSR issues)
   if (!mounted || (!isAuthenticated && !userId)) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
         <div className="text-center">
           <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
           <p className="text-gray-600">
@@ -265,23 +266,29 @@ export default function SettingsPage() {
       
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.back()}
-            className="mb-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          
-          <h1 className="text-3xl font-bold text-gray-900">App Settings</h1>
-          <p className="text-gray-600 mt-2">Manage cache, storage, and performance</p>
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.back()}
+              className="mb-4"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">App Settings</h1>
+            <p className="text-gray-600 dark:text-slate-400 mt-2">Manage cache, storage, and performance</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600 dark:text-slate-400">Theme</span>
+            <ThemeToggle />
+          </div>
         </div>
 
         {/* Cache Stats Card */}
-        <Card className="mb-6">
+        <Card className="mb-6 dark:bg-slate-800 dark:border-slate-700">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Database className="h-5 w-5" />

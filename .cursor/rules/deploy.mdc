@@ -1,0 +1,37 @@
+---
+description: Auto-deploy workflow from Cursor to production
+alwaysApply: true
+---
+
+# Deploy from Cursor
+
+## Flow
+
+1. **Push to GitHub** → Vercel auto-deploys (when repo is connected)
+2. **Production branch**: `clean-main`
+3. **Site**: www.jobpool.in (after domain is configured in Vercel)
+
+## When user says "deploy" or "push and deploy"
+
+Run the deploy script from the repo root:
+```bash
+./scripts/deploy.sh "your commit message"
+```
+Or, if they prefer manual steps:
+```bash
+git add -A && git status
+git commit -m "Brief description of changes"
+git push origin clean-main
+```
+
+## Prerequisites
+
+- Vercel project connected to `infojobpool/joshua-jpfrontend` on GitHub
+- Root Directory in Vercel set to `app`
+- Git credentials working (HTTPS or SSH)
+
+## Notes
+
+- Vercel deploys on every push to `clean-main`
+- No manual Vercel deploy needed once connected
+- If push fails (auth), suggest: `gh auth login` or check remote URL
