@@ -570,6 +570,7 @@ export function OffersSection({
           taskerId: offer.tasker.id,
           taskPosterId: task.poster.id,
           amount: offer.amount,
+          taskTitle: task.title,
         }));
         
         // Store accepted bidder info for immediate UI update
@@ -600,14 +601,26 @@ export function OffersSection({
           try {
             const commissionAmount = offer.amount * 0.05;
             const gstAmount = (offer.amount + commissionAmount) * 0.18;
+            const totalAmount = offer.amount + commissionAmount + gstAmount;
+            const paymentDescription = [
+              `Payment for: ${task.title}`,
+              "",
+              "Cost breakdown:",
+              `• Bid amount: ₹${offer.amount.toFixed(2)}`,
+              `• Commission (5%): ₹${commissionAmount.toFixed(2)}`,
+              `• GST (18%): ₹${gstAmount.toFixed(2)}`,
+              `• Total: ₹${totalAmount.toFixed(2)}`,
+            ].join("\n");
             const paymentUrlRes = await axiosInstance.post("/create-payment-link/", {
               postId: task.id,
               bid_amount: Number(offer.amount.toFixed(2)),
               gst_amount: Number(gstAmount.toFixed(2)),
               commission_amount: Number(commissionAmount.toFixed(2)),
-              payable_amount: Number((offer.amount + commissionAmount + gstAmount).toFixed(2)),
+              payable_amount: Number(totalAmount.toFixed(2)),
               tasker_id: offer.tasker.id,
               taskmanager_id: task.poster.id,
+              task_title: task.title,
+              payment_description: paymentDescription,
             });
             const res = paymentUrlRes.data;
             const d = res?.data;
@@ -630,13 +643,15 @@ export function OffersSection({
               } catch (_) {}
               setPaymentUrlForApp(razorpayUrl);
             } else {
-              const fallbackUrl = `${window.location.origin}/payments?taskId=${task.id}&taskerId=${offer.tasker.id}&taskPosterId=${task.poster.id}&amount=${offer.amount}`;
+              const taskTitleParam = task.title ? `&taskTitle=${encodeURIComponent(task.title)}` : "";
+              const fallbackUrl = `${window.location.origin}/payments?taskId=${task.id}&taskerId=${offer.tasker.id}&taskPosterId=${task.poster.id}&amount=${offer.amount}${taskTitleParam}`;
               toast.error("Payment link unavailable. Copy link below and open in Safari.");
               setPaymentUrlForApp(fallbackUrl);
             }
           } catch (e: any) {
             console.error("create-payment-link failed:", e?.response?.data ?? e);
-            const fallbackUrl = `${window.location.origin}/payments?taskId=${task.id}&taskerId=${offer.tasker.id}&taskPosterId=${task.poster.id}&amount=${offer.amount}`;
+            const taskTitleParam = task.title ? `&taskTitle=${encodeURIComponent(task.title)}` : "";
+            const fallbackUrl = `${window.location.origin}/payments?taskId=${task.id}&taskerId=${offer.tasker.id}&taskPosterId=${task.poster.id}&amount=${offer.amount}${taskTitleParam}`;
             toast.error("Copy the link below and paste in Safari to pay.");
             setPaymentUrlForApp(fallbackUrl);
           } finally {
@@ -870,10 +885,12 @@ export function OffersSection({
                 variant="outline"
                 className="w-full"
                 onClick={() => {
-                  if (typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-                    window.location.href = paymentUrlForApp;
-                  } else {
-                    window.open(paymentUrlForApp, "_blank", "noopener,noreferrer");
+                  // Use window.open so PWA stays on JobPool. Using location.href navigates
+                  // the PWA to Razorpay, so reopening the app would restore that URL.
+                  const opened = window.open(paymentUrlForApp, "_blank", "noopener,noreferrer");
+                  if (!opened) {
+                    // window.open blocked (common in iOS PWA) - prompt to use Copy Link
+                    toast.info("Popup blocked. Use 'Copy Link' above, then paste in Safari to pay.");
                   }
                 }}
               >

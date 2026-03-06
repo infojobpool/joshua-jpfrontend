@@ -40,6 +40,7 @@ interface PaymentData {
   taskerId: string;
   taskPosterId: string;
   amount: number;
+  taskTitle?: string;
 }
 
 export default function PaymentPage() {
@@ -101,11 +102,13 @@ export default function PaymentPage() {
       const taskerId = searchParams.get("taskerId") || "";
       const taskPosterId = searchParams.get("taskPosterId") || "";
       if (taskId && amount && !isNaN(parseFloat(amount))) {
+        const taskTitle = searchParams.get("taskTitle");
         setPaymentData({
           taskId,
           taskerId,
           taskPosterId,
           amount: parseFloat(amount),
+          ...(taskTitle && { taskTitle: decodeURIComponent(taskTitle) }),
         });
         setShowPaymentModal(true);
         console.log("Retrieved payment data from URL params:", { taskId, amount, taskerId, taskPosterId });
@@ -149,15 +152,27 @@ export default function PaymentPage() {
 
     const commissionAmount = bidAmount * 0.05; // 5% commission
     const gstAmount = (bidAmount + commissionAmount) * 0.18; // 18% GST
+    const totalAmount = bidAmount + commissionAmount + gstAmount;
+    const taskTitle = paymentData?.taskTitle || mockTask.title;
 
     const orderPayload = {
       postId: taskId,
       bid_amount: Number(bidAmount.toFixed(2)),
       gst_amount: Number(gstAmount.toFixed(2)),
       commission_amount: Number(commissionAmount.toFixed(2)),
-      payable_amount: Number((bidAmount + commissionAmount + gstAmount).toFixed(2)),
+      payable_amount: Number(totalAmount.toFixed(2)),
       tasker_id: taskerId,
       taskmanager_id: taskPosterId,
+      task_title: taskTitle,
+      payment_description: [
+        `Payment for: ${taskTitle || `Task ${taskId}`}`,
+        "",
+        "Cost breakdown:",
+        `• Bid amount: ₹${bidAmount.toFixed(2)}`,
+        `• Commission (5%): ₹${commissionAmount.toFixed(2)}`,
+        `• GST (18%): ₹${gstAmount.toFixed(2)}`,
+        `• Total: ₹${totalAmount.toFixed(2)}`,
+      ].join("\n"),
     };
 
     // PWA or mobile: use payment link. Modal shows blank on PWA; mobile UA ensures consistency.
@@ -375,8 +390,10 @@ export default function PaymentPage() {
                 variant="outline"
                 className="w-full"
                 onClick={() => {
-                  window.open(paymentUrlForSafari, "_blank", "noopener,noreferrer") ||
-                    (window.location.href = paymentUrlForSafari);
+                  const opened = window.open(paymentUrlForSafari, "_blank", "noopener,noreferrer");
+                  if (!opened) {
+                    toast.info("Popup blocked. Use 'Copy Link' above, then paste in Safari to pay.");
+                  }
                 }}
               >
                 Open Payment Page
