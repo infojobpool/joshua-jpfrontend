@@ -67,7 +67,6 @@ export default function RazorpayCallbackPage() {
       setStatus("success");
       setMessage(already === "1" ? "Payment already verified." : "Payment successful!");
       addChatAndRedirect("", "", "");
-      setTimeout(() => openInAppOrWeb("/dashboard"), 800);
       return;
     }
     if (urlStatus === "failed") {
@@ -97,7 +96,6 @@ export default function RazorpayCallbackPage() {
       setStatus("success");
       setMessage("Payment completed.");
       addChatAndRedirect("", "", "");
-      setTimeout(() => openInAppOrWeb("/dashboard"), 800);
       return;
     }
 
@@ -123,7 +121,6 @@ export default function RazorpayCallbackPage() {
         setStatus("success");
         setMessage("Payment successful!");
         addChatAndRedirect(pending!.postId, pending!.tasker_id, pending!.taskmanager_id);
-        setTimeout(() => openInAppOrWeb("/dashboard"), 800);
       } catch (err: any) {
         setStatus("error");
         setMessage(err?.message || "Payment verification failed");
@@ -136,17 +133,30 @@ export default function RazorpayCallbackPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>
-            {status === "loading" ? "Verifying Payment" : status === "success" ? "Payment Success" : "Payment Failed"}
+            {status === "loading" ? "Verifying Payment" : status === "success" ? "Payment Successful" : "Payment Failed"}
           </CardTitle>
-          <CardDescription>{message}</CardDescription>
+          <CardDescription>
+            {status === "success" ? (
+              <>
+                Close this tab and open the JobPool app from your home screen. Your payment will appear there.
+              </>
+            ) : (
+              message
+            )}
+          </CardDescription>
         </CardHeader>
         <CardFooter className="flex flex-col gap-2">
           {status === "error" && (
-            <Button onClick={() => (window.location.href = "/payments")}>Try Again</Button>
+            <>
+              <Button onClick={() => (window.location.href = "/payments")}>Try Again</Button>
+              <Button variant="outline" onClick={() => openInAppOrWeb("/dashboard")}>
+                Back to Dashboard
+              </Button>
+            </>
           )}
-          {(status === "success" || status === "error") && (
-            <Button variant={status === "success" ? "default" : "outline"} onClick={() => openInAppOrWeb("/dashboard")}>
-              Back to Dashboard
+          {status === "success" && (
+            <Button onClick={() => openInAppOrWeb("/dashboard")}>
+              Open JobPool App
             </Button>
           )}
         </CardFooter>
