@@ -588,12 +588,13 @@ export function OffersSection({
           timestamp: Date.now()
         }));
 
-        // In PWA: create payment link, show Copy/Open dialog. User opens in Safari, pays, returns to app.
+        // PWA or mobile: use payment link (Copy/Open). Avoids Razorpay modal which shows blank on PWA.
         const isStandalone =
           typeof window !== "undefined" &&
           (window.matchMedia?.("(display-mode: standalone)")?.matches ||
             window.matchMedia?.("(display-mode: fullscreen)")?.matches ||
-            (navigator as any).standalone === true);
+            (navigator as any).standalone === true ||
+            /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || ""));
         if (isStandalone) {
           setPaymentLinkLoading(true);
           try {

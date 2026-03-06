@@ -138,28 +138,23 @@ export default function RazorpayCallbackPage() {
           <CardDescription>
             {status === "success" ? (
               <>
-                Close this tab and open the JobPool app from your home screen. Your payment will appear there.
+                A payment confirmation has been sent to your email and mobile.
+                <br /><br />
+                Close this page and reopen the JobPool app from your home screen. Your payment will appear there.
               </>
             ) : (
               message
             )}
           </CardDescription>
         </CardHeader>
-        <CardFooter className="flex flex-col gap-2">
-          {status === "error" && (
-            <>
-              <Button onClick={() => (window.location.href = "/payments")}>Try Again</Button>
-              <Button variant="outline" onClick={() => openInAppOrWeb("/dashboard")}>
-                Back to Dashboard
-              </Button>
-            </>
-          )}
-          {status === "success" && (
-            <Button onClick={() => openInAppOrWeb("/dashboard")}>
-              Open JobPool App
+        {status === "error" && (
+          <CardFooter className="flex flex-col gap-2">
+            <Button onClick={() => (window.location.href = "/payments")}>Try Again</Button>
+            <Button variant="outline" onClick={() => openInAppOrWeb("/dashboard")}>
+              Back to Dashboard
             </Button>
-          )}
-        </CardFooter>
+          </CardFooter>
+        )}
       </Card>
     </div>
   );

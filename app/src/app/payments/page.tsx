@@ -135,12 +135,13 @@ export default function PaymentPage() {
       taskmanager_id: taskPosterId,
     };
 
-    // Only PWA (installed app): modal shows blank. Web (browser) always uses modal.
+    // PWA or mobile: use payment link. Modal shows blank on PWA; mobile UA ensures consistency.
     const isStandalonePWA =
       typeof window !== "undefined" &&
       (window.matchMedia?.("(display-mode: standalone)")?.matches ||
         window.matchMedia?.("(display-mode: fullscreen)")?.matches ||
-        (navigator as any).standalone === true);
+        (navigator as any).standalone === true ||
+        /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || ""));
 
     let openedEmbedded = false;
     try {
