@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Script from "next/script";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PaymentModal } from "@/components/PaymentModal";
 import { toast } from "sonner";
@@ -53,7 +54,7 @@ export default function PaymentPage() {
   const [hasTriedOnce, setHasTriedOnce] = useState(false);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
 
-  // Check if Razorpay is loaded (script is preloaded in root layout)
+  // Check if Razorpay is loaded (script loads on this page only - not in root layout to avoid PWA opening to Razorpay)
   useEffect(() => {
     if (typeof window !== "undefined" && (window as any).Razorpay) {
       setRazorpayLoaded(true);
@@ -329,6 +330,18 @@ export default function PaymentPage() {
 
   return (
     <div>
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="afterInteractive"
+        onLoad={() => {
+          setRazorpayLoaded(true);
+        }}
+        onError={() => {
+          console.error("Failed to load Razorpay script");
+          setErrorMessage("Failed to load payment gateway");
+          setShowPaymentFailed(true);
+        }}
+      />
       <PaymentModal
         show={showPaymentModal}
         task={mockTask}
