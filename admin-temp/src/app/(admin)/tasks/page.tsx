@@ -87,6 +87,9 @@ interface Job {
   cancelled_at?: string;
   refund_status?: string;
   refund_date?: string;
+  tasker_completed?: boolean;
+  taskmaster_completed?: boolean;
+  cancel_status?: boolean;
 }
 
 interface Task {
@@ -94,7 +97,7 @@ interface Task {
   title: string;
   description: string;
   category: string;
-  status: "Open" | "Assigned" | "In Progress" | "Completed" | "Cancelled";
+  status: "Open" | "Assigned" | "In Progress" | "Completed" | "Cancelled" | "Taskmaster confirmed" | "Tasker confirmed";
   location: string;
   dueDate: string;
   budget: number;
@@ -145,20 +148,15 @@ export default function TasksPage() {
   };
 
   // Function to determine task status based on job data
+  // Uses tasker_completed, taskmaster_completed, job_completion_status, cancel_status from backend
   const getTaskStatus = (job: Job): Task["status"] => {
-    // Treat explicit completion first
-    if (job.job_completion_status === 1) {
-      return "Completed";
-    }
-    // Backend exposes boolean `status` as cancelled in our API shape
-    // Fallback: if other cancel flags ever exist, check them too
-    // @ts-ignore - tolerate optional fields from API variants
-    if (job.status === true || job["cancel_status"] === true) {
-      return "Cancelled";
-    }
-    if (job.tasker_id) {
-      return "Assigned";
-    }
+    if (job.job_completion_status === 1) return "Completed";
+    if (job.cancel_status === true) return "Cancelled";
+    const taskerDone = Boolean(job.tasker_completed);
+    const taskmasterDone = Boolean(job.taskmaster_completed);
+    if (taskmasterDone && !taskerDone) return "Taskmaster confirmed";
+    if (taskerDone && !taskmasterDone) return "Tasker confirmed";
+    if (job.tasker_id) return "Assigned";
     return "Open";
   };
 
@@ -200,7 +198,7 @@ export default function TasksPage() {
             : null,
           offers: 0,
           completedAt: job.job_completion_status === 1 ? new Date().toISOString() : undefined,
-          cancelledAt: job.cancelled_at || (job.status ? new Date().toISOString() : undefined),
+          cancelledAt: job.cancel_status ? (job.cancelled_at || new Date().toISOString()) : undefined,
           cancellationReason: job.cancellation_reason,
           cancelledByUserId: job.cancelled_by_user_id,
           cancelledByRole: job.cancelled_by_role,
@@ -213,7 +211,7 @@ export default function TasksPage() {
         // Fetch bid counts for each task (non-blocking for initial render)
         // Limit to first 20 tasks to reduce API load
         try {
-          const limitedTasks = visibleTasks.slice(0, 20);
+          const limitedTasks = mappedTasks.slice(0, 20);
           const results = await Promise.allSettled(
             limitedTasks.map(async (t) => {
               try {
@@ -279,7 +277,7 @@ export default function TasksPage() {
                 : null,
               offers: 0,
               completedAt: job.job_completion_status === 1 ? new Date().toISOString() : undefined,
-              cancelledAt: job.cancelled_at || (job.status ? new Date().toISOString() : undefined),
+              cancelledAt: job.cancel_status ? (job.cancelled_at || new Date().toISOString()) : undefined,
               cancellationReason: job.cancellation_reason,
               cancelledByUserId: job.cancelled_by_user_id,
               cancelledByRole: job.cancelled_by_role,
@@ -376,7 +374,9 @@ export default function TasksPage() {
   // Calculate statistics
   const openTasks = tasks.filter((t) => t.status === "Open").length;
   const cancelledTasks = tasks.filter((t) => t.status === "Cancelled").length;
-  const inProgressTasks = tasks.filter((t) => t.status === "In Progress").length;
+  const inProgressTasks = tasks.filter((t) =>
+    ["In Progress", "Taskmaster confirmed", "Tasker confirmed"].includes(t.status)
+  ).length;
   const completedTasks = tasks.filter((t) => t.status === "Completed").length;
   const totalBudget = tasks.reduce((sum, t) => sum + t.budget, 0);
 
@@ -578,7 +578,7 @@ export default function TasksPage() {
                 : null,
               offers: 0,
               completedAt: job.job_completion_status === 1 ? new Date().toISOString() : undefined,
-              cancelledAt: job.cancelled_at || (job.status ? new Date().toISOString() : undefined),
+              cancelledAt: job.cancel_status ? (job.cancelled_at || new Date().toISOString()) : undefined,
               cancellationReason: job.cancellation_reason,
               cancelledByUserId: job.cancelled_by_user_id,
               cancelledByRole: job.cancelled_by_role,
@@ -613,6 +613,8 @@ export default function TasksPage() {
       case "Assigned":
         return "secondary";
       case "In Progress":
+      case "Taskmaster confirmed":
+      case "Tasker confirmed":
         return "default";
       case "Completed":
         return "default";
@@ -629,6 +631,8 @@ export default function TasksPage() {
       case "Assigned":
         return null;
       case "In Progress":
+      case "Taskmaster confirmed":
+      case "Tasker confirmed":
         return <Clock className="h-4 w-4 mr-1" />;
       case "Completed":
         return <CheckCircle className="h-4 w-4 mr-1" />;
@@ -734,6 +738,8 @@ export default function TasksPage() {
               <SelectItem value="Open">Open</SelectItem>
               <SelectItem value="Assigned">Assigned</SelectItem>
               <SelectItem value="In Progress">In Progress</SelectItem>
+              <SelectItem value="Taskmaster confirmed">Taskmaster confirmed</SelectItem>
+              <SelectItem value="Tasker confirmed">Tasker confirmed</SelectItem>
               <SelectItem value="Completed">Completed</SelectItem>
               <SelectItem value="Cancelled">Cancelled</SelectItem>
             </SelectContent>
@@ -999,7 +1005,9 @@ export default function TasksPage() {
                               Mark as In Progress
                             </DropdownMenuItem>
                           )}
-                          {task.status === "In Progress" && (
+                          {(task.status === "In Progress" ||
+                            task.status === "Taskmaster confirmed" ||
+                            task.status === "Tasker confirmed") && (
                             <DropdownMenuItem
                               onClick={() =>
                                 handleUpdateTaskStatus(task.id, "Completed")
@@ -1463,6 +1471,12 @@ export default function TasksPage() {
                                     </SelectItem>
                                     <SelectItem value="In Progress">
                                       In Progress
+                                    </SelectItem>
+                                    <SelectItem value="Taskmaster confirmed">
+                                      Taskmaster confirmed
+                                    </SelectItem>
+                                    <SelectItem value="Tasker confirmed">
+                                      Tasker confirmed
                                     </SelectItem>
                                     <SelectItem value="Completed">
                                       Completed
