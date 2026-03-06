@@ -52,6 +52,7 @@ export default function PaymentPage() {
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const [hasTriedOnce, setHasTriedOnce] = useState(false);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+  const [paymentUrlForSafari, setPaymentUrlForSafari] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -134,18 +135,17 @@ export default function PaymentPage() {
       taskmanager_id: taskPosterId,
     };
 
-    const isMobile =
+    // Only PWA (installed app): modal shows blank. Web (browser) always uses modal.
+    const isStandalonePWA =
       typeof window !== "undefined" &&
       (window.matchMedia?.("(display-mode: standalone)")?.matches ||
         window.matchMedia?.("(display-mode: fullscreen)")?.matches ||
-        (navigator as any).standalone === true ||
-        /iPhone|iPad|iPod|Android|webOS|Mobile/i.test(navigator.userAgent || "") ||
-        (window.innerWidth < 768));
+        (navigator as any).standalone === true);
 
     let openedEmbedded = false;
     try {
-      // Mobile: Razorpay modal shows blank. Use payment link - open directly in system browser.
-      if (isMobile) {
+      // PWA only: Show Copy/Open dialog. User copies link, opens Safari, pays, returns to app.
+      if (isStandalonePWA) {
         const linkResponse = await axiosInstance.post("/create-payment-link/", orderPayload);
         const linkResult = linkResponse.data;
         const paymentUrl = linkResult?.data?.short_url;
@@ -166,8 +166,7 @@ export default function PaymentPage() {
             })
           );
         } catch (_) {}
-        const opened = window.open(paymentUrl, "_blank", "noopener,noreferrer");
-        if (!opened) window.location.href = paymentUrl;
+        setPaymentUrlForSafari(paymentUrl);
         return;
       }
 
@@ -320,6 +319,46 @@ export default function PaymentPage() {
               </Button>
               <Button onClick={handleGoHome} className="bg-green-600 hover:bg-green-700">
                 Go Home
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+      {paymentUrlForSafari && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Open in Safari to Pay</CardTitle>
+              <CardDescription>
+                Copy the link below, open Safari, paste the link, and complete payment there. Then return to the JobPool app.
+              </CardDescription>
+            </CardHeader>
+            <CardFooter className="flex flex-col gap-2">
+              <Button
+                className="w-full bg-green-600 hover:bg-green-700"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard?.writeText(paymentUrlForSafari);
+                    toast.success("Link copied! Open Safari, paste the link, and complete payment.");
+                  } catch {
+                    toast.error("Could not copy. Try the Open button below.");
+                  }
+                }}
+              >
+                Copy Link (recommended)
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  window.open(paymentUrlForSafari, "_blank", "noopener,noreferrer") ||
+                    (window.location.href = paymentUrlForSafari);
+                }}
+              >
+                Open Payment Page
+              </Button>
+              <Button variant="ghost" onClick={() => setPaymentUrlForSafari(null)}>
+                Cancel
               </Button>
             </CardFooter>
           </Card>
