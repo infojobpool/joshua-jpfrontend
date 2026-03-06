@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Clock, DollarSign, MapPin, Search, Filter, Star, Loader2 } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
+import { formatDateWithTime } from "@/lib/utils"
 import { toast } from "sonner"
 
 export default function BrowseTasksPage() {
@@ -59,19 +60,6 @@ export default function BrowseTasksPage() {
     job_count?: number;
   }
 
-  // Format date helper
-  const formatDate = (dateString: string) => {
-    try {
-      return new Date(dateString).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-    } catch {
-      return "Invalid date";
-    }
-  };
-
   // Fetch tasks from API
   const fetchTasks = async () => {
     try {
@@ -88,11 +76,11 @@ export default function BrowseTasksPage() {
           status: job.status,
           deletion_status: job.deletion_status,
           posted_by: job.posted_by,
-          dueDate: job.job_due_date,
+          dueDate: job.job_due_date || undefined,
           category: job.job_category,
           category_name: job.job_category_name,
           job_images: job.job_images,
-          postedAt: job.created_at,
+          postedAt: job.created_at || job.timestamp || job.job_due_date || "",
           offers: 0, // Default value, can be updated if API provides this
         }));
         setTasks(mappedTasks);
@@ -490,9 +478,15 @@ export default function BrowseTasksPage() {
                         <CardTitle className="text-lg">{task.title}</CardTitle>
                         <Badge variant="outline">Open</Badge>
                       </div>
-                      <CardDescription className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>{formatDate(task.postedAt)}</span>
+                      <CardDescription className="flex items-center gap-2 flex-wrap">
+                        <Clock className="h-3 w-3 shrink-0" />
+                        <span>Posted {formatDateWithTime(task.postedAt)}</span>
+                        {task.dueDate && (
+                          <>
+                            <span className="text-muted-foreground">•</span>
+                            <span>Due {formatDateWithTime(task.dueDate)}</span>
+                          </>
+                        )}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="flex-1">

@@ -399,6 +399,24 @@ export default function PaymentPage() {
               >
                 Copy Link (recommended)
               </Button>
+              {typeof navigator !== "undefined" && navigator.share && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={async () => {
+                    try {
+                      await navigator.share({ url: paymentUrlForSafari, title: "JobPool Payment Link", text: "Complete your payment" });
+                      toast.success("Use Copy or Open in Safari from the share menu.");
+                    } catch (e) {
+                      if ((e as Error)?.name !== "AbortError") {
+                        toast.error("Share not available. Use Copy Link instead.");
+                      }
+                    }
+                  }}
+                >
+                  Share Link
+                </Button>
+              )}
               <Button
                 variant="outline"
                 className="w-full"
@@ -406,11 +424,16 @@ export default function PaymentPage() {
                   const opened = window.open(paymentUrlForSafari, "_blank", "noopener,noreferrer");
                   if (!opened) {
                     toast.info("Popup blocked. Use 'Copy Link' above, then paste in Safari to pay.");
+                  } else {
+                    toast.info("If you see a blank page, close it and use Copy Link instead.");
                   }
                 }}
               >
                 Open Payment Page
               </Button>
+              <p className="text-xs text-muted-foreground text-center w-full">
+                Open may show a blank page in the app. Copy Link is most reliable.
+              </p>
               <Button variant="ghost" onClick={() => setPaymentUrlForSafari(null)}>
                 Cancel
               </Button>

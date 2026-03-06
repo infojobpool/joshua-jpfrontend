@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
+import { formatDateWithTime } from "@/lib/utils";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 import { useNotifications } from "@/lib/useNotifications";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
@@ -283,16 +284,17 @@ function fillMissingDatesFromGetJob(
 
 // Get displayed postedAt for a task card - use cache if list has no date (get-job has full data)
 function getCardPostedAt(task: { id: string; postedAt: string }): string {
-  if (task.postedAt && task.postedAt !== "—" && task.postedAt !== "Unknown") return task.postedAt;
-  try {
-    const cached = typeof window !== "undefined" ? localStorage.getItem(`task_${task.id}`) : null;
-    if (cached) {
-      const data = JSON.parse(cached);
-      const cachedPosted = data?.task?.postedAt;
-      if (cachedPosted && cachedPosted !== "N/A" && cachedPosted !== "—") return cachedPosted;
-    }
-  } catch {}
-  return task.postedAt || "—";
+  let raw = task.postedAt;
+  if (!raw || raw === "—" || raw === "Unknown") {
+    try {
+      const cached = typeof window !== "undefined" ? localStorage.getItem(`task_${task.id}`) : null;
+      if (cached) {
+        const data = JSON.parse(cached);
+        raw = data?.task?.postedAt || raw;
+      }
+    } catch {}
+  }
+  return formatDateWithTime(raw || undefined);
 }
 
 export default function Dashboard() {
@@ -1621,7 +1623,7 @@ export default function Dashboard() {
               let postedAtISO = "";
               const dateObj = parseDateSafe(rawDate);
               if (dateObj) {
-                postedAtFormatted = dateObj.toLocaleDateString("en-GB");
+                postedAtFormatted = formatDateWithTime(rawDate);
                 postedAtSortValue = dateObj.getTime();
                 postedAtISO = dateObj.toISOString();
               } else if (typeof rawDate === "string") {
@@ -1670,9 +1672,7 @@ export default function Dashboard() {
                 postedAt: postedAtFormatted,
                 postedAtSortValue: postedAtSortValue,
                 postedAtISO: postedAtISO,
-                dueDate: job.job_due_date || job.dueDate
-                  ? new Date(job.job_due_date || job.dueDate).toLocaleDateString("en-GB")
-              : "Unknown",
+                dueDate: job.job_due_date || job.dueDate || undefined,
             offers: job.offers?.length || 0,
                 posted_by: job.posted_by || job.postedBy || "Unknown",
                 category: job.job_category || job.category || "general",
@@ -1759,7 +1759,7 @@ export default function Dashboard() {
                   let postedAtISO = "";
                   const dateObj = parseDateSafe(rawDate);
                   if (dateObj) {
-                    postedAtFormatted = dateObj.toLocaleDateString("en-GB");
+                    postedAtFormatted = formatDateWithTime(rawDate);
                     postedAtSortValue = dateObj.getTime();
                     postedAtISO = dateObj.toISOString();
                   } else if (typeof rawDate === "string") {
@@ -1792,9 +1792,7 @@ export default function Dashboard() {
                     postedAt: postedAtFormatted,
                     postedAtSortValue: postedAtSortValue,
                     postedAtISO: postedAtISO,
-                    dueDate: job.job_due_date || job.dueDate
-                      ? new Date(job.job_due_date || job.dueDate).toLocaleDateString("en-GB")
-                      : "Unknown",
+                    dueDate: job.job_due_date || job.dueDate || undefined,
                     offers: job.offers?.length || 0,
                     posted_by: job.posted_by || job.postedBy || "Unknown",
                     category: job.job_category || job.category || "general",
@@ -2145,30 +2143,14 @@ export default function Dashboard() {
                 location: job.job_location || job.location || "Unknown",
                 status: jobStatus,
                 job_completion_status: job.job_completion_status?.toString() || job.status?.toString() || undefined,
-                postedAt: (() => {
-                  const raw = job.job_due_date || job.created_at || job.timestamp || job.postedAt;
-                  try {
-                  return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
-                  } catch {
-                    return typeof raw === "string" && raw ? raw : "Unknown";
-                  }
-                })(),
+                postedAt: job.timestamp || job.tstamp || job.job_tstamp || job.created_at || job.job_due_date || job.postedAt || "",
                 postedAtSortValue: (() => {
                   const raw = job.created_at || job.updated_at || job.completed_at || job.completed_date || job.timestamp || job.job_tstamp || job.tstamp || job.job_due_date;
                   const d = parseDateSafe(raw);
                   return d ? d.getTime() : 0;
                 })(),
-                dueDate: job.job_due_date || job.dueDate
-                  ? new Date(job.job_due_date || job.dueDate).toLocaleDateString("en-GB")
-                  : undefined,
-                completedDate: jobStatus === "completed" ? (() => {
-                  const raw = job.updated_at || job.completed_at || job.completed_date;
-                  try {
-                  return raw ? new Date(raw).toLocaleDateString("en-GB") : "Unknown";
-                  } catch {
-                    return typeof raw === "string" && raw ? raw : "Unknown";
-                  }
-                })() : undefined,
+                dueDate: job.job_due_date || job.dueDate || undefined,
+                completedDate: jobStatus === "completed" ? (job.updated_at || job.completed_at || job.completed_date || undefined) : undefined,
                 offers: job.offers?.length || job.offer_count || 0,
                 posted_by: job.posted_by || job.postedBy || job.user_name || "Unknown",
                 category: job.job_category || job.category || "general",
@@ -2666,7 +2648,7 @@ export default function Dashboard() {
               status: "completed",
               job_completion_status:
                 payload?.job_completion_status ?? "1",
-              completedDate: new Date().toLocaleDateString("en-GB"),
+              completedDate: new Date().toISOString(),
               postedAtSortValue: completedTask.postedAtSortValue ?? Date.now(),
               assignedToMe: true,
               _posterIsMe: false,
@@ -2801,7 +2783,7 @@ export default function Dashboard() {
                   taskmaster_completed: payload.taskmaster_completed ?? true,
                   job_completion_status: payload.job_completion_status ?? task.job_completion_status,
                   status: fullyCompleted ? "completed" : task.status,
-                  completedDate: fullyCompleted ? new Date().toLocaleDateString("en-GB") : task.completedDate,
+                  completedDate: fullyCompleted ? new Date().toISOString() : task.completedDate,
                 }
               : task
           )
@@ -4488,7 +4470,7 @@ export default function Dashboard() {
                                   {task.dueDate && task.dueDate !== "Unknown" && (
                                     <>
                                       <span className="mx-1 text-gray-300">•</span>
-                                      <span>Due: {task.dueDate}</span>
+                                      <span>Due: {formatDateWithTime(task.dueDate)}</span>
                                     </>
                                   )}
                                 </div>
@@ -4594,9 +4576,15 @@ export default function Dashboard() {
                           <h3 className={`font-semibold ${isCancelled ? 'text-gray-500 line-through' : 'text-gray-900'} line-clamp-2 ${isMobile ? "text-base" : "text-lg"}`}>
                             {task.title}
                           </h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Clock className={`h-3 w-3 ${isCancelled ? 'text-gray-400' : 'text-gray-400'}`} />
-                            <span className={`text-xs ${isCancelled ? 'text-gray-400' : 'text-gray-500'}`}>{getCardPostedAt(task)}</span>
+                          <div className="flex items-center gap-2 mt-1 text-xs">
+                            <Clock className={`h-3 w-3 shrink-0 ${isCancelled ? 'text-gray-400' : 'text-gray-400'}`} />
+                            <span className={isCancelled ? 'text-gray-400' : 'text-gray-500'}>Posted: {getCardPostedAt(task)}</span>
+                            {task.dueDate && (
+                              <>
+                                <span className="mx-1 text-gray-300">•</span>
+                                <span className={isCancelled ? 'text-gray-400' : 'text-gray-500'}>Due: {formatDateWithTime(task.dueDate)}</span>
+                              </>
+                            )}
                             {isCancelled && cancelledByTasker && (
                               <Badge variant="outline" className="text-xs border-gray-400 text-gray-600">
                                 ❌ Cancelled by you
@@ -4827,7 +4815,11 @@ export default function Dashboard() {
                           </h3>
                           <div className="flex items-center gap-2 mt-1">
                             <Clock className="h-3 w-3 text-gray-400" />
-                            <span className="text-xs text-gray-500">Task completed successfully</span>
+                            <span className="text-xs text-gray-500">
+                              {task.completedDate
+                                ? `Completed: ${formatDateWithTime(task.completedDate)}`
+                                : "Task completed successfully"}
+                            </span>
                           </div>
                         </div>
                         <Badge className="bg-green-600 hover:bg-green-700 text-white font-semibold text-xs px-2 py-1">

@@ -881,21 +881,41 @@ export function OffersSection({
               >
                 Copy Link (recommended)
               </Button>
+              {typeof navigator !== "undefined" && navigator.share && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={async () => {
+                    try {
+                      await navigator.share({ url: paymentUrlForApp, title: "JobPool Payment Link", text: "Complete your payment" });
+                      toast.success("Use Copy or Open in Safari from the share menu.");
+                    } catch (e) {
+                      if ((e as Error)?.name !== "AbortError") {
+                        toast.error("Share not available. Use Copy Link instead.");
+                      }
+                    }
+                  }}
+                >
+                  Share Link
+                </Button>
+              )}
               <Button
                 variant="outline"
                 className="w-full"
                 onClick={() => {
-                  // Use window.open so PWA stays on JobPool. Using location.href navigates
-                  // the PWA to Razorpay, so reopening the app would restore that URL.
                   const opened = window.open(paymentUrlForApp, "_blank", "noopener,noreferrer");
                   if (!opened) {
-                    // window.open blocked (common in iOS PWA) - prompt to use Copy Link
                     toast.info("Popup blocked. Use 'Copy Link' above, then paste in Safari to pay.");
+                  } else {
+                    toast.info("If you see a blank page, close it and use Copy Link instead.");
                   }
                 }}
               >
                 Open Payment Page
               </Button>
+              <p className="text-xs text-muted-foreground text-center w-full">
+                Open may show a blank page in the app. Copy Link is most reliable.
+              </p>
               <Button variant="ghost" onClick={() => setPaymentUrlForApp(null)}>Cancel</Button>
             </DialogFooter>
           )}
