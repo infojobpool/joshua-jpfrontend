@@ -9,7 +9,7 @@ import { PaymentFailed } from "@/components/payment-failed";
 import { Task } from "../types";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import axiosInstance from "../../lib/axiosInstance"; to your axiosInstance
+import axiosInstance from "../../lib/axiosInstance";
 
 // Mock task data (replace with actual task data, e.g., via API or props)
 const mockTask: Task = {
