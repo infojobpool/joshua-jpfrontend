@@ -610,8 +610,24 @@ export function OffersSection({
               taskmanager_id: task.poster.id,
             });
             const res = paymentUrlRes.data;
-            const razorpayUrl = res?.data?.short_url ?? res?.short_url;
+            const d = res?.data;
+            const razorpayUrl = d?.short_url ?? res?.short_url;
             if (razorpayUrl) {
+              try {
+                localStorage.setItem(
+                  "pending_payment_order",
+                  JSON.stringify({
+                    postId: task.id,
+                    order_id: d?.order_id || "",
+                    tasker_id: offer.tasker.id,
+                    taskmanager_id: task.poster.id,
+                    bid_amount: offer.amount,
+                    gst_amount: gstAmount,
+                    commission_amount: commissionAmount,
+                    payable_amount: Number((offer.amount + commissionAmount + gstAmount).toFixed(2)),
+                  })
+                );
+              } catch (_) {}
               setPaymentUrlForApp(razorpayUrl);
             } else {
               const fallbackUrl = `${window.location.origin}/payments?taskId=${task.id}&taskerId=${offer.tasker.id}&taskPosterId=${task.poster.id}&amount=${offer.amount}`;

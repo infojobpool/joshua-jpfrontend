@@ -159,6 +159,25 @@ export default function PaymentPage() {
         throw new Error(result?.message || "Failed to create payment link");
       }
       const paymentUrl = result.data.short_url;
+      const d = result.data;
+
+      // Store pending order for razorpay-callback (legacy flow with verify-payment)
+      try {
+        localStorage.setItem(
+          "pending_payment_order",
+          JSON.stringify({
+            postId: taskId,
+            order_id: d?.order_id || "",
+            tasker_id: taskerId,
+            taskmanager_id: taskPosterId,
+            bid_amount: bidAmount,
+            gst_amount: gstAmount,
+            commission_amount: commissionAmount,
+            payable_amount: payableAmount,
+          })
+        );
+      } catch (_) {}
+
       const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || "");
 
       // Brief delay so WebView is ready (reduces intermittent blank screen)

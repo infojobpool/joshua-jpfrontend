@@ -9,7 +9,7 @@ import { openInAppOrWeb } from "@/lib/openInApp";
 
 type PendingOrder = {
   postId: string;
-  order_id: string;
+  order_id?: string;
   tasker_id: string;
   taskmanager_id: string;
   bid_amount: number;
@@ -18,19 +18,70 @@ type PendingOrder = {
   payable_amount: number;
 };
 
+function addChatAndRedirect(postId: string, taskerId: string, taskmanagerId: string) {
+  try {
+    const raw = sessionStorage.getItem("paymentData");
+    const data = raw ? JSON.parse(raw) : null;
+    const taskId = data?.taskId || postId;
+    const tId = data?.taskerId || taskerId;
+    const tmId = data?.taskPosterId || taskmanagerId;
+    if (tId && tmId) {
+      axiosInstance.post("/get-chat-id/", {
+        sender: tmId,
+        receiver: tId,
+        job_id: taskId,
+      }).then((chatResp) => {
+        if (chatResp.data?.status_code === 200 && chatResp.data?.data?.chat_id) {
+          const chatId = chatResp.data.data.chat_id;
+          const stored = localStorage.getItem("userChats");
+          const chatIds: string[] = stored ? JSON.parse(stored) : [];
+          if (!chatIds.includes(chatId)) {
+            chatIds.push(chatId);
+            localStorage.setItem("userChats", JSON.stringify(chatIds));
+          }
+        }
+      }).catch(() => {});
+    }
+  } catch (_) {}
+  localStorage.removeItem("pending_payment_order");
+  localStorage.removeItem("pending_payment_verification");
+  sessionStorage.removeItem("paymentData");
+  sessionStorage.removeItem("payment_page_visited");
+}
+
 export default function RazorpayCallbackPage() {
   const params = useSearchParams();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("Verifying payment...");
 
   useEffect(() => {
+    const urlStatus = params.get("status");
+    const already = params.get("already");
+    const errorParam = params.get("error");
     const paymentId = params.get("razorpay_payment_id");
     const orderId = params.get("razorpay_order_id");
     const signature = params.get("razorpay_signature");
 
+    // New flow: backend redirects with ?status=success | ?status=success&already=1 | ?status=failed&error=...
+    if (urlStatus === "success") {
+      setStatus("success");
+      setMessage(already === "1" ? "Payment already verified." : "Payment successful!");
+      addChatAndRedirect("", "", "");
+      setTimeout(() => openInAppOrWeb("/dashboard"), 800);
+      return;
+    }
+    if (urlStatus === "failed") {
+      setStatus("error");
+      setMessage(errorParam || "Payment could not be completed.");
+      addChatAndRedirect("", "", "");
+      return;
+    }
+
+    // Legacy flow: Razorpay redirects with payment_id, order_id, signature
     if (!paymentId || !orderId || !signature) {
       setStatus("error");
-      setMessage("Missing Razorpay payment details.");
+      setMessage("Missing payment details.");
+      addChatAndRedirect("", "", "");
       return;
     }
 
@@ -43,24 +94,26 @@ export default function RazorpayCallbackPage() {
     }
 
     if (!pending) {
-      setStatus("error");
-      setMessage("Payment details not found. Please contact support.");
+      setStatus("success");
+      setMessage("Payment completed.");
+      addChatAndRedirect("", "", "");
+      setTimeout(() => openInAppOrWeb("/dashboard"), 800);
       return;
     }
 
     (async () => {
       try {
         const verifyResponse = await axiosInstance.post("/verify-payment/", {
-          postId: pending.postId,
+          postId: pending!.postId,
           payment_id: paymentId,
           order_id: orderId,
           signature,
-          tasker_id: pending.tasker_id,
-          taskmanager_id: pending.taskmanager_id,
-          bid_amount: pending.bid_amount,
-          gst_amount: pending.gst_amount,
-          commission_amount: pending.commission_amount,
-          payable_amount: pending.payable_amount,
+          tasker_id: pending!.tasker_id,
+          taskmanager_id: pending!.taskmanager_id,
+          bid_amount: pending!.bid_amount,
+          gst_amount: pending!.gst_amount,
+          commission_amount: pending!.commission_amount,
+          payable_amount: pending!.payable_amount,
         });
 
         if (verifyResponse.data?.status_code !== 200) {
@@ -69,32 +122,8 @@ export default function RazorpayCallbackPage() {
 
         setStatus("success");
         setMessage("Payment successful!");
-        localStorage.removeItem("pending_payment_order");
-        localStorage.removeItem("pending_payment_verification");
-        sessionStorage.removeItem("paymentData");
-        sessionStorage.removeItem("payment_page_visited");
-
-        // Add chat to userChats so taskmaster sees it in Messages tab
-        try {
-          const chatResp = await axiosInstance.post("/get-chat-id/", {
-            sender: pending.taskmanager_id,
-            receiver: pending.tasker_id,
-            job_id: pending.postId,
-          });
-          if (chatResp.data?.status_code === 200 && chatResp.data?.data?.chat_id) {
-            const chatId = chatResp.data.data.chat_id;
-            const stored = localStorage.getItem("userChats");
-            const chatIds: string[] = stored ? JSON.parse(stored) : [];
-            if (!chatIds.includes(chatId)) {
-              chatIds.push(chatId);
-              localStorage.setItem("userChats", JSON.stringify(chatIds));
-            }
-          }
-        } catch (_) {
-          // Non-blocking; chat can be opened from task page
-        }
-
-        setTimeout(() => openInAppOrWeb("/dashboard"), 1500);
+        addChatAndRedirect(pending!.postId, pending!.tasker_id, pending!.taskmanager_id);
+        setTimeout(() => openInAppOrWeb("/dashboard"), 800);
       } catch (err: any) {
         setStatus("error");
         setMessage(err?.message || "Payment verification failed");
