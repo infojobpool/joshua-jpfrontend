@@ -134,8 +134,42 @@ export default function PaymentPage() {
       taskmanager_id: taskPosterId,
     };
 
+    const isMobileStandalone =
+      typeof window !== "undefined" &&
+      (window.matchMedia?.("(display-mode: standalone)")?.matches ||
+        window.matchMedia?.("(display-mode: fullscreen)")?.matches ||
+        (navigator as any).standalone === true ||
+        /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || ""));
+
     let openedEmbedded = false;
     try {
+      // Mobile PWA/WebView: Razorpay modal opens api.razorpay.com in a window and shows blank.
+      // Use payment link with full-page redirect instead (opens Razorpay's hosted page in same tab).
+      if (isMobileStandalone) {
+        const linkResponse = await axiosInstance.post("/create-payment-link/", orderPayload);
+        const linkResult = linkResponse.data;
+        const paymentUrl = linkResult?.data?.short_url;
+        if (!paymentUrl) throw new Error(linkResult?.message || "Failed to create payment link");
+        const d = linkResult.data;
+        try {
+          localStorage.setItem(
+            "pending_payment_order",
+            JSON.stringify({
+              postId: taskId,
+              order_id: d?.order_id || "",
+              tasker_id: taskerId,
+              taskmanager_id: taskPosterId,
+              bid_amount: bidAmount,
+              gst_amount: gstAmount,
+              commission_amount: commissionAmount,
+              payable_amount: Number(orderPayload.payable_amount),
+            })
+          );
+        } catch (_) {}
+        window.location.href = paymentUrl;
+        return;
+      }
+
       if (!razorpayLoaded && !(typeof window !== "undefined" && (window as any).Razorpay)) {
         throw new Error("Payment gateway not loaded. Please refresh and try again.");
       }
