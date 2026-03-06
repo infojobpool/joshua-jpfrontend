@@ -165,9 +165,10 @@ interface PaymentModalProps {
   closeModal: () => void
   isSubmitting: boolean
   bidAmount: number
+  razorpayReady?: boolean
 }
 
-export function PaymentModal({ show, task, handlePayment, closeModal, isSubmitting, bidAmount }: PaymentModalProps) {
+export function PaymentModal({ show, task, handlePayment, closeModal, isSubmitting, bidAmount, razorpayReady = true }: PaymentModalProps) {
   if (!show) return null
 
 
@@ -221,8 +222,12 @@ export function PaymentModal({ show, task, handlePayment, closeModal, isSubmitti
           <Button variant="outline" onClick={closeModal} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handlePayment} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700">
-            {isSubmitting ? "Processing..." : "Proceed to Pay"}
+          <Button
+            onClick={handlePayment}
+            disabled={isSubmitting || !razorpayReady}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            {isSubmitting ? "Processing..." : !razorpayReady ? "Loading..." : "Proceed to Pay"}
           </Button>
         </CardFooter>
       </Card>

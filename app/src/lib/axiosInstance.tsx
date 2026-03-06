@@ -125,14 +125,14 @@ axiosInstance.interceptors.response.use(
       }
     }
 
-    const status = error.response?.status;
     const config = error.config;
     const url = (config?.url || '').toLowerCase();
     const isRefreshRequest = url.includes('refresh-token');
     const isAuthEndpoint = url.includes('signin') || url.includes('login');
     const hasToken = typeof window !== 'undefined' && (localStorage.getItem('token') || sessionStorage.getItem('token'));
 
-    if (status === 401 && !isRefreshRequest && !isAuthEndpoint && hasToken) {
+    // Use optional chaining so network errors (error.response undefined) don't crash
+    if (error.response?.status === 401 && !isRefreshRequest && !isAuthEndpoint && hasToken) {
       // Avoid infinite retry loop
       if (config._retry) {
         try {

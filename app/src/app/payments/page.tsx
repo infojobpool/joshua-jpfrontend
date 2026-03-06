@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Script from "next/script";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PaymentModal } from "@/components/PaymentModal";
 import { toast } from "sonner";
@@ -52,6 +51,32 @@ export default function PaymentPage() {
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const [hasTriedOnce, setHasTriedOnce] = useState(false);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+
+  // Check if Razorpay is loaded (script is preloaded in root layout)
+  useEffect(() => {
+    if (typeof window !== "undefined" && (window as any).Razorpay) {
+      setRazorpayLoaded(true);
+      return;
+    }
+    const interval = setInterval(() => {
+      if ((window as any).Razorpay) {
+        setRazorpayLoaded(true);
+        clearInterval(interval);
+      }
+    }, 100);
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+      if (!(window as any).Razorpay) {
+        console.error("Failed to load Razorpay script");
+        setErrorMessage("Failed to load payment gateway");
+        setShowPaymentFailed(true);
+      }
+    }, 15000);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, []);
   const [paymentUrlForSafari, setPaymentUrlForSafari] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -252,6 +277,8 @@ export default function PaymentPage() {
           ondismiss: () => setIsSubmitting(false),
         },
       });
+      // Brief delay before open() - helps avoid blank page on first load in mobile WebView
+      await new Promise((r) => setTimeout(r, 150));
       rzp.open();
       openedEmbedded = true;
     } catch (err: any) {
@@ -287,11 +314,6 @@ export default function PaymentPage() {
 
   return (
     <div>
-      <Script
-        src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="afterInteractive"
-        onLoad={() => setRazorpayLoaded(true)}
-      />
       <PaymentModal
         show={showPaymentModal}
         task={mockTask}
@@ -299,6 +321,7 @@ export default function PaymentPage() {
         handlePayment={handlePayment}
         closeModal={closeModal}
         isSubmitting={isSubmitting}
+        razorpayReady={razorpayLoaded}
       />
       <PaymentFailed
         show={showPaymentFailed}

@@ -90,6 +90,7 @@ export default function TaskDetailPage() {
   const paymentToastShownRef = useRef<boolean>(false);
   const [taskRefreshKey, setTaskRefreshKey] = useState<number>(0);
   const loadRetryCountRef = useRef<number>(0);
+  const [loadError, setLoadError] = useState<"connection" | "not_found" | null>(null);
   const [bidsRetryKey, setBidsRetryKey] = useState<number>(0);
   const prefetchedBidsRef = useRef<{ id: string; data: any } | null>(null);
   const [completeReviewOpen, setCompleteReviewOpen] = useState(false);
@@ -98,6 +99,7 @@ export default function TaskDetailPage() {
   useEffect(() => {
     setBidsRetryKey(0);
     loadRetryCountRef.current = 0;
+    setLoadError(null);
     setPaymentCheckDone(false);
     paymentToastShownRef.current = false;
   }, [id]);
@@ -406,11 +408,12 @@ export default function TaskDetailPage() {
   // Load task data
   useEffect(() => {
     const loadTaskData = async () => {
+      const cacheKey = `task_${id}`;
       try {
         setLoading(true);
+        setLoadError(null);
         
         // Use cache only if fresh (< 5 min) – stale cache can have wrong assignedTasker/offers state
-        const cacheKey = `task_${id}`;
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
           try {
@@ -759,15 +762,28 @@ export default function TaskDetailPage() {
         } catch (cacheError) {
           console.warn("Failed to load from cache:", cacheError);
         }
-        const isRetryable = (error as any)?.name === "AbortError" || (error?.response?.status >= 500) || (error?.code === "ERR_NETWORK" || error?.message?.includes("Network"));
+        const isNotFound = error?.response?.status === 404 || error?.message === "HTTP 404";
+        const isConnectionError =
+          !error?.response ||
+          error?.code === "ERR_NETWORK" ||
+          error?.code === "ECONNABORTED" ||
+          (error?.message?.toLowerCase?.() || "").includes("network") ||
+          (error as any)?.name === "AbortError";
+        const isRetryable =
+          (error as any)?.name === "AbortError" ||
+          (error?.response?.status ?? 0) >= 500 ||
+          error?.code === "ERR_NETWORK" ||
+          (error?.message?.toLowerCase?.() || "").includes("network");
+
         if (isRetryable && loadRetryCountRef.current < 1) {
           loadRetryCountRef.current += 1;
           setTimeout(() => setTaskRefreshKey((k) => k + 1), 2000);
           toast.error("Connection issue. Retrying in 2 seconds…");
           return;
         }
+        setLoadError(isNotFound ? "not_found" : "connection");
         toast.error(
-          error?.response?.data?.detail || "Failed to load task details"
+          error?.response?.data?.detail || (isNotFound ? "Task not found" : "Failed to load task details")
         );
         setTask(null);
       } finally {
@@ -1647,6 +1663,17 @@ export default function TaskDetailPage() {
   }
 
   if (loading) {
+    // On retry, show explicit loading message
+    if (taskRefreshKey > 0) {
+      return (
+        <div className="flex h-screen items-center justify-center flex-col gap-3">
+          <div className="relative">
+            <div className="h-12 w-12 rounded-full border-4 border-blue-500/20 border-t-blue-600 animate-spin" />
+          </div>
+          <span className="text-sm text-muted-foreground">Loading task details...</span>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen p-4 md:p-6 animate-in fade-in duration-200">
         <div className="mx-auto max-w-3xl">
@@ -1697,16 +1724,30 @@ export default function TaskDetailPage() {
       : { name: "User", avatar: "/images/placeholder.svg" };
 
   if (!task) {
+    const isConnectionErr = loadError === "connection";
     return (
       <div className="flex h-screen items-center justify-center flex-col gap-4">
-        <p>Task not found</p>
-        <Link
-          href="/dashboard"
-          className="text-sm text-blue-600 hover:underline"
-          onClick={() => console.log("Navigating to dashboard, userId:", userId, "isAuthenticated:", isAuthenticated)}
-        >
-          Back to Dashboard
-        </Link>
+        <p>{isConnectionErr ? "Couldn't load task. Check your connection and try again." : "Task not found"}</p>
+        <div className="flex gap-3">
+          {isConnectionErr && (
+            <Button
+              variant="default"
+              onClick={() => {
+                loadRetryCountRef.current = 0;
+                setTaskRefreshKey((k) => k + 1);
+              }}
+            >
+              Retry
+            </Button>
+          )}
+          <Link
+            href="/dashboard"
+            className="text-sm text-blue-600 hover:underline flex items-center"
+            onClick={() => console.log("Navigating to dashboard, userId:", userId, "isAuthenticated:", isAuthenticated)}
+          >
+            Back to Dashboard
+          </Link>
+        </div>
       </div>
     );
   }
