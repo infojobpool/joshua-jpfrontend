@@ -297,7 +297,7 @@ function getCardPostedAt(task: { id: string; postedAt: string }): string {
 
 export default function Dashboard() {
   const router = useRouter();
-  const { user, userId, isAuthenticated, logout, addNotifications, updateUserProfileImage } = useStore();
+  const { user, userId, isAuthenticated, logout, addNotifications, updateUserProfileImage, checkAuth } = useStore();
   const { items: notificationItems, unreadCount, markAsRead, bellAnimating } = useNotifications(!!isAuthenticated);
   const { isMobile } = useIsMobile();
   // Prevent SSR → CSR flicker on mobile by delaying mobile-only UI until mounted
@@ -328,6 +328,13 @@ export default function Dashboard() {
     }
   }, [userId, user]);
   useEffect(() => { setMounted(true); }, []);
+  const [authHydrated, setAuthHydrated] = useState(false);
+  useEffect(() => {
+    checkAuth();
+    // Allow one tick for Zustand to update from localStorage before checking auth
+    const t = setTimeout(() => setAuthHydrated(true), 50);
+    return () => clearTimeout(t);
+  }, [checkAuth]);
   const mobile = mounted && isMobile;
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
   const [loading, setLoading] = useState(true);
@@ -787,13 +794,14 @@ export default function Dashboard() {
   }, [requestedTasks.length]);
 
   useEffect(() => {
+    if (!authHydrated) return; // Wait for checkAuth to restore session from localStorage
     if (!isAuthenticated || !user || !(userId || effectiveUserId)) {
-        router.push("/signin");
-        return;
-      }
+      router.push("/signin");
+      return;
+    }
     setLoading(false);
     fetchTaskOrders(); // Fetch task orders when user is authenticated
-  }, [isAuthenticated, user, userId, effectiveUserId, router]);
+  }, [authHydrated, isAuthenticated, user, userId, effectiveUserId, router]);
 
   // Fetch categories - load on mount and when user is available
   useEffect(() => {

@@ -396,8 +396,6 @@ export function OffersSection({
   const [completing, setCompleting] = useState<boolean>(false);
   const [selectedFromSession, setSelectedFromSession] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState<string | null>(null);
-  const [paymentUrlForApp, setPaymentUrlForApp] = useState<string | null>(null);
-  const [paymentLinkLoading, setPaymentLinkLoading] = useState(false);
   const addNotifications = useStore((s) => s.addNotifications);
 
   // Try to read accepted tasker from sessionStorage (when accept was done earlier in this browser)
@@ -588,62 +586,7 @@ export function OffersSection({
           timestamp: Date.now()
         }));
 
-        // In installed app: create Razorpay payment link and open in system browser (not our /payments - that loads in-app)
-        const isStandalone =
-          typeof window !== "undefined" &&
-          (window.matchMedia?.("(display-mode: standalone)")?.matches ||
-           window.matchMedia?.("(display-mode: fullscreen)")?.matches ||
-           window.matchMedia?.("(display-mode: minimal-ui)")?.matches ||
-           (navigator as any).standalone === true);
-        if (isStandalone) {
-          setPaymentLinkLoading(true);
-          try {
-            const commissionAmount = offer.amount * 0.05;
-            const gstAmount = (offer.amount + commissionAmount) * 0.18;
-            const paymentUrlRes = await axiosInstance.post("/create-payment-link/", {
-              postId: task.id,
-              bid_amount: Number(offer.amount.toFixed(2)),
-              gst_amount: Number(gstAmount.toFixed(2)),
-              commission_amount: Number(commissionAmount.toFixed(2)),
-              payable_amount: Number((offer.amount + commissionAmount + gstAmount).toFixed(2)),
-              tasker_id: offer.tasker.id,
-              taskmanager_id: task.poster.id,
-            });
-            const res = paymentUrlRes.data;
-            const d = res?.data;
-            const razorpayUrl = d?.short_url ?? res?.short_url;
-            if (razorpayUrl) {
-              try {
-                localStorage.setItem(
-                  "pending_payment_order",
-                  JSON.stringify({
-                    postId: task.id,
-                    order_id: d?.order_id || "",
-                    tasker_id: offer.tasker.id,
-                    taskmanager_id: task.poster.id,
-                    bid_amount: offer.amount,
-                    gst_amount: gstAmount,
-                    commission_amount: commissionAmount,
-                    payable_amount: Number((offer.amount + commissionAmount + gstAmount).toFixed(2)),
-                  })
-                );
-              } catch (_) {}
-              setPaymentUrlForApp(razorpayUrl);
-            } else {
-              const fallbackUrl = `${window.location.origin}/payments?taskId=${task.id}&taskerId=${offer.tasker.id}&taskPosterId=${task.poster.id}&amount=${offer.amount}`;
-              toast.error("Payment link unavailable. Use Copy Link and open in Safari.");
-              setPaymentUrlForApp(fallbackUrl);
-            }
-          } catch (e: any) {
-            console.error("create-payment-link failed:", e?.response?.data ?? e);
-            const fallbackUrl = `${window.location.origin}/payments?taskId=${task.id}&taskerId=${offer.tasker.id}&taskPosterId=${task.poster.id}&amount=${offer.amount}`;
-            toast.error("Copy the link below and paste in Safari to pay.");
-            setPaymentUrlForApp(fallbackUrl);
-          } finally {
-            setPaymentLinkLoading(false);
-          }
-          return;
-        }
+        // Navigate to payments - embedded checkout tries first (create-order); falls back to payment link (Safari) if needed
         router.push("/payments");
       } else {
         toast.error(response.data.message || "Failed to accept bid");
@@ -839,49 +782,6 @@ export function OffersSection({
             <Button variant="outline" onClick={() => setCompleteOpen(false)} disabled={completing}>Cancel</Button>
             <Button onClick={handleCompleteWithReview} disabled={completing}>{completing ? "Submitting..." : "Submit"}</Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={!!paymentUrlForApp || paymentLinkLoading} onOpenChange={(open) => !open && !paymentLinkLoading && setPaymentUrlForApp(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{paymentLinkLoading ? "Creating payment link..." : "Open in Browser to Pay"}</DialogTitle>
-            <DialogDescription>
-              {paymentLinkLoading
-                ? "Please wait..."
-                : "Payment cannot complete in the app. Copy the link below, open Safari, paste the link, and complete payment there. Then return to the app."}
-            </DialogDescription>
-          </DialogHeader>
-          {paymentUrlForApp && !paymentLinkLoading && (
-            <DialogFooter className="flex-col gap-2 sm:flex-col">
-              <Button
-                className="w-full bg-green-600 hover:bg-green-700"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard?.writeText(paymentUrlForApp);
-                    toast.success("Link copied! Open Safari, paste the link, and complete payment.");
-                  } catch {
-                    toast.error("Could not copy link.");
-                  }
-                }}
-              >
-                Copy Link (recommended)
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  if (typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-                    window.location.href = paymentUrlForApp;
-                  } else {
-                    window.open(paymentUrlForApp, "_blank", "noopener,noreferrer");
-                  }
-                }}
-              >
-                Open Payment Page
-              </Button>
-              <Button variant="ghost" onClick={() => setPaymentUrlForApp(null)}>Cancel</Button>
-            </DialogFooter>
-          )}
         </DialogContent>
       </Dialog>
       {!isTaskPoster && shouldBlockSubmit && (

@@ -1,16 +1,15 @@
-
-
 "use client";
 
 import { useState, useEffect } from "react";
+import Script from "next/script";
 import { useRouter, useSearchParams } from "next/navigation";
-import { PaymentModal } from "@/components/PaymentModal"; // Adjust path
+import { PaymentModal } from "@/components/PaymentModal";
 import { toast } from "sonner";
-import { PaymentFailed } from "@/components/payment-failed"; // Adjust path
-import { Task } from "../types"; // Adjust path to your types
+import { PaymentFailed } from "@/components/payment-failed";
+import { Task } from "../types";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import axiosInstance from "../../lib/axiosInstance"; // Adjust path to your axiosInstance
+import axiosInstance from "../../lib/axiosInstance"; to your axiosInstance
 
 // Mock task data (replace with actual task data, e.g., via API or props)
 const mockTask: Task = {
@@ -55,6 +54,7 @@ export default function PaymentPage() {
   const [showWebviewHelp, setShowWebviewHelp] = useState(false);
   const [paymentOpenedInBrowser, setPaymentOpenedInBrowser] = useState(false);
   const [paymentLinkForSafari, setPaymentLinkForSafari] = useState<string | null>(null);
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -144,16 +144,108 @@ export default function PaymentPage() {
     const gstAmount = (bidAmount + commissionAmount) * 0.18; // 18% GST
     const payableAmount = bidAmount + commissionAmount + gstAmount;
 
+    const orderPayload = {
+      postId: taskId,
+      bid_amount: Number(bidAmount.toFixed(2)),
+      gst_amount: Number(gstAmount.toFixed(2)),
+      commission_amount: Number(commissionAmount.toFixed(2)),
+      payable_amount: Number(payableAmount.toFixed(2)),
+      tasker_id: taskerId,
+      taskmanager_id: taskPosterId,
+    };
+
+    let openedEmbedded = false;
     try {
-      const response = await axiosInstance.post("/create-payment-link/", {
-        postId: taskId,
-        bid_amount: Number(bidAmount.toFixed(2)),
-        gst_amount: Number(gstAmount.toFixed(2)),
-        commission_amount: Number(commissionAmount.toFixed(2)),
-        payable_amount: Number(payableAmount.toFixed(2)),
-        tasker_id: taskerId,
-        taskmanager_id: taskPosterId,
-      });
+      // Try in-app embedded checkout first (create-order)
+      try {
+        const orderResponse = await axiosInstance.post("/create-order/", orderPayload);
+        const orderResult = orderResponse.data;
+        const orderDetails = orderResult?.data;
+
+        if (
+          orderResult?.status_code === 200 &&
+          orderDetails?.order_id &&
+          orderDetails?.key &&
+          orderDetails?.payable_amount != null &&
+          orderDetails?.currency &&
+          (razorpayLoaded || (typeof window !== "undefined" && !!(window as any).Razorpay))
+        ) {
+          const rzp = new (window as any).Razorpay({
+            key: orderDetails.key,
+            amount: Math.round(Number(orderDetails.payable_amount) * 100), // paise
+            currency: orderDetails.currency || "INR",
+            order_id: orderDetails.order_id,
+            name: "JobPool",
+            description: `Payment for task`,
+            handler: async (res: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
+              try {
+                const verifyResp = await axiosInstance.post("/verify-payment/", {
+                  postId: orderDetails.postId || taskId,
+                  payment_id: res.razorpay_payment_id,
+                  order_id: res.razorpay_order_id,
+                  signature: res.razorpay_signature,
+                  tasker_id: taskerId,
+                  taskmanager_id: taskPosterId,
+                  bid_amount: orderDetails.bid_amount ?? bidAmount,
+                  gst_amount: orderDetails.gst_amount ?? gstAmount,
+                  commission_amount: orderDetails.commission_amount ?? commissionAmount,
+                  payable_amount: orderDetails.payable_amount ?? payableAmount,
+                });
+                if (verifyResp.data?.status_code === 200 && verifyResp.data?.data?.payment_status === "captured") {
+                  // Add chat and clear payment storage (same as razorpay-callback)
+                  try {
+                    const raw = sessionStorage.getItem("paymentData");
+                    const data = raw ? JSON.parse(raw) : null;
+                    const tId = taskerId || data?.taskerId;
+                    const tmId = taskPosterId || data?.taskPosterId;
+                    const taskIdForChat = orderDetails.postId || taskId || data?.taskId;
+                    if (tId && tmId) {
+                      axiosInstance.post("/get-chat-id/", { sender: tmId, receiver: tId, job_id: taskIdForChat }).then((chatResp) => {
+                        if (chatResp.data?.status_code === 200 && chatResp.data?.data?.chat_id) {
+                          const chatId = chatResp.data.data.chat_id;
+                          const stored = localStorage.getItem("userChats");
+                          const chatIds: string[] = stored ? JSON.parse(stored) : [];
+                          if (!chatIds.includes(chatId)) {
+                            chatIds.push(chatId);
+                            localStorage.setItem("userChats", JSON.stringify(chatIds));
+                          }
+                        }
+                      }).catch(() => {});
+                    }
+                  } catch (_) {}
+                  localStorage.removeItem("pending_payment_order");
+                  sessionStorage.removeItem("paymentData");
+                  sessionStorage.removeItem("payment_page_visited");
+                  setPaymentStatus("captured");
+                  setShowPaymentModal(false);
+                  toast.success("Payment successful!");
+                } else {
+                  throw new Error(verifyResp.data?.message || "Verification failed");
+                }
+              } catch (e: any) {
+                console.error("Verify error:", e);
+                setErrorMessage(e?.message || "Payment verification failed");
+                setShowPaymentFailed(true);
+              } finally {
+                setIsSubmitting(false);
+              }
+            },
+            modal: {
+              ondismiss: () => {
+                setIsSubmitting(false);
+              },
+            },
+          });
+          rzp.open();
+          openedEmbedded = true;
+          return; // Stay on page, Razorpay overlay opened
+        }
+      } catch (orderErr: any) {
+        console.warn("create-order failed, falling back to payment link:", orderErr?.response?.status ?? orderErr?.message);
+      }
+
+      // Fallback: payment link (opens Safari/external browser)
+      const response = await axiosInstance.post("/create-payment-link/", orderPayload);
       const result = response.data;
       if (!result?.data?.short_url) {
         throw new Error(result?.message || "Failed to create payment link");
@@ -161,7 +253,6 @@ export default function PaymentPage() {
       const paymentUrl = result.data.short_url;
       const d = result.data;
 
-      // Store pending order for razorpay-callback (legacy flow with verify-payment)
       try {
         localStorage.setItem(
           "pending_payment_order",
@@ -179,8 +270,6 @@ export default function PaymentPage() {
       } catch (_) {}
 
       const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || "");
-
-      // Brief delay so WebView is ready (reduces intermittent blank screen)
       await new Promise((r) => setTimeout(r, 300));
 
       if (isIOS) {
@@ -205,10 +294,10 @@ export default function PaymentPage() {
         setTimeout(() => handlePayment(), 800);
         return;
       }
-      setErrorMessage(err?.message || "Failed to create payment link");
+      setErrorMessage(err?.message || "Failed to create payment");
       setShowPaymentFailed(true);
     } finally {
-      setIsSubmitting(false);
+      if (!openedEmbedded) setIsSubmitting(false);
     }
   };
 
@@ -267,6 +356,11 @@ export default function PaymentPage() {
 
   return (
     <div>
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="afterInteractive"
+        onLoad={() => setRazorpayLoaded(true)}
+      />
       <PaymentModal
         show={showPaymentModal}
         task={mockTask}
