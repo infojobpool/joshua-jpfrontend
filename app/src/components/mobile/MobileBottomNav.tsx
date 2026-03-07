@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Search, User, MessageCircle } from "lucide-react";
-import { useIsMobile } from "./MobileWrapper";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -16,7 +15,6 @@ interface ChatSummary {
 
 export function MobileBottomNav() {
   const pathname = usePathname();
-  const { isMobile } = useIsMobile();
   const [messagesOpen, setMessagesOpen] = useState(false);
   const [chatSummaries, setChatSummaries] = useState<ChatSummary[]>([]);
 
@@ -34,7 +32,7 @@ export function MobileBottomNav() {
     }
   }, [messagesOpen, pathname]); // Re-read when popover opens or when navigating (e.g. returning from chat)
 
-  if (!isMobile) return null;
+  /* Rely on md:hidden for desktop; no useIsMobile check to avoid hydration flash on mobile */
 
   const isMessagesActive = pathname === "/messages" || pathname.startsWith("/messages/");
 
@@ -107,7 +105,7 @@ export function MobileBottomNav() {
 
   return (
     <div 
-      className="fixed left-0 right-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 shadow-[0_-2px_10px_rgba(0,0,0,0.08)] dark:shadow-[0_-2px_10px_rgba(0,0,0,0.3)] z-50 md:hidden mobile-nav-appear"
+      className="fixed left-0 right-0 bottom-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 shadow-[0_-2px_10px_rgba(0,0,0,0.08)] dark:shadow-[0_-2px_10px_rgba(0,0,0,0.3)] z-50 md:hidden mobile-nav-appear"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="flex justify-around items-center py-2.5">
