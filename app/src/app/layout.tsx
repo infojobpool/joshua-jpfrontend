@@ -12,6 +12,7 @@ import { NotificationPoller } from "@/components/NotificationPoller";
 import { SessionExpiredHandler } from "@/components/SessionExpiredHandler";
 import { PromoPopup } from "@/components/PromoPopup";
 import { AppEntranceWrapper } from "@/components/mobile/AppEntranceWrapper";
+import { SupportPill } from "@/components/SupportPill";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -86,6 +87,7 @@ export default function RootLayout({
             </AppEntranceWrapper>
             <MobileBottomNav />
           </MobileLayout>
+          <SupportPill />
           <Toaster />
         </ThemeProvider>
       </body>
