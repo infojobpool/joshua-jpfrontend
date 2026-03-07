@@ -105,18 +105,19 @@ export default function MessagesPage() {
         if (token && uid) {
           try {
             const tasksWithChats: { posterId: string; taskerId: string; jobId: string; otherUserName: string; taskTitle: string }[] = [];
+            // Run all 3 task fetches in parallel for faster load
+            const [jobsRes, assignedRes, completedRes] = await Promise.all([
+              fetch(`${API_BASE}/get-user-jobs/${uid}/`, { headers: { Authorization: `Bearer ${token}` }, credentials: "omit" }),
+              fetch(`${API_BASE}/get-user-assigned-bids/${uid}/`, { headers: { Authorization: `Bearer ${token}` }, credentials: "omit" }),
+              fetch(`${API_BASE}/fetch-completed-tasks/${uid}/`, { headers: { Authorization: `Bearer ${token}` }, credentials: "omit" }),
+            ]);
             // My posted tasks (in progress + completed) - I'm taskmaster, chat with tasker
-            const jobsRes = await fetch(`${API_BASE}/get-user-jobs/${uid}/`, {
-              headers: { Authorization: `Bearer ${token}` },
-              credentials: "omit",
-            });
             if (jobsRes.ok) {
               const jobsData = await jobsRes.json();
               const jobs = jobsData?.data?.jobs || [];
               for (const j of jobs) {
                 const posterId = String(j.user_ref_id || j.posted_by_id || j.user_id || "");
                 const taskerId = String(j.assigned_tasker_id || j.assigned_user_id || j.accepted_bidder_id || "");
-                // Include in-progress and completed tasks (any job with assigned tasker has a chat)
                 const hasAssignedTasker = posterId && taskerId && (j.status === "in_progress" || j.status === "completed" || j.bid_accepted || j.offer_accepted || j.assigned_tasker_id || j.payment_status);
                 if (hasAssignedTasker) {
                   const taskTitle = String(j.job_title || j.title || j.task_title || "Task").trim() || "Task";
@@ -125,10 +126,6 @@ export default function MessagesPage() {
               }
             }
             // Assigned to me - I'm tasker, chat with taskmaster (in-progress only)
-            const assignedRes = await fetch(`${API_BASE}/get-user-assigned-bids/${uid}/`, {
-              headers: { Authorization: `Bearer ${token}` },
-              credentials: "omit",
-            });
             if (assignedRes.ok) {
               const assignedData = await assignedRes.json();
               const assignedJobs = assignedData?.data?.jobs || assignedData?.data?.assigned_jobs || assignedData?.jobs || [];
@@ -141,11 +138,7 @@ export default function MessagesPage() {
                 }
               }
             }
-            // Completed tasks (poster or tasker) - get-user-assigned-bids only returns in-progress
-            const completedRes = await fetch(`${API_BASE}/fetch-completed-tasks/${uid}/`, {
-              headers: { Authorization: `Bearer ${token}` },
-              credentials: "omit",
-            });
+            // Completed tasks (poster or tasker)
             if (completedRes.ok) {
               const completedData = await completedRes.json();
               const completedJobs = completedData?.data?.jobs || completedData?.data || completedData?.jobs || [];
@@ -165,21 +158,25 @@ export default function MessagesPage() {
                 }
               }
             }
-            // Get or create chat_id for each task (create-or-get-chat creates chat for assigned jobs before payment)
-            for (const { posterId, taskerId, jobId, otherUserName, taskTitle } of tasksWithChats) {
-              try {
-                const chatResp = await axiosInstance.get("/create-or-get-chat/", {
-                  params: { sender: posterId, receiver: taskerId, job_id: jobId },
-                });
-                if (chatResp.data?.status_code === 200 && chatResp.data?.data?.chat_id) {
-                  const cid = chatResp.data.data.chat_id;
-                  if (cid && !chatIds.includes(cid)) {
-                    chatIds.push(cid);
-                    taskChatOtherUser[cid] = otherUserName;
-                    taskChatTaskTitle[cid] = taskTitle;
-                  }
+            // Get or create chat_id for each task - run in parallel for faster load
+            const chatResults = await Promise.allSettled(
+              tasksWithChats.map((t) =>
+                axiosInstance.get("/create-or-get-chat/", {
+                  params: { sender: t.posterId, receiver: t.taskerId, job_id: t.jobId },
+                })
+              )
+            );
+            for (let i = 0; i < chatResults.length; i++) {
+              const result = chatResults[i];
+              const task = tasksWithChats[i];
+              if (result.status === "fulfilled" && result.value?.data?.status_code === 200 && result.value?.data?.data?.chat_id) {
+                const cid = result.value.data.data.chat_id;
+                if (cid && !chatIds.includes(cid)) {
+                  chatIds.push(cid);
+                  taskChatOtherUser[cid] = task.otherUserName;
+                  taskChatTaskTitle[cid] = task.taskTitle;
                 }
-              } catch (_) { /* skip */ }
+              }
             }
             if (chatIds.length > 0) {
               try { localStorage.setItem("userChats", JSON.stringify(chatIds)); } catch {}
@@ -189,34 +186,57 @@ export default function MessagesPage() {
           }
         }
 
-        // Fetch details for each chat
+        // Fetch details for each chat - run in parallel for faster load (batches of 8 to avoid overload)
         const chatSummaries: ChatSummary[] = [];
         const validChatIds: string[] = [];
-        for (const chatId of chatIds) {
-          try {
-            const response = await axiosInstance.get(`/get-messages/${chatId}`);
-            if (response.data.status_code === 200 && response.data.data) {
-              const messages = response.data.data.messages || [];
-              if (messages.length > 0) {
-                const lastMessage = messages[messages.length - 1];
-                const otherUserId = lastMessage.sender_id === userId 
-                  ? lastMessage.receiver_id 
-                  : lastMessage.sender_id;
-                const otherUserName = lastMessage.sender_id === userId 
-                  ? lastMessage.receiver_name 
-                  : lastMessage.sender_name;
-
-                chatSummaries.push({
-                  chatid: chatId,
-                  otherUserId,
-                  otherUser: otherUserName,
-                  lastMessage: lastMessage.description,
-                  lastMessageTime: lastMessage.tstamp,
-                  taskTitle: taskChatTaskTitle[chatId] || undefined,
-                });
-                validChatIds.push(chatId);
-              } else if (taskChatOtherUser[chatId]) {
-                // Empty chat from assigned/in-progress task - show so user can start conversation
+        const BATCH_SIZE = 8;
+        for (let i = 0; i < chatIds.length; i += BATCH_SIZE) {
+          const batch = chatIds.slice(i, i + BATCH_SIZE);
+          const results = await Promise.allSettled(
+            batch.map((cid) => axiosInstance.get(`/get-messages/${cid}`))
+          );
+          for (let j = 0; j < batch.length; j++) {
+            const chatId = batch[j];
+            const result = results[j];
+            try {
+              if (result.status === "fulfilled" && result.value?.data?.status_code === 200 && result.value?.data?.data) {
+                const messages = result.value.data.data.messages || [];
+                if (messages.length > 0) {
+                  const lastMessage = messages[messages.length - 1];
+                  const otherUserId = lastMessage.sender_id === userId ? lastMessage.receiver_id : lastMessage.sender_id;
+                  const otherUserName = lastMessage.sender_id === userId ? lastMessage.receiver_name : lastMessage.sender_name;
+                  chatSummaries.push({
+                    chatid: chatId,
+                    otherUserId,
+                    otherUser: otherUserName,
+                    lastMessage: lastMessage.description,
+                    lastMessageTime: lastMessage.tstamp,
+                    taskTitle: taskChatTaskTitle[chatId] || undefined,
+                  });
+                  validChatIds.push(chatId);
+                } else if (taskChatOtherUser[chatId]) {
+                  chatSummaries.push({
+                    chatid: chatId,
+                    otherUserId: "",
+                    otherUser: taskChatOtherUser[chatId],
+                    lastMessage: "No messages yet",
+                    lastMessageTime: "",
+                    taskTitle: taskChatTaskTitle[chatId] || undefined,
+                  });
+                  validChatIds.push(chatId);
+                }
+              }
+            } catch {
+              validChatIds.push(chatId);
+            }
+          }
+          // Handle rejected (404 etc.) - empty chats return 404
+          for (let j = 0; j < batch.length; j++) {
+            const chatId = batch[j];
+            const result = results[j];
+            if (result.status === "rejected" && taskChatOtherUser[chatId]) {
+              const status = (result.reason as any)?.response?.status;
+              if (status === 404) {
                 chatSummaries.push({
                   chatid: chatId,
                   otherUserId: "",
@@ -227,23 +247,6 @@ export default function MessagesPage() {
                 });
                 validChatIds.push(chatId);
               }
-            }
-          } catch (error) {
-            // get-messages returns 404 for empty chats - still show if we have otherUser from task
-            const status = (error as any)?.response?.status;
-            if (status === 404 && taskChatOtherUser[chatId]) {
-              chatSummaries.push({
-                chatid: chatId,
-                otherUserId: "",
-                otherUser: taskChatOtherUser[chatId],
-                lastMessage: "No messages yet",
-                lastMessageTime: "",
-                taskTitle: taskChatTaskTitle[chatId] || undefined,
-              });
-              validChatIds.push(chatId);
-            } else if (status !== 404) {
-              console.warn(`Messages list: could not fetch chat ${chatId} (status ${status ?? 'unknown'})`);
-              validChatIds.push(chatId);
             }
           }
         }

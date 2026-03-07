@@ -60,9 +60,20 @@ export default function PanVerification({ onComplete }: PanVerificationProps) {
 
       if (data.status_code === 200 && data.data?.valid) {
         setIsVerified(true)
-        setPanName(data.data.registered_name || "Name not provided") 
+        setPanName(data.data.registered_name || "Name not provided")
 
         localStorage.setItem("registered_name", data.data.registered_name || "Name not provided")
+        // Update user verification_status so Profile shows Verified
+        try {
+          const local = localStorage.getItem("user");
+          if (local) {
+            const parsed = JSON.parse(local);
+            const status = Math.max(Number(parsed?.verification_status) || 0, 1);
+            parsed.verification_status = status;
+            localStorage.setItem("user", JSON.stringify(parsed));
+            useStore.setState({ user: { ...parsed, verification_status: status } });
+          }
+        } catch {}
       } else {
         setError(data.message || data.detail || "Unable to verify PAN. Please check the number and try again.")
       }

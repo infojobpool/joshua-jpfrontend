@@ -422,18 +422,29 @@ export default function VerificationFlow() {
           const cacheBuster = `?user_id=${effectiveUserId}&_t=${Date.now()}`;
           const response = await axiosInstance.get(`/profile${cacheBuster}`);
           const data = response.data;
-          const apiVerificationStatus = data.verification_status ?? data.verificationStatus ?? null;
-          if (apiVerificationStatus !== null && typeof apiVerificationStatus === 'number') {
+          const apiVerificationStatus = data.verification_status ?? data.verificationStatus ?? data?.data?.verification_status ?? null;
+          const statusNum = apiVerificationStatus != null ? Number(apiVerificationStatus) : null;
+          if (statusNum !== null && !isNaN(statusNum)) {
             setVerificationStatus({
-              pan: { completed: apiVerificationStatus >= 1, skipped: false },
-              aadhar: { completed: apiVerificationStatus >= 2, skipped: false },
+              pan: { completed: statusNum >= 1, skipped: false },
+              aadhar: { completed: statusNum >= 2, skipped: false },
             });
+            // Sync to localStorage so Profile page shows correct status
+            try {
+              const local = localStorage.getItem("user");
+              if (local) {
+                const parsed = JSON.parse(local);
+                parsed.verification_status = statusNum;
+                localStorage.setItem("user", JSON.stringify(parsed));
+                useStore.setState({ user: { ...parsed, verification_status: statusNum } });
+              }
+            } catch {}
           }
         }
       } catch (error) {
         console.error("Failed to refresh verification status:", error);
       }
-      
+
       // Move to completion step immediately
       setTimeout(() => {
         console.log("✅ Moving to completion step (step 3)");
@@ -459,12 +470,23 @@ export default function VerificationFlow() {
             const cacheBuster = `?user_id=${effectiveUserId}&_t=${Date.now()}`;
             const response = await axiosInstance.get(`/profile${cacheBuster}`);
             const data = response.data;
-            const apiVerificationStatus = data.verification_status ?? data.verificationStatus ?? null;
-            if (apiVerificationStatus !== null && typeof apiVerificationStatus === 'number') {
+            const apiVerificationStatus = data.verification_status ?? data.verificationStatus ?? data?.data?.verification_status ?? null;
+            const statusNum = apiVerificationStatus != null ? Number(apiVerificationStatus) : null;
+            if (statusNum !== null && !isNaN(statusNum)) {
               setVerificationStatus({
-                pan: { completed: apiVerificationStatus >= 1, skipped: false },
-                aadhar: { completed: apiVerificationStatus >= 2, skipped: false },
+                pan: { completed: statusNum >= 1, skipped: false },
+                aadhar: { completed: statusNum >= 2, skipped: false },
               });
+              // Sync to localStorage so Profile page shows correct status
+              try {
+                const local = localStorage.getItem("user");
+                if (local) {
+                  const parsed = JSON.parse(local);
+                  parsed.verification_status = statusNum;
+                  localStorage.setItem("user", JSON.stringify(parsed));
+                  useStore.setState({ user: { ...parsed, verification_status: statusNum } });
+                }
+              } catch {}
             }
           }
         } catch (error) {

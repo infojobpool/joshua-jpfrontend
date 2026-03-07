@@ -375,7 +375,18 @@ export default function AadharVerification({
         console.log("✅ Aadhaar verification successful, setting verified state");
         setIsVerified(true);
         setOtp(""); // Clear OTP input after successful verification
-        
+
+        // Update user verification_status so Profile shows Verified (backend updates; sync localStorage)
+        try {
+          const local = localStorage.getItem("user");
+          if (local) {
+            const parsed = JSON.parse(local);
+            parsed.verification_status = Math.max(Number(parsed.verification_status) || 0, 2);
+            localStorage.setItem("user", JSON.stringify(parsed));
+            useStore.setState({ user: { ...parsed, verification_status: parsed.verification_status } });
+          }
+        } catch {}
+
         // Automatically proceed to next step after a short delay
         setTimeout(() => {
           console.log("✅ Auto-proceeding to next step after Aadhaar verification");

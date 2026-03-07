@@ -120,6 +120,8 @@ export default function ProfilePage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const fetchProfileRef = useRef(false);
   const fetchSuccessRef = useRef(false);
+  const lastFetchTimeRef = useRef<number>(0);
+  const FETCH_COOLDOWN_MS = 15000; // Don't refetch within 15 seconds (reduces request spam)
 
   const formatDate = (dateString: string): string => {
     if (!dateString) return "";
@@ -146,20 +148,26 @@ export default function ProfilePage() {
     }
   }, [router]);
 
+  // Sync verification status from user (localStorage) until profile API returns
   useEffect(() => {
-    if (user) {
-      setVerificationStatus({
-        pan: { completed: user.verification_status >= 1 },
-        aadhar: { completed: user.verification_status >= 2 },
-        bank: { completed: user.verification_status >= 3 },
-      });
+    if (user?.verification_status != null) {
+      const num = Number(user.verification_status);
+      if (!isNaN(num)) {
+        setVerificationStatus({
+          pan: { completed: num >= 1 },
+          aadhar: { completed: num >= 2 },
+          bank: { completed: num >= 3 },
+        });
+      }
     }
   }, [user]);
 
   useEffect(() => {
     fetchSuccessRef.current = false;
     const fetchProfile = async () => {
+      const now = Date.now();
       if (fetchProfileRef.current) return;
+      if (now - lastFetchTimeRef.current < FETCH_COOLDOWN_MS && lastFetchTimeRef.current > 0) return;
       // Derive userId from localStorage as a fallback for slow hydration
       let effectiveUserId = userId as any;
       if (!effectiveUserId) {
@@ -201,20 +209,54 @@ export default function ProfilePage() {
           avatar:
             payload.profile_img || (storeUser && storeUser.profile_image) || "",
           joinDate: payload.tstamp ? formatDate(payload.tstamp) : "",
-          bank_info: payload.bank_info
-            ? {
-                // account_holder_name: payload.bank_info.account_holder_name || "",
-                bank_account_number: payload.bank_info.bank_account_number || "",
-                ifsc_code: payload.bank_info.ifsc_code || "",
-                // bank_name: payload.bank_info.bank_name || "",
-                // bank_location: payload.bank_info.bank_location || "",
-                // swift_code: payload.bank_info.swift_code || "",
-              }
-            : undefined,
+          bank_info: (() => {
+            const raw = payload.bank_info ?? data?.bank_info ?? data?.data?.bank_info;
+            if (!raw || typeof raw !== "object") return undefined;
+            const num = raw.bank_account_number ?? raw.bankAccountNumber ?? "";
+            const ifsc = raw.ifsc_code ?? raw.ifscCode ?? "";
+            if (!num && !ifsc) return undefined;
+            return {
+              bank_account_number: String(num),
+              ifsc_code: String(ifsc),
+            };
+          })(),
           job_title: payload.job_title || "",
         });
 
+        // Backend returns only verification_status (0–3) and bank_info. No separate pan/aadhar/bank flags.
+        // 0=not verified, 1=PAN, 2=PAN+Aadhar, 3=PAN+Aadhar+Bank
+        const rawStatus =
+          payload.verification_status ??
+          payload.verificationStatus ??
+          data?.verification_status ??
+          data?.verificationStatus ??
+          response?.data?.verification_status ??
+          response?.data?.verificationStatus ??
+          null;
+        const statusNum: number | null =
+          rawStatus !== null && rawStatus !== undefined
+            ? (typeof rawStatus === "string" ? parseInt(rawStatus, 10) : Number(rawStatus))
+            : null;
+        if (statusNum !== null) {
+          setVerificationStatus({
+            pan: { completed: statusNum >= 1 },
+            aadhar: { completed: statusNum >= 2 },
+            bank: { completed: statusNum >= 3 },
+          });
+          // Sync to localStorage and store so rest of app sees correct status
+          try {
+            const local = localStorage.getItem("user");
+            if (local) {
+              const parsed = JSON.parse(local);
+              parsed.verification_status = statusNum;
+              localStorage.setItem("user", JSON.stringify(parsed));
+              useStore.setState({ user: { ...parsed, verification_status: statusNum } });
+            }
+          } catch {}
+        }
+
         fetchSuccessRef.current = true;
+        lastFetchTimeRef.current = Date.now();
         if (Array.isArray(payload.reviews)) {
           setReviews(
             payload.reviews.map((review: any, index: number) => ({
@@ -249,15 +291,15 @@ export default function ProfilePage() {
     fetchProfileRef.current = false;
     fetchProfile();
 
-    // Single retry after 4s only if first fetch didn't succeed (avoid duplicate fetches / rate limit)
+    // Single retry after 8s only if first fetch didn't succeed (avoid rate limit)
     const retry = setTimeout(() => {
       if (!fetchSuccessRef.current) {
         fetchProfileRef.current = false;
         fetchProfile();
       }
-    }, 4000);
+    }, 8000);
     return () => clearTimeout(retry);
-  }, [userId, logout, router, storeUser?.profile_image]);
+  }, [userId, logout, router]);
 
   const handleSignOut = () => {
     logout();
@@ -746,15 +788,23 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     <div className="w-full space-y-4 md:w-2/3">
-                      {verificationStatus.bank.completed &&
-                      profileuser.bank_info ? (
+                      {profileuser.bank_info &&
+                      (profileuser.bank_info.bank_account_number || profileuser.bank_info.ifsc_code) ? (
                         <>
-                          <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4 text-emerald-800">
-                            <div className="flex items-center gap-3">
-                              <CheckCircle className="h-6 w-6 text-emerald-600 shrink-0" />
-                              <p className="font-semibold">Verification Complete</p>
+                          {verificationStatus.bank.completed && (
+                            <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4 text-emerald-800">
+                              <div className="flex items-center gap-3">
+                                <CheckCircle className="h-6 w-6 text-emerald-600 shrink-0" />
+                                <p className="font-semibold">Verification Complete</p>
+                              </div>
                             </div>
-                          </div>
+                          )}
+                          {!verificationStatus.bank.completed && (
+                            <div className="rounded-xl bg-amber-50 border border-amber-100 p-4 text-amber-800">
+                              <p className="font-medium">Verification Pending</p>
+                              <p className="text-sm text-amber-700 mt-1">Your bank details are saved. Complete verification to receive payments.</p>
+                            </div>
+                          )}
                           <div className="grid gap-4 md:grid-cols-2">
                             <div className="rounded-xl bg-slate-50 px-4 py-3 border border-slate-100">
                               <p className="text-xs font-semibold uppercase text-slate-500">Account Number</p>
@@ -789,23 +839,25 @@ export default function ProfilePage() {
                           <p className="font-medium text-slate-700">Verification Pending</p>
                         </div>
                       )}
-                      {/* {!verificationStatus.bank.completed && (
-                        <Button asChild>
-                          <Link href="/verification">Start Verification</Link>
+                      {profileuser.bank_info &&
+                      (profileuser.bank_info.bank_account_number || profileuser.bank_info.ifsc_code) ? (
+                        <Button asChild variant="outline" className="rounded-xl border-emerald-600 text-emerald-700 hover:bg-emerald-50">
+                          <Link href="/bankverification">Edit Bank Details</Link>
                         </Button>
-                      )} */}
-                      {!verificationStatus.bank.completed && (
-                        <Button asChild className="rounded-xl bg-emerald-600 hover:bg-emerald-700">
-                          <Link
-                            href={
-                              user?.verification_status === 2
-                                ? "/bankverification"
-                                : "/verification"
-                            }
-                          >
-                            Start Verification
-                          </Link>
-                        </Button>
+                      ) : (
+                        !verificationStatus.bank.completed && (
+                          <Button asChild className="rounded-xl bg-emerald-600 hover:bg-emerald-700">
+                            <Link
+                              href={
+                                user?.verification_status === 2
+                                  ? "/bankverification"
+                                  : "/verification"
+                              }
+                            >
+                              Start Verification
+                            </Link>
+                          </Button>
+                        )
                       )}
                     </div>
                   </div>
