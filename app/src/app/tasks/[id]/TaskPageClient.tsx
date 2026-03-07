@@ -459,7 +459,7 @@ export default function TaskDetailPage() {
         const timeoutId = setTimeout(() => {
           console.log("Task loading timeout reached, aborting request");
           controller.abort();
-        }, 6000); // 6s timeout – faster feedback
+        }, 12000); // 12s timeout – better for slow networks
 
         // Start get-bids in parallel (taskmaster endpoint – works for poster; non-poster will refetch in loadBids)
         const bidsPromise = fetch(`https://api.jobpool.in/api/v1/get-bids/${id}/`, {
@@ -773,9 +773,10 @@ export default function TaskDetailPage() {
           (error as any)?.name === "AbortError" ||
           (error?.response?.status ?? 0) >= 500 ||
           error?.code === "ERR_NETWORK" ||
+          error?.code === "ECONNABORTED" ||
           (error?.message?.toLowerCase?.() || "").includes("network");
 
-        if (isRetryable && loadRetryCountRef.current < 1) {
+        if (isRetryable && loadRetryCountRef.current < 2) {
           loadRetryCountRef.current += 1;
           setTimeout(() => setTaskRefreshKey((k) => k + 1), 2000);
           toast.error("Connection issue. Retrying in 2 seconds…");
@@ -1473,19 +1474,11 @@ export default function TaskDetailPage() {
     }
 
     try {
-      let response = await axiosInstance.get(
-        `/get-chat-id/?sender=${senderId}&receiver=${targetReceiverId}&job_id=${id}`
-      );
-      // If the GET route isn't supported, fall back to POST body
-      if (response.status === 404) {
-        response = await axiosInstance.post(`/get-chat-id/`, {
-          sender: senderId,
-          receiver: targetReceiverId,
-          job_id: id,
-        });
-      }
-      console.log("handleMessageUser - API Response:", response.data);
-      if (response.data.status_code === 200 && response.data.data.chat_id) {
+      // create-or-get-chat creates chat for assigned jobs (before or after payment)
+      const response = await axiosInstance.get("/create-or-get-chat/", {
+        params: { sender: senderId, receiver: targetReceiverId, job_id: id },
+      });
+      if (response.data?.status_code === 200 && response.data?.data?.chat_id) {
         const chatId = response.data.data.chat_id;
         const storedChats = localStorage.getItem("userChats");
         const chatIds: string[] = storedChats ? JSON.parse(storedChats) : [];
@@ -1496,38 +1489,19 @@ export default function TaskDetailPage() {
         router.push(`/messages/${chatId}`);
       } else {
         router.push(
-          `/messages/new?sender=${senderId}&receiver=${targetReceiverId}`
+          `/messages/new?sender=${senderId}&receiver=${targetReceiverId}&job_id=${id}`
         );
       }
     } catch (error: any) {
-      // Retry with POST if server responded 404 for GET
-      if (error?.response?.status === 404) {
-        try {
-          const postResp = await axiosInstance.post(`/get-chat-id/`, {
-            sender: senderId,
-            receiver: targetReceiverId,
-            job_id: id,
-          });
-          if (postResp.data.status_code === 200 && postResp.data.data.chat_id) {
-            const chatId = postResp.data.data.chat_id;
-            const storedChats = localStorage.getItem("userChats");
-            const chatIds: string[] = storedChats ? JSON.parse(storedChats) : [];
-            if (!chatIds.includes(chatId)) {
-              chatIds.push(chatId);
-              localStorage.setItem("userChats", JSON.stringify(chatIds));
-            }
-            router.push(`/messages/${chatId}`);
-            return;
-          }
-        } catch (postErr: any) {
-          console.error("handleMessageUser - POST fallback failed:", postErr?.response?.data || postErr);
-        }
+      const status = error?.response?.status;
+      const msg = error?.response?.data?.message || error?.message;
+      if (status === 400 || status === 403) {
+        toast.error(msg || "Complete payment to unlock messaging");
+      } else if (status === 404) {
+        toast.error("Task or user not found");
+      } else {
+        toast.error(msg || "Failed to initiate chat");
       }
-      console.error(
-        "handleMessageUser - Error initiating chat:",
-        error?.response?.data || error
-      );
-      toast.error(error?.response?.data?.message || "Failed to initiate chat");
     }
   };
 
@@ -1765,20 +1739,18 @@ export default function TaskDetailPage() {
   if (!task) {
     const isConnectionErr = loadError === "connection";
     return (
-      <div className="flex h-screen items-center justify-center flex-col gap-4">
-        <p>{isConnectionErr ? "Couldn't load task. Check your connection and try again." : "Task not found"}</p>
-        <div className="flex gap-3">
-          {isConnectionErr && (
-            <Button
-              variant="default"
-              onClick={() => {
-                loadRetryCountRef.current = 0;
-                setTaskRefreshKey((k) => k + 1);
-              }}
-            >
-              Retry
-            </Button>
-          )}
+      <div className="flex h-screen items-center justify-center flex-col gap-4 px-4">
+        <p className="text-center">{isConnectionErr ? "Couldn't load task. Check your connection and try again." : "Task not found"}</p>
+        <div className="flex gap-3 flex-wrap justify-center">
+          <Button
+            variant="default"
+            onClick={() => {
+              loadRetryCountRef.current = 0;
+              setTaskRefreshKey((k) => k + 1);
+            }}
+          >
+            Retry
+          </Button>
           <Link
             href="/dashboard"
             className="text-sm text-blue-600 hover:underline flex items-center"

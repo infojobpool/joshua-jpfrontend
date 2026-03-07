@@ -259,7 +259,7 @@ export default function PaymentPage() {
                 const tmId = taskPosterId || data?.taskPosterId;
                 const taskIdForChat = orderDetails.postId || taskId || data?.taskId;
                 if (tId && tmId) {
-                  axiosInstance.post("/get-chat-id/", { sender: tmId, receiver: tId, job_id: taskIdForChat }).then((chatResp) => {
+                  axiosInstance.get("/create-or-get-chat/", { params: { sender: tmId, receiver: tId, job_id: taskIdForChat } }).then((chatResp) => {
                     if (chatResp.data?.status_code === 200 && chatResp.data?.data?.chat_id) {
                       const chatId = chatResp.data.data.chat_id;
                       const stored = localStorage.getItem("userChats");

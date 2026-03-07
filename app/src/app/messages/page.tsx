@@ -122,13 +122,11 @@ export default function MessagesPage() {
                 }
               }
             }
-            // Get chat_id for each task and add to chatIds
+            // Get or create chat_id for each task (create-or-get-chat creates chat for assigned jobs before payment)
             for (const { posterId, taskerId, jobId, otherUserName } of tasksWithChats) {
               try {
-                const chatResp = await axiosInstance.post("/get-chat-id/", {
-                  sender: posterId,
-                  receiver: taskerId,
-                  job_id: jobId,
+                const chatResp = await axiosInstance.get("/create-or-get-chat/", {
+                  params: { sender: posterId, receiver: taskerId, job_id: jobId },
                 });
                 if (chatResp.data?.status_code === 200 && chatResp.data?.data?.chat_id) {
                   const cid = chatResp.data.data.chat_id;

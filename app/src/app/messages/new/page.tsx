@@ -42,19 +42,30 @@ export default function NewMessagePage() {
     try {
       setLoading(true);
       
-      // First try to get/create chat ID
+      // Get or create chat ID – use create-or-get-chat when job_id present (assigned jobs)
       let chatId;
+      const jobId = searchParams.get('job_id');
       try {
-        const chatResponse = await axiosInstance.post('/get-chat-id/', {
-          sender: senderId,
-          receiver: receiverId,
-          job_id: searchParams.get('job_id') || null,
-        });
-        
-        if (chatResponse.data.status_code === 200 && chatResponse.data.data.chat_id) {
-          chatId = chatResponse.data.data.chat_id;
+        if (jobId) {
+          const chatResponse = await axiosInstance.get('/create-or-get-chat/', {
+            params: { sender: senderId, receiver: receiverId, job_id: jobId },
+          });
+          if (chatResponse.data?.status_code === 200 && chatResponse.data?.data?.chat_id) {
+            chatId = chatResponse.data.data.chat_id;
+          } else {
+            throw new Error('Failed to get chat ID');
+          }
         } else {
-          throw new Error('Failed to get chat ID');
+          const chatResponse = await axiosInstance.post('/get-chat-id/', {
+            sender: senderId,
+            receiver: receiverId,
+            job_id: null,
+          });
+          if (chatResponse.data?.status_code === 200 && chatResponse.data?.data?.chat_id) {
+            chatId = chatResponse.data.data.chat_id;
+          } else {
+            throw new Error('Failed to get chat ID');
+          }
         }
       } catch (error) {
         console.error('Error getting chat ID:', error);

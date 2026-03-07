@@ -26,10 +26,8 @@ function addChatAndRedirect(postId: string, taskerId: string, taskmanagerId: str
     const tId = data?.taskerId || taskerId;
     const tmId = data?.taskPosterId || taskmanagerId;
     if (tId && tmId) {
-      axiosInstance.post("/get-chat-id/", {
-        sender: tmId,
-        receiver: tId,
-        job_id: taskId,
+      axiosInstance.get("/create-or-get-chat/", {
+        params: { sender: tmId, receiver: tId, job_id: taskId },
       }).then((chatResp) => {
         if (chatResp.data?.status_code === 200 && chatResp.data?.data?.chat_id) {
           const chatId = chatResp.data.data.chat_id;
