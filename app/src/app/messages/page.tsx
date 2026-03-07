@@ -209,6 +209,10 @@ export default function MessagesPage() {
         });
 
         setChats(chatSummaries);
+        // Save for mobile bottom nav chat list popover
+        try {
+          localStorage.setItem("chatSummaries", JSON.stringify(chatSummaries));
+        } catch {}
       } catch (error: any) {
         console.error('Error fetching chats:', error);
         toast.error(error.response?.data?.message || 'Failed to load chats');

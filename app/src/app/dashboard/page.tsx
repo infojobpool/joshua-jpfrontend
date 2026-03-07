@@ -554,7 +554,8 @@ export default function Dashboard() {
             }
           } catch (fetchError) {
             console.warn("Could not verify payment status from backend:", fetchError);
-            // Continue with local check
+            // Don't show warning when API fails - avoid false "verification pending" on cold start
+            return;
           }
           
           // Only show warning if pendingVerification exists (payment not verified) 
@@ -575,10 +576,10 @@ export default function Dashboard() {
       }
     };
     
-    // Run check after a short delay
+    // Run check after a short delay; re-run when tasks load so we can clear from local state
     const timeoutId = setTimeout(checkPendingPayment, 1500);
     return () => clearTimeout(timeoutId);
-  }, [effectiveUserId, router]);
+  }, [effectiveUserId, router, postedTasks, assignedTasks]);
 
   // Fetch profile image on load (API uses profile_img; login may not return it)
   useEffect(() => {

@@ -1562,6 +1562,27 @@ export default function TaskDetailPage() {
     router.push("/");
   };
 
+  // Clear stale payment flags immediately when task is in_progress (avoids verification-pending flicker)
+  useEffect(() => {
+    if (!task || !id) return;
+    const status = (task.status || "").toString().toLowerCase();
+    const isComplete = status === "in_progress" || !!task.assignedTasker;
+    if (!isComplete) return;
+    try {
+      const paymentData = sessionStorage.getItem("paymentData");
+      if (paymentData) {
+        const data = JSON.parse(paymentData);
+        if (data?.taskId === id) {
+          sessionStorage.removeItem("paymentData");
+          sessionStorage.removeItem("payment_page_visited");
+          localStorage.removeItem("pending_payment_verification");
+          setIsPaymentPending(false);
+          setPaymentCheckDone(true);
+        }
+      }
+    } catch (_) {}
+  }, [id, task?.id, task?.status, task?.assignedTasker]);
+
   // Check if user accepted an offer but didn't complete payment
   // Only show payment pending AFTER async API check completes to avoid flicker
   useEffect(() => {
@@ -1586,8 +1607,19 @@ export default function TaskDetailPage() {
           return;
         }
         
-        // Always fetch API first to avoid showing "pending" then hiding (flicker)
+        // If task already shows in_progress from API, trust it and clear (handles cache-then-API race)
+        if (task.status === "in_progress" || task.assignedTasker) {
+          sessionStorage.removeItem("paymentData");
+          sessionStorage.removeItem("payment_page_visited");
+          localStorage.removeItem("pending_payment_verification");
+          setIsPaymentPending(false);
+          setPaymentCheckDone(true);
+          return;
+        }
+        
+        // Always fetch API to confirm before showing "pending" (avoids false positive when API was slow/failed)
         let paymentCompleted = false;
+        let apiSucceeded = false;
         try {
           const token = localStorage.getItem("token");
           const res = await fetch(`https://api.jobpool.in/api/v1/get-job/${id}/`, {
@@ -1595,6 +1627,7 @@ export default function TaskDetailPage() {
             headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
             credentials: "omit",
           });
+          apiSucceeded = res.ok;
           if (res.ok) {
             const json = await res.json();
             const job = json?.data;
@@ -1605,7 +1638,10 @@ export default function TaskDetailPage() {
             }
           }
         } catch (_) {
-          if (task?.status === "in_progress" || task?.assignedTasker) paymentCompleted = true;
+          // API failed - don't show pending (avoid false positive). Assume ok until we can verify.
+          setIsPaymentPending(false);
+          setPaymentCheckDone(true);
+          return;
         }
         
         if (paymentCompleted) {
@@ -1614,7 +1650,8 @@ export default function TaskDetailPage() {
           localStorage.removeItem("pending_payment_verification");
           setIsPaymentPending(false);
           paymentToastShownRef.current = false;
-        } else {
+        } else if (apiSucceeded) {
+          // Only show pending when API succeeded and confirmed payment not complete
           const isTaskOpen = task?.status === "open" || task?.status === "Open" || !task?.status || task?.status === true;
           if (isTaskOpen) {
             setIsPaymentPending(true);
@@ -1639,6 +1676,8 @@ export default function TaskDetailPage() {
           } else {
             setIsPaymentPending(false);
           }
+        } else {
+          setIsPaymentPending(false);
         }
         setPaymentCheckDone(true);
       } catch (e) {
