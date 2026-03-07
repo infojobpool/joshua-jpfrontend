@@ -53,6 +53,7 @@ interface ChatSummary {
   otherUser: string;
   lastMessage: string;
   lastMessageTime: string;
+  taskTitle?: string;
 }
 
 export default function MessagesPage() {
@@ -90,6 +91,7 @@ export default function MessagesPage() {
       try {
         setLoading(true)
         const taskChatOtherUser: Record<string, string> = {}
+        const taskChatTaskTitle: Record<string, string> = {}
 
         // 1. Get chat IDs from localStorage
         const storedChats = localStorage.getItem("userChats");
@@ -102,7 +104,7 @@ export default function MessagesPage() {
 
         if (token && uid) {
           try {
-            const tasksWithChats: { posterId: string; taskerId: string; jobId: string; otherUserName: string }[] = [];
+            const tasksWithChats: { posterId: string; taskerId: string; jobId: string; otherUserName: string; taskTitle: string }[] = [];
             // My posted tasks (in progress + completed) - I'm taskmaster, chat with tasker
             const jobsRes = await fetch(`${API_BASE}/get-user-jobs/${uid}/`, {
               headers: { Authorization: `Bearer ${token}` },
@@ -117,7 +119,8 @@ export default function MessagesPage() {
                 // Include in-progress and completed tasks (any job with assigned tasker has a chat)
                 const hasAssignedTasker = posterId && taskerId && (j.status === "in_progress" || j.status === "completed" || j.bid_accepted || j.offer_accepted || j.assigned_tasker_id || j.payment_status);
                 if (hasAssignedTasker) {
-                  tasksWithChats.push({ posterId, taskerId, jobId: String(j.job_id), otherUserName: String(j.assigned_tasker_name || j.tasker_name || j.posted_by || "Tasker") });
+                  const taskTitle = String(j.job_title || j.title || j.task_title || "Task").trim() || "Task";
+                  tasksWithChats.push({ posterId, taskerId, jobId: String(j.job_id), otherUserName: String(j.assigned_tasker_name || j.tasker_name || j.posted_by || "Tasker"), taskTitle });
                 }
               }
             }
@@ -133,7 +136,8 @@ export default function MessagesPage() {
                 const posterId = String(j.user_ref_id || j.posted_by_id || j.poster_id || j.user_id || "");
                 const taskerId = String(j.assigned_tasker_id || j.assigned_user_id || uid);
                 if (posterId && taskerId) {
-                  tasksWithChats.push({ posterId, taskerId, jobId: String(j.job_id || j.id), otherUserName: String(j.posted_by || j.poster_name || "Task Poster") });
+                  const taskTitle = String(j.job_title || j.title || j.task_title || "Task").trim() || "Task";
+                  tasksWithChats.push({ posterId, taskerId, jobId: String(j.job_id || j.id), otherUserName: String(j.posted_by || j.poster_name || "Task Poster"), taskTitle });
                 }
               }
             }
@@ -156,12 +160,13 @@ export default function MessagesPage() {
                   const otherUserName = isPoster
                     ? String(j.assigned_tasker_name || j.tasker_name || "Tasker")
                     : String(j.posted_by || j.poster_name || "Task Poster");
-                  tasksWithChats.push({ posterId, taskerId, jobId, otherUserName });
+                  const taskTitle = String(j.job_title || j.title || j.task_title || "Task").trim() || "Task";
+                  tasksWithChats.push({ posterId, taskerId, jobId, otherUserName, taskTitle });
                 }
               }
             }
             // Get or create chat_id for each task (create-or-get-chat creates chat for assigned jobs before payment)
-            for (const { posterId, taskerId, jobId, otherUserName } of tasksWithChats) {
+            for (const { posterId, taskerId, jobId, otherUserName, taskTitle } of tasksWithChats) {
               try {
                 const chatResp = await axiosInstance.get("/create-or-get-chat/", {
                   params: { sender: posterId, receiver: taskerId, job_id: jobId },
@@ -171,6 +176,7 @@ export default function MessagesPage() {
                   if (cid && !chatIds.includes(cid)) {
                     chatIds.push(cid);
                     taskChatOtherUser[cid] = otherUserName;
+                    taskChatTaskTitle[cid] = taskTitle;
                   }
                 }
               } catch (_) { /* skip */ }
@@ -206,6 +212,7 @@ export default function MessagesPage() {
                   otherUser: otherUserName,
                   lastMessage: lastMessage.description,
                   lastMessageTime: lastMessage.tstamp,
+                  taskTitle: taskChatTaskTitle[chatId] || undefined,
                 });
                 validChatIds.push(chatId);
               } else if (taskChatOtherUser[chatId]) {
@@ -216,6 +223,7 @@ export default function MessagesPage() {
                   otherUser: taskChatOtherUser[chatId],
                   lastMessage: "No messages yet",
                   lastMessageTime: "",
+                  taskTitle: taskChatTaskTitle[chatId] || undefined,
                 });
                 validChatIds.push(chatId);
               }
@@ -230,6 +238,7 @@ export default function MessagesPage() {
                 otherUser: taskChatOtherUser[chatId],
                 lastMessage: "No messages yet",
                 lastMessageTime: "",
+                taskTitle: taskChatTaskTitle[chatId] || undefined,
               });
               validChatIds.push(chatId);
             } else if (status !== 404) {
@@ -239,10 +248,12 @@ export default function MessagesPage() {
           }
         }
 
-        // Persist the cleaned list of valid chat ids
-        try {
-          localStorage.setItem("userChats", JSON.stringify(validChatIds));
-        } catch {}
+        // Persist chat ids only when we have valid data (avoid clearing on fetch failure)
+        if (validChatIds.length > 0) {
+          try {
+            localStorage.setItem("userChats", JSON.stringify(validChatIds));
+          } catch {}
+        }
 
         // Sort chats by last message time (newest first)
         chatSummaries.sort((a, b) => {
@@ -258,6 +269,7 @@ export default function MessagesPage() {
       } catch (error: any) {
         console.error('Error fetching chats:', error);
         toast.error(error.response?.data?.message || 'Failed to load chats');
+        // Don't overwrite chats with empty on fetch failure - keep cached data
       } finally {
         setLoading(false);
       }
@@ -416,11 +428,23 @@ export default function MessagesPage() {
                 <p className="text-xs text-gray-500 dark:text-gray-400 animate-pulse">Updating...</p>
               )}
               {chats
-                .filter(chat => 
-                  chat.otherUser.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  chat.lastMessage.toLowerCase().includes(searchTerm.toLowerCase())
-                )
-                .map((chat) => (
+                .filter(chat => {
+                  const q = searchTerm.toLowerCase();
+                  if (!q) return true;
+                  return (
+                    chat.otherUser.toLowerCase().includes(q) ||
+                    chat.lastMessage.toLowerCase().includes(q) ||
+                    (chat.taskTitle || "").toLowerCase().includes(q)
+                  );
+                })
+                .map((chat) => {
+                  const displayTitle = chat.taskTitle && chat.taskTitle !== "Task"
+                    ? chat.taskTitle
+                    : chat.otherUser;
+                  const displaySubtitle = chat.taskTitle && chat.taskTitle !== "Task"
+                    ? (chat.lastMessage === "No messages yet" ? `with ${chat.otherUser}` : chat.lastMessage)
+                    : chat.lastMessage;
+                  return (
                 <div
                   key={chat.chatid}
                   className="group rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900/50 shadow-sm hover:shadow-md active:scale-[0.99] transition-all duration-200 cursor-pointer"
@@ -434,14 +458,14 @@ export default function MessagesPage() {
                 >
                   <div className="p-4">
                     <div className="flex items-center gap-4">
-                      <Avatar className="h-12 w-12 rounded-xl ring-2 ring-gray-100 dark:ring-slate-800">
+                      <Avatar className="h-12 w-12 rounded-xl ring-2 ring-gray-100 dark:ring-slate-800 shrink-0">
                         <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold rounded-xl">
                           {chat.otherUser.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">{chat.otherUser}</p>
+                          <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">{displayTitle}</p>
                           {chat.lastMessageTime && (
                             <p className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap shrink-0">
                               {new Date(chat.lastMessageTime).toLocaleString('en-US', {
@@ -451,12 +475,13 @@ export default function MessagesPage() {
                             </p>
                           )}
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 truncate mt-0.5">{chat.lastMessage}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 truncate mt-0.5">{displaySubtitle}</p>
                       </div>
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+                })}
             </div>
           )}
         </div>

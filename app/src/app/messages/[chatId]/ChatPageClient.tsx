@@ -500,6 +500,7 @@ export default function ChatPageClient() {
               } catch {}
               
               // Default: go back in history (smart back navigation)
+              try { sessionStorage.setItem('messagesReturnFromChat', '1') } catch {}
               if (window.history.length > 1) {
                 router.back()
               } else {
