@@ -35,7 +35,7 @@ import {
   Trash2, 
   X,
   User,
-  Settings,
+  HelpCircle,
   LogOut,
   ChevronDown,
   Bell,
@@ -3369,7 +3369,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-white dark:bg-slate-950 overflow-x-hidden">
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50/90 via-white to-slate-50/70 dark:bg-slate-950 overflow-x-hidden">
       <style jsx>{`
         @keyframes fadeInUp {
           from {
@@ -3521,11 +3521,11 @@ export default function Dashboard() {
                           </div>
                           <span className="text-gray-800 dark:text-slate-200 font-medium">My Profile</span>
                         </Link>
-                        <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
+                        <Link href="/supportpage" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
                           <div className="p-2 rounded-lg bg-gray-100">
-                            <Settings className="h-4 w-4 text-gray-600" />
+                            <HelpCircle className="h-4 w-4 text-gray-600" />
                           </div>
-                          <span className="text-gray-800 dark:text-slate-200 font-medium">Settings</span>
+                          <span className="text-gray-800 dark:text-slate-200 font-medium">Contact Support</span>
                         </Link>
                         <div className="border-t border-gray-100 my-2"></div>
                         <button 
@@ -3543,6 +3543,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="mt-2 text-left">
+                <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Welcome back, {safeUser?.name?.split(" ")[0] || "there"}!</p>
                 <h1 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-slate-100">Dashboard</h1>
                 <p className="text-xs text-gray-600 dark:text-slate-400 mt-0.5">Tasks and bids</p>
               </div>
@@ -3550,6 +3551,7 @@ export default function Dashboard() {
           )}
           {!isMobile && (
             <div className="animate-slide-in-right">
+              <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Welcome back, {safeUser?.name?.split(" ")[0] || "there"}!</p>
               <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-gray-900 dark:text-slate-100">
                 Dashboard
               </h1>
@@ -3629,11 +3631,11 @@ export default function Dashboard() {
                       </div>
                       <span className="text-gray-700 dark:text-slate-200 font-medium">My Profile</span>
                     </Link>
-                    <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
+                    <Link href="/supportpage" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
                       <div className="p-2 rounded-lg bg-gray-100">
-                        <Settings className="h-4 w-4 text-gray-600" />
+                        <HelpCircle className="h-4 w-4 text-gray-600" />
                       </div>
-                      <span className="text-gray-700 dark:text-slate-200 font-medium">Settings</span>
+                      <span className="text-gray-700 dark:text-slate-200 font-medium">Contact Support</span>
                     </Link>
                     <div className="border-t border-gray-100 my-2"></div>
                     <button
@@ -3708,11 +3710,11 @@ export default function Dashboard() {
                       </div>
                       <span className="text-gray-700 dark:text-slate-200 font-medium">My Profile</span>
                     </Link>
-                    <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
+                    <Link href="/supportpage" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
                       <div className="p-2 rounded-lg bg-gray-100">
-                        <Settings className="h-4 w-4 text-gray-600" />
+                        <HelpCircle className="h-4 w-4 text-gray-600" />
                       </div>
-                      <span className="text-gray-700 dark:text-slate-200 font-medium">Settings</span>
+                      <span className="text-gray-700 dark:text-slate-200 font-medium">Contact Support</span>
                     </Link>
                     <div className="border-t border-gray-100 my-2"></div>
                     <button 
@@ -3870,49 +3872,48 @@ export default function Dashboard() {
         >
           <TabsList className={
             isMobile
-              ? "flex w-full p-2.5 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-sm z-20 gap-1.5 min-h-[56px] overflow-x-auto overflow-y-hidden flex-nowrap justify-start sticky top-[calc(env(safe-area-inset-top)+48px)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              : "flex w-full bg-gray-100 dark:bg-slate-800 p-2 rounded-2xl gap-2"
+              ? "flex w-full p-1.5 bg-slate-100/90 dark:bg-slate-800/95 border border-slate-200/80 dark:border-slate-700 rounded-xl shadow-sm z-20 gap-1 min-h-[44px] overflow-x-auto overflow-y-hidden flex-nowrap justify-between sticky top-[calc(env(safe-area-inset-top)+48px)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              : "flex w-full bg-slate-100/90 dark:bg-slate-800/95 p-1.5 rounded-xl gap-1 border border-slate-200/80 dark:border-slate-700"
           }>
             <TabsTrigger value="my-tasks" className={
               isMobile 
-                ? "flex flex-col items-center justify-center gap-1 px-3 py-2 flex-shrink-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
-                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 flex-shrink-0 rounded-lg text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
+                : "px-4 py-2 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
-              <Briefcase className="h-4 w-4 md:hidden shrink-0" />
-              <span>My Tasks</span>
+              <Briefcase className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
+              <span>{isMobile ? "Tasks" : "My Tasks"}</span>
             </TabsTrigger>
             <TabsTrigger value="available" className={
               isMobile 
-                ? "flex flex-col items-center justify-center gap-1 px-3 py-2 flex-shrink-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
-                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 flex-shrink-0 rounded-lg text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
+                : "px-4 py-2 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
-              <Search className="h-4 w-4 md:hidden shrink-0" />
+              <Search className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
               <span>Available</span>
             </TabsTrigger>
             <TabsTrigger value="assigned" className={
               isMobile 
-                ? "flex flex-col items-center justify-center gap-1 px-3 py-2 flex-shrink-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
-                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 flex-shrink-0 rounded-lg text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
+                : "px-4 py-2 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
-              <CheckCircle className="h-4 w-4 md:hidden shrink-0" />
+              <CheckCircle className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
               <span>Assigned</span>
             </TabsTrigger>
             <TabsTrigger value="completed" className={
               isMobile 
-                ? "flex flex-col items-center justify-center gap-1 px-3 py-2 flex-shrink-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
-                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 flex-shrink-0 rounded-lg text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
+                : "px-4 py-2 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
-              <Star className="h-4 w-4 md:hidden shrink-0" />
-              <span>Completed</span>
+              <Star className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
+              <span>{isMobile ? "Done" : "Completed"}</span>
             </TabsTrigger>
             <TabsTrigger value="my-bids" className={
               isMobile 
-                ? "flex flex-col items-center justify-center gap-1 px-3 py-2 flex-shrink-0 rounded-xl text-xs font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
-                : "px-5 py-2.5 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
+                ? "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 flex-shrink-0 rounded-lg text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
+                : "px-4 py-2 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
             }>
-              <IndianRupee className="h-4 w-4 md:hidden shrink-0" />
-              <span className="hidden md:inline">My Bids</span>
-              <span className="md:hidden">My Bids</span>
+              <IndianRupee className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
+              <span>{isMobile ? "Bids" : "My Bids"}</span>
             </TabsTrigger>
           </TabsList>
 
@@ -4269,7 +4270,7 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="available" forceMount className="space-y-6 mt-12 pt-2 animate-fade-in-up min-h-[500px]">
+          <TabsContent value="available" forceMount className="space-y-4 mt-4 animate-fade-in-up min-h-[500px]">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Available Tasks</h2>
             <div className={`grid gap-6 ${isMobile ? "grid-cols-1" : "md:grid-cols-4"}`} style={{zIndex:1, position:'relative'}}>
               <div className={`${isMobile ? "hidden" : "md:col-span-1"} space-y-6`}>

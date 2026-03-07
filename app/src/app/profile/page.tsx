@@ -58,6 +58,7 @@ interface UserProfile {
   phone: string;
   addresses: Address[];
   avatar: string;
+  cover_image?: string;
   joinDate: string;
   bank_info?: BankInfo;
   isEditing?: boolean;
@@ -89,8 +90,10 @@ interface Review {
 export default function ProfilePage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverImageInputRef = useRef<HTMLInputElement>(null);
   const { isMobile } = useIsMobile();
   const [tempAvatar, setTempAvatar] = useState<string | null>(null);
+  const [tempCoverImage, setTempCoverImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { userId, logout, user: storeUser, updateUserProfileImage } = useStore();
@@ -106,6 +109,7 @@ export default function ProfilePage() {
     phone: "",
     addresses: [],
     avatar: "/images/placeholder.svg?height=128&width=128",
+    cover_image: "",
     joinDate: "",
     isEditing: false,
     job_title: "",
@@ -208,6 +212,7 @@ export default function ProfilePage() {
             : [{ id: 1, address: "", isDefault: true }],
           avatar:
             payload.profile_img || (storeUser && storeUser.profile_image) || "",
+          cover_image: payload.cover_img ?? payload.cover_image ?? payload.cover_image_url ?? "",
           joinDate: payload.tstamp ? formatDate(payload.tstamp) : "",
           bank_info: (() => {
             const raw = payload.bank_info ?? data?.bank_info ?? data?.data?.bank_info;
@@ -319,6 +324,7 @@ export default function ProfilePage() {
   const toggleEditProfile = () => {
     setProfileUser({ ...profileuser, isEditing: !profileuser.isEditing });
     setTempAvatar(null);
+    setTempCoverImage(null);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -342,6 +348,28 @@ export default function ProfilePage() {
     setTempAvatar(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+    }
+  };
+
+  const handleCoverImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setTempCoverImage(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const triggerCoverImageInput = () => coverImageInputRef.current?.click();
+
+  const removeCoverImage = () => {
+    setTempCoverImage(null);
+    if (coverImageInputRef.current) {
+      coverImageInputRef.current.value = "";
     }
   };
 
@@ -412,6 +440,9 @@ export default function ProfilePage() {
       if (fileInputRef.current?.files?.[0]) {
         updateFormData.append("file", fileInputRef.current.files[0]);
       }
+      if (coverImageInputRef.current?.files?.[0]) {
+        updateFormData.append("cover_file", coverImageInputRef.current.files[0]);
+      }
 
       const response = await axiosInstance.put("/profile", updateFormData, {
         headers: {
@@ -430,12 +461,14 @@ export default function ProfilePage() {
           isDefault: addr.isDefault || false,
         })),
         avatar: data.data.file_path || profileuser.avatar,
+        cover_image: data.data.cover_image ?? data.data.cover_img ?? profileuser.cover_image,
         isEditing: false,
       });
       if (data.data.file_path) {
         updateUserProfileImage(data.data.file_path);
       }
       setTempAvatar(null);
+      setTempCoverImage(null);
     } catch (err: any) {
       setError("Failed to update profile");
       if (err.response?.status === 401) {
@@ -473,7 +506,48 @@ export default function ProfilePage() {
         <div className="grid gap-8 md:grid-cols-3 mt-2">
           {/* Profile card - left column with overlapping avatar */}
           <Card className="md:col-span-1 border-0 shadow-xl rounded-2xl overflow-visible bg-white ring-1 ring-slate-200/50 relative z-10 md:-mr-4">
-            <div className="h-32 bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-700" />
+            <div
+              className="h-32 rounded-t-2xl bg-cover bg-center bg-no-repeat relative"
+              style={{
+                backgroundImage: (tempCoverImage || (profileuser.cover_image && resolveProfileImageUrl(profileuser.cover_image)) || profileuser.cover_image)
+                  ? `url(${tempCoverImage || resolveProfileImageUrl(profileuser.cover_image) || profileuser.cover_image})`
+                  : undefined,
+                backgroundColor: !tempCoverImage && !profileuser.cover_image ? undefined : undefined,
+              }}
+            >
+              {(!tempCoverImage && !profileuser.cover_image) && (
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-700 rounded-t-2xl" />
+              )}
+              {profileuser.isEditing && (
+                <>
+                  <button
+                    type="button"
+                    onClick={triggerCoverImageInput}
+                    className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 rounded-t-2xl transition-colors"
+                  >
+                    <div className="rounded-full bg-white/90 p-3">
+                      <Camera className="h-6 w-6 text-emerald-700" />
+                    </div>
+                  </button>
+                  <input
+                    type="file"
+                    ref={coverImageInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleCoverImageUpload}
+                  />
+                  {tempCoverImage && (
+                    <button
+                      type="button"
+                      onClick={removeCoverImage}
+                      className="absolute top-2 right-2 rounded-full bg-red-500 p-1.5 shadow-md hover:bg-red-600"
+                    >
+                      <X className="h-4 w-4 text-white" />
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
             <CardHeader className="flex flex-col items-center -mt-20 relative pb-2">
               {profileuser.isEditing ? (
                 <div className="relative -mt-1">
