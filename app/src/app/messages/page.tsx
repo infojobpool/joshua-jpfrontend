@@ -206,14 +206,19 @@ export default function MessagesPage() {
               }
             }
           } catch (error) {
-            // If the chat no longer exists (404), silently drop it from the list
-            // and clean it from localStorage to avoid repeated errors
-            // For other errors, log a compact warning
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            // get-messages returns 404 for empty chats - still show if we have otherUser from task
             const status = (error as any)?.response?.status;
-            if (status !== 404) {
+            if (status === 404 && taskChatOtherUser[chatId]) {
+              chatSummaries.push({
+                chatid: chatId,
+                otherUserId: "",
+                otherUser: taskChatOtherUser[chatId],
+                lastMessage: "No messages yet",
+                lastMessageTime: "",
+              });
+              validChatIds.push(chatId);
+            } else if (status !== 404) {
               console.warn(`Messages list: could not fetch chat ${chatId} (status ${status ?? 'unknown'})`);
-              // keep it, may be a transient issue
               validChatIds.push(chatId);
             }
           }

@@ -15,9 +15,24 @@ interface ChatSummary {
   lastMessage: string;
 }
 
+function getUserId(storeUserId: string | null): string {
+  if (storeUserId) return String(storeUserId);
+  if (typeof window === "undefined") return "";
+  try {
+    const fromStorage = localStorage.getItem("userId");
+    if (fromStorage) return fromStorage;
+    const userRaw = localStorage.getItem("user");
+    if (userRaw) {
+      const user = JSON.parse(userRaw);
+      if (user?.id) return String(user.id);
+    }
+  } catch {}
+  return "";
+}
+
 export function MobileBottomNav() {
   const pathname = usePathname();
-  const { userId } = useStore();
+  const { userId, user } = useStore();
   const [messagesOpen, setMessagesOpen] = useState(false);
   const [chatSummaries, setChatSummaries] = useState<ChatSummary[]>([]);
   const [chatsLoading, setChatsLoading] = useState(false);
@@ -25,23 +40,23 @@ export function MobileBottomNav() {
   // When popover opens, fetch chats from API (same logic as Messages page)
   useEffect(() => {
     if (!messagesOpen) return;
-    const uid = userId?.toString() || (typeof window !== "undefined" ? localStorage.getItem("userId") : null) || "";
+    const uid = getUserId(userId);
     if (!uid) return;
     const fetchChats = async () => {
       setChatsLoading(true);
       try {
         const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-        const uid = userId?.toString() || "";
         const taskChatOtherUser: Record<string, string> = {};
         let chatIds: string[] = [];
+        let tasksWithChats: { posterId: string; taskerId: string; jobId: string; otherUserName: string }[] = [];
         try {
           const raw = localStorage.getItem("userChats");
           chatIds = raw ? JSON.parse(raw) : [];
         } catch {}
 
         if (token && uid) {
-          const tasksWithChats: { posterId: string; taskerId: string; jobId: string; otherUserName: string }[] = [];
+          tasksWithChats = [];
           const jobsRes = await fetch(`${API_BASE}/get-user-jobs/${uid}/`, {
             headers: { Authorization: `Bearer ${token}` },
             credentials: "omit",
@@ -134,13 +149,25 @@ export function MobileBottomNav() {
                 });
               }
             }
-          } catch (_) { /* skip */ }
+          } catch (_) {
+            // get-messages returns 404 for empty chats - still show if we have otherUser from task
+            if (taskChatOtherUser[chatId]) {
+              summaries.push({
+                chatid: chatId,
+                otherUser: taskChatOtherUser[chatId],
+                lastMessage: "No messages yet",
+              });
+            }
+          }
         }
         summaries.sort((a, b) => {
           if (!a.lastMessage || !b.lastMessage) return 0;
           return 0;
         });
         setChatSummaries(summaries);
+        if (summaries.length === 0 && typeof window !== "undefined") {
+          console.log("[Messages popover] No chats:", { chatIdsCount: chatIds.length, hasToken: !!token, uid: uid ? "set" : "missing" });
+        }
         try {
           localStorage.setItem("chatSummaries", JSON.stringify(summaries));
         } catch {}
