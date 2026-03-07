@@ -120,40 +120,40 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/80 to-indigo-50 flex items-center justify-center p-4 py-6">
       <Toaster />
       
       {/* Background Pattern */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-32 -right-32 w-64 h-64 bg-blue-200/40 rounded-full blur-3xl" />
+        <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-indigo-200/40 rounded-full blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-md">
         {/* Logo Section */}
-        <div className="text-center mb-8 mt-6 md:mt-8">
+        <div className="text-center mb-6 mt-4 md:mt-6">
           <Link href="/" className="inline-flex items-center justify-center group">
             <img 
               src="/images/jobpool-logo.png" 
               alt="JobPool Logo" 
-              className="h-32 md:h-36 w-auto group-hover:opacity-90 transition-opacity"
+              className="h-28 md:h-32 w-auto group-hover:opacity-90 transition-opacity"
               style={{ mixBlendMode: 'multiply' }}
             />
           </Link>
         </div>
 
         {/* Main Card */}
-        <Card className="backdrop-blur-sm bg-white/90 border-0 shadow-2xl">
+        <Card className="backdrop-blur-sm bg-white/95 border-0 shadow-xl shadow-slate-200/50 rounded-2xl overflow-hidden">
           <form onSubmit={handleSubmit}>
-            <CardHeader className="text-center pb-6">
-              <CardTitle className="text-2xl font-bold text-gray-900">Join JobPool</CardTitle>
-              <CardDescription className="text-gray-600">
+            <CardHeader className="text-center pb-4 pt-5">
+              <CardTitle className="text-2xl font-bold text-slate-900 tracking-tight">Join JobPool</CardTitle>
+              <CardDescription className="text-slate-600 text-sm mt-0.5">
                 Create your account to start connecting and earning
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="user_fullname" className="text-sm font-medium text-gray-700">Full Name</Label>
+            <CardContent className="space-y-4 px-6">
+              <div className="space-y-1.5">
+                <Label htmlFor="user_fullname" className="text-sm font-medium text-slate-700">Full Name</Label>
                 <Input
                   id="user_fullname"
                   name="user_fullname"
@@ -165,8 +165,8 @@ export default function SignUpPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="user_email" className="text-sm font-medium text-gray-700">Email Address</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="user_email" className="text-sm font-medium text-slate-700">Email Address</Label>
                 <Input
                   id="user_email"
                   name="user_email"
@@ -179,8 +179,8 @@ export default function SignUpPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-sm font-medium text-slate-700">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -205,8 +205,8 @@ export default function SignUpPage() {
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="confirm_password" className="text-sm font-medium text-gray-700">Confirm Password</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="confirm_password" className="text-sm font-medium text-slate-700">Confirm Password</Label>
                 <Input
                   id="confirm_password"
                   name="confirm_password"
@@ -219,7 +219,7 @@ export default function SignUpPage() {
                 />
               </div>
             </CardContent>
-            <CardFooter className="flex flex-col space-y-4 pt-6">
+            <CardFooter className="flex flex-col space-y-3 pt-4 px-6">
               <Button 
                 type="submit" 
                 className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200" 
@@ -258,7 +258,7 @@ export default function SignUpPage() {
         </Card>
 
         {/* Footer */}
-        <div className="text-center mt-8">
+        <div className="text-center mt-5">
           <p className="text-sm text-gray-500">
             By creating an account, you agree to our{" "}
             <Link href="/termsandconditions" className="text-blue-600 hover:text-blue-700 transition-colors">

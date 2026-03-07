@@ -214,143 +214,115 @@ export function MobileSignIn() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <MobileCard className="w-full max-w-md">
-        <MobileCardHeader>
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-            <p className="text-gray-600">Sign in to your JobPool account</p>
-          </div>
-        </MobileCardHeader>
-
-        <MobileCardContent>
-          <MobileForm onSubmit={handleSubmit}>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                Email Address
-                <span className="text-red-500 ml-1">*</span>
-              </label>
-              <input
-                name="email"
-                type="email"
-                placeholder="Enter your email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className="w-full h-12 px-4 py-3 border-2 border-gray-200 rounded-xl text-base text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/80 to-indigo-50 flex items-center justify-center p-4 py-6">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-32 -right-32 w-64 h-64 bg-blue-200/40 rounded-full blur-3xl" />
+        <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-indigo-200/40 rounded-full blur-3xl" />
+      </div>
+      <div className="relative w-full max-w-md">
+        <MobileCard className="overflow-hidden border-0 shadow-xl shadow-slate-200/50 rounded-2xl bg-white/95 backdrop-blur-sm">
+          <MobileCardHeader className="pb-2 pt-5">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Welcome Back</h1>
+              <p className="text-slate-600 text-sm mt-0.5">Sign in to your JobPool account</p>
             </div>
+          </MobileCardHeader>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                Password
-                <span className="text-red-500 ml-1">*</span>
-              </label>
-              <input
-                name="password"
-                type="password"
-                placeholder="Enter your password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                className="w-full h-12 px-4 py-3 border-2 border-gray-200 rounded-xl text-base text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <label className="flex items-center cursor-pointer select-none">
+          <MobileCardContent className="px-5 pb-5 pt-0 space-y-3">
+            <MobileForm onSubmit={handleSubmit} className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-700">Email Address <span className="text-red-500">*</span></label>
                 <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                  name="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  className="w-full h-11 px-4 border border-slate-200 rounded-xl text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all"
                 />
-                <span className="ml-2 text-sm text-gray-600">Remember me</span>
-              </label>
-              <div className="flex flex-col items-end gap-1">
-              <Link href="/forgotpassword" className="text-sm text-blue-600 hover:text-blue-800">
-                Forgot password?
-              </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (formData.email) {
-                      handleResendVerification();
-                    } else {
-                      toast.error("Please enter your email address first");
-                    }
-                  }}
-                  disabled={isResending || !formData.email}
-                  className="text-xs text-blue-600 hover:text-blue-800 transition-colors disabled:text-gray-400 disabled:cursor-not-allowed"
-                >
-                  {isResending ? "Sending..." : "Resend verification"}
-                </button>
               </div>
-            </div>
 
-            {showResendVerification && (
-              <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-4">
-                <p className="text-sm text-yellow-800 mb-3">
-                  Your email address hasn't been verified yet. Please check your inbox for the verification link, or click below to resend it.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleResendVerification}
-                  disabled={isResending}
-                  className="w-full px-4 py-2 text-sm font-medium text-yellow-700 bg-white border border-yellow-300 rounded-lg hover:bg-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isResending ? (
-                    <div className="flex items-center justify-center">
-                      <div className="w-4 h-4 border-2 border-yellow-300 border-t-yellow-700 rounded-full animate-spin mr-2"></div>
-                      Sending...
-                    </div>
-                  ) : (
-                    "Resend Verification Email"
-                  )}
-                </button>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-700">Password <span className="text-red-500">*</span></label>
+                <input
+                  name="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  className="w-full h-11 px-4 border border-slate-200 rounded-xl text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all"
+                />
               </div>
-            )}
 
-            <MobileButton 
-              type="submit" 
-              className="w-full bg-blue-600 hover:bg-blue-700"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <div className="flex items-center justify-center">
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
-                  Signing in...
+              <div className="flex items-center justify-between gap-2">
+                <label className="flex items-center cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                  />
+                  <span className="ml-2 text-sm text-slate-600">Remember me</span>
+                </label>
+                <div className="flex flex-col items-end gap-0.5">
+                  <Link href="/forgotpassword" className="text-sm text-blue-600 hover:text-blue-700 font-medium">Forgot password?</Link>
+                  <button
+                    type="button"
+                    onClick={() => formData.email ? handleResendVerification() : toast.error("Enter email first")}
+                    disabled={isResending || !formData.email}
+                    className="text-xs text-blue-600 hover:text-blue-700 disabled:text-slate-400 disabled:cursor-not-allowed"
+                  >
+                    {isResending ? "Sending..." : "Resend verification"}
+                  </button>
                 </div>
-              ) : (
-                "Sign In"
-              )}
-            </MobileButton>
+              </div>
 
-            <div className="text-center space-y-2">
-              <p className="text-sm text-gray-600">
-                Don't have an account?{" "}
-                <Link href="/signup" className="text-blue-600 hover:text-blue-800 font-medium">
-                  Sign up
-                </Link>
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  if (formData.email) {
-                    handleResendVerification();
-                  } else {
-                    toast.error("Please enter your email address first");
-                  }
-                }}
-                disabled={isResending || !formData.email}
-                className="text-xs text-blue-600 hover:text-blue-800 transition-colors disabled:text-gray-400 disabled:cursor-not-allowed underline underline-offset-2"
+              {showResendVerification && (
+                <div className="rounded-xl bg-amber-50 border border-amber-200/80 p-3">
+                  <p className="text-xs text-amber-800 mb-2">Email not verified. Check inbox or resend below.</p>
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={isResending}
+                    className="w-full px-3 py-2 text-sm font-medium text-amber-800 bg-white border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50"
+                  >
+                    {isResending ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="w-3.5 h-3.5 border-2 border-amber-400 border-t-amber-700 rounded-full animate-spin" />
+                        Sending...
+                      </span>
+                    ) : (
+                      "Resend Verification Email"
+                    )}
+                  </button>
+                </div>
+              )}
+
+              <MobileButton
+                type="submit"
+                className="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all"
+                disabled={isLoading}
               >
-                {isResending ? "Sending verification email..." : "Didn't receive verification email? Resend it"}
-              </button>
-            </div>
-          </MobileForm>
-        </MobileCardContent>
-      </MobileCard>
+                {isLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Signing in...
+                  </span>
+                ) : (
+                  "Sign In"
+                )}
+              </MobileButton>
+
+              <p className="text-center text-sm text-slate-600">
+                Don't have an account?{" "}
+                <Link href="/signup" className="text-blue-600 hover:text-blue-700 font-semibold">Sign up</Link>
+              </p>
+            </MobileForm>
+          </MobileCardContent>
+        </MobileCard>
+      </div>
     </div>
   );
 }

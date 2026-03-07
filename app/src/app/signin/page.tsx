@@ -253,13 +253,13 @@ export default function SignInPage() {
         {/* Main Card */}
         <Card className="backdrop-blur-sm bg-white/90 border-0 shadow-2xl">
           <form onSubmit={handleSubmit}>
-            <CardHeader className="text-center pb-6">
-              <CardTitle className="text-2xl font-bold text-gray-900">Welcome Back</CardTitle>
-              <CardDescription className="text-gray-600">
+            <CardHeader className="text-center pb-4 pt-5">
+              <CardTitle className="text-2xl font-bold text-slate-900 tracking-tight">Welcome Back</CardTitle>
+              <CardDescription className="text-slate-600 text-sm mt-0.5">
                 Sign in to your JobPool account to continue
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4 px-6">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email Address</Label>
                 <Input
@@ -348,7 +348,7 @@ export default function SignInPage() {
                 </div>
               )}
             </CardContent>
-            <CardFooter className="flex flex-col space-y-4 pt-6">
+            <CardFooter className="flex flex-col space-y-3 pt-4">
               <Button 
                 type="submit" 
                 className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200" 
@@ -382,29 +382,12 @@ export default function SignInPage() {
                   Create Account
                 </Button>
               </Link>
-
-              <div className="text-center pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (formData.email) {
-                      handleResendVerification();
-                    } else {
-                      toast.error("Please enter your email address first");
-                    }
-                  }}
-                  disabled={isResending || !formData.email}
-                  className="text-sm text-blue-600 hover:text-blue-700 transition-colors disabled:text-gray-400 disabled:cursor-not-allowed underline underline-offset-2"
-                >
-                  {isResending ? "Sending verification email..." : "Didn't receive verification email? Resend it"}
-                </button>
-              </div>
             </CardFooter>
           </form>
         </Card>
 
         {/* Footer */}
-        <div className="text-center mt-8">
+        <div className="text-center mt-5">
           <p className="text-sm text-gray-500">
             By signing in, you agree to our{" "}
             <Link href="/termsandconditions" className="text-blue-600 hover:text-blue-700 transition-colors">
