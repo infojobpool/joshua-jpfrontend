@@ -66,6 +66,20 @@ export default function MessagesPage() {
   const [chats, setChats] = useState<ChatSummary[]>([])
   const fetchChatsRef = useRef<(() => Promise<void>) | null>(null)
 
+  // Instant hydration from cache for faster perceived load
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      const raw = localStorage.getItem("chatSummaries")
+      if (raw) {
+        const parsed = JSON.parse(raw) as ChatSummary[]
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setChats(parsed)
+        }
+      }
+    } catch {}
+  }, [])
+
   useEffect(() => {
     if (!userId) {
       router.push('/signin');
@@ -74,8 +88,9 @@ export default function MessagesPage() {
 
     const fetchChats = async () => {
       try {
-        setLoading(true);
-        
+        setLoading(true)
+        const taskChatOtherUser: Record<string, string> = {}
+
         // 1. Get chat IDs from localStorage
         const storedChats = localStorage.getItem("userChats");
         let chatIds: string[] = storedChats ? JSON.parse(storedChats) : [];
@@ -304,16 +319,29 @@ export default function MessagesPage() {
     router.push('/');
   };
 
-  if (loading) {
+  // Only full-screen loader when no cached chats; otherwise show layout with skeletons
+  if (loading && chats.length === 0) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="relative">
-            <div className="h-12 w-12 rounded-full border-4 border-blue-500/20 border-t-blue-600 animate-spin" />
-            <div className="absolute inset-0 m-auto h-5 w-5 rounded-full bg-blue-600/10 animate-ping" />
+      <div className="flex min-h-screen flex-col">
+        <Toaster position="top-right" />
+        <main className="flex-1 container py-6 md:py-10 px-4 md:px-6">
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">Your Messages</h1>
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4 animate-pulse">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-slate-700" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 w-32 rounded bg-gray-200 dark:bg-slate-700" />
+                      <div className="h-3 w-48 rounded bg-gray-100 dark:bg-slate-800" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          <span className="text-sm text-muted-foreground animate-pulse">Loading messages...</span>
-        </div>
+        </main>
       </div>
     );
   }
@@ -332,12 +360,12 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-gray-50/50 dark:bg-slate-950">
       <Toaster position="top-right" />
       <main className="flex-1 container py-6 md:py-10 px-4 md:px-6">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">Your Messages</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Your Messages</h1>
             {chats.length > 0 && (
               <div className="flex items-center gap-2">
                 <div className="relative">
@@ -354,71 +382,80 @@ export default function MessagesPage() {
           </div>
           
           {chats.length === 0 ? (
-            <Card className="text-center py-12 px-6">
+            <Card className="text-center py-14 px-6 rounded-2xl border-gray-100 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/50">
               <CardContent className="space-y-6">
-                <MessageSquare className="h-16 w-16 text-gray-300 mx-auto" />
+                <div className="mx-auto w-20 h-20 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                  <MessageSquare className="h-10 w-10 text-blue-500 dark:text-blue-400" />
+                </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No chats yet</h3>
-                  <p className="text-gray-500 mb-6">Here&apos;s how you can start a conversation:</p>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No chats yet</h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-6">Here&apos;s how you can start a conversation:</p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Link href="/post-task">
-                    <Button variant="default" className="w-full sm:w-auto gap-2">
+                    <Button variant="default" className="w-full sm:w-auto gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-md">
                       <Plus className="h-4 w-4" />
                       Post a Task
                     </Button>
                   </Link>
                   <Link href="/dashboard">
-                    <Button variant="outline" className="w-full sm:w-auto gap-2">
+                    <Button variant="outline" className="w-full sm:w-auto gap-2 rounded-xl border-2">
                       <List className="h-4 w-4" />
                       Browse Tasks
                     </Button>
                   </Link>
                 </div>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-gray-400 dark:text-gray-500">
                   Message taskers who bid on your task, or contact taskers about their listings.
                 </p>
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
+              {loading && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 animate-pulse">Updating...</p>
+              )}
               {chats
                 .filter(chat => 
                   chat.otherUser.toLowerCase().includes(searchTerm.toLowerCase()) ||
                   chat.lastMessage.toLowerCase().includes(searchTerm.toLowerCase())
                 )
                 .map((chat) => (
-                <Card key={chat.chatid} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => {
-                  try {
-                    sessionStorage.setItem('messagesScrollY', String(window.scrollY));
-                    sessionStorage.setItem('messagesLastChatId', chat.chatid);
-                  } catch {}
-                  router.push(`/messages/${chat.chatid}`);
-                }}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="h-12 w-12">
-                          <AvatarFallback className="bg-blue-100 text-blue-600 font-semibold">
-                            {chat.otherUser.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <p className="font-semibold text-gray-900 truncate">{chat.otherUser}</p>
-                            {chat.lastMessageTime && (
-                              <p className="text-xs text-gray-500 whitespace-nowrap ml-2">
-                                {new Date(chat.lastMessageTime).toLocaleString('en-US', {
-                                  dateStyle: 'short', 
-                                  timeStyle: 'short' 
-                                })}
-                              </p>
-                            )}
-                          </div>
-                          <p className="text-sm text-gray-600 truncate mt-1">{chat.lastMessage}</p>
+                <div
+                  key={chat.chatid}
+                  className="group rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900/50 shadow-sm hover:shadow-md active:scale-[0.99] transition-all duration-200 cursor-pointer"
+                  onClick={() => {
+                    try {
+                      sessionStorage.setItem('messagesScrollY', String(window.scrollY));
+                      sessionStorage.setItem('messagesLastChatId', chat.chatid);
+                    } catch {}
+                    router.push(`/messages/${chat.chatid}`);
+                  }}
+                >
+                  <div className="p-4">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-12 w-12 rounded-xl ring-2 ring-gray-100 dark:ring-slate-800">
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold rounded-xl">
+                          {chat.otherUser.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">{chat.otherUser}</p>
+                          {chat.lastMessageTime && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap shrink-0">
+                              {new Date(chat.lastMessageTime).toLocaleString('en-US', {
+                                dateStyle: 'short',
+                                timeStyle: 'short'
+                              })}
+                            </p>
+                          )}
                         </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 truncate mt-0.5">{chat.lastMessage}</p>
                       </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           )}
