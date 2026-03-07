@@ -106,7 +106,7 @@ export default function MessagesPage() {
                 }
               }
             }
-            // Assigned to me - I'm tasker, chat with taskmaster
+            // Assigned to me - I'm tasker, chat with taskmaster (in-progress only)
             const assignedRes = await fetch(`${API_BASE}/get-user-assigned-bids/${uid}/`, {
               headers: { Authorization: `Bearer ${token}` },
               credentials: "omit",
@@ -119,6 +119,29 @@ export default function MessagesPage() {
                 const taskerId = String(j.assigned_tasker_id || j.assigned_user_id || uid);
                 if (posterId && taskerId) {
                   tasksWithChats.push({ posterId, taskerId, jobId: String(j.job_id || j.id), otherUserName: String(j.posted_by || j.poster_name || "Task Poster") });
+                }
+              }
+            }
+            // Completed tasks (poster or tasker) - get-user-assigned-bids only returns in-progress
+            const completedRes = await fetch(`${API_BASE}/fetch-completed-tasks/${uid}/`, {
+              headers: { Authorization: `Bearer ${token}` },
+              credentials: "omit",
+            });
+            if (completedRes.ok) {
+              const completedData = await completedRes.json();
+              const completedJobs = completedData?.data?.jobs || completedData?.data || completedData?.jobs || [];
+              const seen = new Set(tasksWithChats.map((t) => t.jobId));
+              for (const j of Array.isArray(completedJobs) ? completedJobs : []) {
+                const posterId = String(j.user_ref_id || j.posted_by_id || j.poster_id || j.user_id || "");
+                const taskerId = String(j.assigned_tasker_id || j.assigned_user_id || j.confirmed_bid_id || j.accepted_bidder_id || "");
+                const jobId = String(j.job_id || j.id);
+                if (posterId && taskerId && jobId && !seen.has(jobId)) {
+                  seen.add(jobId);
+                  const isPoster = posterId === uid;
+                  const otherUserName = isPoster
+                    ? String(j.assigned_tasker_name || j.tasker_name || "Tasker")
+                    : String(j.posted_by || j.poster_name || "Task Poster");
+                  tasksWithChats.push({ posterId, taskerId, jobId, otherUserName });
                 }
               }
             }

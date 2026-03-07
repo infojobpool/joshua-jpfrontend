@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { Home, Search, User, MessageCircle, Plus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import useStore from "@/lib/Zustand";
+import axiosInstance from "@/lib/axiosInstance";
 
 interface ChatSummary {
   chatid: string;
@@ -15,22 +17,159 @@ interface ChatSummary {
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const { userId } = useStore();
   const [messagesOpen, setMessagesOpen] = useState(false);
   const [chatSummaries, setChatSummaries] = useState<ChatSummary[]>([]);
+  const [chatsLoading, setChatsLoading] = useState(false);
 
+  // When popover opens, fetch chats from API (same logic as Messages page)
   useEffect(() => {
+    if (!messagesOpen) return;
+    const uid = userId?.toString() || (typeof window !== "undefined" ? localStorage.getItem("userId") : null) || "";
+    if (!uid) return;
+    const fetchChats = async () => {
+      setChatsLoading(true);
+      try {
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const uid = userId?.toString() || "";
+        const taskChatOtherUser: Record<string, string> = {};
+        let chatIds: string[] = [];
+        try {
+          const raw = localStorage.getItem("userChats");
+          chatIds = raw ? JSON.parse(raw) : [];
+        } catch {}
+
+        if (token && uid) {
+          const tasksWithChats: { posterId: string; taskerId: string; jobId: string; otherUserName: string }[] = [];
+          const jobsRes = await fetch(`${API_BASE}/get-user-jobs/${uid}/`, {
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: "omit",
+          });
+          if (jobsRes.ok) {
+            const jobsData = await jobsRes.json();
+            const jobs = jobsData?.data?.jobs || [];
+            for (const j of jobs) {
+              const posterId = String(j.user_ref_id || j.posted_by_id || j.user_id || "");
+              const taskerId = String(j.assigned_tasker_id || j.assigned_user_id || j.accepted_bidder_id || "");
+              const hasAssignedTasker = posterId && taskerId && (j.status === "in_progress" || j.status === "completed" || j.bid_accepted || j.offer_accepted || j.assigned_tasker_id || j.payment_status);
+              if (hasAssignedTasker) {
+                tasksWithChats.push({ posterId, taskerId, jobId: String(j.job_id), otherUserName: String(j.assigned_tasker_name || j.tasker_name || j.posted_by || "Tasker") });
+              }
+            }
+          }
+          const assignedRes = await fetch(`${API_BASE}/get-user-assigned-bids/${uid}/`, {
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: "omit",
+          });
+          if (assignedRes.ok) {
+            const assignedData = await assignedRes.json();
+            const assignedJobs = assignedData?.data?.jobs || assignedData?.data?.assigned_jobs || assignedData?.jobs || [];
+            for (const j of Array.isArray(assignedJobs) ? assignedJobs : []) {
+              const posterId = String(j.user_ref_id || j.posted_by_id || j.poster_id || j.user_id || "");
+              const taskerId = String(j.assigned_tasker_id || j.assigned_user_id || uid);
+              if (posterId && taskerId) {
+                tasksWithChats.push({ posterId, taskerId, jobId: String(j.job_id || j.id), otherUserName: String(j.posted_by || j.poster_name || "Task Poster") });
+              }
+            }
+          }
+          // Completed tasks (poster or tasker) - get-user-assigned-bids only returns in-progress
+          const completedRes = await fetch(`${API_BASE}/fetch-completed-tasks/${uid}/`, {
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: "omit",
+          });
+          if (completedRes.ok) {
+            const completedData = await completedRes.json();
+            const completedJobs = completedData?.data?.jobs || completedData?.data || completedData?.jobs || [];
+            const seen = new Set(tasksWithChats.map((t) => t.jobId));
+            for (const j of Array.isArray(completedJobs) ? completedJobs : []) {
+              const posterId = String(j.user_ref_id || j.posted_by_id || j.poster_id || j.user_id || "");
+              const taskerId = String(j.assigned_tasker_id || j.assigned_user_id || j.confirmed_bid_id || j.accepted_bidder_id || "");
+              const jobId = String(j.job_id || j.id);
+              if (posterId && taskerId && jobId && !seen.has(jobId)) {
+                seen.add(jobId);
+                const isPoster = posterId === uid;
+                const otherUserName = isPoster
+                  ? String(j.assigned_tasker_name || j.tasker_name || "Tasker")
+                  : String(j.posted_by || j.poster_name || "Task Poster");
+                tasksWithChats.push({ posterId, taskerId, jobId, otherUserName });
+              }
+            }
+          }
+          for (const { posterId, taskerId, jobId, otherUserName } of tasksWithChats) {
+            try {
+              const chatResp = await axiosInstance.get("/create-or-get-chat/", {
+                params: { sender: posterId, receiver: taskerId, job_id: jobId },
+              });
+              if (chatResp.data?.status_code === 200 && chatResp.data?.data?.chat_id) {
+                const cid = chatResp.data.data.chat_id;
+                if (cid && !chatIds.includes(cid)) {
+                  chatIds.push(cid);
+                  taskChatOtherUser[cid] = otherUserName;
+                }
+              }
+            } catch (_) { /* skip */ }
+          }
+        }
+
+        const summaries: ChatSummary[] = [];
+        for (const chatId of chatIds) {
+          try {
+            const response = await axiosInstance.get(`/get-messages/${chatId}`);
+            if (response.data.status_code === 200 && response.data.data) {
+              const messages = response.data.data.messages || [];
+              if (messages.length > 0) {
+                const lastMessage = messages[messages.length - 1];
+                const otherUserName = lastMessage.sender_id === userId ? lastMessage.receiver_name : lastMessage.sender_name;
+                summaries.push({
+                  chatid: chatId,
+                  otherUser: otherUserName || taskChatOtherUser[chatId] || "Unknown",
+                  lastMessage: lastMessage.description,
+                });
+              } else if (taskChatOtherUser[chatId]) {
+                summaries.push({
+                  chatid: chatId,
+                  otherUser: taskChatOtherUser[chatId],
+                  lastMessage: "No messages yet",
+                });
+              }
+            }
+          } catch (_) { /* skip */ }
+        }
+        summaries.sort((a, b) => {
+          if (!a.lastMessage || !b.lastMessage) return 0;
+          return 0;
+        });
+        setChatSummaries(summaries);
+        try {
+          localStorage.setItem("chatSummaries", JSON.stringify(summaries));
+        } catch {}
+      } catch (_) {
+        try {
+          const raw = localStorage.getItem("chatSummaries");
+          if (raw) {
+            const parsed = JSON.parse(raw) as ChatSummary[];
+            setChatSummaries(Array.isArray(parsed) ? parsed : []);
+          }
+        } catch {}
+      } finally {
+        setChatsLoading(false);
+      }
+    };
+    fetchChats();
+  }, [messagesOpen, userId, pathname]);
+
+  // Fallback: read from localStorage when popover opens (before fetch completes)
+  useEffect(() => {
+    if (!messagesOpen) return;
     try {
       const raw = localStorage.getItem("chatSummaries");
       if (raw) {
         const parsed = JSON.parse(raw) as ChatSummary[];
-        setChatSummaries(Array.isArray(parsed) ? parsed : []);
-      } else {
-        setChatSummaries([]);
+        setChatSummaries((prev) => (prev.length === 0 && Array.isArray(parsed) ? parsed : prev));
       }
-    } catch {
-      setChatSummaries([]);
-    }
-  }, [messagesOpen, pathname]);
+    } catch {}
+  }, [messagesOpen]);
 
   const isMessagesActive = pathname === "/messages" || pathname.startsWith("/messages/");
 
@@ -59,7 +198,12 @@ export function MobileBottomNav() {
           <p className="text-sm font-semibold text-center">Recent Chats</p>
         </div>
         <ScrollArea className="max-h-[min(50vh,280px)]">
-          {chatSummaries.length > 0 ? (
+          {chatsLoading ? (
+            <div className="p-6 flex flex-col items-center justify-center gap-2">
+              <div className="h-6 w-6 rounded-full border-2 border-blue-500/30 border-t-blue-600 animate-spin" />
+              <span className="text-xs text-muted-foreground">Loading chats...</span>
+            </div>
+          ) : chatSummaries.length > 0 ? (
             <div className="p-1">
               {chatSummaries.map((chat) => (
                 <Link
