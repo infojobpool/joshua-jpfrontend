@@ -121,40 +121,6 @@
     @apply bg-background text-foreground;
   }
 
-  /* Fix invisible text on Android WebView / autofill (white text on white bg) */
-  input,
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  input[type="search"],
-  textarea {
-    -webkit-text-fill-color: #0f172a;
-    color: #0f172a;
-  }
-  input::placeholder,
-  textarea::placeholder {
-    -webkit-text-fill-color: #64748b;
-    color: #64748b;
-  }
-  input:-webkit-autofill,
-  input:-webkit-autofill:hover,
-  input:-webkit-autofill:focus,
-  input:-webkit-autofill:active {
-    -webkit-text-fill-color: #0f172a !important;
-    -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
-    box-shadow: 0 0 0px 1000px #ffffff inset !important;
-  }
-  .dark input,
-  .dark input[type="text"],
-  .dark input[type="email"],
-  .dark input[type="password"] {
-    -webkit-text-fill-color: #f1f5f9;
-    color: #f1f5f9;
-  }
-  .dark input:-webkit-autofill {
-    -webkit-text-fill-color: #f1f5f9 !important;
-    -webkit-box-shadow: 0 0 0px 1000px #1e293b inset !important;
-  }
 }
 
 /* Bell ring animation when new notification arrives */
@@ -222,3 +188,28 @@
 .dashboard-card-stagger > *:nth-child(7) { animation-delay: 0.21s; }
 .dashboard-card-stagger > *:nth-child(8) { animation-delay: 0.24s; }
 .dashboard-card-stagger > *:nth-child(9) { animation-delay: 0.27s; }
+
+/* Fix invisible text on Android PWA/WebView - OUTSIDE layer for max specificity */
+input, input[type="text"], input[type="email"], input[type="password"], input[type="search"], textarea {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #0f172a !important;
+}
+input::placeholder, textarea::placeholder {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+}
+input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active {
+  -webkit-text-fill-color: #0f172a !important;
+  color: #0f172a !important;
+  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
+  box-shadow: 0 0 0px 1000px #ffffff inset !important;
+}
+.dark input, .dark input[type="text"], .dark input[type="email"], .dark input[type="password"], .dark textarea {
+  color: #f1f5f9 !important;
+  -webkit-text-fill-color: #f1f5f9 !important;
+}
+.dark input:-webkit-autofill {
+  -webkit-text-fill-color: #f1f5f9 !important;
+  -webkit-box-shadow: 0 0 0px 1000px #1e293b inset !important;
+}
