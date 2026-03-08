@@ -191,7 +191,11 @@ export default function TaskDetailPage() {
         joinedDate: null,
       };
       setUser(authUser);
-      localStorage.setItem("user", JSON.stringify(authUser));
+      // Preserve verification_status - overwriting wipes it and causes false "Verification Required"
+      const verFromStore = (storeUser as { verification_status?: number })?.verification_status;
+      const verFromStorage = storedUser ? (() => { try { return JSON.parse(storedUser)?.verification_status; } catch { return undefined; } })() : undefined;
+      const merged = { ...authUser, verification_status: verFromStore ?? verFromStorage };
+      localStorage.setItem("user", JSON.stringify(merged));
       console.log("Loaded user from store:", authUser);
     } else if (!storedUser) {
       console.log("No authenticated user, redirecting to signin");
