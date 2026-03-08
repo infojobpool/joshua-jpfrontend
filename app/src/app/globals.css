@@ -189,27 +189,35 @@
 .dashboard-card-stagger > *:nth-child(8) { animation-delay: 0.24s; }
 .dashboard-card-stagger > *:nth-child(9) { animation-delay: 0.27s; }
 
-/* Fix invisible text on Android PWA/WebView - OUTSIDE layer for max specificity */
+/* Fix invisible text on Android PWA/WebView - nuclear options for stubborn WebView */
 input, input[type="text"], input[type="email"], input[type="password"], input[type="search"], textarea {
   color: #0f172a !important;
   -webkit-text-fill-color: #0f172a !important;
   caret-color: #0f172a !important;
+  background-color: #ffffff !important;
+  -webkit-user-modify: read-write-plaintext-only !important;
+  /* text-shadow trick: draws "shadow" over text to force visible color when WebView ignores color */
+  text-shadow: 0 0 0 #0f172a !important;
 }
 input::placeholder, textarea::placeholder {
   color: #64748b !important;
   -webkit-text-fill-color: #64748b !important;
+  text-shadow: 0 0 0 #64748b !important;
 }
 input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active {
   -webkit-text-fill-color: #0f172a !important;
   color: #0f172a !important;
+  text-shadow: 0 0 0 #0f172a !important;
   -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
   box-shadow: 0 0 0px 1000px #ffffff inset !important;
 }
 .dark input, .dark input[type="text"], .dark input[type="email"], .dark input[type="password"], .dark textarea {
   color: #f1f5f9 !important;
   -webkit-text-fill-color: #f1f5f9 !important;
+  text-shadow: 0 0 0 #f1f5f9 !important;
 }
 .dark input:-webkit-autofill {
   -webkit-text-fill-color: #f1f5f9 !important;
+  text-shadow: 0 0 0 #f1f5f9 !important;
   -webkit-box-shadow: 0 0 0px 1000px #1e293b inset !important;
 }

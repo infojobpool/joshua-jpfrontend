@@ -11,6 +11,8 @@ function Input({ className, type, style, ...props }: React.ComponentProps<"input
         color: '#0f172a',
         WebkitTextFillColor: '#0f172a',
         caretColor: '#0f172a',
+        backgroundColor: '#ffffff',
+        textShadow: '0 0 0 #0f172a',
         ...style,
       }}
       className={cn(
