@@ -985,7 +985,7 @@ export function OffersSection({
                 className="w-full" 
                 disabled={!verificationChecked || !isVerified || isSubmitting}
               >
-                {isSubmitting ? "Submitting..." : verificationChecked && !isVerified ? "Verification Required" : "Submit Offer"}
+                {isSubmitting ? "Submitting..." : !verificationChecked ? "Verifying..." : verificationChecked && !isVerified ? "Verification Required" : "Submit Offer"}
               </Button>
             </form>
           )}

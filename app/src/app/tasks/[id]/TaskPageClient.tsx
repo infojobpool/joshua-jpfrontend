@@ -150,16 +150,22 @@ export default function TaskDetailPage() {
           setAuthLoading(false);
           console.log("Loaded user from localStorage (hydration-safe):", parsedUser);
           
-          // Check verification status immediately from localStorage
-          // verification_status >= 2 (PAN + Aadhar) is sufficient for bidding
+          // Only trust localStorage if it says user IS verified (>=2) - avoids false "Verification Required" from stale data
+          // If localStorage says not verified or missing, wait for API - prevents flash of warning for already-verified users
           if (parsedUser.verification_status !== undefined && parsedUser.verification_status !== null) {
             const statusNum = typeof parsedUser.verification_status === 'string' ? parseInt(parsedUser.verification_status, 10) : Number(parsedUser.verification_status);
-            const verified = !isNaN(statusNum) && statusNum >= 2; // >= 2 = PAN + Aadhar (sufficient for bidding)
-            setIsVerified(verified);
-            setVerificationChecked(true);
-            console.log("✅ Initial verification check from localStorage:", parsedUser.verification_status, "->", statusNum, "Verified:", verified);
+            const verified = !isNaN(statusNum) && statusNum >= 2;
+            if (verified) {
+              setIsVerified(true);
+              setVerificationChecked(true);
+              console.log("✅ Initial verification from localStorage (verified):", statusNum);
+            } else {
+              // localStorage says not verified - could be stale; wait for API before showing warning
+              setIsVerified(false);
+              setVerificationChecked(false);
+              console.log("⏳ Verification status in localStorage suggests unverified - waiting for fresh API check...");
+            }
           } else {
-            // No verification status in localStorage yet, wait for API
             setIsVerified(false);
             setVerificationChecked(false);
             console.log("⏳ No verification status in localStorage, waiting for API...");
@@ -200,8 +206,9 @@ export default function TaskDetailPage() {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
           
-          // Try to get verification status from profile endpoint
-          const response = await axiosInstance.get(`/profile?user_id=${userId}`, {
+          // Try to get verification status from profile endpoint (cache-bust to avoid stale verification)
+          const cacheBuster = `_t=${Date.now()}`;
+          const response = await axiosInstance.get(`/profile?user_id=${userId}&${cacheBuster}`, {
             signal: controller.signal
           });
           clearTimeout(timeoutId);
@@ -361,18 +368,23 @@ export default function TaskDetailPage() {
       if (userId) {
         fetchProfile();
       } else {
-        // If no userId, check localStorage only
+        // If no userId, check localStorage only - only trust "verified" to avoid false warning
         const storedUser = localStorage.getItem("user");
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
           if (parsedUser.verification_status !== undefined && parsedUser.verification_status !== null) {
             const statusNum = typeof parsedUser.verification_status === 'string' ? parseInt(parsedUser.verification_status, 10) : Number(parsedUser.verification_status);
-            const verified = !isNaN(statusNum) && statusNum >= 2; // >= 2 = PAN + Aadhar (sufficient for bidding)
-            setIsVerified(verified);
-            setVerificationChecked(true);
+            const verified = !isNaN(statusNum) && statusNum >= 2;
+            if (verified) {
+              setIsVerified(true);
+              setVerificationChecked(true);
+            } else {
+              setIsVerified(false);
+              setVerificationChecked(false); // Wait for API before showing warning
+            }
           } else {
             setIsVerified(false);
-            setVerificationChecked(true);
+            setVerificationChecked(false);
           }
         }
       }
