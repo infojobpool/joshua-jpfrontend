@@ -239,7 +239,7 @@ export function MobileSignIn() {
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  style={{ caretColor: '#0f172a' }}
+                  style={{ color: '#000000', WebkitTextFillColor: '#000000', caretColor: '#000000', fontWeight: 600 }}
                   className="w-full h-11 px-4 border border-slate-200 rounded-xl text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all"
                 />
               </div>
@@ -253,7 +253,7 @@ export function MobileSignIn() {
                   value={formData.password}
                   onChange={handleChange}
                   required
-                  style={{ caretColor: '#0f172a' }}
+                  style={{ color: '#000000', WebkitTextFillColor: '#000000', caretColor: '#000000', fontWeight: 600 }}
                   className="w-full h-11 px-4 border border-slate-200 rounded-xl text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all"
                 />
               </div>

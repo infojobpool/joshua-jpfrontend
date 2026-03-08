@@ -8,7 +8,10 @@ function Input({ className, type, style, ...props }: React.ComponentProps<"input
       type={type}
       data-slot="input"
       style={{
-        caretColor: '#0f172a',
+        color: '#000000',
+        WebkitTextFillColor: '#000000',
+        caretColor: '#000000',
+        fontWeight: 600,
         ...style,
       }}
       className={cn(
