@@ -71,6 +71,7 @@ export default function PostTaskPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [verificationLoading, setVerificationLoading] = useState<boolean>(true);
   const [formData, setFormData] = useState<FormData>({
     title: "",
     description: "",
@@ -180,7 +181,7 @@ export default function PostTaskPage() {
           return;
         }
       } finally {
-        setLoading(false);
+        setVerificationLoading(false);
       }
     };
 
@@ -634,9 +635,11 @@ export default function PostTaskPage() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
+                <Button type="submit" disabled={isSubmitting || verificationLoading}>
                   {isSubmitting ? (
                     <Loader className="animate-spin" />
+                  ) : verificationLoading ? (
+                    "Verifying..."
                   ) : (
                     "Post Task"
                   )}

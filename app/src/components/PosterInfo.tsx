@@ -109,14 +109,20 @@
 // change on aug 3rd
 
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
+import { resolveProfileImageUrl } from '@/lib/profileImage';
 
 interface User {
   id: string;
   name: string;
+  avatar?: string;
   rating?: number | null;
   taskCount?: number | null;
   joinedDate?: string | null;
+  /** Average rating from reviews received as taskmaster (posting tasks) */
+  taskmasterAverageRating?: number | null;
+  taskmasterReviewCount?: number;
 }
 
 interface PosterInfoProps {
@@ -146,9 +152,14 @@ export function PosterInfo({ poster, isTaskPoster, handleMessageUser, isPaymentP
         {/* User Info */}
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
-              {poster.name.charAt(0).toUpperCase()}
-            </div>
+            <Avatar className="w-10 h-10 rounded-full ring-2 ring-white shadow-md">
+              {(poster.avatar && resolveProfileImageUrl(poster.avatar) && !poster.avatar.includes('placeholder')) ? (
+                <AvatarImage src={resolveProfileImageUrl(poster.avatar) || poster.avatar} alt={poster.name} className="object-cover" />
+              ) : null}
+              <AvatarFallback className="rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold text-sm">
+                {poster.name.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
             <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border border-white rounded-full"></div>
           </div>
           <div className="flex-1">
@@ -163,7 +174,11 @@ export function PosterInfo({ poster, isTaskPoster, handleMessageUser, isPaymentP
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
               </svg>
               <span className="text-xs font-medium text-gray-600">
-                {poster.rating !== null && poster.rating !== undefined ? `${poster.rating} ★` : 'New User'}
+                {poster.taskmasterReviewCount != null && poster.taskmasterReviewCount > 0 && poster.taskmasterAverageRating != null
+                  ? `${Number(poster.taskmasterAverageRating).toFixed(1)} ★ (${poster.taskmasterReviewCount} reviews)`
+                  : (poster.rating != null && poster.rating > 0)
+                    ? `${poster.rating} ★`
+                    : 'New User'}
               </span>
             </div>
           </div>

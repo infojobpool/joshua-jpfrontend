@@ -47,6 +47,7 @@ import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 import { formatDateWithTime } from "@/lib/utils";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
+import { storeTaskForNav } from "@/lib/taskNavCache";
 import { useNotifications } from "@/lib/useNotifications";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -670,6 +671,7 @@ export default function Dashboard() {
     try {
       if (sessionStorage.getItem("refresh_tasks") === "1") {
         sessionStorage.removeItem("refresh_tasks");
+        try { sessionStorage.removeItem("completedTasks"); } catch {}
         setRefetchPostedTrigger((t) => t + 1);
         setRefetchAssignedTrigger((t) => t + 1);
         setRefetchCompletedTrigger((t) => t + 1);
@@ -695,6 +697,10 @@ export default function Dashboard() {
     try {
       const r = sessionStorage.getItem("requestedTasks");
       if (r) setRequestedTasks(JSON.parse(r));
+    } catch {}
+    try {
+      const c = sessionStorage.getItem("completedTasks");
+      if (c) setCompletedTasks(JSON.parse(c) as Task[]);
     } catch {}
   }, []);
 
@@ -2568,7 +2574,17 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user || !userId) return;
     fetchCompletedTasks();
-  }, [user, userId, taskOrders, refetchCompletedTrigger]);
+  }, [user, userId, refetchCompletedTrigger]);
+
+  // Persist completed tasks to sessionStorage for fast hydration on next visit
+  useEffect(() => {
+    try {
+      if (completedTasks.length > 0) {
+        sessionStorage.setItem("completedTasks", JSON.stringify(completedTasks));
+      }
+    } catch {}
+  }, [completedTasks]);
+
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
   const [completeReviewTask, setCompleteReviewTask] = useState<Task | null>(null);
   const [completeReviewAsTaskmaster, setCompleteReviewAsTaskmaster] = useState(false);
@@ -4218,7 +4234,7 @@ export default function Dashboard() {
                           ) : task.status === "in_progress" ? (
                             <>
                               <div className="flex flex-wrap gap-2 w-full items-center">
-                                <Link href={`/tasks/${task.id}`} className="shrink-0" >
+                                <Link href={`/tasks/${task.id}`} className="shrink-0" onClick={() => { try { storeTaskForNav(task); } catch {} }}>
                                   <Button
                                     variant="outline"
                                     className={`w-auto border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-md shadow transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}
@@ -4253,7 +4269,7 @@ export default function Dashboard() {
                               </div>
                             </>
                           ) : (
-                            <Link href={`/tasks/${task.id}`} className="w-full" >
+                            <Link href={`/tasks/${task.id}`} className="w-full" onClick={() => { try { storeTaskForNav(task); } catch {} }}>
                               <Button variant="outline" className={`w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
                                 <div className="flex items-center gap-2">
                                   <span className="text-lg">👁️</span>
@@ -4518,7 +4534,11 @@ export default function Dashboard() {
 
                             {/* Action button */}
                             <div className="mt-4">
-                              <Link href={`/tasks/${task.id}`} className="w-full" >
+                              <Link
+                                href={`/tasks/${task.id}`}
+                                className="w-full"
+                                onClick={() => { try { storeTaskForNav(task); } catch {} }}
+                              >
                                 <Button variant="outline" className={`w-full border-[#3b82f6]/50 dark:border-slate-600 text-[#2563eb] dark:text-[#60a5fa] hover:bg-[#eff6ff] dark:hover:bg-slate-700 font-medium rounded-xl transition-all duration-200 ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
                                   <span>{hasUserBid ? "View Offer" : "Make an Offer"}</span>
                                 </Button>
@@ -4705,7 +4725,7 @@ export default function Dashboard() {
                           </>
                         ) : waitingForTaskmaster ? (
                           <>
-                        <Link href={`/tasks/${task.id}`} className="shrink-0"  onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); } catch {} }}>
+                        <Link href={`/tasks/${task.id}`} className="shrink-0"  onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); storeTaskForNav(task); } catch {} }}>
                           <Button variant="outline" className={`w-auto border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}>
                           <div className="flex items-center gap-2">
                             <span className="text-lg">👁️</span>
@@ -4720,7 +4740,7 @@ export default function Dashboard() {
                           </>
                         ) : (
                           <>
-                        <Link href={`/tasks/${task.id}`} className="shrink-0"  onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); } catch {} }}>
+                        <Link href={`/tasks/${task.id}`} className="shrink-0"  onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); storeTaskForNav(task); } catch {} }}>
                           <Button variant="outline" className={`w-auto border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}>
                             <div className="flex items-center gap-2">
                               <span className="text-lg">👁️</span>
@@ -4860,7 +4880,7 @@ export default function Dashboard() {
 
                       {/* Action button */}
                       <div className="mt-4">
-                        <Link href={`/tasks/${task.id}`} className="w-full" >
+                        <Link href={`/tasks/${task.id}`} className="w-full" onClick={() => { try { storeTaskForNav(task); } catch {} }}>
                           <Button variant="outline" className={`w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
                             <div className="flex items-center gap-2">
                               <span className="text-lg">👁️</span>
@@ -4954,7 +4974,7 @@ export default function Dashboard() {
 
                       {/* Action button */}
                       <div className="mt-4">
-                        <Link href={`/tasks/${bid.task_id}`} className="w-full" >
+                        <Link href={`/tasks/${bid.task_id}`} className="w-full" onClick={() => { try { storeTaskForNav({ id: bid.task_id, title: bid.task_title, description: bid.task_description, budget: bid.job_budget ?? 0, location: bid.task_location, posted_by: bid.posted_by }); } catch {} }}>
                           <Button variant="outline" className={`w-full border-2 border-blue-300 hover:border-blue-400 text-blue-700 hover:text-blue-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
                             <div className="flex items-center gap-2">
                               <span className="text-lg">👁️</span>

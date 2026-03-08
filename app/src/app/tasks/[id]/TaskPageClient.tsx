@@ -4,12 +4,12 @@ import { ImageGalleryModal } from "@/components/ImageGalleryModal";
 import { OffersSection } from "@/components/OffersSection";
 import { PaymentModal } from "@/components/PaymentModal";
 import { PosterInfo } from "@/components/PosterInfo";
-import { ReviewSection } from "@/components/ReviewSection";
 import { CompletionReviewModal } from "@/components/CompletionReviewModal";
 import { SafetyTips } from "@/components/SafetyTips";
 import { TaskInfo } from "@/components/TaskInfo";
 import { Toaster } from "@/components/ui/sonner";
 import axiosInstance from "@/lib/axiosInstance";
+import { resolveProfileImageUrl } from "@/lib/profileImage";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
@@ -119,6 +119,53 @@ export default function TaskDetailPage() {
   const [completeReviewAsTaskmaster, setCompleteReviewAsTaskmaster] = useState(false);
   const taskerId = offers.length > 0 ? offers[0].tasker.id : (task?.assignedTasker?.id ? String(task.assignedTasker.id) : null);
 
+  // Fetch poster profile for avatar, rating, and taskmaster review stats
+  useEffect(() => {
+    if (!task?.poster?.id) return;
+    const needsAvatar = !task.poster.avatar || task.poster.avatar.includes("placeholder");
+    const needsTaskmasterStats = task.poster.taskmasterReviewCount == null;
+    if (!needsAvatar && !needsTaskmasterStats) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await axiosInstance.get(`/profile?user_id=${task.poster.id}`);
+        const d = res.data;
+        const payload = d?.data ?? d;
+        const img = resolveProfileImageUrl(payload?.profile_img ?? payload?.profile_image ?? d?.profile_img ?? d?.profile_image);
+        const rating = payload?.rating ?? payload?.average_rating ?? payload?.review_rating ?? d?.rating ?? d?.average_rating ?? d?.review_rating;
+        // Compute taskmaster review stats (reviews received when posting tasks)
+        let taskmasterAverage: number | null = null;
+        let taskmasterCount = 0;
+        const reviews = payload?.reviews ?? d?.reviews ?? [];
+        if (Array.isArray(reviews)) {
+          const taskmasterReviews = reviews.filter(
+            (r: any) => (r?.role ?? "").toLowerCase() === "taskmaster" || (r?.role ?? "").toLowerCase() === "poster"
+          );
+          taskmasterCount = taskmasterReviews.length;
+          if (taskmasterCount > 0) {
+            const sum = taskmasterReviews.reduce((s: number, r: any) => s + (Number(r?.rating) || 0), 0);
+            taskmasterAverage = sum / taskmasterCount;
+          }
+        }
+        if (cancelled) return;
+        setTask((prev) => {
+          if (!prev || prev.id !== task.id) return prev;
+          return {
+            ...prev,
+            poster: {
+              ...prev.poster,
+              avatar: img || prev.poster.avatar,
+              rating: rating ?? prev.poster.rating,
+              taskmasterAverageRating: taskmasterCount > 0 ? taskmasterAverage : (prev.poster.taskmasterAverageRating ?? null),
+              taskmasterReviewCount: taskmasterCount,
+            },
+          };
+        });
+      } catch (_) {}
+    })();
+    return () => { cancelled = true; };
+  }, [task?.id, task?.poster?.id]);
+
   // Check for existing review in localStorage when task loads
   useEffect(() => {
     if (!task?.id || !userId) return;
@@ -217,10 +264,9 @@ export default function TaskDetailPage() {
           });
           clearTimeout(timeoutId);
           
-          console.log("🔍 Raw profile API response:", response);
-          console.log("🔍 Response data:", response.data);
-          console.log("🔍 Response data type:", typeof response.data);
-          console.log("🔍 Response data keys:", response.data ? Object.keys(response.data) : []);
+          if (process.env.NODE_ENV === "development") {
+            console.log("🔍 Profile API response keys:", response.data ? Object.keys(response.data) : []);
+          }
           
           const data = response.data;
           const profile: UserProfile = {
@@ -232,7 +278,6 @@ export default function TaskDetailPage() {
             joinDate: data.tstamp ? new Date(data.tstamp).toLocaleDateString() : "",
           };
           setUserProfile(profile);
-          console.log("Loaded user profile:", profile);
           
           // Check verification status from API response - try multiple possible locations
           // Check all possible nested structures
@@ -247,14 +292,6 @@ export default function TaskDetailPage() {
             response.data?.data?.verificationStatus !== undefined ? response.data.data.verificationStatus :
             null;
           
-          console.log("🔍 Full API response for verification:", {
-            data,
-            responseData: response.data,
-            apiVerificationStatus,
-            allKeys: Object.keys(data || {}),
-            dataKeys: data ? Object.keys(data) : [],
-            responseDataKeys: response.data ? Object.keys(response.data) : []
-          });
           
           // Also check if verification status might be in pan_verified, aadhaar_verified fields
           const panVerified = data?.pan_verified || data?.panVerified || data?.data?.pan_verified || response.data?.pan_verified;
@@ -426,11 +463,20 @@ export default function TaskDetailPage() {
     const loadTaskData = async () => {
       const cacheKey = `task_${id}`;
       try {
-        setLoading(true);
         setLoadError(null);
+        // Instant display: use nav cache (from dashboard/browse click) or localStorage
+        const { getNavTask } = await import("@/lib/taskNavCache");
+        const navTask = getNavTask(id);
+        if (navTask?.task) {
+          setTask(navTask.task);
+          setLoading(false);
+          // Fetch full data in background (will replace with fresh task + bids)
+        } else {
+          setLoading(true);
+        }
         
         // Use cache only if fresh (< 5 min) – stale cache can have wrong assignedTasker/offers state
-        const cached = localStorage.getItem(cacheKey);
+        const cached = !navTask && localStorage.getItem(cacheKey);
         if (cached) {
           try {
             const cachedData = JSON.parse(cached);
@@ -685,8 +731,8 @@ export default function TaskDetailPage() {
           poster: {
             id: job.user_ref_id,
             name: job.posted_by,
-            avatar: "/images/placeholder.svg",
-            rating: job.rating ?? null,
+            avatar: resolveProfileImageUrl(job.posted_by_profile_image || (job as any).taskmanager_profile_image || (job as any).profile_img || (job as any).user_profile_img || (job as any).poster?.profile_img) || "/images/placeholder.svg",
+            rating: (job as any).posted_by_rating ?? job.rating ?? null,
             taskCount: job.task_count ?? 0,
             joinedDate: job.joined_date ?? null,
           },
@@ -1821,20 +1867,6 @@ export default function TaskDetailPage() {
               setIsEditing={setIsEditing}
               isPaymentPending={isPaymentPending}
               paymentCheckDone={paymentCheckDone}
-            />
-            {/* Poster can leave review only after final completion */}
-            <ReviewSection
-              isTaskPoster={isTaskPoster}
-              taskStatus={task.status}
-              handleSubmitReview={handleSubmitReview}
-              reviewRating={reviewRating}
-              setReviewRating={setReviewRating}
-              reviewComment={reviewComment}
-              setReviewComment={setReviewComment}
-              isSubmitting={isSubmitting}
-              taskerId={taskerId}
-              completionStatus={task.job_completion_status}
-              existingReview={existingReview}
             />
             {/* Completion controls — backend must set job_completion_status = 1 only when BOTH tasker_completed and taskmaster_completed are true */}
             <div className="mt-4 space-y-2">

@@ -399,6 +399,35 @@ export function OffersSection({
   const [paymentUrlForApp, setPaymentUrlForApp] = useState<string | null>(null);
   const [paymentLinkLoading, setPaymentLinkLoading] = useState(false);
   const addNotifications = useStore((s) => s.addNotifications);
+  const [taskerReviewStats, setTaskerReviewStats] = useState<Record<string, { average: number; count: number }>>({});
+
+  // Fetch tasker profiles to get review stats (as tasker)
+  useEffect(() => {
+    const taskerIds = [...new Set(offers.map((o) => o.tasker.id).filter(Boolean))];
+    if (taskerIds.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const results: Record<string, { average: number; count: number }> = {};
+      await Promise.all(
+        taskerIds.map(async (tid) => {
+          try {
+            const res = await axiosInstance.get(`/profile?user_id=${tid}`);
+            const payload = res.data?.data ?? res.data;
+            const reviews = payload?.reviews ?? [];
+            if (!Array.isArray(reviews)) return;
+            const taskerReviews = reviews.filter((r: any) => (r?.role ?? "").toLowerCase() === "tasker");
+            const count = taskerReviews.length;
+            if (count > 0) {
+              const sum = taskerReviews.reduce((s: number, r: any) => s + (Number(r?.rating) || 0), 0);
+              results[tid] = { average: sum / count, count };
+            }
+          } catch (_) {}
+        })
+      );
+      if (!cancelled) setTaskerReviewStats((prev) => ({ ...prev, ...results }));
+    })();
+    return () => { cancelled = true; };
+  }, [offers]);
 
   // Try to read accepted tasker from sessionStorage (when accept was done earlier in this browser)
   // This is a graceful fallback when API doesn't return accepted status on bids
@@ -751,7 +780,14 @@ export function OffersSection({
                       <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                         <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                         <span>
-                          {offer.tasker.rating} • {offer.tasker.taskCount} tasks
+                          {taskerReviewStats[offer.tasker.id]?.count != null && taskerReviewStats[offer.tasker.id].count > 0
+                            ? `${taskerReviewStats[offer.tasker.id].average.toFixed(1)} ★ (${taskerReviewStats[offer.tasker.id].count} reviews)`
+                            : (offer.tasker.rating != null && offer.tasker.rating > 0)
+                              ? `${offer.tasker.rating} ★`
+                              : "New User"}
+                          {offer.tasker.taskCount != null && offer.tasker.taskCount > 0 && (
+                            <> • {offer.tasker.taskCount} tasks</>
+                          )}
                         </span>
                       </div>
                     </div>

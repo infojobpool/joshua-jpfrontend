@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Clock, DollarSign, MapPin, Search, Filter, Star, Loader2 } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 import { formatDateWithTime } from "@/lib/utils"
+import { storeTaskForNav } from "@/lib/taskNavCache"
 import { toast } from "sonner"
 
 export default function BrowseTasksPage() {
@@ -513,7 +514,7 @@ export default function BrowseTasksPage() {
                       </div>
                     </CardContent>
                     <CardFooter>
-                      <Link href={`/tasks/${task.id}`} className="w-full" >
+                      <Link href={`/tasks/${task.id}`} className="w-full" onClick={() => { try { storeTaskForNav({ ...task, posted_by_id: task.user_ref_id, images: task.job_images?.urls?.map((url, i) => ({ id: `img${i+1}`, url, alt: `Image ${i+1}` })) }); } catch {} }}>
                         <Button className="w-full">View Task</Button>
                       </Link>
                     </CardFooter>
