@@ -182,6 +182,7 @@ export default function PostTaskPage() {
         }
       } finally {
         setVerificationLoading(false);
+        setLoading(false); // Allow form to render once verification check completes
       }
     };
 
