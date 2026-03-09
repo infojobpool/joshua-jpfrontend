@@ -94,6 +94,7 @@ export default function TaskDetailPage() {
   const [loadError, setLoadError] = useState<"connection" | "not_found" | null>(null);
   const [bidsRetryKey, setBidsRetryKey] = useState<number>(0);
   const prefetchedBidsRef = useRef<{ id: string; data: any } | null>(null);
+  const bidsFromCombinedRef = useRef<boolean>(false);
   const [completeReviewOpen, setCompleteReviewOpen] = useState(false);
 
   // Reset retries and payment check when switching to a different task
@@ -103,6 +104,8 @@ export default function TaskDetailPage() {
     setLoadError(null);
     setPaymentCheckDone(false);
     paymentToastShownRef.current = false;
+    bidsFromCombinedRef.current = false;
+    prefetchedBidsRef.current = null;
   }, [id]);
 
   // Refetch bids when tab becomes visible and taskmaster has 0 offers (after initial load)
@@ -546,35 +549,26 @@ export default function TaskDetailPage() {
           } catch {}
         }
 
-        // Primary request – fetch get-job and get-bids in parallel for faster load
+        // Primary request – use get-job-with-bids (single round-trip) or fallback to get-job
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const bidsController = new AbortController();
         const timeoutId = setTimeout(() => {
           console.log("Task loading timeout reached, aborting request");
           controller.abort();
         }, 12000); // 12s timeout – better for slow networks
 
-        // Start get-bids in parallel (taskmaster endpoint – works for poster; non-poster will refetch in loadBids)
-        const bidsPromise = fetch(`https://api.jobpool.in/api/v1/get-bids/${id}/`, {
-          method: "GET",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          credentials: "omit",
-          signal: bidsController.signal,
-        })
-          .then((r) => (r.ok ? r.json() : null))
-          .catch(() => null);
-
-        // Backend may expect "task_139" or "139" – try all formats in parallel for faster load
+        // Backend may expect "task_139" or "139" – try all formats
         const tryIds = [
           id,
           id.startsWith("task_") ? id.replace(/^task_/, "") : `task_${id}`,
           id.replace(/^task_/, ""),
         ].filter((x, i, arr) => arr.indexOf(x) === i);
 
-        const jobResults = await Promise.allSettled(
+        // Try get-job-with-bids first (returns job + bids in one call)
+        const combinedResults = await Promise.allSettled(
           tryIds.map((tryId) =>
-            fetch(`https://api.jobpool.in/api/v1/get-job/${tryId}/`, {
+            fetch(`${API_BASE}/get-job-with-bids/${tryId}/`, {
               method: 'GET',
               headers: {
                 'Authorization': `Bearer ${token}`,
@@ -586,33 +580,68 @@ export default function TaskDetailPage() {
           )
         );
 
-        let data: ApiJobResponse | undefined;
-        for (let i = 0; i < jobResults.length; i++) {
-          if (jobResults[i].status === 'fulfilled') {
-            data = jobResults[i].value as ApiJobResponse;
-            break;
+        let data: any;
+        let job: any;
+        let combinedBids: any[] | null = null;
+
+        for (let i = 0; i < combinedResults.length; i++) {
+          if (combinedResults[i].status === 'fulfilled') {
+            const res = (combinedResults[i] as PromiseFulfilledResult<any>).value;
+            if (res?.status_code === 200 && res?.data) {
+              data = res;
+              // get-job-with-bids: data.data.job and data.data.bids
+              job = res.data.job ?? res.data;
+              combinedBids = Array.isArray(res.data.bids) ? res.data.bids : null;
+              console.log("✅ Loaded from get-job-with-bids:", { hasJob: !!job, bidsCount: combinedBids?.length ?? 0 });
+              break;
+            }
           }
           if (i < tryIds.length - 1) {
-            console.warn(`get-job/${tryIds[i]}/ failed, tried next ID format`);
+            console.warn(`get-job-with-bids/${tryIds[i]}/ failed, trying next ID format`);
           }
         }
-        if (!data) {
+
+        // Fallback: get-job only (loadBids effect will fetch bids separately)
+        if (!job) {
           clearTimeout(timeoutId);
-          try {
-            const axiosResp = await axiosInstance.get(`/get-job/${id}/`);
-            data = axiosResp.data as ApiJobResponse;
-          } catch (fallbackErr) {
-            throw (jobResults[0]?.status === 'rejected' ? (jobResults[0] as PromiseRejectedResult).reason : fallbackErr);
+          const jobResults = await Promise.allSettled(
+            tryIds.map((tryId) =>
+              fetch(`${API_BASE}/get-job/${tryId}/`, {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                credentials: 'omit',
+                signal: controller.signal,
+              }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+            )
+          );
+          for (let i = 0; i < jobResults.length; i++) {
+            if (jobResults[i].status === 'fulfilled') {
+              const res = (jobResults[i] as PromiseFulfilledResult<any>).value;
+              if (res?.status_code === 200) {
+                data = res;
+                job = res.data;
+                break;
+              }
+            }
+          }
+          if (!job) {
+            try {
+              const axiosResp = await axiosInstance.get(`/get-job/${id}/`);
+              data = axiosResp.data;
+              job = data?.data;
+            } catch (fallbackErr) {
+              throw (combinedResults[0]?.status === 'rejected' ? (combinedResults[0] as PromiseRejectedResult).reason : fallbackErr);
+            }
+          } else {
+            clearTimeout(timeoutId);
           }
         } else {
           clearTimeout(timeoutId);
         }
 
-        if (data.status_code !== 200) {
-          throw new Error(data.message);
+        if (!job || (data?.status_code !== 200 && !job)) {
+          throw new Error(data?.message ?? "Failed to load task");
         }
-
-        const job = data.data;
         console.log("API Response Data (Job):", job);
         console.log("🔍 Job status fields:", {
           status: job.status,
@@ -786,59 +815,56 @@ export default function TaskDetailPage() {
         setTask(mappedTask);
         console.log("Mapped Task:", mappedTask);
 
-        // Use bids from parallel fetch (already in flight)
-        try {
-          const bidsData = await bidsPromise;
-          if (bidsData?.status_code === 200) {
-            const raw = bidsData.data?.bids ?? bidsData.data ?? (Array.isArray(bidsData.data) ? bidsData.data : []);
-            const taskBids = Array.isArray(raw) ? raw : [];
-            const posterIdStr = String(job.user_ref_id || "").trim();
-            const validBids = taskBids.filter((b: any) => {
-              const bidderId = String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? "").trim();
-              return !bidderId || !posterIdStr || bidderId !== posterIdStr;
-            });
-            const norm = (b: any) => ({
-              bidder_id: b.bidder_id ?? b.user_id ?? b.tasker_id ?? "",
-              bidder_name: b.bidder_name ?? b.user_name ?? b.tasker_name ?? "Unknown",
-              bid_amount: Number(b.bid_amount ?? b.amount ?? 0),
-              bid_description: b.bid_description ?? b.message ?? "",
-            });
-            const newOffers: Offer[] = validBids.map((b: any, i: number) => {
-              const n = norm(b);
-              return {
-                id: `bid${i + 1}`,
-                tasker: {
-                  id: String(n.bidder_id),
-                  name: n.bidder_name || "Unknown",
-                  avatar: "/images/placeholder.svg",
-                  rating: null,
-                  taskCount: null,
-                  joinedDate: null,
-                },
-                amount: n.bid_amount,
-                message: n.bid_description || "",
-                createdAt: (b.created_at ?? b.createdAt ?? new Date().toISOString()) as string,
-                status: (b.status ?? "pending") as string,
-              };
-            });
-            setOffers(newOffers);
-            setBids(taskBids);
-            setBidsLoading(false);
-            prefetchedBidsRef.current = { id, data: bidsData };
-            try { storeBidsInCache(id, taskBids); } catch (_) {}
-            console.log("✅ Bids loaded from parallel fetch:", newOffers.length);
-          } else {
-            setBidsLoading(false);
-          }
-        } catch (e) {
-          console.warn("Parallel bids fetch failed, loadBids will retry:", e);
+        // Use bids from get-job-with-bids when available
+        if (combinedBids != null) {
+          const taskBids = combinedBids;
+          const posterIdStr = String(job.user_ref_id || "").trim();
+          const validBids = taskBids.filter((b: any) => {
+            const bidderId = String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? "").trim();
+            return !bidderId || !posterIdStr || bidderId !== posterIdStr;
+          });
+          const norm = (b: any) => ({
+            bidder_id: b.bidder_id ?? b.user_id ?? b.tasker_id ?? "",
+            bidder_name: b.bidder_name ?? b.user_name ?? b.tasker_name ?? "Unknown",
+            bid_amount: Number(b.bid_amount ?? b.amount ?? 0),
+            bid_description: b.bid_description ?? b.message ?? "",
+          });
+          const newOffers: Offer[] = validBids.map((b: any, i: number) => {
+            const n = norm(b);
+            return {
+              id: `bid${i + 1}`,
+              tasker: {
+                id: String(n.bidder_id),
+                name: n.bidder_name || "Unknown",
+                avatar: "/images/placeholder.svg",
+                rating: null,
+                taskCount: null,
+                joinedDate: null,
+              },
+              amount: n.bid_amount,
+              message: n.bid_description || "",
+              createdAt: (b.created_at ?? b.createdAt ?? new Date().toISOString()) as string,
+              status: (b.status ?? "pending") as string,
+            };
+          });
+          setOffers(newOffers);
+          setBids(taskBids);
+          setBidsLoading(false);
+          bidsFromCombinedRef.current = true;
+          try { storeBidsInCache(id, taskBids); } catch (_) {}
+          console.log("✅ Bids loaded from get-job-with-bids:", newOffers.length);
+        } else {
+          // Fallback: loadBids effect will fetch bids; show skeleton until then
+          setBidsLoading(true);
         }
-        
-        // Cache the task data
-        localStorage.setItem(cacheKey, JSON.stringify({
+
+        // Cache the task data (include bids when from combined endpoint)
+        const cachePayload: { task: Task; timestamp: number; bids?: any[] } = {
           task: mappedTask,
           timestamp: Date.now()
-        }));
+        };
+        if (combinedBids != null) cachePayload.bids = combinedBids;
+        localStorage.setItem(cacheKey, JSON.stringify(cachePayload));
       } catch (error: any) {
         console.error("Error loading task data:", error);
         try {
@@ -891,11 +917,16 @@ export default function TaskDetailPage() {
     loadTaskData();
   }, [id, taskRefreshKey]);
 
-  // Load bids/offers (skipped if already loaded from parallel fetch in loadTaskData)
+  // Load bids/offers – skipped if already loaded from get-job-with-bids; runs for retry or after fallback to get-job
   useEffect(() => {
     if (!userId || !task) return;
 
     async function loadBids() {
+      // Skip if we got bids from get-job-with-bids (unless retry requested)
+      if (bidsFromCombinedRef.current && bidsRetryKey === 0) {
+        setBidsLoading(false);
+        return;
+      }
       if (prefetchedBidsRef.current?.id === id) {
         prefetchedBidsRef.current = null;
         setBidsLoading(false);
