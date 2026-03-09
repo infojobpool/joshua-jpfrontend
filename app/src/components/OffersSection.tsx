@@ -366,6 +366,8 @@ interface OffersSectionProps {
   /** From parent - avoids flicker; only show payment pending after async API check */
   isPaymentPending?: boolean;
   paymentCheckDone?: boolean;
+  /** When true and offers empty, show loading skeleton instead of "No offers yet" */
+  bidsLoading?: boolean;
 }
 
 export function OffersSection({
@@ -386,6 +388,7 @@ export function OffersSection({
   verificationChecked = false,
   isPaymentPending: parentPaymentPending,
   paymentCheckDone,
+  bidsLoading = false,
 }: OffersSectionProps) {
   const [error, setError] = useState("");
   const router = useRouter();
@@ -754,6 +757,23 @@ export function OffersSection({
       </CardHeader>
       <CardContent className="space-y-4">
         {visibleOffers.length === 0 ? (
+          bidsLoading ? (
+            <div className="space-y-3 py-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="rounded-2xl border-0 p-4 bg-gray-50 dark:bg-slate-800/50 animate-pulse">
+                  <div className="flex gap-3">
+                    <div className="h-9 w-9 rounded-full bg-gray-200 dark:bg-slate-700" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 w-24 rounded bg-gray-200 dark:bg-slate-700" />
+                      <div className="h-3 w-32 rounded bg-gray-200 dark:bg-slate-700" />
+                    </div>
+                  </div>
+                  <div className="h-3 w-full rounded bg-gray-200 dark:bg-slate-700 mt-3" />
+                </div>
+              ))}
+              <p className="text-center text-xs text-muted-foreground">Loading offers…</p>
+            </div>
+          ) : (
           <p className="text-center text-muted-foreground py-4">
             {isTaskPoster
               ? "No offers yet"
@@ -761,6 +781,7 @@ export function OffersSection({
               ? "Your offer is being processed"
               : "No offers submitted yet"}
           </p>
+          )
         ) : (
           visibleOffers.map((offer) => (
             <div key={offer.id} className="rounded-2xl border-0 shadow-sm hover:shadow-md transition-all duration-200 p-4 md:p-5 bg-white">

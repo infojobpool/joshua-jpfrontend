@@ -10,6 +10,7 @@ import { TaskInfo } from "@/components/TaskInfo";
 import { Toaster } from "@/components/ui/sonner";
 import axiosInstance from "@/lib/axiosInstance";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
+import { storeBidsInCache } from "@/lib/taskNavCache";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
@@ -465,7 +466,7 @@ export default function TaskDetailPage() {
       try {
         setLoadError(null);
         // Instant display: use nav cache (from dashboard/browse click) or localStorage
-        const { getNavTask } = await import("@/lib/taskNavCache");
+        const { getNavTask, getBidsFromCache } = await import("@/lib/taskNavCache");
         const navTask = getNavTask(id);
         if (navTask?.task) {
           setTask(navTask.task);
@@ -474,7 +475,37 @@ export default function TaskDetailPage() {
         } else {
           setLoading(true);
         }
-        
+
+        // Show prefetched bids immediately (from hover) – instant display before API returns
+        const cachedBids = getBidsFromCache(id);
+        const hasCachedBids = !!(cachedBids?.bids?.length > 0);
+        if (hasCachedBids) {
+          const posterIdStr = String(navTask?.task?.poster?.id ?? "").trim();
+          const validBids = cachedBids.bids.filter((b: any) => {
+            const bidderId = String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? "").trim();
+            return !bidderId || !posterIdStr || bidderId !== posterIdStr;
+          });
+          const newOffers = validBids.map((b: any, i: number) => ({
+            id: `bid${i + 1}`,
+            tasker: {
+              id: String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? ""),
+              name: b.bidder_name ?? b.user_name ?? b.tasker_name ?? "Unknown",
+              avatar: "/images/placeholder.svg",
+              rating: null,
+              taskCount: null,
+              joinedDate: null,
+            },
+            amount: Number(b.bid_amount ?? b.amount ?? 0),
+            message: b.bid_description ?? b.message ?? "",
+            createdAt: b.created_at ?? b.createdAt ?? new Date().toISOString(),
+            status: b.status ?? "pending",
+          }));
+          setOffers(newOffers);
+          setBids(cachedBids.bids);
+          setBidsLoading(false);
+        }
+        if (!hasCachedBids) setBidsLoading(true);
+
         // Use cache only if fresh (< 5 min) – stale cache can have wrong assignedTasker/offers state
         const cached = !navTask && localStorage.getItem(cacheKey);
         if (cached) {
@@ -507,8 +538,9 @@ export default function TaskDetailPage() {
                   createdAt: b.created_at ?? b.createdAt ?? new Date().toISOString(),
                   status: b.status ?? "pending",
                 }));
-                setOffers(newOffers);
-                setBids(cachedData.bids);
+            setOffers(newOffers);
+            setBids(cachedData.bids);
+            setBidsLoading(false);
               }
             }
           } catch {}
@@ -533,39 +565,35 @@ export default function TaskDetailPage() {
           .then((r) => (r.ok ? r.json() : null))
           .catch(() => null);
 
-        // Backend may expect "task_139" or "139" – try both if first attempt fails
+        // Backend may expect "task_139" or "139" – try all formats in parallel for faster load
         const tryIds = [
           id,
           id.startsWith("task_") ? id.replace(/^task_/, "") : `task_${id}`,
           id.replace(/^task_/, ""),
         ].filter((x, i, arr) => arr.indexOf(x) === i);
 
-        let data: ApiJobResponse | undefined;
-        let lastErr: any;
-        for (const tryId of tryIds) {
-          try {
-            const response = await fetch(`https://api.jobpool.in/api/v1/get-job/${tryId}/`, {
+        const jobResults = await Promise.allSettled(
+          tryIds.map((tryId) =>
+            fetch(`https://api.jobpool.in/api/v1/get-job/${tryId}/`, {
               method: 'GET',
               headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
               },
               credentials: 'omit',
-              signal: controller.signal
-            });
-            if (response.ok) {
-              clearTimeout(timeoutId);
-              data = await response.json();
-              break;
-            }
-            if (response.status === 404 && tryId !== tryIds[tryIds.length - 1]) {
-              console.warn(`get-job/${tryId}/ returned 404, trying next ID format`);
-              continue;
-            }
-            throw new Error(`HTTP ${response.status}`);
-          } catch (err) {
-            lastErr = err;
-            if ((err as any)?.name === "AbortError") break;
+              signal: controller.signal,
+            }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+          )
+        );
+
+        let data: ApiJobResponse | undefined;
+        for (let i = 0; i < jobResults.length; i++) {
+          if (jobResults[i].status === 'fulfilled') {
+            data = jobResults[i].value as ApiJobResponse;
+            break;
+          }
+          if (i < tryIds.length - 1) {
+            console.warn(`get-job/${tryIds[i]}/ failed, tried next ID format`);
           }
         }
         if (!data) {
@@ -574,8 +602,10 @@ export default function TaskDetailPage() {
             const axiosResp = await axiosInstance.get(`/get-job/${id}/`);
             data = axiosResp.data as ApiJobResponse;
           } catch (fallbackErr) {
-            throw lastErr || fallbackErr;
+            throw (jobResults[0]?.status === 'rejected' ? (jobResults[0] as PromiseRejectedResult).reason : fallbackErr);
           }
+        } else {
+          clearTimeout(timeoutId);
         }
 
         if (data.status_code !== 200) {
@@ -793,8 +823,12 @@ export default function TaskDetailPage() {
             });
             setOffers(newOffers);
             setBids(taskBids);
+            setBidsLoading(false);
             prefetchedBidsRef.current = { id, data: bidsData };
+            try { storeBidsInCache(id, taskBids); } catch (_) {}
             console.log("✅ Bids loaded from parallel fetch:", newOffers.length);
+          } else {
+            setBidsLoading(false);
           }
         } catch (e) {
           console.warn("Parallel bids fetch failed, loadBids will retry:", e);
@@ -1093,6 +1127,7 @@ export default function TaskDetailPage() {
 
         setOffers(newOffers);
         setBids(taskBids);
+        try { if (id && taskBids?.length) storeBidsInCache(id, taskBids); } catch (_) {}
 
         // Taskmaster with 0 offers – retry once after 2s (handles intermittent API failures)
         const isPoster = task && task.poster && task.poster.id === userId;
@@ -1294,6 +1329,7 @@ export default function TaskDetailPage() {
           }));
           setOffers(newOffers);
           setBids(taskBids);
+          try { if (id && taskBids?.length) storeBidsInCache(id, taskBids); } catch (_) {}
           console.log("Updated bids after submission:", taskBids);
           console.log("Updated offers after submission:", newOffers);
         }
@@ -1941,6 +1977,7 @@ export default function TaskDetailPage() {
               verificationChecked={verificationChecked}
               isPaymentPending={isPaymentPending}
               paymentCheckDone={paymentCheckDone}
+              bidsLoading={bidsLoading}
             />
           </div>
           

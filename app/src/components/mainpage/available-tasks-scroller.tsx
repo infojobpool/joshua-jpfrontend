@@ -136,6 +136,7 @@ export function AvailableTasksScroller() {
                     key={task.id}
                     href={`/tasks/${task.id}`}
                     className="flex-shrink-0 scroll-snap-start w-[280px]"
+                    onMouseEnter={() => { try { prefetchBidsForTask(task.id); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(task.id); } catch {} }}
                   >
                     <motion.div
                       className="bg-white border border-gray-100 rounded-2xl w-[280px] h-[160px] overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col"

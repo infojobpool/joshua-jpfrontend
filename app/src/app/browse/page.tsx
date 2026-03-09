@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -13,8 +13,99 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Clock, DollarSign, MapPin, Search, Filter, Star, Loader2 } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 import { formatDateWithTime } from "@/lib/utils"
-import { storeTaskForNav } from "@/lib/taskNavCache"
+import { storeTaskForNav, prefetchBidsForTask } from "@/lib/taskNavCache"
 import { toast } from "sonner"
+
+function TaskCardWithPrefetch({
+  task,
+  index,
+  prefetchBidsForTask,
+  storeTaskForNav,
+  prefetchFirstN,
+}: {
+  task: any;
+  index: number;
+  prefetchBidsForTask: (id: string) => void;
+  storeTaskForNav: (t: any) => void;
+  prefetchFirstN: number;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!cardRef.current || !task?.id) return;
+    const el = cardRef.current;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          try { prefetchBidsForTask(task.id); } catch {}
+        }
+      },
+      { threshold: 0.25, rootMargin: "50px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [task?.id, prefetchBidsForTask]);
+  useEffect(() => {
+    if (index < prefetchFirstN) {
+      try { prefetchBidsForTask(task.id); } catch {}
+    }
+  }, [index, prefetchFirstN, task?.id]);
+  return (
+    <div ref={cardRef}>
+    <Card className="flex flex-col">
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start">
+          <CardTitle className="text-lg">{task.title}</CardTitle>
+          <Badge variant="outline">Open</Badge>
+        </div>
+        <CardDescription className="flex items-center gap-2 flex-wrap">
+          <Clock className="h-3 w-3 shrink-0" />
+          <span>Posted {formatDateWithTime(task.postedAt)}</span>
+          {task.dueDate && (
+            <>
+              <span className="text-muted-foreground">•</span>
+              <span>Due {formatDateWithTime(task.dueDate)}</span>
+            </>
+          )}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex-1">
+        <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{task.description}</p>
+        <div className="flex flex-col gap-2 text-sm">
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <span>${task.budget}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <span>{task.location}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Avatar className="h-4 w-4">
+              <AvatarFallback>{task.posted_by?.charAt(0)?.toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <span>{task.posted_by}</span>
+            <div className="flex items-center">
+              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+              <span className="text-xs ml-0.5">4.5</span>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter>
+        <Link
+          href={`/tasks/${task.id}`}
+          className="w-full"
+          onClick={() => { try { storeTaskForNav({ ...task, posted_by_id: task.user_ref_id, images: task.job_images?.urls?.map((url: string, i: number) => ({ id: `img${i+1}`, url, alt: `Image ${i+1}` })) }); } catch {} }}
+          onMouseEnter={() => { try { prefetchBidsForTask(task.id); } catch {} }}
+          onTouchStart={() => { try { prefetchBidsForTask(task.id); } catch {} }}
+        >
+          <Button className="w-full">View Task</Button>
+        </Link>
+      </CardFooter>
+    </Card>
+    </div>
+  );
+}
 
 export default function BrowseTasksPage() {
   const router = useRouter()
@@ -472,53 +563,8 @@ export default function BrowseTasksPage() {
               </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredTasks.map((task) => (
-                  <Card key={task.id} className="flex flex-col">
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg">{task.title}</CardTitle>
-                        <Badge variant="outline">Open</Badge>
-                      </div>
-                      <CardDescription className="flex items-center gap-2 flex-wrap">
-                        <Clock className="h-3 w-3 shrink-0" />
-                        <span>Posted {formatDateWithTime(task.postedAt)}</span>
-                        {task.dueDate && (
-                          <>
-                            <span className="text-muted-foreground">•</span>
-                            <span>Due {formatDateWithTime(task.dueDate)}</span>
-                          </>
-                        )}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-1">
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{task.description}</p>
-                      <div className="flex flex-col gap-2 text-sm">
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          <span>${task.budget}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          <span>{task.location}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-4 w-4">
-                            <AvatarFallback>{task.posted_by.charAt(0).toUpperCase()}</AvatarFallback>
-                          </Avatar>
-                          <span>{task.posted_by}</span>
-                          <div className="flex items-center">
-                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                            <span className="text-xs ml-0.5">4.5</span>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Link href={`/tasks/${task.id}`} className="w-full" onClick={() => { try { storeTaskForNav({ ...task, posted_by_id: task.user_ref_id, images: task.job_images?.urls?.map((url, i) => ({ id: `img${i+1}`, url, alt: `Image ${i+1}` })) }); } catch {} }}>
-                        <Button className="w-full">View Task</Button>
-                      </Link>
-                    </CardFooter>
-                  </Card>
+                {filteredTasks.map((task, index) => (
+                  <TaskCardWithPrefetch key={task.id} task={task} index={index} prefetchBidsForTask={prefetchBidsForTask} storeTaskForNav={storeTaskForNav} prefetchFirstN={5} />
                 ))}
               </div>
             )}

@@ -264,11 +264,13 @@ export default function MessagesPage() {
           return new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime();
         });
 
-        setChats(chatSummaries);
-        // Save for mobile bottom nav chat list popover
-        try {
-          localStorage.setItem("chatSummaries", JSON.stringify(chatSummaries));
-        } catch {}
+        // Only overwrite when we have fresh data - avoid wiping hydrated/cached chats when fetch returns empty (e.g. API delay, empty userChats on nav)
+        if (chatSummaries.length > 0) {
+          setChats(chatSummaries);
+          try {
+            localStorage.setItem("chatSummaries", JSON.stringify(chatSummaries));
+          } catch {}
+        }
       } catch (error: any) {
         console.error('Error fetching chats:', error);
         toast.error(error.response?.data?.message || 'Failed to load chats');
@@ -309,7 +311,15 @@ export default function MessagesPage() {
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
+
+    // Refetch when page gains focus (e.g. clicking Messages from bottom nav, returning to tab)
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible' && fetchChatsRef.current) {
+        fetchChatsRef.current();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+
     // Restore scroll position if available
     try {
       const y = sessionStorage.getItem('messagesScrollY');
@@ -322,6 +332,7 @@ export default function MessagesPage() {
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [userId, router]);
 
