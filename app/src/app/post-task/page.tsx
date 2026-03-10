@@ -107,19 +107,20 @@ export default function PostTaskPage() {
         return;
       }
 
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        
-        // Fetch fresh verification status from API instead of relying on localStorage
-        let effectiveUserId = userId || parsedUser?.id || parsedUser?.userId || parsedUser?.user_id;
-        if (!effectiveUserId) {
-          console.warn("No user ID found, redirecting to signin");
-          router.push("/signin");
-          return;
-        }
+      const parsedUser = JSON.parse(storedUser);
+      const effectiveUserId = userId || parsedUser?.id || parsedUser?.userId || parsedUser?.user_id;
+      if (!effectiveUserId) {
+        console.warn("No user ID found, redirecting to signin");
+        router.push("/signin");
+        return;
+      }
 
-        // Fetch profile to get latest verification status
+      // Show form immediately – don't block on slow profile API
+      setUser(parsedUser);
+      setLoading(false);
+
+      try {
+        // Fetch verification in background (Submit stays disabled until this completes)
         const cacheBuster = `?user_id=${effectiveUserId}&_t=${Date.now()}`;
         const response = await axiosInstance.get(`/profile${cacheBuster}`);
         const data = response.data;

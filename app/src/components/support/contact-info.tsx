@@ -52,11 +52,9 @@ export function ContactInfo() {
             <div>
               <h3 className="font-medium">Address</h3>
               <p className="text-sm text-muted-foreground">
-                Sri Sai Complex, 2nd Floor,<br />
-Sushma Sai Nagar Colony,<br />
-Vanasthalipuram, Hyd - 70
-
-               
+                8-3-169/60/438, Indira Nagar Colony Road,<br />
+                Yousufguda, Hyderabad, Telangana, 500045<br />
+                India
               </p>
             </div>
           </div>

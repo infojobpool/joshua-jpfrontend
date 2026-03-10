@@ -359,7 +359,7 @@ const TermsAndConditions: React.FC = () => {
                           grievance@jobpool.in
                         </a>
                       </li>
-                      <li>Address: [Company Address, India]</li>
+                      <li>Address: 8-3-169/60/438, Indira Nagar Colony Road, Yousufguda, Hyderabad, Telangana, 500045, India</li>
                     </ul>
                   </p>
                   <p className="mt-2 text-gray-600 leading-relaxed">

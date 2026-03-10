@@ -15,6 +15,8 @@ import {
 const APP_STORE_URL = "https://apps.apple.com/in/app/jobpool-official/id6757442431";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=in.jobpool.www.twa&hl=en_IN";
 
+const COMPANY_ADDRESS = "8-3-169/60/438, Indira Nagar Colony Road, Yousufguda, Hyderabad, Telangana, 500045, India";
+
 const socialLinks = [
   { name: "Facebook", href: "https://www.facebook.com/people/Job-Pool-India/100095047053131/", icon: Facebook },
   { name: "X (Twitter)", href: "https://x.com/jobpoolindia?s=21", icon: Twitter },
@@ -122,12 +124,15 @@ const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Company + App Download */}
+          {/* Company + Address + App Download */}
           <div className="space-y-8">
             <div>
               <h3 className="text-sm font-semibold uppercase tracking-wider text-white">
                 Company
               </h3>
+              <p className="mt-3 text-sm text-slate-400">
+                {COMPANY_ADDRESS}
+              </p>
               <ul className="mt-4 space-y-3">
                 <li>
                   <Link href="/aboutus" className="text-slate-400 transition hover:text-white">
@@ -191,9 +196,14 @@ const Footer: React.FC = () => {
 
         {/* Bottom bar */}
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-slate-800 pt-8 md:flex-row">
-          <p className="text-center text-sm font-semibold text-white md:text-left">
-            © 2023 Klughire Pvt Limited. All rights reserved.
-          </p>
+          <div className="text-center md:text-left">
+            <p className="text-sm font-semibold text-white">
+              © 2023 Klughire Pvt Limited. All rights reserved.
+            </p>
+            <p className="mt-1 text-xs text-slate-400">
+              A product by Klughire®
+            </p>
+          </div>
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
             <Link href="/privacy-policy" className="text-slate-400 transition hover:text-white">
               Privacy

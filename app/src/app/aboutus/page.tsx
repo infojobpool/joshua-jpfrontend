@@ -42,6 +42,9 @@ export default function AboutUs() {
             <p className="mt-4 text-xl text-slate-500 max-w-3xl mx-auto">
               JobPool is a smart, hyperlocal job marketplace designed to connect job seekers and job providers across a wide range of everyday tasks and services.
             </p>
+            <p className="mt-4 text-lg font-semibold text-blue-600">
+              A product by Klughire®
+            </p>
           </motion.div>
         </div>
       </section>
@@ -156,6 +159,12 @@ export default function AboutUs() {
       <footer className="border-t border-slate-200 py-8 text-center bg-slate-50">
         <p className="text-sm font-semibold text-slate-700">
           © 2023 Klughire Pvt Limited. All rights reserved.
+        </p>
+        <p className="mt-2 text-sm font-medium text-blue-600">
+          A product by Klughire®
+        </p>
+        <p className="mt-3 text-xs text-slate-500">
+          8-3-169/60/438, Indira Nagar Colony Road, Yousufguda, Hyderabad, Telangana, 500045, India
         </p>
       </footer>
     </div>
