@@ -277,7 +277,7 @@ export function Footer() {
         <div className="border-t border-slate-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <div>
             <p className="text-white text-sm font-semibold">© 2023 Klughire Pvt Limited. All rights reserved.</p>
-            <p className="mt-1 text-xs text-slate-400">A product by Klughire®</p>
+            <p className="mt-1.5 text-sm font-semibold text-blue-400">A product by Klughire®</p>
             <p className="mt-2 text-xs text-slate-500">8-3-169/60/438, Indira Nagar Colony Road, Yousufguda, Hyderabad, Telangana, 500045, India</p>
           </div>
           <div className="flex gap-4 mt-4 md:mt-0">

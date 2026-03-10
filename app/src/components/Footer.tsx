@@ -200,7 +200,7 @@ const Footer: React.FC = () => {
             <p className="text-sm font-semibold text-white">
               © 2023 Klughire Pvt Limited. All rights reserved.
             </p>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1.5 text-sm font-semibold text-blue-400">
               A product by Klughire®
             </p>
           </div>
