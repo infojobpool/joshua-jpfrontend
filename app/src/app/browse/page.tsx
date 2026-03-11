@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Clock, DollarSign, MapPin, Search, Filter, Star, Loader2 } from "lucide-react"
+import { Clock, DollarSign, MapPin, Search, Filter, Star, Loader2, MapPinOff } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 import { formatDateWithTime } from "@/lib/utils"
 import { storeTaskForNav, prefetchBidsForTask } from "@/lib/taskNavCache"
@@ -76,8 +76,11 @@ function TaskCardWithPrefetch({
             <span>${task.budget}</span>
           </div>
           <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
             <span>{task.location}</span>
+            {typeof task.distance_km === "number" && (
+              <Badge variant="secondary" className="text-xs font-normal">~{task.distance_km.toFixed(1)} km away</Badge>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Avatar className="h-4 w-4">
@@ -126,6 +129,11 @@ export default function BrowseTasksPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoadingTasks, setIsLoadingTasks] = useState(false)
   const [myBidTaskIds, setMyBidTaskIds] = useState<Set<string>>(new Set())
+  const [nearMeMode, setNearMeMode] = useState(false)
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [nearMeError, setNearMeError] = useState<string | null>(null)
+  const [radiusKm, setRadiusKm] = useState(10)
+  const [isRequestingLocation, setIsRequestingLocation] = useState(false)
 
   // Define task interface for type safety
   interface Task {
@@ -144,6 +152,7 @@ export default function BrowseTasksPage() {
     dueDate?: string;
     job_images?: { urls: string[] };
     offers?: number;
+    distance_km?: number;
   }
 
   interface Category {
@@ -152,29 +161,59 @@ export default function BrowseTasksPage() {
     job_count?: number;
   }
 
-  // Fetch tasks from API
-  const fetchTasks = async () => {
+  const mapJobToTask = (job: any): Task => ({
+    id: job.job_id,
+    user_ref_id: job.user_ref_id,
+    title: job.job_title,
+    description: job.job_description,
+    budget: job.job_budget,
+    location: job.job_location,
+    status: job.status,
+    deletion_status: job.deletion_status,
+    posted_by: job.posted_by,
+    dueDate: job.job_due_date || undefined,
+    category: job.job_category,
+    category_name: job.job_category_name,
+    job_images: job.job_images,
+    postedAt: job.created_at || job.timestamp || job.job_due_date || "",
+    offers: 0,
+    distance_km: typeof job.distance_km === "number" ? job.distance_km : undefined,
+  });
+
+  // Fetch tasks from API – jobs-nearby when Near me mode + coords, else get-all-jobs
+  const fetchTasks = async (coords?: { lat: number; lng: number } | null) => {
     try {
       setIsLoadingTasks(true);
+      setNearMeError(null);
+
+      if (nearMeMode && coords) {
+        try {
+          const response = await axiosInstance.get("/jobs-nearby/", {
+            params: { lat: coords.lat, lng: coords.lng, radius_km: radiusKm, limit: 100 },
+          });
+          if (response.data?.status_code === 200) {
+            const jobs = response.data?.data?.jobs ?? [];
+            const mappedTasks = (Array.isArray(jobs) ? jobs : []).map(mapJobToTask);
+            setTasks(mappedTasks);
+            return;
+          }
+          // Non-200: turn off Near me and fall back (matches FRONTEND_API_BROWSE.md)
+          setNearMeMode(false);
+          setUserCoords(null);
+          setNearMeError("Nearby search unavailable, showing all tasks");
+          toast.error("Could not get your location. Showing all tasks.");
+        } catch (err) {
+          console.warn("jobs-nearby failed, falling back to get-all-jobs:", err);
+          setNearMeMode(false);
+          setUserCoords(null);
+          setNearMeError("Nearby search unavailable, showing all tasks");
+          toast.error("Could not get your location. Showing all tasks.");
+        }
+      }
+
       const response = await axiosInstance.get("/get-all-jobs/");
       if (response.data.status_code === 200) {
-        const mappedTasks = response.data.data.jobs.map((job: any) => ({
-          id: job.job_id,
-          user_ref_id: job.user_ref_id,
-          title: job.job_title,
-          description: job.job_description,
-          budget: job.job_budget,
-          location: job.job_location,
-          status: job.status,
-          deletion_status: job.deletion_status,
-          posted_by: job.posted_by,
-          dueDate: job.job_due_date || undefined,
-          category: job.job_category,
-          category_name: job.job_category_name,
-          job_images: job.job_images,
-          postedAt: job.created_at || job.timestamp || job.job_due_date || "",
-          offers: 0, // Default value, can be updated if API provides this
-        }));
+        const mappedTasks = (response.data.data.jobs ?? []).map(mapJobToTask);
         setTasks(mappedTasks);
       } else {
         toast.error(response.data.message || "Failed to fetch tasks");
@@ -189,7 +228,7 @@ export default function BrowseTasksPage() {
           description: "Need help moving a couch and a few boxes from my apartment to my new place.",
           budget: 50,
           location: "Brooklyn, NY",
-          status: true,
+          status: false,
           postedAt: "2024-01-15T10:00:00Z",
           category: "home",
           category_name: "Home & Garden",
@@ -201,7 +240,7 @@ export default function BrowseTasksPage() {
           description: "Kitchen faucet is leaking and needs to be fixed or replaced.",
           budget: 75,
           location: "Queens, NY",
-          status: true,
+          status: false,
           postedAt: "2024-01-14T14:30:00Z",
           category: "plumbing",
           category_name: "Plumbing",
@@ -213,7 +252,7 @@ export default function BrowseTasksPage() {
           description: "Need help fixing some bugs on my WordPress website.",
           budget: 120,
           location: "Remote",
-          status: true,
+          status: false,
           postedAt: "2024-01-13T09:15:00Z",
           category: "tech",
           category_name: "Technology",
@@ -225,7 +264,7 @@ export default function BrowseTasksPage() {
           description: "Need someone to walk my dog twice a day for a week.",
           budget: 200,
           location: "Manhattan, NY",
-          status: true,
+          status: false,
           postedAt: "2024-01-12T16:45:00Z",
           category: "pet",
           category_name: "Pet Care",
@@ -237,7 +276,7 @@ export default function BrowseTasksPage() {
           description: "Need help cleaning up my backyard garden and trimming bushes.",
           budget: 80,
           location: "Bronx, NY",
-          status: true,
+          status: false,
           postedAt: "2024-01-11T11:20:00Z",
           category: "home",
           category_name: "Home & Garden",
@@ -249,7 +288,7 @@ export default function BrowseTasksPage() {
           description: "Need a thorough cleaning of my 2-bedroom apartment.",
           budget: 100,
           location: "Brooklyn, NY",
-          status: true,
+          status: false,
           postedAt: "2024-01-10T13:00:00Z",
           category: "cleaning",
           category_name: "Cleaning",
@@ -340,24 +379,48 @@ export default function BrowseTasksPage() {
     }
     setLoading(false)
 
-    // Fetch tasks and categories
-    fetchTasks()
     fetchCategories()
-
-    // Load my bids initially
     loadMyBidTaskIds()
 
-    // Refresh my bids when tab gains focus (after submitting from task page)
     const onFocus = () => loadMyBidTaskIds()
     window.addEventListener("focus", onFocus)
     return () => window.removeEventListener("focus", onFocus)
   }, [])
 
-  // Fix the linting error by adding the proper type to the event parameter
+  useEffect(() => {
+    fetchTasks(nearMeMode ? userCoords : null)
+  }, [nearMeMode, userCoords, radiusKm])
+
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    // In a real app, you would update the URL with search params
-    console.log("Searching for:", searchTerm)
+  }
+
+  const handleNearMeToggle = () => {
+    if (nearMeMode) {
+      setNearMeMode(false)
+      setUserCoords(null)
+      setNearMeError(null)
+      return
+    }
+    if (typeof navigator?.geolocation?.getCurrentPosition !== "function") {
+      toast.error("Geolocation is not supported by your browser")
+      return
+    }
+    setIsRequestingLocation(true)
+    setNearMeError(null)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setNearMeMode(true)
+        setIsRequestingLocation(false)
+      },
+      () => {
+        toast.error("Could not get your location. Showing all tasks.")
+        setNearMeError("Location denied or unavailable")
+        setIsRequestingLocation(false)
+      },
+      { timeout: 10000, maximumAge: 300000, enableHighAccuracy: true }
+    )
   }
 
 
@@ -454,6 +517,41 @@ export default function BrowseTasksPage() {
                   <label className="text-sm font-medium">Location</label>
                   <Input placeholder="Any location" value={location} onChange={(e) => setLocation(e.target.value)} />
                 </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Near me</label>
+                    <Button
+                      type="button"
+                      variant={nearMeMode ? "default" : "outline"}
+                      size="sm"
+                      onClick={handleNearMeToggle}
+                      disabled={isRequestingLocation}
+                    >
+                      {isRequestingLocation ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                      ) : nearMeMode ? (
+                        <MapPin className="h-4 w-4 mr-1" />
+                      ) : (
+                        <MapPinOff className="h-4 w-4 mr-1" />
+                      )}
+                      {isRequestingLocation ? "Getting location…" : nearMeMode ? "On" : "Off"}
+                    </Button>
+                  </div>
+                  {nearMeMode && (
+                    <Select value={String(radiusKm)} onValueChange={(v) => setRadiusKm(Number(v))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">5 km</SelectItem>
+                        <SelectItem value="10">10 km</SelectItem>
+                        <SelectItem value="25">25 km</SelectItem>
+                        <SelectItem value="50">50 km</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {nearMeError && <p className="text-xs text-amber-600">{nearMeError}</p>}
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -521,6 +619,32 @@ export default function BrowseTasksPage() {
                     <label className="text-sm font-medium">Location</label>
                     <Input placeholder="Any location" value={location} onChange={(e) => setLocation(e.target.value)} />
                   </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium">Near me</label>
+                      <Button
+                        type="button"
+                        variant={nearMeMode ? "default" : "outline"}
+                        size="sm"
+                        onClick={handleNearMeToggle}
+                        disabled={isRequestingLocation}
+                      >
+                        {isRequestingLocation ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : nearMeMode ? <MapPin className="h-4 w-4 mr-1" /> : <MapPinOff className="h-4 w-4 mr-1" />}
+                        {isRequestingLocation ? "Getting location…" : nearMeMode ? "On" : "Off"}
+                      </Button>
+                    </div>
+                    {nearMeMode && (
+                      <Select value={String(radiusKm)} onValueChange={(v) => setRadiusKm(Number(v))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5 km</SelectItem>
+                          <SelectItem value="10">10 km</SelectItem>
+                          <SelectItem value="25">25 km</SelectItem>
+                          <SelectItem value="50">50 km</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -543,17 +667,33 @@ export default function BrowseTasksPage() {
             {filteredTasks.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-10">
-                  <p className="text-muted-foreground mb-4">No tasks found matching your criteria</p>
-                  <Button
-                    onClick={() => {
-                      setSearchTerm("")
-                      setCategory("all")
-                      setPriceRange([0, 500])
-                      setLocation("")
-                    }}
-                  >
-                    Clear Filters
-                  </Button>
+                  {nearMeMode ? (
+                    <>
+                      <p className="text-muted-foreground mb-4">No tasks nearby within {radiusKm} km</p>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        <Button variant="outline" onClick={() => setRadiusKm(Math.min(50, radiusKm * 2))}>
+                          Widen radius
+                        </Button>
+                        <Button variant="secondary" onClick={() => { setNearMeMode(false); setUserCoords(null); }}>
+                          Show all tasks
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-muted-foreground mb-4">No tasks found matching your criteria</p>
+                      <Button
+                        onClick={() => {
+                          setSearchTerm("")
+                          setCategory("all")
+                          setPriceRange([0, 500])
+                          setLocation("")
+                        }}
+                      >
+                        Clear Filters
+                      </Button>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             ) : isLoadingTasks ? (

@@ -16,6 +16,8 @@ export interface NotificationItem {
 }
 
 const POLL_INTERVAL_MS = 10000; // 10 seconds - in sync with emails
+const CLEARED_IDS_KEY = "notification_cleared_ids";
+const KEEP_LATEST = 10;
 
 export function useNotifications(isAuthenticated: boolean) {
   const [items, setItems] = useState<NotificationItem[]>([]);
@@ -48,11 +50,21 @@ export function useNotifications(isAuthenticated: boolean) {
         }
         if (list.length > 0) {
           setItems((prev) => {
+            let clearedIds = new Set<string>();
+            try {
+              const stored = sessionStorage.getItem(CLEARED_IDS_KEY);
+              if (stored) clearedIds = new Set(JSON.parse(stored));
+            } catch {}
             const byId = new Map<string, NotificationItem>();
-            [...list, ...prev].forEach((n) => {
-              const id = String(n.id ?? (n as any).notification_id);
-              if (id) byId.set(id, n);
-            });
+            [...list, ...prev]
+              .filter((n) => {
+                const id = String(n.id ?? (n as any).notification_id);
+                return id && !clearedIds.has(id);
+              })
+              .forEach((n) => {
+                const id = String(n.id ?? (n as any).notification_id);
+                if (id) byId.set(id, n);
+              });
             const merged = Array.from(byId.values())
               .sort((a, b) => new Date((b as any).created_at ?? b.createdAt ?? 0).getTime() - new Date((a as any).created_at ?? a.createdAt ?? 0).getTime())
               .slice(0, 50);
@@ -119,5 +131,26 @@ export function useNotifications(isAuthenticated: boolean) {
     setUnreadCount(0);
   }, []);
 
-  return { items, unreadCount, loading, fetchNotifications, markAsRead, clearAll, bellAnimating };
+  const clearOldKeepLatest = useCallback(() => {
+    setItems((prev) => {
+      const sorted = [...prev].sort(
+        (a, b) =>
+          new Date((b as any).created_at ?? b.createdAt ?? 0).getTime() -
+          new Date((a as any).created_at ?? a.createdAt ?? 0).getTime()
+      );
+      const kept = sorted.slice(0, KEEP_LATEST);
+      const toRemove = sorted.slice(KEEP_LATEST);
+      try {
+        const existing: string[] = JSON.parse(sessionStorage.getItem(CLEARED_IDS_KEY) || "[]");
+        const newCleared = [...existing, ...toRemove.map((n) => String(n.id ?? (n as any).notification_id))].filter(Boolean);
+        sessionStorage.setItem(CLEARED_IDS_KEY, JSON.stringify([...new Set(newCleared)].slice(-500)));
+      } catch {}
+      const newUnread = kept.filter((n) => !n.read).length;
+      prevUnreadRef.current = newUnread;
+      setUnreadCount(newUnread);
+      return kept;
+    });
+  }, []);
+
+  return { items, unreadCount, loading, fetchNotifications, markAsRead, clearAll, clearOldKeepLatest, bellAnimating };
 }

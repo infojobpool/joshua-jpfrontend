@@ -50,6 +50,7 @@ export default function NotificationsPage() {
   const items = useStore((s) => s.items);
   const addNotifications = useStore((s) => s.addNotifications);
   const markAllRead = useStore((s) => s.markAllRead);
+  const clearOldKeepLatest = useStore((s) => s.clearOldKeepLatest);
   const [loading, setLoading] = useState(true);
   const [allNotifications, setAllNotifications] = useState<any[]>([]);
   const [authReady, setAuthReady] = useState(false);
@@ -218,15 +219,27 @@ export default function NotificationsPage() {
             </div>
           </div>
           
-          {unreadCount > 0 && (
-            <Button
-              onClick={handleMarkAllRead}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
-            >
-              <CheckCircle className="h-4 w-4" />
-              Mark All Read
-            </Button>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {unreadCount > 0 && (
+              <Button
+                onClick={handleMarkAllRead}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+              >
+                <CheckCircle className="h-4 w-4" />
+                Mark All Read
+              </Button>
+            )}
+            {allNotifications.length > 10 && (
+              <Button
+                variant="outline"
+                onClick={() => clearOldKeepLatest(10)}
+                className="flex items-center gap-2 border-gray-300"
+              >
+                <Clock className="h-4 w-4" />
+                Clear old (keep latest 10)
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Debug banner for FCM token status (temporary) */}

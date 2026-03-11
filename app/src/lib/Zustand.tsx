@@ -66,6 +66,7 @@ interface NotificationState {
   setNotifications: (items: NotificationItem[]) => void;
   addNotifications: (items: NotificationItem[]) => void;
   markAllRead: () => void;
+  clearOldKeepLatest: (keepCount?: number) => void;
   incrementNotifications: () => void;
   resetNotifications: () => void;
   setNotificationOpen: (open: boolean) => void;
@@ -395,6 +396,15 @@ const useStore = create<StoreState>((set) => ({
       items: state.items.map((n) => ({ ...n, read: true })),
       unreadCount: 0,
     })),
+  clearOldKeepLatest: (keepCount = 10) =>
+    set((state) => {
+      const sorted = [...state.items].sort(
+        (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)
+      );
+      const kept = sorted.slice(0, keepCount);
+      const unread = kept.filter((n) => !n.read).length;
+      return { items: kept, unreadCount: unread, notifications: unread };
+    }),
   incrementNotifications: () =>
     set((state) => ({ notifications: state.notifications + 1, unreadCount: state.unreadCount + 1 })),
   resetNotifications: () => set(() => ({ notifications: 0, unreadCount: 0 })),

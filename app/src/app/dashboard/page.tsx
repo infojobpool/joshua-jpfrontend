@@ -301,7 +301,7 @@ function getCardPostedAt(task: { id: string; postedAt: string }): string {
 export default function Dashboard() {
   const router = useRouter();
   const { user, userId, isAuthenticated, logout, addNotifications, updateUserProfileImage, checkAuth } = useStore();
-  const { items: notificationItems, unreadCount, markAsRead, bellAnimating } = useNotifications(!!isAuthenticated);
+  const { items: notificationItems, unreadCount, markAsRead, clearOldKeepLatest, bellAnimating } = useNotifications(!!isAuthenticated);
   const { isMobile } = useIsMobile();
   // Prevent SSR → CSR flicker on mobile by delaying mobile-only UI until mounted
   const [mounted, setMounted] = useState(false);
@@ -3854,10 +3854,15 @@ export default function Dashboard() {
                 })
               )}
             </div>
-            <div className="px-4 py-3 border-t bg-gray-50 flex gap-2">
+            <div className="px-4 py-3 border-t bg-gray-50 flex flex-wrap gap-2">
               <Button variant="outline" className="h-9 px-3 border-gray-300" onClick={() => { markAsRead(null); setShowNotifications(false); }}>
                 Mark all read
               </Button>
+              {notificationItems.length > 10 && (
+                <Button variant="outline" className="h-9 px-3 border-gray-300" onClick={() => { clearOldKeepLatest(); setShowNotifications(false); }}>
+                  Clear old
+                </Button>
+              )}
               <Link href="/notifications" onClick={() => setShowNotifications(false)}>
                 <Button className="h-9 px-3 bg-emerald-600 hover:bg-emerald-700">View all</Button>
               </Link>
