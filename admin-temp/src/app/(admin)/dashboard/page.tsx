@@ -61,9 +61,16 @@ interface RecentTask {
   amount: string;
 }
 
+interface TaskOrder {
+  order_id: number;
+  status: number;
+  bid_amount: number;
+}
+
 export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [taskOrders, setTaskOrders] = useState<TaskOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchData = async () => {
@@ -83,6 +90,7 @@ export default function AdminDashboard() {
           const data = JSON.parse(cachedData);
           setUsers(data.users || []);
           setJobs(data.jobs || []);
+          setTaskOrders(data.taskOrders || []);
           setIsLoading(false);
           return;
         }
@@ -94,21 +102,29 @@ export default function AdminDashboard() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
       
-      const [usersResponse, jobsResponse] = await Promise.all([
+      const [usersResponse, jobsResponse, taskOrdersResponse] = await Promise.all([
         axiosInstance.get("all-user-details/", { signal: controller.signal }),
         axiosInstance.get("get-all-jobs-admin/", { signal: controller.signal }),
+        axiosInstance.get("get-all-task-orders/", { signal: controller.signal }).catch(() => ({ data: { data: { task_orders: [] } } })),
       ]);
       
       clearTimeout(timeoutId);
 
       const users = usersResponse.data?.data || usersResponse.data || [];
       const jobs = jobsResponse.data?.data?.jobs || [];
+      const rawOrders = taskOrdersResponse?.data?.data?.task_orders || [];
+      const orders: TaskOrder[] = rawOrders.map((o: any) => ({
+        order_id: o.order_id,
+        status: typeof o.status === "number" ? o.status : parseInt(o.status, 10),
+        bid_amount: Number(o.bid_amount) || 0,
+      }));
 
       setUsers(users);
       setJobs(jobs);
+      setTaskOrders(orders);
       
       // Cache the data
-      localStorage.setItem(cacheKey, JSON.stringify({ users, jobs }));
+      localStorage.setItem(cacheKey, JSON.stringify({ users, jobs, taskOrders: orders }));
       localStorage.setItem(`${cacheKey}_timestamp`, Date.now().toString());
       
       console.log(`Dashboard: Loaded ${users.length} users and ${jobs.length} jobs`);
@@ -134,8 +150,10 @@ export default function AdminDashboard() {
     const totalRevenue = jobs.reduce((sum, job) => sum + (job.job_budget || 0), 0);
     const activeTasks = jobs.filter((job) => !job.status).length; // status: false = Open/Active
     const totalUsers = users.length;
-    const pendingPayouts = 6354.12; // Dummy data
-    const pendingPayoutsCount = 24; // Dummy data
+    // Real data from get-all-task-orders: status -1 = Pending
+    const pendingOrders = taskOrders.filter((o) => o.status === -1);
+    const pendingPayouts = pendingOrders.reduce((sum, o) => sum + o.bid_amount, 0);
+    const pendingPayoutsCount = pendingOrders.length;
     
     return {
       totalRevenue,
@@ -144,7 +162,7 @@ export default function AdminDashboard() {
       pendingPayouts,
       pendingPayoutsCount
     };
-  }, [jobs, users]);
+  }, [jobs, users, taskOrders]);
   
   const { totalRevenue, activeTasks, totalUsers, pendingPayouts, pendingPayoutsCount } = statistics;
 
@@ -207,8 +225,14 @@ export default function AdminDashboard() {
             <CreditCard className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{pendingPayouts.toLocaleString()}</div>
-            <p className="text-xs text-gray-500">{pendingPayoutsCount} payouts pending</p>
+            {isLoading ? (
+              <div className="text-2xl font-bold">Loading...</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">₹{pendingPayouts.toLocaleString()}</div>
+                <p className="text-xs text-gray-500">{pendingPayoutsCount} payouts pending</p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
