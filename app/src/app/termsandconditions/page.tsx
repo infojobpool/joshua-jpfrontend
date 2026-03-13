@@ -114,7 +114,7 @@ const TermsAndConditions: React.FC = () => {
                     1. About the Terms
                   </h2>
                   <p className="text-gray-600 leading-relaxed">
-                    Jobpool is an online workspace operated by SHILO WEB DEVELOPMENT.
+                    Jobpool is owned, developed, and operated by Klug Hire Private Limited.
                     The Agreement applies to all Users accessing the Platform.
                     Terms may be updated, and continued use constitutes acceptance.
                   </p>

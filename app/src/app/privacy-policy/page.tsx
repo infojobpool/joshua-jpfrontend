@@ -109,16 +109,14 @@ const PrivacyPolicy: React.FC = () => {
                       offer their services to registered Users.
                     </li>
                     <li>
-                      The Application and website at{" "}
+                      Jobpool is owned, developed, and operated by Klug Hire Private Limited. The Application and website at{" "}
                       <a
                         href="https://jobpool.in"
                         className="text-blue-600 hover:underline"
                       >
                         jobpool.in
                       </a>{" "}
-                      ("Website") (collectively, "Platform") are operated by SHILO
-                      WEB DEVELOPMENT, a rapidly growing software development
-                      company and/or its affiliates (hereinafter referred to as
+                      ("Website") (collectively, "Platform") are operated by Klug Hire Private Limited (hereinafter referred to as
                       the “Company”, “we”, “us”, and “our”). We respect your
                       privacy and are committed to protecting it through
                       compliance with our privacy policy.
