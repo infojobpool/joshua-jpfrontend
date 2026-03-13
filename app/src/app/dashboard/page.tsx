@@ -47,6 +47,7 @@ import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 import { formatDateWithTime } from "@/lib/utils";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
+import { isProfileComplete, getProfileImageFromUser } from "@/lib/profileUtils";
 import { storeTaskForNav, prefetchBidsForTask } from "@/lib/taskNavCache";
 import { useNotifications } from "@/lib/useNotifications";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
@@ -470,6 +471,7 @@ export default function Dashboard() {
   const [refetchBidsTrigger, setRefetchBidsTrigger] = useState(0);
   const [posterProfileCache, setPosterProfileCache] = useState<Record<string, string>>({});
   const fetchedPosterIds = useRef<Set<string>>(new Set());
+  const [profileBannerDismissed, setProfileBannerDismissed] = useState(false);
 
   // Safe user for UI (prevents null TS checks in JSX). Support both profile_image and profile_img from API.
   const safeUser = user ? { ...user, profile_image: user.profile_image || (user as any).profile_img || "" } : { name: "User", email: "", profile_image: "" } as any;
@@ -3800,6 +3802,33 @@ export default function Dashboard() {
             </Link>
           </div>
         </div>
+
+        {/* Profile completion banner - soft nudge when profile incomplete */}
+        {!profileBannerDismissed && user && !isProfileComplete(getProfileImageFromUser(user)) && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 dark:border-blue-900/50 dark:bg-blue-950/30">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="rounded-full bg-blue-100 dark:bg-blue-900/50 p-2 shrink-0">
+                <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-800 dark:text-slate-200">Complete your profile</p>
+                <p className="text-xs text-gray-600 dark:text-slate-400 truncate">Add a photo and bio to get more opportunities</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button asChild size="sm" variant="outline" className="border-blue-200">
+                <Link href="/profile">Complete</Link>
+              </Button>
+              <button
+                onClick={() => setProfileBannerDismissed(true)}
+                className="h-8 w-8 inline-flex items-center justify-center rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/30 text-gray-500"
+                aria-label="Dismiss"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {showNotifications && (
           <div className="fixed right-6 top-24 z-50 w-[340px] max-w-[92vw] bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-xl overflow-hidden">

@@ -10,6 +10,7 @@ import { TaskInfo } from "@/components/TaskInfo";
 import { Toaster } from "@/components/ui/sonner";
 import axiosInstance from "@/lib/axiosInstance";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
+import { isProfileComplete, getProfileImageFromUser } from "@/lib/profileUtils";
 import { storeBidsInCache } from "@/lib/taskNavCache";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
@@ -56,6 +57,7 @@ export default function TaskDetailPage() {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [bidsLoading, setBidsLoading] = useState<boolean>(false);
   const [showConfirmBid, setShowConfirmBid] = useState<boolean>(false);
+  const [showProfileNudgeForBid, setShowProfileNudgeForBid] = useState<boolean>(false);
   const [showCancelDialog, setShowCancelDialog] = useState<boolean>(false);
   const [cancelReason, setCancelReason] = useState<string>("");
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
@@ -1232,6 +1234,13 @@ export default function TaskDetailPage() {
       router.push("/signin");
       return;
     }
+
+    // Soft profile nudge: if profile incomplete, show nudge before confirm bid
+    const parsedUser = storedUser ? JSON.parse(storedUser) : null;
+    if (parsedUser && !isProfileComplete(getProfileImageFromUser(parsedUser))) {
+      setShowProfileNudgeForBid(true);
+      return;
+    }
     
     setShowConfirmBid(true);
   };
@@ -2162,6 +2171,32 @@ export default function TaskDetailPage() {
               disabled={isCancelling}
             >
               {isCancelling ? "Sending..." : "Send Cancel Request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Profile nudge when placing bid with incomplete profile */}
+      <Dialog open={showProfileNudgeForBid} onOpenChange={setShowProfileNudgeForBid}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Complete your profile</DialogTitle>
+            <DialogDescription>
+              Add a profile photo to increase your chances of getting hired. Taskmasters are more likely to accept bids from users with complete profiles.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button asChild variant="outline">
+              <Link href="/profile" onClick={() => setShowProfileNudgeForBid(false)}>
+                Complete profile
+              </Link>
+            </Button>
+            <Button
+              onClick={() => {
+                setShowProfileNudgeForBid(false);
+                setShowConfirmBid(true);
+              }}
+            >
+              Place bid anyway
             </Button>
           </DialogFooter>
         </DialogContent>

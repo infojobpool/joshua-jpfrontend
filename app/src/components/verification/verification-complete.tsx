@@ -299,7 +299,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { CheckCircle2, Award, ArrowRight } from "lucide-react"
+import { CheckCircle2, Award, ArrowRight, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -430,12 +430,27 @@ export default function VerificationComplete({ verificationStatus }: Verificatio
             </div>
           </motion.div>
 
-          <motion.div variants={itemVariants} className="mt-4">
-            <Button asChild size="lg" className="gap-2 px-8 text-base">
-              <Link href="/dashboard">
-                Continue to Dashboard <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+          {/* Soft profile completion prompt */}
+          <motion.div variants={itemVariants} className="w-full max-w-md mt-4">
+            <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+              <div className="flex items-start gap-3">
+                <div className="rounded-full bg-blue-100 p-2 shrink-0">
+                  <User className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-800">Complete your profile</p>
+                  <p className="text-xs text-gray-600 mt-0.5">Add a photo and bio so taskers and posters can trust you. Do it now or later.</p>
+                  <div className="flex gap-3 mt-3">
+                    <Button asChild variant="outline" size="sm">
+                      <Link href="/profile">Complete profile</Link>
+                    </Button>
+                    <Button asChild size="sm" className="gap-1.5">
+                      <Link href="/dashboard">Go to Dashboard <ArrowRight className="h-4 w-4" /></Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </motion.div>
         </>
       )}
@@ -512,6 +527,29 @@ export default function VerificationComplete({ verificationStatus }: Verificatio
             )}
           </motion.div>
 
+          {/* Soft profile completion prompt */}
+          <motion.div variants={itemVariants} className="w-full max-w-md mt-2">
+            <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+              <div className="flex items-start gap-3">
+                <div className="rounded-full bg-blue-100 p-2 shrink-0">
+                  <User className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-800">Complete your profile</p>
+                  <p className="text-xs text-gray-600 mt-0.5">Add a photo and bio so taskers and posters can trust you. Do it now or later.</p>
+                  <div className="flex gap-3 mt-3">
+                    <Button asChild variant="outline" size="sm">
+                      <Link href="/profile">Complete profile</Link>
+                    </Button>
+                    <Button asChild size="sm" className="gap-1.5">
+                      <Link href="/dashboard">Go to Dashboard <ArrowRight className="h-4 w-4" /></Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
           <motion.div variants={itemVariants} className="flex gap-4">
             <Button variant="outline" asChild>
               <Link href="/verification">Complete Verification</Link>
@@ -533,6 +571,29 @@ export default function VerificationComplete({ verificationStatus }: Verificatio
             <h3 className="text-2xl font-bold text-amber-700">Welcome, {user?.name}!</h3>
             <p className="mt-2 text-lg text-gray-700">You've skipped all verification steps for now.</p>
             <p className="mt-1 text-gray-600">You can complete verification later, but some features may be limited.</p>
+          </motion.div>
+
+          {/* Soft profile completion prompt */}
+          <motion.div variants={itemVariants} className="w-full max-w-md mt-2">
+            <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+              <div className="flex items-start gap-3">
+                <div className="rounded-full bg-blue-100 p-2 shrink-0">
+                  <User className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-800">Complete your profile</p>
+                  <p className="text-xs text-gray-600 mt-0.5">Add a photo and bio so others can trust you. Do it now or later.</p>
+                  <div className="flex gap-3 mt-3">
+                    <Button asChild variant="outline" size="sm">
+                      <Link href="/profile">Complete profile</Link>
+                    </Button>
+                    <Button asChild size="sm" className="gap-1.5">
+                      <Link href="/dashboard">Go to Dashboard <ArrowRight className="h-4 w-4" /></Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </motion.div>
 
           <motion.div variants={itemVariants} className="flex gap-4">
