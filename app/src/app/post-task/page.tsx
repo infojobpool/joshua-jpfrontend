@@ -38,7 +38,6 @@ import axiosInstance from "../../lib/axiosInstance";
 import useStore from "../../lib/Zustand";
 import { handleAxiosError } from "../../lib/handleAxiosError";
 import LocationDetector from "../../components/LocationDetector";
-import { TaskLocationMap } from "@/components/TaskLocationMap";
 import Header from "@/components/Header";
 
 interface User {
@@ -545,6 +544,9 @@ export default function PostTaskPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="location">Location <span className="text-red-500">*</span></Label>
+                    <p className="text-xs text-muted-foreground">
+                      Enter a full address (street, area, city) so taskers can find the location. Use Detect or search and pick from suggestions for best results.
+                    </p>
                     <div className="flex flex-col sm:flex-row gap-2 items-start">
                       <div className="w-full sm:w-auto">
                         <LocationDetector
@@ -554,11 +556,6 @@ export default function PostTaskPage() {
                         />
                       </div>
                     </div>
-                    {formData.location && formData.location.trim().length >= 4 && (
-                      <div className="mt-3">
-                        <TaskLocationMap location={formData.location} height={140} variant="card" />
-                      </div>
-                    )}
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-2">

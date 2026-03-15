@@ -304,7 +304,11 @@ function getCardPostedAt(task: { id: string; postedAt: string }): string {
       }
     } catch {}
   }
-  return formatDateWithTime(raw || undefined);
+  const formatted = formatDateWithTime(raw || undefined);
+  if (!formatted || formatted === "Invalid date" || formatted.toLowerCase().includes("invalid")) {
+    return "Recently";
+  }
+  return formatted;
 }
 
 export default function Dashboard() {
@@ -4677,27 +4681,29 @@ export default function Dashboard() {
                       const hasUserBid = requestedTasks.some(bid => bid.task_id === task.id);
                       
                       return (
-                        <Card key={task.id} className="flex flex-col bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-md hover:shadow-lg transition-all duration-200 rounded-2xl overflow-hidden border-l-4 border-l-[#3b82f6]/50">
+                        <Card key={task.id} className="group flex flex-col bg-white dark:bg-slate-800/95 border border-slate-200/80 dark:border-slate-700/80 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/30 hover:shadow-xl hover:shadow-slate-200/60 dark:hover:shadow-slate-900/40 hover:border-slate-300/80 dark:hover:border-slate-600 hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden ring-1 ring-slate-100/50 dark:ring-slate-700/30">
                           {/* Mobile-optimized layout */}
-                          <div className={isMobile ? "p-4" : "p-6"}>
+                          <div className={`relative ${isMobile ? "p-4" : "p-6"}`}>
+                            {/* Premium accent bar */}
+                            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 dark:from-blue-600 dark:via-indigo-600 dark:to-blue-700" />
                             {/* Header with title and status */}
-                            <div className="flex justify-between items-start mb-3">
+                            <div className="flex justify-between items-start gap-3 mb-3 pt-0.5">
                               <div className="flex-1 min-w-0">
-                                <h3 className={`font-bold text-gray-900 dark:text-slate-100 line-clamp-2 ${isMobile ? "text-base" : "text-lg"} leading-tight`}>
+                                <h3 className={`font-semibold text-gray-900 dark:text-slate-100 line-clamp-2 tracking-tight ${isMobile ? "text-base" : "text-lg"} leading-snug`}>
                                   {task.title}
                                 </h3>
-                                <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-slate-400">
-                                  <Clock className="h-3 w-3 text-gray-400" />
+                                <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                                  <Clock className="h-3.5 w-3.5 text-slate-400" />
                                   <span>Posted: {getCardPostedAt(task)}</span>
                                   {task.dueDate && task.dueDate !== "Unknown" && (
                                     <>
-                                      <span className="mx-1 text-gray-300">•</span>
+                                      <span className="mx-1 text-slate-300">•</span>
                                       <span>Due: {formatDateWithTime(task.dueDate)}</span>
                                     </>
                                   )}
                                 </div>
                               </div>
-                              <Badge variant="outline" className="border-slate-200 text-slate-600 font-medium text-xs px-2 py-1">
+                              <Badge variant="outline" className="shrink-0 border-slate-200/80 dark:border-slate-600/80 text-slate-600 dark:text-slate-400 font-medium text-xs px-2.5 py-1 rounded-full bg-slate-50/80 dark:bg-slate-700/50">
                                 {task.status === "open" ? "🔓 Open" : 
                                  task.status === "completed" ? "✅ Completed" :
                                  task.status.charAt(0).toUpperCase() + task.status.slice(1)}
@@ -4705,56 +4711,56 @@ export default function Dashboard() {
                             </div>
 
                             {/* Description */}
-                            <p className="text-sm text-gray-600 dark:text-slate-400 line-clamp-2 mb-3">
+                            <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-4 leading-relaxed">
                               {task.description}
                             </p>
 
                             {/* Mobile-optimized info row */}
                             <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"}`}>
                               <div className="flex items-center gap-2 flex-wrap">
-                                <div className="flex items-center gap-1 bg-[#eff6ff] dark:bg-slate-700 px-2.5 py-1 rounded-lg border border-[#3b82f6]/30 dark:border-slate-600">
-                                  <IndianRupee className="h-4 w-4 text-[#2563eb] dark:text-[#60a5fa]" />
-                                  <span className="font-semibold text-[#1d4ed8] dark:text-[#93c5fd]">{task.budget}</span>
+                                <div className="flex items-center gap-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-700 px-3 py-1.5 rounded-xl border border-blue-200/50 dark:border-slate-600 shadow-sm">
+                                  <IndianRupee className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                  <span className="font-bold text-blue-700 dark:text-blue-300 tabular-nums">{task.budget}</span>
                                 </div>
-                                <div className="flex items-center gap-1 text-gray-500 dark:text-slate-400 min-w-0">
-                                  <MapPin className="h-3 w-3 shrink-0" />
+                                <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 min-w-0">
+                                  <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-500" />
                                   <span className="text-xs truncate" title={task.location}>{shortLocation(task.location)}</span>
                                   {typeof (task as any).distance_km === "number" && (
-                                    <Badge className="ml-1 shrink-0 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border-0 text-xs font-medium">
+                                    <Badge className="ml-1 shrink-0 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-700/50 text-xs font-medium rounded-full">
                                       ~{(task as any).distance_km.toFixed(1)} km away
                                     </Badge>
                                   )}
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[#eff6ff]/80 dark:bg-slate-700/80 border border-[#3b82f6]/20 dark:border-slate-600/50">
-                                <Avatar className="h-6 w-6 shrink-0">
+                              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50/90 dark:bg-slate-700/60 border border-slate-200/60 dark:border-slate-600/60 shadow-sm">
+                                <Avatar className="h-7 w-7 shrink-0 ring-2 ring-white dark:ring-slate-600 shadow-sm">
                                   {(() => {
                                     const raw = (task as any).posted_by_profile_image || posterProfileCache[String((task as any).posted_by_id)];
                                     const url = raw ? (resolveProfileImageUrl(raw) || raw) : undefined;
                                     return url ? <AvatarImage src={url} alt="" /> : null;
                                   })()}
-                                  <AvatarFallback className="text-[10px] bg-[#2563eb] text-white font-semibold">
+                                  <AvatarFallback className="text-xs bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold">
                                     {task.posted_by?.charAt(0)?.toUpperCase() || "?"}
                                   </AvatarFallback>
                                 </Avatar>
-                                <span className="text-xs font-medium text-gray-800 dark:text-slate-200 truncate">{task.posted_by || "Unknown"}</span>
+                                <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{task.posted_by || "Unknown"}</span>
                               </div>
                             </div>
 
-                            {task.latitude != null && task.longitude != null && (
-                              <div className="my-2">
-                                <TaskLocationMap latitude={task.latitude} longitude={task.longitude} location={task.location} height={100} variant="card" />
+                            {(task.latitude != null && task.longitude != null) || (task.location && task.location.trim().length >= 4) ? (
+                              <div className="my-4 rounded-xl overflow-hidden border border-slate-200/80 dark:border-slate-600/80 shadow-inner">
+                                <TaskLocationMap latitude={task.latitude} longitude={task.longitude} location={task.location} height={110} variant="card" />
                               </div>
-                            )}
+                            ) : null}
 
                             {/* Action button */}
-                            <div className="mt-4">
+                            <div className="mt-4 pt-1">
                               <Link
                                 href={`/tasks/${task.id}`}
-                                className="w-full"
+                                className="w-full block"
                                 onClick={() => { try { storeTaskForNav(task); } catch {} }}
                               >
-                                <Button variant="outline" className={`w-full border-[#3b82f6]/50 dark:border-slate-600 text-[#2563eb] dark:text-[#60a5fa] hover:bg-[#eff6ff] dark:hover:bg-slate-700 font-medium rounded-xl transition-all duration-200 ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
+                                <Button className={`w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 dark:from-blue-600 dark:to-indigo-600 dark:hover:from-blue-500 dark:hover:to-indigo-500 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 rounded-xl ${isMobile ? "py-2.5 text-sm" : "py-3 px-4"}`}>
                                   <span>{hasUserBid ? "View Offer" : "Make an Offer"}</span>
                                 </Button>
                               </Link>
@@ -4804,9 +4810,10 @@ export default function Dashboard() {
                   const waitingForTasker = !isCancelled && task.taskmaster_completed && !task.tasker_completed && task.job_completion_status !== 1 && task.job_completion_status !== "1";
                   
                   return (
-                  <Card key={task.id} className={`flex flex-col bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-md hover:shadow-lg transition-all duration-200 rounded-2xl overflow-hidden border-l-4 border-l-[#3b82f6]/50 ${isCancelled ? 'opacity-60' : ''}`}>
+                  <Card key={task.id} className={`group flex flex-col bg-white dark:bg-slate-800/95 border border-slate-200/80 dark:border-slate-700/80 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/30 hover:shadow-xl hover:shadow-slate-200/60 dark:hover:shadow-slate-900/40 hover:border-slate-300/80 dark:hover:border-slate-600 transition-all duration-300 rounded-2xl overflow-hidden ring-1 ring-slate-100/50 dark:ring-slate-700/30 ${isCancelled ? 'opacity-60' : ''}`}>
                     {/* Mobile-optimized layout */}
-                    <div className={isMobile ? "p-4" : "p-6"}>
+                    <div className={`relative ${isMobile ? "p-4" : "p-6"}`}>
+                      {!isCancelled && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 dark:from-blue-600 dark:via-indigo-600 dark:to-blue-700" />}
                       {/* Header with title and status */}
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1 min-w-0">

@@ -177,6 +177,10 @@
 
 .dashboard-card-stagger > * {
   animation: cardStaggerIn 0.4s ease-out both;
+  transition: transform 0.25s ease, box-shadow 0.3s ease;
+}
+.dashboard-card-stagger > *:hover {
+  transform: translateY(-2px);
 }
 
 .dashboard-card-stagger > *:nth-child(1) { animation-delay: 0.03s; }

@@ -13,7 +13,7 @@ export function formatDateWithTime(dateString?: string | null): string {
   if (!dateString) return "—";
   try {
     const d = new Date(dateString);
-    if (isNaN(d.getTime())) return "Invalid date";
+    if (isNaN(d.getTime())) return "—";
     const hasTime =
       typeof dateString === "string" &&
       /T\d{1,2}:\d{2}/.test(dateString) &&
@@ -34,6 +34,6 @@ export function formatDateWithTime(dateString?: string | null): string {
       year: "numeric",
     });
   } catch {
-    return "Invalid date";
+    return "—";
   }
 }

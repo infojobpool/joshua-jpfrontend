@@ -32,6 +32,7 @@ export function TaskLocationMap({
   const [copied, setCopied] = useState(false);
   const [geocoded, setGeocoded] = useState<{ lat: number; lng: number } | null>(null);
   const [geocodeLoading, setGeocodeLoading] = useState(false);
+  const [mapError, setMapError] = useState(false);
 
   const copyAddress = () => {
     if (location && typeof navigator?.clipboard?.writeText === "function") {
@@ -90,48 +91,54 @@ export function TaskLocationMap({
 
   useEffect(() => {
     if (typeof window === "undefined" || !mapRef.current) return;
+    setMapError(false);
 
     const initMap = async () => {
-      const L = (await import("leaflet")).default;
+      try {
+        const L = (await import("leaflet")).default;
 
-      // Fix default marker icon path (Leaflet issue with bundlers)
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl:
-          "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-        iconUrl:
-          "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-        shadowUrl:
-          "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-      });
+        // Fix default marker icon path (Leaflet issue with bundlers)
+        delete (L.Icon.Default.prototype as any)._getIconUrl;
+        L.Icon.Default.mergeOptions({
+          iconRetinaUrl:
+            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+          iconUrl:
+            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+          shadowUrl:
+            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+        });
 
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.remove();
+          mapInstanceRef.current = null;
+        }
+
+        const map = L.map(mapRef.current, {
+          center: [effectiveLat, effectiveLng],
+          zoom: 15,
+          zoomControl: false,
+          scrollWheelZoom: false,
+          dragging: false,
+          doubleClickZoom: false,
+        });
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        }).addTo(map);
+
+        L.marker([effectiveLat, effectiveLng]).addTo(map);
+
+        // Add zoom control in a corner
+        L.control.zoom({ position: "bottomright" }).addTo(map);
+
+        // Ensure map tiles render after container is measured
+        map.invalidateSize();
+
+        mapInstanceRef.current = map;
+      } catch (err) {
+        console.warn("Map failed to load:", err);
+        setMapError(true);
       }
-
-      const map = L.map(mapRef.current, {
-        center: [effectiveLat, effectiveLng],
-        zoom: 15,
-        zoomControl: false,
-        scrollWheelZoom: false,
-        dragging: false,
-        doubleClickZoom: false,
-      });
-
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      }).addTo(map);
-
-      L.marker([effectiveLat, effectiveLng]).addTo(map);
-
-      // Add zoom control in a corner
-      L.control.zoom({ position: "bottomright" }).addTo(map);
-
-      // Ensure map tiles render after container is measured
-      map.invalidateSize();
-
-      mapInstanceRef.current = map;
     };
 
     initMap();
@@ -143,10 +150,35 @@ export function TaskLocationMap({
     };
   }, [effectiveLat, effectiveLng]);
 
+  // When map fails to load, show a helpful message instead of crashing
+  if (mapError) {
+    return (
+      <div
+        className={`rounded-xl border border-amber-200/80 dark:border-amber-700/60 bg-amber-50/80 dark:bg-amber-900/20 p-4 ${className}`}
+        style={{ minHeight: height ?? 120 }}
+      >
+        <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+          Map preview unavailable
+        </p>
+        <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+          Your address is saved. Use a full address (street, area, city) so taskers can find the location. You can still post your task.
+        </p>
+        <a
+          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location || "")}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 mt-3 text-sm font-medium text-blue-600 hover:text-blue-700"
+        >
+          <span>📍</span> Open in Google Maps
+        </a>
+      </div>
+    );
+  }
+
   const mapBlock = (
     <div
       ref={mapRef}
-      className={`overflow-hidden rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 shadow-sm ${className}`}
+      className={`overflow-hidden rounded-xl border border-slate-200/60 dark:border-slate-600/60 bg-slate-100 dark:bg-slate-800/80 shadow-inner ${className}`}
       style={{ height: displayHeight, minHeight: displayHeight }}
     />
   );
@@ -156,10 +188,10 @@ export function TaskLocationMap({
       href={openInMapsUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline-offset-2 hover:underline"
+      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-50/80 dark:bg-slate-700/60 hover:bg-blue-100/80 dark:hover:bg-slate-600/60 border border-blue-200/50 dark:border-slate-600/60 transition-colors"
     >
-      <span>📍</span>
-      Open in Google Maps
+      <span className="text-base">📍</span>
+      <span>Open in Google Maps</span>
     </a>
   );
 
@@ -229,9 +261,25 @@ export function TaskLocationMap({
   }
 
   // Card variant: compact
+  const mapOrFallback = mapError ? (
+    <div
+      className={`rounded-xl border border-amber-200/80 dark:border-amber-700/50 bg-amber-50/80 dark:bg-slate-800/80 flex flex-col items-center justify-center gap-2 py-4 px-3 ${className}`}
+      style={{ minHeight: displayHeight }}
+    >
+      <p className="text-sm text-amber-800 dark:text-amber-200 text-center font-medium">
+        Map preview unavailable
+      </p>
+      <p className="text-xs text-amber-700/90 dark:text-amber-300/90 text-center max-w-[240px]">
+        Your address is saved. Use a full address (street, area, city) so taskers can find the location.
+      </p>
+    </div>
+  ) : (
+    mapBlock
+  );
+
   return (
     <div className="space-y-1.5">
-      {mapBlock}
+      {mapOrFallback}
       {openButton}
     </div>
   );

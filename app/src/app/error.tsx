@@ -18,6 +18,14 @@ export default function Error({
     }
   }, [error]);
 
+  // Detect address/map-related errors to show clearer guidance
+  const msg = (error?.message || "").toLowerCase();
+  const stack = (error?.stack || "").toLowerCase();
+  const isAddressOrMapError =
+    msg.includes("leaflet") || msg.includes("geocod") || msg.includes("nominatim") ||
+    msg.includes("L is not") || msg.includes("L.map") || msg.includes("tile.openstreetmap") ||
+    stack.includes("leaflet") || stack.includes("TaskLocationMap");
+
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 bg-slate-50">
       <div className="max-w-md w-full text-center space-y-6">
@@ -25,9 +33,13 @@ export default function Error({
           <AlertCircle className="w-8 h-8 text-red-600" />
         </div>
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Something went wrong</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            {isAddressOrMapError ? "Map preview had an issue" : "Something went wrong"}
+          </h1>
           <p className="mt-2 text-sm text-slate-600">
-            We encountered an unexpected error. Please try again.
+            {isAddressOrMapError
+              ? "There was a problem showing the map. Your address is still saved. Please use a complete address (street, area, city) and try posting your task again. You can also tap Try again to reload."
+              : "We encountered an unexpected error. Please try again."}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -39,10 +51,10 @@ export default function Error({
             Try again
           </button>
           <Link
-            href="/"
+            href={isAddressOrMapError ? "/post-task" : "/"}
             className="inline-flex items-center justify-center px-4 py-2.5 border border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition-colors"
           >
-            Go home
+            {isAddressOrMapError ? "Back to post task" : "Go home"}
           </Link>
         </div>
       </div>
