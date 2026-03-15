@@ -65,4 +65,6 @@ export default withPWA({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development', // Disable PWA in development to stop warnings
+  // NetworkFirst for Next.js chunks - avoids stale cached JS on mobile/PWA after deploy
+  runtimeCaching: require("./pwa-cache-config.js"),
 })(nextConfig);

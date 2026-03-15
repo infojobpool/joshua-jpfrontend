@@ -18,20 +18,31 @@ import { toast } from "sonner"
 
 class BrowseErrorBoundary extends Component<
   { children: React.ReactNode },
-  { hasError: boolean; retryKey: number }
+  { hasError: boolean; retryKey: number; error: Error | null }
 > {
-  state = { hasError: false, retryKey: 0 }
+  state = { hasError: false, retryKey: 0, error: null as Error | null }
   static getDerivedStateFromError() {
     return { hasError: true }
   }
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    this.setState({ error })
+    if (process.env.NODE_ENV === "development" || typeof window !== "undefined") {
+      console.error("[Browse] Error:", error?.message, error?.stack, errorInfo)
+    }
+  }
   handleRetry = () => {
-    this.setState((s) => ({ hasError: false, retryKey: s.retryKey + 1 }))
+    this.setState((s) => ({ hasError: false, retryKey: s.retryKey + 1, error: null }))
   }
   render() {
     if (this.state.hasError) {
       return (
         <div className="min-h-[50vh] flex flex-col items-center justify-center px-4 gap-4">
           <p className="text-muted-foreground text-center">Unable to load tasks. Please try again.</p>
+          {this.state.error && (
+            <p className="text-xs text-amber-600/80 max-w-md text-center font-mono break-all">
+              {this.state.error.message}
+            </p>
+          )}
           <Button onClick={this.handleRetry} variant="outline">
             Try again
           </Button>
@@ -150,6 +161,12 @@ function TaskCardWithPrefetch({
   );
 }
 
+// Use native <select> on mobile to avoid Radix Portal crashes in WebView/PWA (see Radix #2673, #1681)
+const isMobileView = () => typeof window !== "undefined" && window.innerWidth < 768
+
+// Native <select> works reliably on mobile WebViews; Radix Select uses Portals which can crash
+const isMobileViewport = () => typeof window !== "undefined" && window.innerWidth < 768
+
 function BrowseContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -157,6 +174,8 @@ function BrowseContent() {
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [category, setCategory] = useState("all")
+  // Use native select on mobile from first paint to avoid Radix Portal crash (initial state, not useEffect)
+  const useNativeSelect = isMobileViewport()
 
   useEffect(() => {
     try {
@@ -540,19 +559,34 @@ function BrowseContent() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Category</label>
-                  <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
+                  {useNativeSelect ? (
+                    <select
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                    >
+                      <option value="all">All Categories</option>
                       {categories.map((cat) => (
-                        <SelectItem key={cat.category_id} value={cat.category_id}>
+                        <option key={cat.category_id} value={cat.category_id}>
                           {cat.category_name}
-                        </SelectItem>
+                        </option>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </select>
+                  ) : (
+                    <Select value={category} onValueChange={setCategory}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Categories</SelectItem>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.category_id} value={cat.category_id}>
+                            {cat.category_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Price Range</label>
@@ -595,17 +629,30 @@ function BrowseContent() {
                     </Button>
                   </div>
                   {nearMeMode && (
-                    <Select value={String(radiusKm)} onValueChange={(v) => setRadiusKm(Number(v))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5">5 km</SelectItem>
-                        <SelectItem value="10">10 km</SelectItem>
-                        <SelectItem value="25">25 km</SelectItem>
-                        <SelectItem value="50">50 km</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    useNativeSelect ? (
+                      <select
+                        value={String(radiusKm)}
+                        onChange={(e) => setRadiusKm(Number(e.target.value))}
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                      >
+                        <option value="5">5 km</option>
+                        <option value="10">10 km</option>
+                        <option value="25">25 km</option>
+                        <option value="50">50 km</option>
+                      </select>
+                    ) : (
+                      <Select value={String(radiusKm)} onValueChange={(v) => setRadiusKm(Number(v))}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5 km</SelectItem>
+                          <SelectItem value="10">10 km</SelectItem>
+                          <SelectItem value="25">25 km</SelectItem>
+                          <SelectItem value="50">50 km</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )
                   )}
                   {nearMeError && <p className="text-xs text-amber-600">{nearMeError}</p>}
                 </div>
@@ -642,19 +689,34 @@ function BrowseContent() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Category</label>
-                    <Select value={category} onValueChange={setCategory}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
+                    {useNativeSelect ? (
+                      <select
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                      >
+                        <option value="all">All Categories</option>
                         {categories.map((cat) => (
-                          <SelectItem key={cat.category_id} value={cat.category_id}>
+                          <option key={cat.category_id} value={cat.category_id}>
                             {cat.category_name}
-                          </SelectItem>
+                          </option>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </select>
+                    ) : (
+                      <Select value={category} onValueChange={setCategory}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Categories</SelectItem>
+                          {categories.map((cat) => (
+                            <SelectItem key={cat.category_id} value={cat.category_id}>
+                              {cat.category_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Price Range</label>
@@ -691,15 +753,28 @@ function BrowseContent() {
                       </Button>
                     </div>
                     {nearMeMode && (
-                      <Select value={String(radiusKm)} onValueChange={(v) => setRadiusKm(Number(v))}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="5">5 km</SelectItem>
-                          <SelectItem value="10">10 km</SelectItem>
-                          <SelectItem value="25">25 km</SelectItem>
-                          <SelectItem value="50">50 km</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      useNativeSelect ? (
+                        <select
+                          value={String(radiusKm)}
+                          onChange={(e) => setRadiusKm(Number(e.target.value))}
+                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                        >
+                          <option value="5">5 km</option>
+                          <option value="10">10 km</option>
+                          <option value="25">25 km</option>
+                          <option value="50">50 km</option>
+                        </select>
+                      ) : (
+                        <Select value={String(radiusKm)} onValueChange={(v) => setRadiusKm(Number(v))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="5">5 km</SelectItem>
+                            <SelectItem value="10">10 km</SelectItem>
+                            <SelectItem value="25">25 km</SelectItem>
+                            <SelectItem value="50">50 km</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )
                     )}
                   </div>
                 </CardContent>
@@ -708,17 +783,29 @@ function BrowseContent() {
 
             <div className="flex justify-between items-center">
               <p className="text-sm text-muted-foreground">{filteredTasks.length} tasks found</p>
-              <Select defaultValue="newest">
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="newest">Newest first</SelectItem>
-                  <SelectItem value="oldest">Oldest first</SelectItem>
-                  <SelectItem value="highest">Highest budget</SelectItem>
-                  <SelectItem value="lowest">Lowest budget</SelectItem>
-                </SelectContent>
-              </Select>
+              {useNativeSelect ? (
+                <select
+                  defaultValue="newest"
+                  className="flex h-9 w-[180px] rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                >
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="highest">Highest budget</option>
+                  <option value="lowest">Lowest budget</option>
+                </select>
+              ) : (
+                <Select defaultValue="newest">
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest first</SelectItem>
+                    <SelectItem value="oldest">Oldest first</SelectItem>
+                    <SelectItem value="highest">Highest budget</SelectItem>
+                    <SelectItem value="lowest">Lowest budget</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {filteredTasks.length === 0 ? (
