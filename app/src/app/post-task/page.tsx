@@ -38,6 +38,7 @@ import axiosInstance from "../../lib/axiosInstance";
 import useStore from "../../lib/Zustand";
 import { handleAxiosError } from "../../lib/handleAxiosError";
 import LocationDetector from "../../components/LocationDetector";
+import { TaskLocationMap } from "@/components/TaskLocationMap";
 import Header from "@/components/Header";
 
 interface User {
@@ -553,6 +554,11 @@ export default function PostTaskPage() {
                         />
                       </div>
                     </div>
+                    {formData.location && formData.location.trim().length >= 4 && (
+                      <div className="mt-3">
+                        <TaskLocationMap location={formData.location} height={140} variant="card" />
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-2">

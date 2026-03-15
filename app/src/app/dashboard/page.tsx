@@ -3353,11 +3353,16 @@ export default function Dashboard() {
     return matchesSearch && matchesCategory && matchesPrice && matchesLocation && isNotCanceled;
   });
 
-  // Sort available tasks by selected option (newest, oldest, highest budget, lowest budget)
+  // Sort available tasks by selected option (newest, oldest, highest budget, lowest budget, nearest)
   const sortedAvailableTasks = useMemo(() => {
     const deduped = dedupeTasksByContent(dedupeTasksById(filteredTasks));
     const copy = [...deduped];
     copy.sort((a, b) => {
+      if (availableSortBy === "nearest") {
+        const aDist = typeof (a as any).distance_km === "number" ? (a as any).distance_km : Infinity;
+        const bDist = typeof (b as any).distance_km === "number" ? (b as any).distance_km : Infinity;
+        return aDist - bDist; // ascending: nearest first
+      }
       if (availableSortBy === "newest") {
         const aVal = a.postedAtSortValue ?? 0;
         const bVal = b.postedAtSortValue ?? 0;
@@ -4098,6 +4103,7 @@ export default function Dashboard() {
                   <label className="text-sm font-medium text-gray-700 mb-1 block">Sort by</label>
                   <div className="bg-white border border-gray-200 rounded-lg p-2">
                     <select value={availableSortBy} onChange={e=>setAvailableSortBy(e.target.value)} className="w-full bg-transparent text-gray-700">
+                      {nearMeMode && <option value="nearest">Nearest first</option>}
                       <option value="newest">Newest first</option>
                       <option value="oldest">Oldest first</option>
                       <option value="highest">Budget: High to Low</option>
@@ -4639,6 +4645,7 @@ export default function Dashboard() {
                       <SelectValue placeholder="Sort by" />
                     </SelectTrigger>
                     <SelectContent>
+                      {nearMeMode && <SelectItem value="nearest">Nearest first</SelectItem>}
                       <SelectItem value="newest">Newest first</SelectItem>
                       <SelectItem value="oldest">Oldest first</SelectItem>
                       <SelectItem value="highest">Highest budget</SelectItem>

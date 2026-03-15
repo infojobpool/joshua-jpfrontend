@@ -30,6 +30,9 @@ export function TaskLocationMap({
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<Map | null>(null);
   const [copied, setCopied] = useState(false);
+  const [geocoded, setGeocoded] = useState<{ lat: number; lng: number } | null>(null);
+  const [geocodeLoading, setGeocodeLoading] = useState(false);
+
   const copyAddress = () => {
     if (location && typeof navigator?.clipboard?.writeText === "function") {
       navigator.clipboard.writeText(location).then(() => {
@@ -39,18 +42,51 @@ export function TaskLocationMap({
     }
   };
 
-  if (
-    latitude == null ||
-    longitude == null ||
-    isNaN(latitude) ||
-    isNaN(longitude)
-  ) {
+  // Geocode fallback: when backend has no lat/lng, try to geocode the address string
+  useEffect(() => {
+    const hasCoords = latitude != null && longitude != null && !isNaN(latitude) && !isNaN(longitude);
+    if (hasCoords || !location || location.trim().length < 4) {
+      setGeocoded(null);
+      return;
+    }
+    let cancelled = false;
+    setGeocodeLoading(true);
+    setGeocoded(null);
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location.trim())}&limit=1`;
+    fetch(url, {
+      headers: { "User-Agent": "jobpool/1.0 (+https://jobpool.in)" },
+    })
+      .then((res) => res.json())
+      .then((data: Array<{ lat: string; lon: string }>) => {
+        if (cancelled || !data?.[0]) return;
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+        if (!isNaN(lat) && !isNaN(lng)) setGeocoded({ lat, lng });
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setGeocodeLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [latitude, longitude, location]);
+
+  const effectiveLat = latitude != null && !isNaN(latitude) ? latitude : geocoded?.lat ?? null;
+  const effectiveLng = longitude != null && !isNaN(longitude) ? longitude : geocoded?.lng ?? null;
+
+  if (effectiveLat == null || effectiveLng == null || isNaN(effectiveLat) || isNaN(effectiveLng)) {
+    if (geocodeLoading && location?.trim().length >= 4) {
+      return (
+        <div className={`rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 flex items-center justify-center ${className}`} style={{ height: height ?? 120, minHeight: height ?? 120 }}>
+          <span className="text-sm text-gray-500">Loading map…</span>
+        </div>
+      );
+    }
     return null;
   }
 
   const displayHeight = height ?? (variant === "detail" ? 220 : 120);
-  const openInMapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
-  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+  const openInMapsUrl = `https://www.google.com/maps?q=${effectiveLat},${effectiveLng}`;
+  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${effectiveLat},${effectiveLng}`;
 
   useEffect(() => {
     if (typeof window === "undefined" || !mapRef.current) return;
@@ -75,7 +111,7 @@ export function TaskLocationMap({
       }
 
       const map = L.map(mapRef.current, {
-        center: [latitude, longitude],
+        center: [effectiveLat, effectiveLng],
         zoom: 15,
         zoomControl: false,
         scrollWheelZoom: false,
@@ -87,7 +123,7 @@ export function TaskLocationMap({
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       }).addTo(map);
 
-      L.marker([latitude, longitude]).addTo(map);
+      L.marker([effectiveLat, effectiveLng]).addTo(map);
 
       // Add zoom control in a corner
       L.control.zoom({ position: "bottomright" }).addTo(map);
@@ -105,7 +141,7 @@ export function TaskLocationMap({
         mapInstanceRef.current = null;
       }
     };
-  }, [latitude, longitude]);
+  }, [effectiveLat, effectiveLng]);
 
   const mapBlock = (
     <div
