@@ -26,6 +26,8 @@ import { toast } from "sonner";
 import { 
   Clock, 
   MapPin, 
+  MapPinOff,
+  Loader2,
   IndianRupee, 
   Briefcase, 
   Star, 
@@ -453,6 +455,11 @@ export default function Dashboard() {
   const [myBidsSortBy, setMyBidsSortBy] = useState<string>("newest");
   const [onlyOpen, setOnlyOpen] = useState<boolean>(true);
   const [withImages, setWithImages] = useState<boolean>(false);
+  const [nearMeMode, setNearMeMode] = useState(false);
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [nearMeError, setNearMeError] = useState<string | null>(null);
+  const [radiusKm, setRadiusKm] = useState(10);
+  const [isRequestingLocation, setIsRequestingLocation] = useState(false);
 
   // Inline filters: do not lock body scroll to avoid touch blocking on mobile
   
@@ -487,6 +494,36 @@ export default function Dashboard() {
     const first = parts[0];
     return first.length > 28 ? first.slice(0, 25) + "…" : first;
   };
+
+  const handleNearMeToggle = useCallback(() => {
+    if (nearMeMode) {
+      setNearMeMode(false);
+      setUserCoords(null);
+      setNearMeError(null);
+      setRefetchAvailableTrigger((t) => t + 1);
+      return;
+    }
+    if (typeof navigator?.geolocation?.getCurrentPosition !== "function") {
+      toast.error("Location is not supported by your browser");
+      return;
+    }
+    setIsRequestingLocation(true);
+    setNearMeError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setNearMeMode(true);
+        setIsRequestingLocation(false);
+        setRefetchAvailableTrigger((t) => t + 1);
+      },
+      () => {
+        toast.error("Could not get your location");
+        setNearMeError("Location denied or unavailable");
+        setIsRequestingLocation(false);
+      },
+      { timeout: 10000, maximumAge: 300000, enableHighAccuracy: true }
+    );
+  }, [nearMeMode]);
 
   // Close profile dropdown when clicking outside
   useEffect(() => {
@@ -1255,18 +1292,74 @@ export default function Dashboard() {
     loadCachedTasks();
   }, []);
 
-  // Fetch all available tasks
+  // Fetch all available tasks (jobs-nearby when Near me on, else get-all-jobs)
   useEffect(() => {
     if (!user || !(userId || effectiveUserId)) return;
 
+    const mapJobToTask = (job: any): Task => {
+      const jobStatus = job.job_completion_status === 1 ? "completed" : job.deletion_status ? "deleted" : job.cancel_status ? "canceled" : "open";
+      const postedMeta = formatTimestampValue(job.created_at || job.tstamp || job.timestamp || job.job_tstamp || job.job_created_at || job.created_date);
+      return {
+        id: job.job_id.toString(),
+        title: job.job_title || "Untitled",
+        description: job.job_description || "No description provided.",
+        budget: Number(job.job_budget) || 0,
+        location: job.job_location || "Unknown",
+        status: jobStatus,
+        postedAt: postedMeta.formatted,
+        postedAtSortValue: postedMeta.sortValue,
+        postedAtISO: postedMeta.iso,
+        dueDate: job.job_due_date ? new Date(job.job_due_date).toLocaleDateString("en-GB") : "Unknown",
+        offers: job.offers || 0,
+        posted_by: job.posted_by || "Unknown",
+        posted_by_profile_image: job.posted_by_profile_image || job.taskmanager_profile_image || job.taskmanager_profile_img || job.poster?.profile_img || job.profile_img || job.user_profile_img,
+        posted_by_id: job.user_ref_id || job.posted_by_id || job.user_id,
+        category: job.job_category || "general",
+        job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
+        deletion_status: job.deletion_status || false,
+        cancel_status: job.cancel_status ?? false,
+        images: job.job_images?.urls?.length ? job.job_images.urls.map((url: string, index: number) => ({ id: `img${index + 1}`, url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url, alt: `Job image ${index + 1}` })) : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+        latitude: typeof job.latitude === "number" ? job.latitude : undefined,
+        longitude: typeof job.longitude === "number" ? job.longitude : undefined,
+      };
+    };
+
     const fetchAllTasks = async () => {
       try {
-        
-        // Use fetch API directly to bypass axios CORS issues
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
-        
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
+        const uid = (userId || effectiveUserId)?.toString();
+
+        // When Near me is on, use jobs-nearby (returns lat/lng → maps show)
+        if (nearMeMode && userCoords) {
+          try {
+            const url = `${API_BASE}/jobs-nearby/?lat=${userCoords.lat}&lng=${userCoords.lng}&radius_km=${radiusKm}&limit=100`;
+            const res = await fetch(url, {
+              method: 'GET',
+              headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+              credentials: 'omit',
+              signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            if (res.ok) {
+              const data = await res.json();
+              if (data?.status_code === 200 && Array.isArray(data?.data?.jobs)) {
+                const tasks: Task[] = data.data.jobs
+                  .filter((j: any) => String(j.user_ref_id) !== uid && j.job_completion_status !== 1 && !j.deletion_status && !j.cancel_status)
+                  .map(mapJobToTask);
+                const deduped = dedupeTasksByContent(dedupeTasksById(tasks));
+                setAvailableTasks(deduped);
+                localStorage.setItem('availableTasks', JSON.stringify(deduped));
+                localStorage.setItem('availableTasksTimestamp', Date.now().toString());
+                return;
+              }
+            }
+          } catch {
+            setNearMeError("Nearby search unavailable");
+          }
+        }
+
         const fetchResponse = await fetch(`${API_BASE}/get-all-jobs/`, {
           method: 'GET',
           headers: {
@@ -1403,7 +1496,7 @@ export default function Dashboard() {
     };
 
     fetchAllTasks();
-  }, [user, userId, refetchAvailableTrigger]);
+  }, [user, userId, refetchAvailableTrigger, nearMeMode, userCoords, radiusKm]);
 
   // Fetch user's bids
   useEffect(() => {
@@ -4025,6 +4118,27 @@ export default function Dashboard() {
                   <label className="text-sm font-medium text-gray-700 mb-1 block">Location</label>
                   <Input value={location} onChange={(e)=>setLocation(e.target.value)} placeholder="e.g., Mumbai" />
                 </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-sm font-medium text-gray-700">Near me</label>
+                    <Button type="button" variant={nearMeMode ? "default" : "outline"} size="sm" onClick={handleNearMeToggle} disabled={isRequestingLocation}>
+                      {isRequestingLocation ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : nearMeMode ? <MapPin className="h-4 w-4 mr-1" /> : <MapPinOff className="h-4 w-4 mr-1" />}
+                      {isRequestingLocation ? "Getting…" : nearMeMode ? "On" : "Off"}
+                    </Button>
+                  </div>
+                  {nearMeMode && (
+                    <Select value={String(radiusKm)} onValueChange={(v)=>setRadiusKm(Number(v))}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">5 km</SelectItem>
+                        <SelectItem value="10">10 km</SelectItem>
+                        <SelectItem value="25">25 km</SelectItem>
+                        <SelectItem value="50">50 km</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {nearMeError && <p className="text-xs text-amber-600 mt-1">{nearMeError}</p>}
+                </div>
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-2 text-sm text-gray-700">
                     <input type="checkbox" checked={onlyOpen} onChange={e=>setOnlyOpen(e.target.checked)} /> Only open
@@ -4420,6 +4534,29 @@ export default function Dashboard() {
                         </div>
                       </div>
 
+                      {/* Near me - uses jobs-nearby API so maps show in task cards */}
+                      <div className="group">
+                        <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">Near me</label>
+                        <div className="flex items-center gap-2">
+                          <Button type="button" variant={nearMeMode ? "default" : "outline"} size="sm" onClick={handleNearMeToggle} disabled={isRequestingLocation}>
+                            {isRequestingLocation ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : nearMeMode ? <MapPin className="h-4 w-4 mr-1" /> : <MapPinOff className="h-4 w-4 mr-1" />}
+                            {isRequestingLocation ? "Getting…" : nearMeMode ? "On" : "Off"}
+                          </Button>
+                          {nearMeMode && (
+                            <Select value={String(radiusKm)} onValueChange={(v) => setRadiusKm(Number(v))}>
+                              <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="5">5 km</SelectItem>
+                                <SelectItem value="10">10 km</SelectItem>
+                                <SelectItem value="25">25 km</SelectItem>
+                                <SelectItem value="50">50 km</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                        {nearMeError && <p className="text-xs text-amber-600 mt-1">{nearMeError}</p>}
+                      </div>
+
                       {/* Clear Filters Button */}
                       <div className="pt-2">
                         <Button
@@ -4556,9 +4693,6 @@ export default function Dashboard() {
                                   <span className="text-xs truncate" title={task.location}>{shortLocation(task.location)}</span>
                                 </div>
                               </div>
-                              {task.latitude != null && task.longitude != null && (
-                                <TaskLocationMap latitude={task.latitude} longitude={task.longitude} location={task.location} height={90} className="my-2" />
-                              )}
                               <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[#eff6ff]/80 dark:bg-slate-700/80 border border-[#3b82f6]/20 dark:border-slate-600/50">
                                 <Avatar className="h-6 w-6 shrink-0">
                                   {(() => {
