@@ -4715,35 +4715,49 @@ export default function Dashboard() {
                               {task.description}
                             </p>
 
-                            {/* Mobile-optimized info row */}
-                            <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"}`}>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <div className="flex items-center gap-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-700 px-3 py-1.5 rounded-xl border border-blue-200/50 dark:border-slate-600 shadow-sm">
-                                  <IndianRupee className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                  <span className="font-bold text-blue-700 dark:text-blue-300 tabular-nums">{task.budget}</span>
+                            {/* Premium info blocks – card-style instead of flat horizontal */}
+                            <div className={`grid ${isMobile ? "grid-cols-1" : "grid-cols-2"} gap-3 mb-1`}>
+                              {/* Budget card */}
+                              <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50/80 dark:from-slate-700/90 dark:to-slate-800/90 p-3.5 border border-blue-200/60 dark:border-slate-600/80 shadow-sm">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 dark:bg-blue-500/20">
+                                  <IndianRupee className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                 </div>
-                                <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 min-w-0">
-                                  <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-500" />
-                                  <span className="text-xs truncate" title={task.location}>{shortLocation(task.location)}</span>
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-wider text-blue-600/80 dark:text-blue-400/80 font-semibold">Budget</p>
+                                  <p className="font-bold text-blue-700 dark:text-blue-300 tabular-nums text-base">₹{task.budget}</p>
+                                </div>
+                              </div>
+                              {/* Location card */}
+                              <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/80 dark:from-slate-700/90 dark:to-slate-800/90 p-3.5 border border-slate-200/80 dark:border-slate-600/80 shadow-sm">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-200/80 dark:bg-slate-600/50">
+                                  <MapPin className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Location</p>
+                                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate" title={task.location}>{shortLocation(task.location)}</p>
                                   {typeof (task as any).distance_km === "number" && (
-                                    <Badge className="ml-1 shrink-0 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-700/50 text-xs font-medium rounded-full">
+                                    <Badge className="mt-0.5 shrink-0 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border-0 text-[10px] font-medium">
                                       ~{(task as any).distance_km.toFixed(1)} km away
                                     </Badge>
                                   )}
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50/90 dark:bg-slate-700/60 border border-slate-200/60 dark:border-slate-600/60 shadow-sm">
-                                <Avatar className="h-7 w-7 shrink-0 ring-2 ring-white dark:ring-slate-600 shadow-sm">
-                                  {(() => {
-                                    const raw = (task as any).posted_by_profile_image || posterProfileCache[String((task as any).posted_by_id)];
-                                    const url = raw ? (resolveProfileImageUrl(raw) || raw) : undefined;
-                                    return url ? <AvatarImage src={url} alt="" /> : null;
-                                  })()}
-                                  <AvatarFallback className="text-xs bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold">
-                                    {task.posted_by?.charAt(0)?.toUpperCase() || "?"}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{task.posted_by || "Unknown"}</span>
+                            </div>
+                            {/* Poster card */}
+                            <div className="flex items-center gap-3 rounded-2xl bg-white/80 dark:bg-slate-800/80 p-3 border border-slate-200/80 dark:border-slate-600/80 shadow-sm ring-1 ring-slate-100/50 dark:ring-slate-700/30">
+                              <Avatar className="h-9 w-9 shrink-0 ring-2 ring-white dark:ring-slate-600 shadow-md">
+                                {(() => {
+                                  const raw = (task as any).posted_by_profile_image || posterProfileCache[String((task as any).posted_by_id)];
+                                  const url = raw ? (resolveProfileImageUrl(raw) || raw) : undefined;
+                                  return url ? <AvatarImage src={url} alt="" /> : null;
+                                })()}
+                                <AvatarFallback className="text-sm bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold">
+                                  {task.posted_by?.charAt(0)?.toUpperCase() || "?"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Posted by</p>
+                                <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{task.posted_by || "Unknown"}</p>
                               </div>
                             </div>
 

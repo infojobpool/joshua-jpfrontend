@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -83,7 +83,7 @@ function TaskCardWithPrefetch({
               <Badge variant="secondary" className="text-xs font-normal">~{task.distance_km.toFixed(1)} km away</Badge>
             )}
           </div>
-          {task.latitude != null && task.longitude != null && (
+          {((task.latitude != null && task.longitude != null) || (task.location && task.location.trim().length >= 4)) && (
             <TaskLocationMap latitude={task.latitude} longitude={task.longitude} location={task.location} height={100} className="mt-1" />
           )}
           <div className="flex items-center gap-2">
@@ -114,7 +114,7 @@ function TaskCardWithPrefetch({
   );
 }
 
-export default function BrowseTasksPage() {
+function BrowseContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [user, setUser] = useState<{ name: string } | null>(null)
@@ -720,5 +720,17 @@ export default function BrowseTasksPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function BrowsePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    }>
+      <BrowseContent />
+    </Suspense>
   )
 }
