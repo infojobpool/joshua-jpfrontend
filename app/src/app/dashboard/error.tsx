@@ -39,6 +39,11 @@ export default function DashboardError({
       <p className="text-muted-foreground text-center max-w-sm">
         We couldn&apos;t load the dashboard. This sometimes happens on mobile, with the PWA app, or with cached data.
       </p>
+      {error?.message && (
+        <p className="text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded max-w-md font-mono break-all text-center" title="Share this with support">
+          {error.message}
+        </p>
+      )}
       <div className="flex flex-col sm:flex-row gap-3">
         <Button onClick={reset} variant="default" className="gap-2">
           <RefreshCw className="h-4 w-4" />

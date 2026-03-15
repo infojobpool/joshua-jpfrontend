@@ -4778,9 +4778,16 @@ export default function Dashboard() {
                             </div>
 
                             {(task.latitude != null && task.longitude != null) || (task.location && task.location.trim().length >= 4) ? (
-                              <div className="my-4 rounded-xl overflow-hidden border border-slate-200/80 dark:border-slate-600/80 shadow-inner">
-                                <TaskLocationMap latitude={task.latitude} longitude={task.longitude} location={task.location} height={110} variant="card" />
-                              </div>
+                              isMobile ? (
+                                <div className="my-3 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                                  <MapPin className="h-4 w-4 shrink-0" />
+                                  <span className="truncate">{task.location || "Location"}</span>
+                                </div>
+                              ) : (
+                                <div className="my-4 rounded-xl overflow-hidden border border-slate-200/80 dark:border-slate-600/80 shadow-inner">
+                                  <TaskLocationMap latitude={task.latitude} longitude={task.longitude} location={task.location} height={110} variant="card" />
+                                </div>
+                              )
                             ) : null}
 
                             {/* Action button */}
@@ -4941,10 +4948,17 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-                      {task.latitude != null && task.longitude != null && (
-                        <div className="my-2">
-                          <TaskLocationMap latitude={task.latitude} longitude={task.longitude} location={task.location} height={100} variant="card" />
-                        </div>
+                      {(task.latitude != null && task.longitude != null) && (
+                        isMobile ? (
+                          <div className="my-2 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <MapPin className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{task.location || "Location"}</span>
+                          </div>
+                        ) : (
+                          <div className="my-2">
+                            <TaskLocationMap latitude={task.latitude} longitude={task.longitude} location={task.location} height={100} variant="card" />
+                          </div>
+                        )
                       )}
 
                       {/* Waiting for taskmaster message */}
@@ -5230,10 +5244,17 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-                      {bid.latitude != null && bid.longitude != null && (
-                        <div className="my-3">
-                          <TaskLocationMap latitude={bid.latitude} longitude={bid.longitude} location={bid.task_location} height={100} variant="card" />
-                        </div>
+                      {(bid.latitude != null && bid.longitude != null) && (
+                        isMobile ? (
+                          <div className="my-3 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <MapPin className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{bid.task_location || "Location"}</span>
+                          </div>
+                        ) : (
+                          <div className="my-3">
+                            <TaskLocationMap latitude={bid.latitude} longitude={bid.longitude} location={bid.task_location} height={100} variant="card" />
+                          </div>
+                        )
                       )}
 
                       {/* Action button */}
