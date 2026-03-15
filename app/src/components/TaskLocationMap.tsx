@@ -1,8 +1,13 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import type { Map } from "leaflet";
+import "leaflet/dist/leaflet.css";
+import "leaflet/dist/leaflet.css";
+
 /**
  * Renders a map for a task location with a clear pin.
- * Uses OpenStreetMap (free, no API key).
+ * Uses Leaflet + OpenStreetMap tiles (no iframe – works in all browsers/apps).
  * Does NOT auto-open external links – user taps buttons to open.
  */
 interface TaskLocationMapProps {
@@ -23,6 +28,9 @@ export function TaskLocationMap({
   height,
   variant = "card",
 }: TaskLocationMapProps) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<Map | null>(null);
+
   if (
     latitude == null ||
     longitude == null ||
@@ -32,36 +40,72 @@ export function TaskLocationMap({
     return null;
   }
 
-  // Tighter bbox = more zoomed in, marker more prominent
-  const padding = variant === "detail" ? 0.004 : 0.008;
-  const bbox = [
-    longitude - padding,
-    latitude - padding,
-    longitude + padding,
-    latitude + padding,
-  ].join(",");
-
-  const embedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${latitude}%2C${longitude}`;
+  const displayHeight = height ?? (variant === "detail" ? 220 : 120);
   const openInMapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
-  const displayHeight = height ?? (variant === "detail" ? 220 : 120);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !mapRef.current) return;
+
+    const initMap = async () => {
+      const L = (await import("leaflet")).default;
+      await import("leaflet/dist/leaflet.css");
+
+      // Fix default marker icon path (Leaflet issue with bundlers)
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl:
+          "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+        iconUrl:
+          "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+        shadowUrl:
+          "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+      });
+
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+
+      const map = L.map(mapRef.current, {
+        center: [latitude, longitude],
+        zoom: 15,
+        zoomControl: false,
+        scrollWheelZoom: false,
+        dragging: false,
+        doubleClickZoom: false,
+      });
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(map);
+
+      L.marker([latitude, longitude]).addTo(map);
+
+      // Add zoom control in a corner
+      L.control.zoom({ position: "bottomright" }).addTo(map);
+
+      // Ensure map tiles render after container is measured
+      map.invalidateSize();
+
+      mapInstanceRef.current = map;
+    };
+
+    initMap();
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [latitude, longitude]);
 
   const mapBlock = (
     <div
-      className={`overflow-hidden rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 shadow-sm ${className}`}
-    >
-      <iframe
-        src={embedUrl}
-        width="100%"
-        height={displayHeight}
-        style={{ border: 0 }}
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-        title="Task location map"
-        className="pointer-events-none block"
-        sandbox="allow-scripts allow-same-origin"
-      />
-    </div>
+      ref={mapRef}
+      className={`overflow-hidden rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 shadow-sm ${className}`}
+      style={{ height: displayHeight, minHeight: displayHeight }}
+    />
   );
 
   const openButton = (
@@ -105,8 +149,18 @@ export function TaskLocationMap({
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+              />
             </svg>
             Get directions
           </a>
