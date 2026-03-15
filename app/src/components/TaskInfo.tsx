@@ -523,19 +523,6 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
             )}
           </div>
 
-          {/* Map - when coordinates available */}
-          {!isEditing && task.latitude != null && task.longitude != null && (
-            <div className="col-span-2">
-              <TaskLocationMap
-                latitude={task.latitude}
-                longitude={task.longitude}
-                location={task.location}
-                height={160}
-                className="mt-2 rounded-lg overflow-hidden"
-              />
-            </div>
-          )}
-
           {/* Due Date */}
           <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-3 border border-purple-200/50">
             <div className="flex items-center gap-2 mb-1">
@@ -583,6 +570,20 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
             )}
           </div>
         </div>
+
+        {/* Task location map - full-width, prominent, no auto-open */}
+        {!isEditing && task.latitude != null && task.longitude != null && (
+          <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-slate-600">
+            <TaskLocationMap
+              latitude={task.latitude}
+              longitude={task.longitude}
+              location={task.location}
+              height={220}
+              variant="detail"
+              className="w-full"
+            />
+          </div>
+        )}
       </CardContent>
       {isEditing && isTaskPoster && (
         <CardFooter className="bg-gradient-to-r from-gray-50 to-blue-50/50 border-t border-gray-200/50 p-3">
