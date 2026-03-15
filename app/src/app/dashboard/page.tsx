@@ -104,6 +104,7 @@ interface Task {
   assigned_tasker_id?: string | number; // tasker user id for reviews
   latitude?: number;
   longitude?: number;
+  distance_km?: number; // from jobs-nearby when Near me is on
 }
 
 interface Bid {
@@ -137,6 +138,8 @@ interface BidRequest {
   task_cancelled?: boolean;
   task_deleted?: boolean;
   created_at_sort_value?: number;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface Category {
@@ -1321,6 +1324,7 @@ export default function Dashboard() {
         images: job.job_images?.urls?.length ? job.job_images.urls.map((url: string, index: number) => ({ id: `img${index + 1}`, url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url, alt: `Job image ${index + 1}` })) : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
         latitude: typeof job.latitude === "number" ? job.latitude : undefined,
         longitude: typeof job.longitude === "number" ? job.longitude : undefined,
+        distance_km: typeof job.distance_km === "number" ? job.distance_km : undefined,
       };
     };
 
@@ -1444,6 +1448,7 @@ export default function Dashboard() {
                 job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
                 deletion_status: job.deletion_status || false,
                 cancel_status: job.cancel_status ?? false,
+                distance_km: typeof job.distance_km === "number" ? job.distance_km : undefined,
                 images: job.job_images?.urls?.length
                   ? job.job_images.urls.map((url: string, index: number) => ({
                       id: `img${index + 1}`,
@@ -1794,6 +1799,8 @@ export default function Dashboard() {
                 cancelled: isCancelled,
                 assignedToMe: true, // Mark as assigned to current user
                 user_ref_id: job.user_ref_id || job.posted_by_id || job.user_id,
+                latitude: typeof job.latitude === "number" ? job.latitude : undefined,
+                longitude: typeof job.longitude === "number" ? job.longitude : undefined,
             images: job.job_images?.urls?.length
               ? job.job_images.urls.map((url: string, index: number) => ({
                   id: `img${index + 1}`,
@@ -2022,8 +2029,10 @@ export default function Dashboard() {
                 }))
               : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
             task_cancelled: false,
+            latitude: typeof bid.latitude === "number" ? bid.latitude : undefined,
+            longitude: typeof bid.longitude === "number" ? bid.longitude : undefined,
           }));
-          // Enrich each bid with task cancel status and filter out cancelled tasks
+          // Enrich each bid with task cancel status, lat/lng, and filter out cancelled tasks
           try {
             const results = await Promise.allSettled(
               bids.map(async (b) => {
@@ -2031,19 +2040,31 @@ export default function Dashboard() {
                 const job = r.data?.data?.job || r.data?.job || {};
                 const isCancelled = job?.status === true || job?.cancel_status === true || job?.status === "Cancelled" || job?.status === "cancelled";
                 const isDeleted = job?.deletion_status === true || job?.deletion_status === 1 || job?.status === "Deleted" || job?.status === "deleted";
-                return { id: b.bid_id, task_id: b.task_id, cancelled: !!isCancelled, deleted: !!isDeleted };
+                const lat = typeof job?.latitude === "number" ? job.latitude : undefined;
+                const lng = typeof job?.longitude === "number" ? job.longitude : undefined;
+                return { id: b.bid_id, task_id: b.task_id, cancelled: !!isCancelled, deleted: !!isDeleted, latitude: lat, longitude: lng };
               })
             );
             const cancelledMap: Record<string, boolean> = {};
             const deletedMap: Record<string, boolean> = {};
+            const latLngMap: Record<string, { lat: number; lng: number }> = {};
             for (const res of results) {
               if (res.status === 'fulfilled') {
                 cancelledMap[res.value.task_id] = res.value.cancelled;
                 deletedMap[res.value.task_id] = res.value.deleted;
+                if (res.value.latitude != null && res.value.longitude != null) {
+                  latLngMap[res.value.task_id] = { lat: res.value.latitude, lng: res.value.longitude };
+                }
               }
             }
             const enriched = bids
-              .map((b) => ({ ...b, task_cancelled: cancelledMap[b.task_id] ?? false, task_deleted: deletedMap[b.task_id] ?? false }));
+              .map((b) => ({
+                ...b,
+                task_cancelled: cancelledMap[b.task_id] ?? false,
+                task_deleted: deletedMap[b.task_id] ?? false,
+                latitude: latLngMap[b.task_id]?.lat ?? b.latitude,
+                longitude: latLngMap[b.task_id]?.lng ?? b.longitude,
+              }));
             setRequestedTasks(enriched);
             try { sessionStorage.setItem("requestedTasks", JSON.stringify(enriched)); } catch {}
           } catch {
@@ -4691,6 +4712,11 @@ export default function Dashboard() {
                                 <div className="flex items-center gap-1 text-gray-500 dark:text-slate-400 min-w-0">
                                   <MapPin className="h-3 w-3 shrink-0" />
                                   <span className="text-xs truncate" title={task.location}>{shortLocation(task.location)}</span>
+                                  {typeof (task as any).distance_km === "number" && (
+                                    <Badge className="ml-1 shrink-0 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border-0 text-xs font-medium">
+                                      ~{(task as any).distance_km.toFixed(1)} km away
+                                    </Badge>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[#eff6ff]/80 dark:bg-slate-700/80 border border-[#3b82f6]/20 dark:border-slate-600/50">
@@ -4707,6 +4733,12 @@ export default function Dashboard() {
                                 <span className="text-xs font-medium text-gray-800 dark:text-slate-200 truncate">{task.posted_by || "Unknown"}</span>
                               </div>
                             </div>
+
+                            {task.latitude != null && task.longitude != null && (
+                              <div className="my-2">
+                                <TaskLocationMap latitude={task.latitude} longitude={task.longitude} location={task.location} height={100} variant="card" />
+                              </div>
+                            )}
 
                             {/* Action button */}
                             <div className="mt-4">
@@ -4864,6 +4896,12 @@ export default function Dashboard() {
                           <span className="text-xs">{task.posted_by}</span>
                         </div>
                       </div>
+
+                      {task.latitude != null && task.longitude != null && (
+                        <div className="my-2">
+                          <TaskLocationMap latitude={task.latitude} longitude={task.longitude} location={task.location} height={100} variant="card" />
+                        </div>
+                      )}
 
                       {/* Waiting for taskmaster message */}
                       {waitingForTaskmaster && (
@@ -5147,6 +5185,12 @@ export default function Dashboard() {
                           <span className="text-xs">{bid.posted_by}</span>
                         </div>
                       </div>
+
+                      {bid.latitude != null && bid.longitude != null && (
+                        <div className="my-3">
+                          <TaskLocationMap latitude={bid.latitude} longitude={bid.longitude} location={bid.task_location} height={100} variant="card" />
+                        </div>
+                      )}
 
                       {/* Action button */}
                       <div className="mt-4">

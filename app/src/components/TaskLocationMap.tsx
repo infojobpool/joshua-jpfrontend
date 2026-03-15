@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Map } from "leaflet";
-import "leaflet/dist/leaflet.css";
 import "leaflet/dist/leaflet.css";
 
 /**
@@ -30,6 +29,15 @@ export function TaskLocationMap({
 }: TaskLocationMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<Map | null>(null);
+  const [copied, setCopied] = useState(false);
+  const copyAddress = () => {
+    if (location && typeof navigator?.clipboard?.writeText === "function") {
+      navigator.clipboard.writeText(location).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      });
+    }
+  };
 
   if (
     latitude == null ||
@@ -49,7 +57,6 @@ export function TaskLocationMap({
 
     const initMap = async () => {
       const L = (await import("leaflet")).default;
-      await import("leaflet/dist/leaflet.css");
 
       // Fix default marker icon path (Leaflet issue with bundlers)
       delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -135,10 +142,17 @@ export function TaskLocationMap({
           </div>
         </div>
         {location && (
-          <div className="mb-3 px-3 py-2 rounded-lg bg-white/80 dark:bg-slate-700/50 border border-blue-100/50 dark:border-slate-600">
-            <p className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed">
+          <div className="mb-3 px-3 py-2 rounded-lg bg-white/80 dark:bg-slate-700/50 border border-blue-100/50 dark:border-slate-600 flex items-center justify-between gap-2">
+            <p className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed flex-1 min-w-0">
               {location}
             </p>
+            <button
+              type="button"
+              onClick={copyAddress}
+              className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-200 transition-colors"
+            >
+              {copied ? "✓ Copied!" : "Copy address"}
+            </button>
           </div>
         )}
         {mapBlock}
