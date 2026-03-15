@@ -43,6 +43,8 @@ export interface Image {
     offers: Offer[];
     assignedTasker?: User;
     progressLabel?: string;
+    latitude?: number;
+    longitude?: number;
   }
   
   export interface Bid {

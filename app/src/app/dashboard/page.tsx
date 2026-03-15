@@ -54,6 +54,7 @@ import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { EmptyState } from "@/components/EmptyState";
+import { TaskLocationMap } from "@/components/TaskLocationMap";
 
 interface Image {
   id: string;
@@ -99,6 +100,8 @@ interface Task {
   user_ref_id?: string | number;
   role?: string; // API role field: "poster" or "tasker"
   assigned_tasker_id?: string | number; // tasker user id for reviews
+  latitude?: number;
+  longitude?: number;
 }
 
 interface Bid {
@@ -1355,6 +1358,8 @@ export default function Dashboard() {
                       alt: `Job image ${index + 1}`,
                     }))
                   : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
+                latitude: typeof job.latitude === "number" ? job.latitude : undefined,
+                longitude: typeof job.longitude === "number" ? job.longitude : undefined,
               };
             });
 
@@ -4551,6 +4556,9 @@ export default function Dashboard() {
                                   <span className="text-xs truncate" title={task.location}>{shortLocation(task.location)}</span>
                                 </div>
                               </div>
+                              {task.latitude != null && task.longitude != null && (
+                                <TaskLocationMap latitude={task.latitude} longitude={task.longitude} location={task.location} height={90} className="my-2" />
+                              )}
                               <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[#eff6ff]/80 dark:bg-slate-700/80 border border-[#3b82f6]/20 dark:border-slate-600/50">
                                 <Avatar className="h-6 w-6 shrink-0">
                                   {(() => {

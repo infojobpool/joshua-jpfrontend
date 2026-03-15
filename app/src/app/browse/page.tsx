@@ -11,6 +11,7 @@ import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Clock, DollarSign, MapPin, Search, Filter, Star, Loader2, MapPinOff } from "lucide-react"
+import { TaskLocationMap } from "@/components/TaskLocationMap"
 import axiosInstance from "@/lib/axiosInstance"
 import { formatDateWithTime } from "@/lib/utils"
 import { storeTaskForNav, prefetchBidsForTask } from "@/lib/taskNavCache"
@@ -82,6 +83,9 @@ function TaskCardWithPrefetch({
               <Badge variant="secondary" className="text-xs font-normal">~{task.distance_km.toFixed(1)} km away</Badge>
             )}
           </div>
+          {task.latitude != null && task.longitude != null && (
+            <TaskLocationMap latitude={task.latitude} longitude={task.longitude} location={task.location} height={100} className="mt-1" />
+          )}
           <div className="flex items-center gap-2">
             <Avatar className="h-4 w-4">
               <AvatarFallback>{task.posted_by?.charAt(0)?.toUpperCase()}</AvatarFallback>
@@ -153,6 +157,8 @@ export default function BrowseTasksPage() {
     job_images?: { urls: string[] };
     offers?: number;
     distance_km?: number;
+    latitude?: number;
+    longitude?: number;
   }
 
   interface Category {
@@ -178,6 +184,8 @@ export default function BrowseTasksPage() {
     postedAt: job.created_at || job.timestamp || job.job_due_date || "",
     offers: 0,
     distance_km: typeof job.distance_km === "number" ? job.distance_km : undefined,
+    latitude: typeof job.latitude === "number" ? job.latitude : undefined,
+    longitude: typeof job.longitude === "number" ? job.longitude : undefined,
   });
 
   // Fetch tasks from API – jobs-nearby when Near me mode + coords, else get-all-jobs

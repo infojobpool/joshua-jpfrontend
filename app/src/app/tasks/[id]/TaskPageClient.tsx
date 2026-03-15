@@ -768,6 +768,8 @@ export default function TaskDetailPage() {
           description: job.job_description,
           budget: job.job_budget,
           location: job.job_location,
+          latitude: typeof job.latitude === "number" ? job.latitude : undefined,
+          longitude: typeof job.longitude === "number" ? job.longitude : undefined,
           status: jobStatus,
           job_completion_status: job.job_completion_status,
           tasker_completed: Boolean((job as any).tasker_completed),

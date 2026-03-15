@@ -138,6 +138,7 @@
 
 "use client";
 import { Calendar, Clock, IndianRupee, MapPin, MessageSquare, SquarePen } from "lucide-react";
+import { TaskLocationMap } from "@/components/TaskLocationMap";
 import Image from "next/image";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
@@ -165,6 +166,8 @@ interface Task {
   poster: User;
   offers: Offer[];
   assignedTasker?: User;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface Image {
@@ -519,6 +522,19 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
               <p className="text-gray-700 text-xs leading-relaxed line-clamp-2">{task.location}</p>
             )}
           </div>
+
+          {/* Map - when coordinates available */}
+          {!isEditing && task.latitude != null && task.longitude != null && (
+            <div className="col-span-2">
+              <TaskLocationMap
+                latitude={task.latitude}
+                longitude={task.longitude}
+                location={task.location}
+                height={160}
+                className="mt-2 rounded-lg overflow-hidden"
+              />
+            </div>
+          )}
 
           {/* Due Date */}
           <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-3 border border-purple-200/50">
