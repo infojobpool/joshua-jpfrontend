@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, Suspense } from "react"
+import React, { Component, useState, useEffect, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -11,11 +11,39 @@ import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Clock, DollarSign, MapPin, Search, Filter, Star, Loader2, MapPinOff } from "lucide-react"
-import { TaskLocationMap } from "@/components/TaskLocationMap"
 import axiosInstance from "@/lib/axiosInstance"
 import { formatDateWithTime } from "@/lib/utils"
 import { storeTaskForNav, prefetchBidsForTask } from "@/lib/taskNavCache"
 import { toast } from "sonner"
+
+class BrowseErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { hasError: boolean; retryKey: number }
+> {
+  state = { hasError: false, retryKey: 0 }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  handleRetry = () => {
+    this.setState((s) => ({ hasError: false, retryKey: s.retryKey + 1 }))
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-[50vh] flex flex-col items-center justify-center px-4 gap-4">
+          <p className="text-muted-foreground text-center">Unable to load tasks. Please try again.</p>
+          <Button onClick={this.handleRetry} variant="outline">
+            Try again
+          </Button>
+          <Link href="/">
+            <Button variant="ghost">Go home</Button>
+          </Link>
+        </div>
+      )
+    }
+    return <div key={this.state.retryKey}>{this.props.children}</div>
+  }
+}
 
 function TaskCardWithPrefetch({
   task,
@@ -83,8 +111,16 @@ function TaskCardWithPrefetch({
               <Badge variant="secondary" className="text-xs font-normal">~{task.distance_km.toFixed(1)} km away</Badge>
             )}
           </div>
-          {((task.latitude != null && task.longitude != null) || (task.location && task.location.trim().length >= 4)) && (
-            <TaskLocationMap latitude={task.latitude} longitude={task.longitude} location={task.location} height={100} className="mt-1" />
+          {task.location && (
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.location)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 mt-1"
+            >
+              <MapPin className="h-4 w-4 shrink-0" />
+              Open in Google Maps
+            </a>
           )}
           <div className="flex items-center gap-2">
             <Avatar className="h-4 w-4">
@@ -120,11 +156,13 @@ function BrowseContent() {
   const [user, setUser] = useState<{ name: string } | null>(null)
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
-  const [category, setCategory] = useState(searchParams.get("category") || "all")
+  const [category, setCategory] = useState("all")
 
   useEffect(() => {
-    const cat = searchParams.get("category")
-    if (cat != null) setCategory(cat)
+    try {
+      const cat = searchParams?.get?.("category")
+      if (cat) setCategory(cat)
+    } catch (_) {}
   }, [searchParams])
   const [priceRange, setPriceRange] = useState([0, 500])
   const [location, setLocation] = useState("")
@@ -167,7 +205,9 @@ function BrowseContent() {
     job_count?: number;
   }
 
-  const mapJobToTask = (job: any): Task => ({
+  const mapJobToTask = (job: any): Task => {
+    if (!job || typeof job !== "object") return null as any;
+    return ({
     id: job.job_id,
     user_ref_id: job.user_ref_id,
     title: job.job_title,
@@ -187,6 +227,7 @@ function BrowseContent() {
     latitude: typeof job.latitude === "number" ? job.latitude : undefined,
     longitude: typeof job.longitude === "number" ? job.longitude : undefined,
   });
+  };
 
   // Fetch tasks from API – jobs-nearby when Near me mode + coords, else get-all-jobs
   const fetchTasks = async (coords?: { lat: number; lng: number } | null) => {
@@ -220,11 +261,16 @@ function BrowseContent() {
       }
 
       const response = await axiosInstance.get("/get-all-jobs/");
-      if (response.data.status_code === 200) {
-        const mappedTasks = (response.data.data.jobs ?? []).map(mapJobToTask);
+      const data = response?.data;
+      if (data?.status_code === 200) {
+        const raw = data?.data?.jobs ?? [];
+        const jobs = Array.isArray(raw) ? raw : [];
+        const mappedTasks = jobs.map((j: any) => {
+          try { return mapJobToTask(j); } catch { return null; }
+        }).filter(Boolean);
         setTasks(mappedTasks);
       } else {
-        toast.error(response.data.message || "Failed to fetch tasks");
+        toast.error(data?.message || "Failed to fetch tasks");
       }
     } catch (error) {
       console.log("API not available, using sample tasks");
@@ -332,10 +378,13 @@ function BrowseContent() {
   const fetchCategories = async () => {
     try {
       const response = await axiosInstance.get("get-all-categories/");
-      if (response.data.status_code === 200) {
-        setCategories(response.data.data);
+      const data = response?.data;
+      if (data?.status_code === 200) {
+        const raw = data?.data?.categories ?? data?.data ?? data?.categories ?? data;
+        const list = Array.isArray(raw) ? raw : [];
+        setCategories(list);
       } else {
-        toast.error(response.data.message || "Failed to fetch categories");
+        toast.error(data?.message || "Failed to fetch categories");
       }
     } catch (error) {
       console.log("Categories API not available, using sample categories");
@@ -730,7 +779,9 @@ export default function BrowsePage() {
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     }>
-      <BrowseContent />
+      <BrowseErrorBoundary>
+        <BrowseContent />
+      </BrowseErrorBoundary>
     </Suspense>
   )
 }
