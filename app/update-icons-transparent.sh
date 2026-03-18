@@ -1,13 +1,24 @@
 #!/bin/bash
 
 # Script to update all app icons and favicons with transparent background logo
-# This script assumes the logo has already been processed to have a transparent background
+# Usage: ./update-icons-transparent.sh [path-to-your-icon.png]
+#   - With no args: uses public/images/jobpool-logo.png
+#   - With path: uses your PNG file (512x512 or 1024x1024 recommended)
+# Run from app/ directory: cd app && ./update-icons-transparent.sh path/to/new-icon.png
 
-LOGO_SOURCE="public/images/jobpool-logo.png"
+LOGO_SOURCE="${1:-public/images/jobpool-logo.png}"
 TEMP_DIR="/tmp/jobpool-icons-$$"
 mkdir -p "$TEMP_DIR"
 
-echo "🔄 Updating icons with transparent background..."
+if [ ! -f "$LOGO_SOURCE" ]; then
+    echo "❌ Error: Icon file not found: $LOGO_SOURCE"
+    echo "   Place your new icon (PNG, 512x512 or 1024x1024) and run:"
+    echo "   ./update-icons-transparent.sh path/to/your-icon.png"
+    exit 1
+fi
+
+echo "📂 Using icon: $LOGO_SOURCE"
+echo "🔄 Updating icons..."
 
 # Function to resize and copy icon
 resize_icon() {
@@ -37,26 +48,21 @@ cp "$TEMP_DIR/favicon-512.png" public/icons/icon-512x512-real.png
 echo "🌐 Updating favicon.ico..."
 sips -s format ico "$TEMP_DIR/favicon-32.png" --out src/app/favicon.ico 2>/dev/null || cp "$TEMP_DIR/favicon-32.png" src/app/favicon.ico
 
-# iOS App Icons
-echo "🍎 Updating iOS app icons..."
+# iOS App Icons (skip if ios folder doesn't exist)
 IOS_ICON_DIR="ios/App/App/Assets.xcassets/AppIcon.appiconset"
-resize_icon 1024 "$IOS_ICON_DIR/AppIcon-512@2x.png"
+if [ -d "$IOS_ICON_DIR" ]; then
+    echo "🍎 Updating iOS app icons..."
+    resize_icon 1024 "$IOS_ICON_DIR/AppIcon-512@2x.png"
+fi
 
-# Android App Icons (all mipmap sizes)
+# Android App Icons (all mipmap sizes) - compatible with bash 3.x (macOS default)
 echo "🤖 Updating Android app icons..."
 ANDROID_RES="android/app/src/main/res"
 
-# Standard Android icon sizes
-declare -A ANDROID_SIZES=(
-    ["mipmap-mdpi"]=48
-    ["mipmap-hdpi"]=72
-    ["mipmap-xhdpi"]=96
-    ["mipmap-xxhdpi"]=144
-    ["mipmap-xxxhdpi"]=192
-)
-
-for folder in "${!ANDROID_SIZES[@]}"; do
-    size=${ANDROID_SIZES[$folder]}
+# folder:size pairs for Android mipmap densities
+for pair in "mipmap-mdpi:48" "mipmap-hdpi:72" "mipmap-xhdpi:96" "mipmap-xxhdpi:144" "mipmap-xxxhdpi:192"; do
+    folder="${pair%%:*}"
+    size="${pair##*:}"
     echo "  Creating $folder icons (${size}x${size})..."
     resize_icon $size "$TEMP_DIR/android-${size}.png"
     cp "$TEMP_DIR/android-${size}.png" "$ANDROID_RES/$folder/ic_launcher.png"
