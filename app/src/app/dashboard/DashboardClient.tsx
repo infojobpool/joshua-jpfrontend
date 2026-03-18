@@ -51,7 +51,6 @@ import { storeTaskForNav, prefetchBidsForTask } from "@/lib/taskNavCache";
 import { useNotifications } from "@/lib/useNotifications";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { PullToRefresh } from "@/components/PullToRefresh";
 import { EmptyState } from "@/components/EmptyState";
 
 // Load Leaflet map client-only to avoid mobile crashes
@@ -3567,7 +3566,7 @@ export default function Dashboard() {
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50/90 via-white to-slate-50/70 dark:bg-slate-950 overflow-x-hidden">
       <main className="flex-1 w-full max-w-none mx-auto py-3 md:py-10 px-4 md:px-8 lg:px-12 pb-28 md:pb-10">
-        <PullToRefresh onRefresh={handleRefresh}>
+        <div className="contents">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 md:mb-8 gap-3 md:gap-4 animate-fade-in-up">
           {/* Move profile block up on mobile */}
           {mobile && (
@@ -5245,7 +5244,7 @@ export default function Dashboard() {
           isTaskmasterReviewingTasker={completeReviewAsTaskmaster}
         />
 
-        </PullToRefresh>
+        </div>
       </main>
     </div>
   );
