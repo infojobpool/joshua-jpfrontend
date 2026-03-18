@@ -494,6 +494,9 @@ export default function Dashboard() {
   const [posterProfileCache, setPosterProfileCache] = useState<Record<string, string>>({});
   const fetchedPosterIds = useRef<Set<string>>(new Set());
   const [profileBannerDismissed, setProfileBannerDismissed] = useState(false);
+  const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
+  const [completeReviewTask, setCompleteReviewTask] = useState<Task | null>(null);
+  const [completeReviewAsTaskmaster, setCompleteReviewAsTaskmaster] = useState(false);
 
   // Safe user for UI (prevents null TS checks in JSX). Support both profile_image and profile_img from API.
   const safeUser = user ? { ...user, profile_image: user.profile_image || (user as any).profile_img || "" } : { name: "User", email: "", profile_image: "" } as any;
@@ -2714,10 +2717,6 @@ export default function Dashboard() {
       }
     } catch {}
   }, [completedTasks]);
-
-  const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
-  const [completeReviewTask, setCompleteReviewTask] = useState<Task | null>(null);
-  const [completeReviewAsTaskmaster, setCompleteReviewAsTaskmaster] = useState(false);
 
   const handleComplete = async (jobId: string) => {
     if (completingTaskId) return; // Prevent multiple clicks
