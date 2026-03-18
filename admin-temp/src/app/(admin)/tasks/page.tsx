@@ -9,6 +9,7 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -852,7 +853,6 @@ export default function TasksPage() {
             <TableRow>
               <TableHead>Task</TableHead>
               <TableHead>Category</TableHead>
-              <TableHead className="hidden md:table-cell">Suggested</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="hidden md:table-cell">Taskmaster</TableHead>
               <TableHead className="hidden md:table-cell">Tasker</TableHead>
@@ -867,7 +867,7 @@ export default function TasksPage() {
             {isLoading ? (
               <TableRow>
                 <TableCell
-                  colSpan={10}
+                  colSpan={9}
                   className="text-center py-8 text-muted-foreground"
                 >
                   Loading...
@@ -876,7 +876,7 @@ export default function TasksPage() {
             ) : filteredTasks.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={10}
+                  colSpan={9}
                   className="text-center py-8 text-muted-foreground"
                 >
                   No tasks found
@@ -892,15 +892,19 @@ export default function TasksPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{task.category}</Badge>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
                     {task.customCategoryName ? (
-                      <span className="text-sm text-blue-600 font-medium" title="User suggested category">
+                      <Badge
+                        variant="outline"
+                        className="border-blue-300 bg-blue-50 text-blue-700 font-medium gap-1"
+                        title="User suggested category"
+                      >
+                        <Pencil className="h-3 w-3" />
                         {task.customCategoryName}
-                      </span>
+                      </Badge>
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      <Badge variant="outline" className="border-gray-200 text-gray-700">
+                        {task.category}
+                      </Badge>
                     )}
                   </TableCell>
                   <TableCell>
@@ -1152,23 +1156,27 @@ export default function TasksPage() {
                                   {selectedTask.title}
                                 </h2>
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <Badge variant="outline">
-                                    {selectedTask.category}
-                                  </Badge>
+                                  {selectedTask.customCategoryName ? (
+                                    <Badge
+                                      variant="outline"
+                                      className="border-blue-300 bg-blue-50 text-blue-700 font-medium gap-1"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                      {selectedTask.customCategoryName}
+                                      <span className="text-blue-500/80 text-xs font-normal">(suggested)</span>
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline">{selectedTask.category}</Badge>
+                                  )}
                                   {selectedTask.customCategoryName && (
-                                    <span className="flex items-center gap-2">
-                                      <span className="text-sm text-blue-600">
-                                        User suggested: {selectedTask.customCategoryName}
-                                      </span>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => handlePromoteCustomCategory(selectedTask.id)}
-                                        disabled={!!promotingTaskId}
-                                      >
-                                        {promotingTaskId === selectedTask.id ? "Promoting…" : "Promote to category"}
-                                      </Button>
-                                    </span>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handlePromoteCustomCategory(selectedTask.id)}
+                                      disabled={!!promotingTaskId}
+                                    >
+                                      {promotingTaskId === selectedTask.id ? "Promoting…" : "Promote to category"}
+                                    </Button>
                                   )}
                                   <Badge
                                     variant={getStatusBadgeVariant(
