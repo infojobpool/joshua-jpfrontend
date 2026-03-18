@@ -61,6 +61,7 @@ const TaskLocationMap = dynamic(
   () => import("@/components/TaskLocationMap").then((m) => ({ default: m.TaskLocationMap })),
   { ssr: false }
 );
+const NotificationBar = dynamic(() => import("@/components/NotificationBar"), { ssr: false });
 
 interface Image {
   id: string;
@@ -3502,8 +3503,6 @@ export default function Dashboard() {
     return null;
   }
 
-  const NotificationBar = dynamic(() => import("@/components/NotificationBar"), { ssr: false });
-
   // Always use unified dashboard; remove dummy MobileDashboard on mobile
 
   const counts = {
@@ -4109,7 +4108,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          <TabsContent value="my-tasks" forceMount className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
+          <TabsContent value="my-tasks" className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks You've Posted</h2>
             {/* Premium Toolbar */}
             <div className={`mb-3 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 shadow-sm transition-all duration-200`}> 
@@ -4383,7 +4382,7 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="available" forceMount className="space-y-4 mt-4 animate-fade-in-up min-h-[500px]">
+          <TabsContent value="available" className="space-y-4 mt-4 animate-fade-in-up min-h-[500px]">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Available Tasks</h2>
             <div className={`grid gap-6 ${isMobile ? "grid-cols-1" : "md:grid-cols-4"}`} style={{zIndex:1, position:'relative'}}>
               <div className={`${isMobile ? "hidden" : "md:col-span-1"} space-y-6`}>
@@ -4692,7 +4691,7 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
-          <TabsContent value="assigned" forceMount className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
+          <TabsContent value="assigned" className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks Assigned to You</h2>
               {assignedTasks.length > 0 && (
@@ -4931,7 +4930,7 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="completed" forceMount className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
+          <TabsContent value="completed" className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Completed</h2>
               {completedTasks.length > 0 && (
@@ -5040,7 +5039,7 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="my-bids" forceMount className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
+          <TabsContent value="my-bids" className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />My Bids</h2>
               {requestedTasks.length > 0 && (
