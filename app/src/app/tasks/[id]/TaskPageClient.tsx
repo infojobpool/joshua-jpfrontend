@@ -775,15 +775,21 @@ export default function TaskDetailPage() {
           tasker_completed: Boolean((job as any).tasker_completed),
           taskmaster_completed: Boolean((job as any).taskmaster_completed),
           postedAt: formattedPosted,
-          dueDate: job.job_due_date
-            ? new Date(job.job_due_date).toLocaleDateString("en-GB", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-                timeZone: "UTC",
-              })
-            : "N/A",
-          category: job.job_category_name,
+          dueDate:
+            job.due_date_flexible === true || !job.job_due_date
+              ? "Flexible"
+              : (() => {
+                  const d = new Date(job.job_due_date);
+                  return !isNaN(d.getTime())
+                    ? d.toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        timeZone: "UTC",
+                      })
+                    : "Flexible";
+                })(),
+          category: job.custom_category_name || job.job_category_name || "General",
           images: job.job_images?.urls?.length
             ? job.job_images.urls.map((url: string, index: number) => ({
                 id: `img${index + 1}`,

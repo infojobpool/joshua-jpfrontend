@@ -62,10 +62,21 @@ interface ImageData {
 
 const CUSTOM_CATEGORY_VALUE = "__custom__";
 
-/** Get a fallback category ID when user types their own (Other/General preferred for admin clarity) */
-function getFallbackCategoryId(categories: Category[]): string | null {
+/** Get a fallback category ID when user types their own. Tries to match by name first, then Other/General, then first. */
+function getFallbackCategoryId(categories: Category[], customName?: string): string | null {
   if (!categories.length) return null;
-  const lower = (s: string) => s.toLowerCase();
+  const lower = (s: string) => (s || "").toLowerCase().trim();
+  const custom = lower(customName || "");
+
+  // If user typed something, try to find a category whose name contains it (e.g. "delivery" → "Delivery & Moving")
+  if (custom) {
+    const matched = categories.find((c) => {
+      const n = lower(c.name);
+      return n.includes(custom) || custom.includes(n);
+    });
+    if (matched) return matched.id;
+  }
+
   const other = categories.find((c) => lower(c.name).includes("other"));
   if (other) return other.id;
   const general = categories.find((c) => lower(c.name).includes("general"));
@@ -366,7 +377,7 @@ export default function PostTaskPage() {
 
     const isCustomCategory = formData.category === CUSTOM_CATEGORY_VALUE;
     if (isCustomCategory) {
-      const fallbackId = getFallbackCategoryId(categories);
+      const fallbackId = getFallbackCategoryId(categories, customCategoryName);
       formDataToSubmit.append("category", fallbackId || categories[0]?.id || "general");
       formDataToSubmit.append("custom_category_name", customCategoryName.trim());
     } else {
