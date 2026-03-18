@@ -13,7 +13,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -61,6 +60,59 @@ const TaskLocationMap = dynamic(
   { ssr: false }
 );
 const NotificationBar = dynamic(() => import("@/components/NotificationBar"), { ssr: false });
+
+function CancelReasonDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  reason,
+  onReasonChange,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  title: string;
+  description: string;
+  reason: string;
+  onReasonChange: (v: string) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (open) el.showModal();
+    else el.close();
+  }, [open]);
+  return (
+    <dialog
+      ref={ref}
+      onClose={() => { onOpenChange(false); onCancel(); }}
+      onCancel={() => { onOpenChange(false); onCancel(); }}
+      className="fixed inset-0 z-50 m-auto max-h-[90vh] w-full max-w-md rounded-lg border bg-white p-6 shadow-lg [&::backdrop]:bg-black/50 dark:bg-slate-900 dark:border-slate-700"
+    >
+      <h2 className="text-lg font-semibold">{title}</h2>
+      <p className="mt-2 text-sm text-gray-500">{description}</p>
+      <div className="mt-4">
+        <label htmlFor="cancel-reason" className="text-sm font-medium">Cancellation Reason *</label>
+        <Textarea
+          id="cancel-reason"
+          placeholder="Please explain why you need to cancel this task..."
+          value={reason}
+          onChange={(e) => onReasonChange(e.target.value)}
+          className="mt-2 min-h-[100px]"
+        />
+      </div>
+      <div className="mt-6 flex justify-end gap-2">
+        <Button variant="outline" onClick={() => { onOpenChange(false); onCancel(); }}>Cancel</Button>
+        <Button variant="destructive" onClick={onConfirm}>Submit Cancellation</Button>
+      </div>
+    </dialog>
+  );
+}
 
 interface Image {
   id: string;
@@ -5154,90 +5206,32 @@ export default function Dashboard() {
           confirmText="Delete"
           cancelText="Cancel"
         />
-        <Dialog open={cancelConfirmOpen} onOpenChange={setCancelConfirmOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Cancel Posted Task</DialogTitle>
-              <DialogDescription>
-                Canceling this task may incur a 4%+GST cancellation fee (if payment was made). Please provide a reason for cancellation.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <label htmlFor="taskmaster-cancellation-reason" className="text-sm font-medium">
-                  Cancellation Reason *
-                </label>
-                <Textarea
-                  id="taskmaster-cancellation-reason"
-                  placeholder="Please explain why you need to cancel this task..."
-                  value={cancellationReason}
-                  onChange={(e) => setCancellationReason(e.target.value)}
-                  className="min-h-[100px]"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setCancelConfirmOpen(false);
-                  setCancellationReason("");
-                  setSelectedJobId(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleConfirmCancel}
-                variant="destructive"
-              >
-                Submit Cancellation
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <Dialog open={assignedCancelOpen} onOpenChange={setAssignedCancelOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Cancel Assigned Task</DialogTitle>
-              <DialogDescription>
-                Please provide a reason for cancelling this task. The admin will be notified with your reason.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <label htmlFor="cancellation-reason" className="text-sm font-medium">
-                  Cancellation Reason *
-                </label>
-                <Textarea
-                  id="cancellation-reason"
-                  placeholder="Please explain why you need to cancel this task..."
-                  value={cancellationReason}
-                  onChange={(e) => setCancellationReason(e.target.value)}
-                  className="min-h-[100px]"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setAssignedCancelOpen(false);
-                  setCancellationReason("");
-                  setSelectedAssignedId(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleAssignedConfirmCancel}
-                variant="destructive"
-              >
-                Submit Cancellation
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <CancelReasonDialog
+          open={cancelConfirmOpen}
+          onOpenChange={setCancelConfirmOpen}
+          title="Cancel Posted Task"
+          description="Canceling this task may incur a 4%+GST cancellation fee (if payment was made). Please provide a reason for cancellation."
+          reason={cancellationReason}
+          onReasonChange={setCancellationReason}
+          onConfirm={handleConfirmCancel}
+          onCancel={() => {
+            setCancellationReason("");
+            setSelectedJobId(null);
+          }}
+        />
+        <CancelReasonDialog
+          open={assignedCancelOpen}
+          onOpenChange={setAssignedCancelOpen}
+          title="Cancel Assigned Task"
+          description="Please provide a reason for cancelling this task. The admin will be notified with your reason."
+          reason={cancellationReason}
+          onReasonChange={setCancellationReason}
+          onConfirm={handleAssignedConfirmCancel}
+          onCancel={() => {
+            setCancellationReason("");
+            setSelectedAssignedId(null);
+          }}
+        />
 
         <CompletionReviewModal
           open={!!completeReviewTask}
