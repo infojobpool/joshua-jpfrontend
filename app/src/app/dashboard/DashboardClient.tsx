@@ -14,7 +14,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
@@ -4123,43 +4122,16 @@ export default function Dashboard() {
                 />
               </div>
               <div className="flex items-center gap-2 flex-wrap">
-                {isMobile ? (
-                  <>
-                    <select value={myTasksFilter} onChange={e=>setMyTasksFilter(e.target.value as any)} className="h-10 w-44 rounded-lg border border-gray-200 bg-white px-3 text-gray-700">
-                      <option value="all">All</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="open">Open</option>
-                      <option value="completed">Completed</option>
-                    </select>
-                    <select value={myTasksSortBy} onChange={e=>setMyTasksSortBy(e.target.value)} className="h-10 w-40 rounded-lg border border-gray-200 bg-white px-3 text-gray-700">
-                      <option value="newest">Newest first</option>
-                      <option value="oldest">Oldest first</option>
-                    </select>
-                  </>
-                ) : (
-                  <>
-                    <Select value={myTasksFilter} onValueChange={(v) => setMyTasksFilter(v as any)}>
-                      <SelectTrigger className="h-9 w-44">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="open">Open</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={myTasksSortBy} onValueChange={setMyTasksSortBy}>
-                      <SelectTrigger className="h-9 w-40">
-                        <SelectValue placeholder="Sort" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="newest">Newest first</SelectItem>
-                        <SelectItem value="oldest">Oldest first</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </>
-                )}
+                <select value={myTasksFilter} onChange={e=>setMyTasksFilter(e.target.value as any)} className={`${isMobile ? "h-10" : "h-9"} w-44 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700`}>
+                  <option value="all">All</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="open">Open</option>
+                  <option value="completed">Completed</option>
+                </select>
+                <select value={myTasksSortBy} onChange={e=>setMyTasksSortBy(e.target.value)} className={`${isMobile ? "h-10" : "h-9"} w-40 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700`}>
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                </select>
                 <Button variant="outline" className={`${isMobile ? "h-10" : "h-9"} border-gray-300`} onClick={() => { setMyTasksFilter("all"); setMyTasksQuery(""); }}>Clear</Button>
               </div>
               {!isMobile && (
@@ -4436,25 +4408,16 @@ export default function Dashboard() {
                         Category
                       </label>
                         <div className="bg-white border border-gray-200 rounded-lg p-2 hover:border-gray-300 transition-all duration-200">
-                      <Select value={category} onValueChange={setCategory}>
-                            <SelectTrigger className="border-0 focus:ring-0 text-gray-700">
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                            <SelectContent className="rounded-lg border border-gray-200 shadow-lg max-h-[300px] overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgb(156_163_175)_rgb(243_244_246)] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-gray-500">
-                              <SelectItem value="all" className="rounded-md">All Categories</SelectItem>
+                      <select value={category} onChange={e=>setCategory(e.target.value)} className="w-full border-0 focus:ring-0 text-gray-700 bg-transparent">
+                              <option value="all">All Categories</option>
                           {categories.length > 0 ? (
                             categories.map((cat) => (
-                                  <SelectItem key={cat.id} value={cat.id} className="rounded-md">
-                                {cat.name}
-                              </SelectItem>
+                                  <option key={cat.id} value={cat.id}>{cat.name}</option>
                             ))
                           ) : (
-                                <SelectItem value="loading" disabled className="rounded-md">
-                              Loading categories...
-                            </SelectItem>
+                                <option value="loading" disabled>Loading categories...</option>
                           )}
-                        </SelectContent>
-                      </Select>
+                      </select>
                     </div>
                       </div>
 
@@ -4513,15 +4476,12 @@ export default function Dashboard() {
                             {isRequestingLocation ? "Getting…" : nearMeMode ? "On" : "Off"}
                           </Button>
                           {nearMeMode && (
-                            <Select value={String(radiusKm)} onValueChange={(v) => setRadiusKm(Number(v))}>
-                              <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="5">5 km</SelectItem>
-                                <SelectItem value="10">10 km</SelectItem>
-                                <SelectItem value="25">25 km</SelectItem>
-                                <SelectItem value="50">50 km</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <select value={String(radiusKm)} onChange={e=>setRadiusKm(Number(e.target.value))} className="w-24 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-700">
+                              <option value="5">5 km</option>
+                              <option value="10">10 km</option>
+                              <option value="25">25 km</option>
+                              <option value="50">50 km</option>
+                            </select>
                           )}
                         </div>
                         {nearMeError && <p className="text-xs text-amber-600 mt-1">{nearMeError}</p>}
@@ -4583,18 +4543,13 @@ export default function Dashboard() {
                   <p className="text-sm text-muted-foreground">
                     {sortedAvailableTasks.length} tasks found
                   </p>
-                  <Select value={availableSortBy} onValueChange={setAvailableSortBy}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Sort by" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {nearMeMode && <SelectItem value="nearest">Nearest first</SelectItem>}
-                      <SelectItem value="newest">Newest first</SelectItem>
-                      <SelectItem value="oldest">Oldest first</SelectItem>
-                      <SelectItem value="highest">Highest budget</SelectItem>
-                      <SelectItem value="lowest">Lowest budget</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <select value={availableSortBy} onChange={e=>setAvailableSortBy(e.target.value)} className="w-[180px] rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
+                    {nearMeMode && <option value="nearest">Nearest first</option>}
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                    <option value="highest">Highest budget</option>
+                    <option value="lowest">Lowest budget</option>
+                  </select>
                 </div>
 
                 {sortedAvailableTasks.length === 0 ? (
@@ -4739,15 +4694,10 @@ export default function Dashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks Assigned to You</h2>
               {assignedTasks.length > 0 && (
-                <Select value={assignedSortBy} onValueChange={setAssignedSortBy}>
-                  <SelectTrigger className="w-[160px] sm:w-[180px] border-gray-200 dark:border-slate-600">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="newest">Newest first</SelectItem>
-                    <SelectItem value="oldest">Oldest first</SelectItem>
-                  </SelectContent>
-                </Select>
+                <select value={assignedSortBy} onChange={e=>setAssignedSortBy(e.target.value)} className="w-[160px] sm:w-[180px] rounded-md border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-gray-700 dark:text-slate-200">
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                </select>
               )}
             </div>
             {assignedTasks.length === 0 ? (
@@ -4981,15 +4931,10 @@ export default function Dashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Completed</h2>
               {completedTasks.length > 0 && (
-                <Select value={completedSortBy} onValueChange={setCompletedSortBy}>
-                  <SelectTrigger className="w-[160px] sm:w-[180px] border-gray-200 dark:border-slate-600">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="newest">Newest first</SelectItem>
-                    <SelectItem value="oldest">Oldest first</SelectItem>
-                  </SelectContent>
-                </Select>
+                <select value={completedSortBy} onChange={e=>setCompletedSortBy(e.target.value)} className="w-[160px] sm:w-[180px] rounded-md border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-gray-700 dark:text-slate-200">
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                </select>
               )}
             </div>
             {completedTasksLoading ? (
@@ -5095,15 +5040,10 @@ export default function Dashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />My Bids</h2>
               {requestedTasks.length > 0 && (
-                <Select value={myBidsSortBy} onValueChange={setMyBidsSortBy}>
-                  <SelectTrigger className="w-[160px] sm:w-[180px] border-gray-200 dark:border-slate-600">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="newest">Newest first</SelectItem>
-                    <SelectItem value="oldest">Oldest first</SelectItem>
-                  </SelectContent>
-                </Select>
+                <select value={myBidsSortBy} onChange={e=>setMyBidsSortBy(e.target.value)} className="w-[160px] sm:w-[180px] rounded-md border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-gray-700 dark:text-slate-200">
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                </select>
               )}
             </div>
             {requestedTasks.length === 0 ? (
