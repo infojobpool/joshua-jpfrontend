@@ -151,6 +151,38 @@
   animation: loadingDot 1.2s ease-in-out infinite;
 }
 
+/* Dashboard animations - moved from styled-jsx to fix React 310 */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse-slow {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out;
+}
+.animate-slide-in-right {
+  animation: slideInRight 0.5s ease-out;
+}
+.animate-pulse-slow {
+  animation: pulse-slow 2s ease-in-out infinite;
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
+}
+
 /* Tab content enter animation - used by TabsContent */
 @keyframes tabPanelIn {
   from {

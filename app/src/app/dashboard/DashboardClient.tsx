@@ -1265,11 +1265,6 @@ export default function Dashboard() {
     fetchUserTasks();
   }, [user, userId, effectiveUserId, taskOrders, refetchPostedTrigger]);
 
-  // Test useEffect
-  useEffect(() => {
-    console.log("🔍 TEST useEffect - This should always run");
-  }, []);
-
   // Load available tasks from localStorage on mount
   useEffect(() => {
     const loadCachedTasks = () => {
@@ -3520,77 +3515,6 @@ export default function Dashboard() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50/90 via-white to-slate-50/70 dark:bg-slate-950 overflow-x-hidden">
-      <style jsx>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes slideInRight {
-          from {
-            opacity: 0;
-            transform: translateX(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-        @keyframes pulse {
-          0%, 100% {
-            transform: scale(1);
-          }
-          50% {
-            transform: scale(1.05);
-          }
-        }
-        @keyframes shimmer {
-          0% {
-            background-position: -200px 0;
-          }
-          100% {
-            background-position: calc(200px + 100%) 0;
-          }
-        }
-        .animate-fade-in-up {
-          animation: fadeInUp 0.6s ease-out;
-        }
-        .animate-slide-in-right {
-          animation: slideInRight 0.5s ease-out;
-        }
-        .animate-pulse-slow {
-          animation: pulse 2s ease-in-out infinite;
-        }
-        .animate-shimmer {
-          background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-          background-size: 200px 100%;
-          animation: shimmer 1.5s infinite;
-        }
-        .tab-content-enter {
-          opacity: 0;
-          transform: translateX(20px);
-        }
-        .tab-content-enter-active {
-          opacity: 1;
-          transform: translateX(0);
-          transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-        .tab-content-exit {
-          opacity: 1;
-          transform: translateX(0);
-        }
-        .tab-content-exit-active {
-          opacity: 0;
-          transform: translateX(-20px);
-          transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-      `}</style>
-      
       <main className="flex-1 w-full max-w-none mx-auto py-3 md:py-10 px-4 md:px-8 lg:px-12 pb-28 md:pb-10">
         <PullToRefresh onRefresh={handleRefresh}>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 md:mb-8 gap-3 md:gap-4 animate-fade-in-up">
