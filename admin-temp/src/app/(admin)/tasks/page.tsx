@@ -67,6 +67,7 @@ interface Job {
   job_description: string;
   job_category: string;
   job_category_name: string;
+  custom_category_name?: string | null;
   tasker_id?: string;
   tasker_name?: string;
   job_budget: number;
@@ -97,6 +98,7 @@ interface Task {
   title: string;
   description: string;
   category: string;
+  customCategoryName?: string | null;
   status: "Open" | "Assigned" | "In Progress" | "Completed" | "Cancelled" | "Taskmaster confirmed" | "Tasker confirmed";
   location: string;
   dueDate: string;
@@ -172,6 +174,7 @@ export default function TasksPage() {
           title: job.job_title,
           description: job.job_description,
           category: job.job_category_name,
+          customCategoryName: job.custom_category_name || null,
           status: getTaskStatus(job),
           location: job.job_location,
           dueDate: job.job_due_date,
@@ -261,6 +264,7 @@ export default function TasksPage() {
               title: job.job_title,
               description: job.job_description,
               category: job.job_category_name || job.job_category,
+              customCategoryName: job.custom_category_name || null,
               status: getTaskStatus(job),
               location: job.job_location,
               dueDate: job.job_due_date,
@@ -502,6 +506,9 @@ export default function TasksPage() {
       // Send both name and generic key to satisfy backend variants
       fd.append("job_category_name", editTask.category);
       fd.append("job_category", editTask.category);
+      if (editTask.customCategoryName) {
+        fd.append("custom_category_name", editTask.customCategoryName);
+      }
       fd.append("job_budget", String(editTask.budget));
       fd.append("job_location", editTask.location);
       fd.append("job_due_date", normalizedDate);
@@ -558,6 +565,7 @@ export default function TasksPage() {
               title: job.job_title,
               description: job.job_description,
               category: job.job_category_name || job.job_category || editTask.category,
+              customCategoryName: job.custom_category_name ?? editTask.customCategoryName ?? null,
               status: getTaskStatus(job),
               location: job.job_location,
               dueDate: job.job_due_date || editTask.dueDate,
@@ -789,6 +797,7 @@ export default function TasksPage() {
             <TableRow>
               <TableHead>Task</TableHead>
               <TableHead>Category</TableHead>
+              <TableHead className="hidden md:table-cell">Suggested</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="hidden md:table-cell">Taskmaster</TableHead>
               <TableHead className="hidden md:table-cell">Tasker</TableHead>
@@ -802,7 +811,7 @@ export default function TasksPage() {
             {isLoading ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={9}
                   className="text-center py-8 text-muted-foreground"
                 >
                   Loading...
@@ -811,7 +820,7 @@ export default function TasksPage() {
             ) : filteredTasks.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={9}
                   className="text-center py-8 text-muted-foreground"
                 >
                   No tasks found
@@ -828,6 +837,15 @@ export default function TasksPage() {
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{task.category}</Badge>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {task.customCategoryName ? (
+                      <span className="text-sm text-blue-600 font-medium" title="User suggested category">
+                        {task.customCategoryName}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
@@ -1066,10 +1084,15 @@ export default function TasksPage() {
                                 <h2 className="text-xl font-semibold mb-1">
                                   {selectedTask.title}
                                 </h2>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <Badge variant="outline">
                                     {selectedTask.category}
                                   </Badge>
+                                  {selectedTask.customCategoryName && (
+                                    <span className="text-sm text-blue-600">
+                                      User suggested: {selectedTask.customCategoryName}
+                                    </span>
+                                  )}
                                   <Badge
                                     variant={getStatusBadgeVariant(
                                       selectedTask.status

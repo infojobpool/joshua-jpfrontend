@@ -56,6 +56,13 @@ class BrowseErrorBoundary extends Component<
   }
 }
 
+/** Format posted date; fallback to "Recently" when API returns no date */
+function getDisplayPostedAt(postedAt?: string | null): string {
+  const formatted = formatDateWithTime(postedAt);
+  if (!formatted || formatted === "—") return "Recently";
+  return formatted;
+}
+
 function TaskCardWithPrefetch({
   task,
   index,
@@ -99,11 +106,15 @@ function TaskCardWithPrefetch({
         </div>
         <CardDescription className="flex items-center gap-2 flex-wrap">
           <Clock className="h-3 w-3 shrink-0" />
-          <span>Posted {formatDateWithTime(task.postedAt)}</span>
-          {task.dueDate && (
+          <span>Posted: {getDisplayPostedAt(task.postedAt)}</span>
+          {(task.dueDate || task.dueDateFlexible || !task.dueDate) && (
             <>
               <span className="text-muted-foreground">•</span>
-              <span>Due {formatDateWithTime(task.dueDate)}</span>
+              <span>
+                Due: {task.dueDateFlexible || !task.dueDate
+                  ? "Flexible"
+                  : formatDateWithTime(task.dueDate)}
+              </span>
             </>
           )}
         </CardDescription>
@@ -211,6 +222,7 @@ function BrowseContent() {
     category_name: string;
     posted_by: string;
     dueDate?: string;
+    dueDateFlexible?: boolean;
     job_images?: { urls: string[] };
     offers?: number;
     distance_km?: number;
@@ -226,6 +238,9 @@ function BrowseContent() {
 
   const mapJobToTask = (job: any): Task => {
     if (!job || typeof job !== "object") return null as any;
+    const rawPosted = job.created_at || job.timestamp || job.tstamp || job.job_tstamp || job.updated_at || job.date || job.posted_at || "";
+    const dueDate = job.job_due_date || undefined;
+    const dueDateFlexible = job.due_date_flexible === true;
     return ({
     id: job.job_id,
     user_ref_id: job.user_ref_id,
@@ -236,11 +251,12 @@ function BrowseContent() {
     status: job.status,
     deletion_status: job.deletion_status,
     posted_by: job.posted_by,
-    dueDate: job.job_due_date || undefined,
+    dueDate,
+    dueDateFlexible,
     category: job.job_category,
     category_name: job.job_category_name,
     job_images: job.job_images,
-    postedAt: job.created_at || job.timestamp || job.job_due_date || "",
+    postedAt: rawPosted,
     offers: 0,
     distance_km: typeof job.distance_km === "number" ? job.distance_km : undefined,
     latitude: typeof job.latitude === "number" ? job.latitude : undefined,

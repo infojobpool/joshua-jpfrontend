@@ -123,7 +123,24 @@ What the frontend expects from the backend so browse / Near me works.
 
 ---
 
-## 5. CORS / env
+## 5. Job fields for posted date, due date, custom category
+
+| Field | Type | Purpose |
+| ----- | ---- | ------- |
+| `created_at` or `timestamp` | string (ISO) | Posted date – frontend falls back to "Recently" if missing |
+| `job_due_date` | string (ISO) or null | Due date – empty when flexible |
+| `due_date_flexible` | boolean | When true → shows "Due: Flexible" |
+| `custom_category_name` | string (optional) | User-typed category when not in main list |
+
+### Frontend sends (POST /post-a-job/)
+
+- `custom_category_name` – when user selects "Type your own" and enters a name
+- `due_date_flexible` – `"true"` or `"false"` (string) when posting
+
+---
+
+## 6. CORS / env
 
 - **`NEXT_PUBLIC_API_BASE_URL`** → axios `baseURL` = `{that}/api/v1`.
 - Geolocation needs **HTTPS** (or localhost).
+- Job responses should include `created_at`/`timestamp`, `job_due_date`, `due_date_flexible`, `custom_category_name` where applicable.

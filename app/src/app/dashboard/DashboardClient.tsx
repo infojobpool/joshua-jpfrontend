@@ -79,6 +79,7 @@ interface Task {
   postedAtSortValue?: number; // For sorting by date
   postedAtISO?: string; // ISO date string
   dueDate?: string;
+  dueDateFlexible?: boolean;
   completedDate?: string;
   rating?: number;
   review_comment?: string;
@@ -1319,6 +1320,7 @@ export default function Dashboard() {
         postedAtSortValue: postedMeta.sortValue,
         postedAtISO: postedMeta.iso,
         dueDate: job.job_due_date ? new Date(job.job_due_date).toLocaleDateString("en-GB") : "Unknown",
+        dueDateFlexible: job.due_date_flexible === true,
         offers: job.offers || 0,
         posted_by: job.posted_by || "Unknown",
         posted_by_profile_image: job.posted_by_profile_image || job.taskmanager_profile_image || job.taskmanager_profile_img || job.poster?.profile_img || job.profile_img || job.user_profile_img,
@@ -1446,6 +1448,7 @@ export default function Dashboard() {
                 dueDate: job.job_due_date
                   ? new Date(job.job_due_date).toLocaleDateString("en-GB")
                   : "Unknown",
+                dueDateFlexible: job.due_date_flexible === true,
                 offers: job.offers || 0, // Use original offers field as fallback
                 posted_by: job.posted_by || "Unknown",
                 posted_by_profile_image: job.posted_by_profile_image || job.taskmanager_profile_image || job.taskmanager_profile_img || job.poster?.profile_img || job.poster?.profile_image || job.profile_img || job.user_profile_img,
@@ -1791,6 +1794,7 @@ export default function Dashboard() {
                 postedAtSortValue: postedAtSortValue,
                 postedAtISO: postedAtISO,
                 dueDate: job.job_due_date || job.dueDate || undefined,
+                dueDateFlexible: job.due_date_flexible === true,
             offers: job.offers?.length || 0,
                 posted_by: job.posted_by || job.postedBy || "Unknown",
                 category: job.job_category || job.category || "general",
@@ -1913,6 +1917,7 @@ export default function Dashboard() {
                     postedAtSortValue: postedAtSortValue,
                     postedAtISO: postedAtISO,
                     dueDate: job.job_due_date || job.dueDate || undefined,
+                    dueDateFlexible: job.due_date_flexible === true,
                     offers: job.offers?.length || 0,
                     posted_by: job.posted_by || job.postedBy || "Unknown",
                     category: job.job_category || job.category || "general",
@@ -2284,6 +2289,7 @@ export default function Dashboard() {
                   return d ? d.getTime() : 0;
                 })(),
                 dueDate: job.job_due_date || job.dueDate || undefined,
+                dueDateFlexible: job.due_date_flexible === true,
                 completedDate: jobStatus === "completed" ? (job.updated_at || job.completed_at || job.completed_date || undefined) : undefined,
                 offers: job.offers?.length || job.offer_count || 0,
                 posted_by: job.posted_by || job.postedBy || job.user_name || "Unknown",
@@ -4589,10 +4595,10 @@ export default function Dashboard() {
                                 <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500 dark:text-slate-400">
                                   <Clock className="h-3.5 w-3.5 text-slate-400" />
                                   <span>Posted: {getCardPostedAt(task)}</span>
-                                  {task.dueDate && task.dueDate !== "Unknown" && (
+                                  {(task.dueDate || task.dueDateFlexible) && task.dueDate !== "Unknown" && (
                                     <>
                                       <span className="mx-1 text-slate-300">•</span>
-                                      <span>Due: {formatDateWithTime(task.dueDate)}</span>
+                                      <span>Due: {task.dueDateFlexible || !task.dueDate ? "Flexible" : formatDateWithTime(task.dueDate)}</span>
                                     </>
                                   )}
                                 </div>
@@ -4733,10 +4739,12 @@ export default function Dashboard() {
                           <div className="flex items-center gap-2 mt-1 text-xs">
                             <Clock className={`h-3 w-3 shrink-0 ${isCancelled ? 'text-gray-400' : 'text-gray-400'}`} />
                             <span className={isCancelled ? 'text-gray-400' : 'text-gray-500'}>Posted: {getCardPostedAt(task)}</span>
-                            {task.dueDate && (
+                            {(task.dueDate || task.dueDateFlexible) && (
                               <>
                                 <span className="mx-1 text-gray-300">•</span>
-                                <span className={isCancelled ? 'text-gray-400' : 'text-gray-500'}>Due: {formatDateWithTime(task.dueDate)}</span>
+                                <span className={isCancelled ? 'text-gray-400' : 'text-gray-500'}>
+                                  Due: {task.dueDateFlexible || !task.dueDate ? "Flexible" : formatDateWithTime(task.dueDate)}
+                                </span>
                               </>
                             )}
                             {isCancelled && cancelledByTasker && (

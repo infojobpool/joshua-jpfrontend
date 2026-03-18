@@ -376,6 +376,7 @@ export default function PostTaskPage() {
     formDataToSubmit.append("budget", formData.budget.toString());
     formDataToSubmit.append("location", formData.location);
     formDataToSubmit.append("due_date", dueDateFlexible ? "" : formData.dueDate);
+    formDataToSubmit.append("due_date_flexible", dueDateFlexible ? "true" : "false");
 
     images.forEach((image) => {
       formDataToSubmit.append("images", image.file);
