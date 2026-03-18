@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { Task, User, Bid, Offer, ApiBidResponse, ApiJobResponse } from "../../types";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
+import { ShareTaskButton } from "@/components/ShareTaskButton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 interface UserProfile {
@@ -1922,7 +1923,7 @@ export default function TaskDetailPage() {
       
       {/* Premium Back Navigation */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 shadow-sm">
-        <div className="container mx-auto max-w-7xl px-4 md:px-6 py-4">
+        <div className="container mx-auto max-w-7xl px-4 md:px-6 py-4 flex items-center justify-between">
           <Link
             href="/dashboard"
             className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors duration-200 group"
@@ -1935,6 +1936,15 @@ export default function TaskDetailPage() {
             </div>
             Back to Dashboard
           </Link>
+          {task?.id && task?.title && (
+            <ShareTaskButton
+              taskId={String(task.id)}
+              title={task.title}
+              description={task.description}
+              budget={task.budget}
+              variant="button"
+            />
+          )}
         </div>
       </div>
 

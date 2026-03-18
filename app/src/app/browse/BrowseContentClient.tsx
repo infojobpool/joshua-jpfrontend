@@ -11,6 +11,7 @@ import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Clock, DollarSign, MapPin, Search, Filter, Star, Loader2, MapPinOff } from "lucide-react"
+import { ShareTaskButton } from "@/components/ShareTaskButton"
 import axiosInstance from "@/lib/axiosInstance"
 import { formatDateWithTime } from "@/lib/utils"
 import { storeTaskForNav, prefetchBidsForTask } from "@/lib/taskNavCache"
@@ -161,16 +162,17 @@ function TaskCardWithPrefetch({
           </div>
         </div>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex flex-col sm:flex-row gap-2">
         <Link
           href={`/tasks/${task.id}`}
-          className="w-full"
+          className="flex-1"
           onClick={() => { try { storeTaskForNav({ ...task, posted_by_id: task.user_ref_id, images: task.job_images?.urls?.map((url: string, i: number) => ({ id: `img${i+1}`, url, alt: `Image ${i+1}` })) }); } catch {} }}
           onMouseEnter={() => { try { prefetchBidsForTask(task.id); } catch {} }}
           onTouchStart={() => { try { prefetchBidsForTask(task.id); } catch {} }}
         >
           <Button className="w-full">View Task</Button>
         </Link>
+        <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
       </CardFooter>
     </Card>
     </div>

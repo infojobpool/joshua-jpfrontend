@@ -50,6 +50,7 @@ import { useNotifications } from "@/lib/useNotifications";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { EmptyState } from "@/components/EmptyState";
+import { ShareTaskButton } from "@/components/ShareTaskButton";
 
 // Load Leaflet map client-only to avoid mobile crashes
 const TaskLocationMap = dynamic(
@@ -4378,6 +4379,7 @@ export default function Dashboard() {
                                     </div>
                                   </Button>
                                 </Link>
+                                <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
                                 {task.job_completion_status !== 1 && task.job_completion_status !== "1" && !task.taskmaster_completed && (
                                   <Button
                                     className="shrink-0 w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-all duration-200"
@@ -4402,14 +4404,17 @@ export default function Dashboard() {
                               </div>
                             </>
                           ) : (
-                            <Link href={`/tasks/${task.id}`} className="w-full" onClick={() => { try { storeTaskForNav(task); } catch {} }} onMouseEnter={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }}>
-                              <Button variant="outline" className={`w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-lg">👁️</span>
-                                  <span>View Details</span>
-                                </div>
-                              </Button>
-                            </Link>
+                            <div className="flex gap-2 w-full items-center">
+                              <Link href={`/tasks/${task.id}`} className="flex-1 min-w-0" onClick={() => { try { storeTaskForNav(task); } catch {} }} onMouseEnter={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }}>
+                                <Button variant="outline" className={`w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-lg">👁️</span>
+                                    <span>View Details</span>
+                                  </div>
+                                </Button>
+                              </Link>
+                              <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
+                            </div>
                           )}
                         </div>
                       </div>
@@ -4709,16 +4714,17 @@ export default function Dashboard() {
                             ) : null}
 
                             {/* Action button */}
-                            <div className="mt-4 pt-1">
+                            <div className="mt-4 pt-1 flex gap-2 items-center">
                               <Link
                                 href={`/tasks/${task.id}`}
-                                className="w-full block"
+                                className="flex-1 min-w-0 block"
                                 onClick={() => { try { storeTaskForNav(task); } catch {} }}
                               >
                                 <Button className={`w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 dark:from-blue-600 dark:to-indigo-600 dark:hover:from-blue-500 dark:hover:to-indigo-500 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 rounded-xl ${isMobile ? "py-2.5 text-sm" : "py-3 px-4"}`}>
                                   <span>{hasUserBid ? "View Offer" : "Make an Offer"}</span>
                                 </Button>
                               </Link>
+                              <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
                             </div>
                           </div>
                         </Card>
@@ -4922,6 +4928,7 @@ export default function Dashboard() {
                           </div>
                         </Button>
                         </Link>
+                        <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
                         <div className="shrink-0 w-auto inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-100 border-2 border-blue-300 text-blue-800 font-semibold text-sm cursor-default">
                           <span className="text-lg">✅</span>
                           <span>Marked complete — waiting for taskmaster</span>
@@ -4937,6 +4944,7 @@ export default function Dashboard() {
                             </div>
                           </Button>
                         </Link>
+                        <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
                         <Button
                           variant="outline"
                           className={`shrink-0 w-auto border-2 border-red-300 hover:border-red-400 text-red-600 hover:text-red-700 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}
@@ -5065,8 +5073,8 @@ export default function Dashboard() {
                     )}
 
                       {/* Action button */}
-                      <div className="mt-4">
-                        <Link href={`/tasks/${task.id}`} className="w-full" onClick={() => { try { storeTaskForNav(task); } catch {} }} onMouseEnter={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }}>
+                      <div className="mt-4 flex gap-2 items-center">
+                        <Link href={`/tasks/${task.id}`} className="flex-1 min-w-0" onClick={() => { try { storeTaskForNav(task); } catch {} }} onMouseEnter={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }}>
                           <Button variant="outline" className={`w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
                             <div className="flex items-center gap-2">
                               <span className="text-lg">👁️</span>
@@ -5074,6 +5082,7 @@ export default function Dashboard() {
                             </div>
                           </Button>
                         </Link>
+                        <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
                       </div>
                     </div>
                   </Card>
@@ -5169,8 +5178,8 @@ export default function Dashboard() {
                       )}
 
                       {/* Action button */}
-                      <div className="mt-4">
-                        <Link href={`/tasks/${bid.task_id}`} className="w-full" onClick={() => { try { storeTaskForNav({ id: bid.task_id, title: bid.task_title, description: bid.task_description, budget: bid.job_budget ?? 0, location: bid.task_location, posted_by: bid.posted_by }); } catch {} }} onMouseEnter={() => { try { prefetchBidsForTask(String(bid.task_id)); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(String(bid.task_id)); } catch {} }}>
+                      <div className="mt-4 flex gap-2 items-center">
+                        <Link href={`/tasks/${bid.task_id}`} className="flex-1 min-w-0" onClick={() => { try { storeTaskForNav({ id: bid.task_id, title: bid.task_title, description: bid.task_description, budget: bid.job_budget ?? 0, location: bid.task_location, posted_by: bid.posted_by }); } catch {} }} onMouseEnter={() => { try { prefetchBidsForTask(String(bid.task_id)); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(String(bid.task_id)); } catch {} }}>
                           <Button variant="outline" className={`w-full border-2 border-blue-300 hover:border-blue-400 text-blue-700 hover:text-blue-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
                             <div className="flex items-center gap-2">
                               <span className="text-lg">👁️</span>
@@ -5178,6 +5187,7 @@ export default function Dashboard() {
                             </div>
                           </Button>
                         </Link>
+                        <ShareTaskButton taskId={String(bid.task_id)} title={bid.task_title} description={bid.task_description} budget={bid.job_budget} variant="icon" />
                       </div>
                     </div>
                   </Card>
