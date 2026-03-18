@@ -10,7 +10,6 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
@@ -3955,73 +3954,55 @@ export default function Dashboard() {
           </div>
         )}
 
-        <Tabs
-          value={activeTab}
-          onValueChange={(value) => {
-            setActiveTab(value);
-            if (value === "my-tasks") {
-              try {
-                localStorage.removeItem(`user_tasks_${userId || effectiveUserId}`);
-              } catch {}
-              setRefetchPostedTrigger((t) => t + 1);
-            } else if (value === "available") {
-              setRefetchAvailableTrigger((t) => t + 1);
-            } else if (value === "assigned") {
-              setRefetchAssignedTrigger((t) => t + 1);
-            } else if (value === "completed") {
-              setRefetchCompletedTrigger((t) => t + 1);
-            } else if (value === "my-bids") {
-              setRefetchBidsTrigger((t) => t + 1);
-            }
-          }}
-          className="w-full"
-        >
-          <TabsList className={
-            isMobile
-              ? "flex w-full p-1.5 bg-slate-100/90 dark:bg-slate-800/95 border border-slate-200/80 dark:border-slate-700 rounded-xl shadow-sm z-20 gap-1 min-h-[44px] overflow-x-auto overflow-y-hidden flex-nowrap justify-between sticky top-[calc(env(safe-area-inset-top)+48px)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              : "flex w-full bg-slate-100/90 dark:bg-slate-800/95 p-1.5 rounded-xl gap-1 border border-slate-200/80 dark:border-slate-700"
-          }>
-            <TabsTrigger value="my-tasks" className={
-              isMobile 
-                ? "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 flex-shrink-0 rounded-lg text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
-                : "px-4 py-2 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
-            }>
-              <Briefcase className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
-              <span>{isMobile ? "Tasks" : "My Tasks"}</span>
-            </TabsTrigger>
-            <TabsTrigger value="available" className={
-              isMobile 
-                ? "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 flex-shrink-0 rounded-lg text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
-                : "px-4 py-2 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
-            }>
-              <Search className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
-              <span>Available</span>
-            </TabsTrigger>
-            <TabsTrigger value="assigned" className={
-              isMobile 
-                ? "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 flex-shrink-0 rounded-lg text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
-                : "px-4 py-2 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
-            }>
-              <CheckCircle className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
-              <span>Assigned</span>
-            </TabsTrigger>
-            <TabsTrigger value="completed" className={
-              isMobile 
-                ? "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 flex-shrink-0 rounded-lg text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
-                : "px-4 py-2 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
-            }>
-              <Star className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
-              <span>{isMobile ? "Done" : "Completed"}</span>
-            </TabsTrigger>
-            <TabsTrigger value="my-bids" className={
-              isMobile 
-                ? "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 flex-shrink-0 rounded-lg text-[11px] font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
-                : "px-4 py-2 rounded-xl text-sm font-medium data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#3b82f6]/30 data-[state=active]:text-[#2563eb] data-[state=inactive]:text-gray-600 data-[state=inactive]:dark:text-slate-400 whitespace-nowrap transition-all duration-200 active:scale-[0.98]"
-            }>
-              <IndianRupee className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
-              <span>{isMobile ? "Bids" : "My Bids"}</span>
-            </TabsTrigger>
-          </TabsList>
+        <div className="w-full">
+          {(() => {
+            const tabCls = (v: string) => {
+              const active = activeTab === v;
+              const base = "inline-flex items-center justify-center gap-1.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 active:scale-[0.98]";
+              const activeCls = "bg-white dark:bg-slate-700 shadow-md ring-1 ring-[#3b82f6]/30 text-[#2563eb]";
+              const inactiveCls = "text-gray-600 dark:text-slate-400";
+              const mobileCls = isMobile ? "flex flex-col gap-0.5 px-2 py-1.5 flex-shrink-0 rounded-lg text-[11px]" : "px-4 py-2";
+              return `${base} ${mobileCls} ${active ? activeCls : inactiveCls}`;
+            };
+            const onTab = (value: string) => {
+              setActiveTab(value);
+              if (value === "my-tasks") {
+                try { localStorage.removeItem(`user_tasks_${userId || effectiveUserId}`); } catch {}
+                setRefetchPostedTrigger((t) => t + 1);
+              } else if (value === "available") setRefetchAvailableTrigger((t) => t + 1);
+              else if (value === "assigned") setRefetchAssignedTrigger((t) => t + 1);
+              else if (value === "completed") setRefetchCompletedTrigger((t) => t + 1);
+              else if (value === "my-bids") setRefetchBidsTrigger((t) => t + 1);
+            };
+            return (
+              <div className={
+                isMobile
+                  ? "flex w-full p-1.5 bg-slate-100/90 dark:bg-slate-800/95 border border-slate-200/80 dark:border-slate-700 rounded-xl shadow-sm z-20 gap-1 min-h-[44px] overflow-x-auto overflow-y-hidden flex-nowrap justify-between sticky top-[calc(env(safe-area-inset-top)+48px)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  : "flex w-full bg-slate-100/90 dark:bg-slate-800/95 p-1.5 rounded-xl gap-1 border border-slate-200/80 dark:border-slate-700"
+              }>
+                <button type="button" onClick={() => onTab("my-tasks")} className={tabCls("my-tasks")}>
+                  <Briefcase className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
+                  <span>{isMobile ? "Tasks" : "My Tasks"}</span>
+                </button>
+                <button type="button" onClick={() => onTab("available")} className={tabCls("available")}>
+                  <Search className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
+                  <span>Available</span>
+                </button>
+                <button type="button" onClick={() => onTab("assigned")} className={tabCls("assigned")}>
+                  <CheckCircle className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
+                  <span>Assigned</span>
+                </button>
+                <button type="button" onClick={() => onTab("completed")} className={tabCls("completed")}>
+                  <Star className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
+                  <span>{isMobile ? "Done" : "Completed"}</span>
+                </button>
+                <button type="button" onClick={() => onTab("my-bids")} className={tabCls("my-bids")}>
+                  <IndianRupee className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
+                  <span>{isMobile ? "Bids" : "My Bids"}</span>
+                </button>
+              </div>
+            );
+          })()}
 
           {/* Mobile spacer to ensure content never peeks under the tabs */}
           <div className="md:hidden h-10"></div>
@@ -4108,7 +4089,8 @@ export default function Dashboard() {
             </div>
           )}
 
-          <TabsContent value="my-tasks" className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
+          {activeTab === "my-tasks" && (
+          <div className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks You've Posted</h2>
             {/* Premium Toolbar */}
             <div className={`mb-3 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 shadow-sm transition-all duration-200`}> 
@@ -4380,9 +4362,11 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
-          </TabsContent>
+          </div>
+          )}
 
-          <TabsContent value="available" className="space-y-4 mt-4 animate-fade-in-up min-h-[500px]">
+          {activeTab === "available" && (
+          <div className="space-y-4 mt-4 animate-fade-in-up min-h-[500px]">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Available Tasks</h2>
             <div className={`grid gap-6 ${isMobile ? "grid-cols-1" : "md:grid-cols-4"}`} style={{zIndex:1, position:'relative'}}>
               <div className={`${isMobile ? "hidden" : "md:col-span-1"} space-y-6`}>
@@ -4689,9 +4673,11 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
-          </TabsContent>
+          </div>
+          )}
 
-          <TabsContent value="assigned" className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
+          {activeTab === "assigned" && (
+          <div className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks Assigned to You</h2>
               {assignedTasks.length > 0 && (
@@ -4928,9 +4914,11 @@ export default function Dashboard() {
                 })}
               </div>
             )}
-          </TabsContent>
+          </div>
+          )}
 
-          <TabsContent value="completed" className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
+          {activeTab === "completed" && (
+          <div className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Completed</h2>
               {completedTasks.length > 0 && (
@@ -5037,9 +5025,11 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
-          </TabsContent>
+          </div>
+          )}
 
-          <TabsContent value="my-bids" className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
+          {activeTab === "my-bids" && (
+          <div className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />My Bids</h2>
               {requestedTasks.length > 0 && (
@@ -5139,8 +5129,9 @@ export default function Dashboard() {
                 ))}
                   </div>
             )}
-          </TabsContent>
-        </Tabs>
+          </div>
+          )}
+        </div>
 
         {/* Mobile Filters Bottom Sheet */}
         {/* Remove dialog-based filters completely to avoid overlay issues */}
