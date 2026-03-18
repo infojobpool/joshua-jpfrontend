@@ -310,7 +310,7 @@ function getCardPostedAt(task: { id: string; postedAt: string }): string {
     } catch {}
   }
   const formatted = formatDateWithTime(raw || undefined);
-  if (!formatted || formatted === "Invalid date" || formatted.toLowerCase().includes("invalid")) {
+  if (!formatted || formatted === "—" || formatted === "Invalid date" || formatted.toLowerCase().includes("invalid")) {
     return "Recently";
   }
   return formatted;
@@ -1738,8 +1738,8 @@ export default function Dashboard() {
                 }
               }
               
-              const rawDate = job.created_at || job.timestamp || job.job_due_date || job.updated_at || job.postedAt;
-              let postedAtFormatted = "Unknown";
+              const rawDate = job.created_at || job.timestamp || job.tstamp || job.job_tstamp || job.job_due_date || job.updated_at || job.postedAt;
+              let postedAtFormatted = "Recently";
               let postedAtSortValue = 0;
               let postedAtISO = "";
               const dateObj = parseDateSafe(rawDate);
@@ -1747,8 +1747,6 @@ export default function Dashboard() {
                 postedAtFormatted = formatDateWithTime(rawDate);
                 postedAtSortValue = dateObj.getTime();
                 postedAtISO = dateObj.toISOString();
-              } else if (typeof rawDate === "string") {
-                postedAtFormatted = rawDate;
               }
 
               // Check if cancelled - comprehensive check (same as in rendering)
@@ -1877,8 +1875,8 @@ export default function Dashboard() {
                 })
                 .map((job: any) => {
                   // Use same mapping logic as above
-                  const rawDate = job.created_at || job.timestamp || job.job_due_date || job.updated_at || job.postedAt;
-                  let postedAtFormatted = "Unknown";
+                  const rawDate = job.created_at || job.timestamp || job.tstamp || job.job_tstamp || job.job_due_date || job.updated_at || job.postedAt;
+                  let postedAtFormatted = "Recently";
                   let postedAtSortValue = 0;
                   let postedAtISO = "";
                   const dateObj = parseDateSafe(rawDate);
@@ -1886,8 +1884,6 @@ export default function Dashboard() {
                     postedAtFormatted = formatDateWithTime(rawDate);
                     postedAtSortValue = dateObj.getTime();
                     postedAtISO = dateObj.toISOString();
-                  } else if (typeof rawDate === "string") {
-                    postedAtFormatted = rawDate;
                   }
 
                   // Check if cancelled - comprehensive check (same as above)
@@ -2282,7 +2278,7 @@ export default function Dashboard() {
                 location: job.job_location || job.location || "Unknown",
                 status: jobStatus,
                 job_completion_status: job.job_completion_status?.toString() || job.status?.toString() || undefined,
-                postedAt: job.timestamp || job.tstamp || job.job_tstamp || job.created_at || job.job_due_date || job.postedAt || "",
+                postedAt: job.created_at || job.timestamp || job.tstamp || job.job_tstamp || job.job_due_date || job.updated_at || job.postedAt || "",
                 postedAtSortValue: (() => {
                   const raw = job.created_at || job.updated_at || job.completed_at || job.completed_date || job.timestamp || job.job_tstamp || job.tstamp || job.job_due_date;
                   const d = parseDateSafe(raw);

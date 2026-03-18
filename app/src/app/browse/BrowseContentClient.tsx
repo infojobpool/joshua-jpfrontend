@@ -100,9 +100,14 @@ function TaskCardWithPrefetch({
     <div ref={cardRef}>
     <Card className="flex flex-col">
       <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-start gap-2">
           <CardTitle className="text-lg">{task.title}</CardTitle>
-          <Badge variant="outline">Open</Badge>
+          <div className="flex items-center gap-1 shrink-0">
+            <Badge variant="outline" className="text-xs font-normal">
+              {task.custom_category_name || task.category_name || "General"}
+            </Badge>
+            <Badge variant="outline">Open</Badge>
+          </div>
         </div>
         <CardDescription className="flex items-center gap-2 flex-wrap">
           <Clock className="h-3 w-3 shrink-0" />
@@ -220,6 +225,7 @@ function BrowseContent() {
     postedAt: string;
     category: string;
     category_name: string;
+    custom_category_name?: string | null;
     posted_by: string;
     dueDate?: string;
     dueDateFlexible?: boolean;
@@ -255,6 +261,7 @@ function BrowseContent() {
     dueDateFlexible,
     category: job.job_category,
     category_name: job.job_category_name,
+    custom_category_name: job.custom_category_name || null,
     job_images: job.job_images,
     postedAt: rawPosted,
     offers: 0,

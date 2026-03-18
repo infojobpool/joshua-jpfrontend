@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -197,50 +197,49 @@ export default function PostTaskPage() {
     checkVerification();
   }, [router, userId]);
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await axiosInstance.get("/get-all-categories/");
-        if (response.data?.data) {
-          setCategories(
-            response.data.data.map(
-              (category: { category_id: string; category_name: string }) => ({
-                id: category.category_id,
-                name: category.category_name,
-              })
-            )
-          );
-          setError("");
-          return;
-        }
-      } catch (err: any) {
-        console.warn("Axios categories failed, falling back to fetch. Status:", err?.response?.status);
-      }
-
-      // Fallback: direct fetch using NEXT_PUBLIC_API_BASE_URL (helps on mobile if axios is blocked)
-      try {
-        const res = await fetch(`${apiBase}/get-all-categories/`, {
-          method: "GET",
-          headers: { "Accept": "application/json" },
-          credentials: "omit",
-        });
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`Fetch ${res.status} ${res.statusText}: ${text}`);
-        }
-        const data = await res.json();
-        const list = (data?.data || []).map((c: any) => ({ id: c.category_id, name: c.category_name }));
-        setCategories(list);
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await axiosInstance.get("/get-all-categories/");
+      if (response.data?.data) {
+        setCategories(
+          response.data.data.map(
+            (category: { category_id: string; category_name: string }) => ({
+              id: category.category_id,
+              name: category.category_name,
+            })
+          )
+        );
         setError("");
-      } catch (fallbackErr: any) {
-        console.error("Fetch categories error:", fallbackErr);
-        setError(`Failed to load categories. API: ${apiBase}`);
-        toast.error(fallbackErr?.message || "Failed to load categories");
+        return;
       }
-    };
+    } catch (err: any) {
+      console.warn("Axios categories failed, falling back to fetch. Status:", err?.response?.status);
+    }
 
-    fetchCategories();
+    try {
+      const res = await fetch(`${apiBase}/get-all-categories/`, {
+        method: "GET",
+        headers: { "Accept": "application/json" },
+        credentials: "omit",
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Fetch ${res.status} ${res.statusText}: ${text}`);
+      }
+      const data = await res.json();
+      const list = (data?.data || []).map((c: any) => ({ id: c.category_id, name: c.category_name }));
+      setCategories(list);
+      setError("");
+    } catch (fallbackErr: any) {
+      console.error("Fetch categories error:", fallbackErr);
+      setError(`Failed to load categories. API: ${apiBase}`);
+      toast.error(fallbackErr?.message || "Failed to load categories");
+    }
   }, [apiBase]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -525,7 +524,16 @@ export default function PostTaskPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="category">Category</Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor="category">Category</Label>
+                      <button
+                        type="button"
+                        onClick={() => { fetchCategories(); toast.success("Categories refreshed"); }}
+                        className="text-xs text-muted-foreground hover:text-foreground underline"
+                      >
+                        Just added one? Refresh
+                      </button>
+                    </div>
                     <div className="space-y-2">
                       <select
                         id="category"

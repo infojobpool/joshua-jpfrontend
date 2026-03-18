@@ -127,7 +127,7 @@ What the frontend expects from the backend so browse / Near me works.
 
 | Field | Type | Purpose |
 | ----- | ---- | ------- |
-| `created_at` or `timestamp` | string (ISO) | Posted date – frontend falls back to "Recently" if missing |
+| `created_at`, `timestamp`, or `tstamp` | string (ISO) | Posted date – frontend tries these in order, falls back to "Recently" if none valid |
 | `job_due_date` | string (ISO) or null | Due date – empty when flexible |
 | `due_date_flexible` | boolean | When true → shows "Due: Flexible" |
 | `custom_category_name` | string (optional) | User-typed category when not in main list |

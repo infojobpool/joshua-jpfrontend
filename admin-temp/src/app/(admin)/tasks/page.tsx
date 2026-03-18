@@ -75,6 +75,7 @@ interface Job {
   bid_amount?: number;
   job_location: string;
   job_due_date: string;
+  due_date_flexible?: boolean;
   // Prefer backend timestamps when available so we can sort/filter by recency
   created_at?: string;
   updated_at?: string;
@@ -102,6 +103,7 @@ interface Task {
   status: "Open" | "Assigned" | "In Progress" | "Completed" | "Cancelled" | "Taskmaster confirmed" | "Tasker confirmed";
   location: string;
   dueDate: string;
+  dueDateFlexible?: boolean;
   budget: number;
   paidAmount?: number;
   razorpayPaymentAmount?: number;
@@ -140,9 +142,12 @@ export default function TasksPage() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState<boolean>(false);
   const [taskToReset, setTaskToReset] = useState<string | null>(null);
   const [isLoadingPayment, setIsLoadingPayment] = useState<boolean>(false);
+  const [promotingTaskId, setPromotingTaskId] = useState<string | null>(null);
 
   const formatDate = (isoString: string): string => {
+    if (!isoString || typeof isoString !== "string" || isoString.trim() === "") return "—";
     const date = new Date(isoString);
+    if (isNaN(date.getTime())) return "—";
     const day = String(date.getDate()).padStart(2, "0");
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
@@ -178,6 +183,7 @@ export default function TasksPage() {
           status: getTaskStatus(job),
           location: job.job_location,
           dueDate: job.job_due_date,
+          dueDateFlexible: job.due_date_flexible === true,
           budget: job.job_budget,
           paidAmount: job.confirmed_bid_amount || job.bid_amount || undefined,
           remote: false,
@@ -268,6 +274,7 @@ export default function TasksPage() {
               status: getTaskStatus(job),
               location: job.job_location,
               dueDate: job.job_due_date,
+              dueDateFlexible: job.due_date_flexible === true,
               budget: Number(job.job_budget ?? 0),
               remote: false,
               createdAt: new Date().toISOString(),
@@ -454,6 +461,53 @@ export default function TasksPage() {
     }
   };
 
+  // Promote custom_category_name to official category (and update task)
+  const handlePromoteCustomCategory = async (taskId: string) => {
+    try {
+      setPromotingTaskId(taskId);
+      const response = await axiosInstance.post(
+        `/promote-custom-category/${taskId}/?update_job=true`
+      );
+      const data = response.data?.data || response.data;
+      if (response.data?.status_code === 200 || response.status === 200) {
+        const categoryName = data?.category_name || "Category";
+        toast.success(`"${categoryName}" promoted and task updated`);
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  category: categoryName,
+                  customCategoryName: null,
+                }
+              : t
+          )
+        );
+        if (selectedTask?.id === taskId) {
+          setSelectedTask((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  category: categoryName,
+                  customCategoryName: undefined,
+                }
+              : null
+          );
+        }
+      } else {
+        toast.error(response.data?.message || "Failed to promote category");
+      }
+    } catch (error: any) {
+      const msg =
+        error.response?.data?.message ||
+        error.response?.data?.detail ||
+        "Failed to promote category";
+      toast.error(msg);
+    } finally {
+      setPromotingTaskId(null);
+    }
+  };
+
   // Permanently delete a task
   const handleHardDelete = async (taskId: string) => {
     if (!confirm('⚠️ Are you sure? This action cannot be undone!')) {
@@ -569,6 +623,7 @@ export default function TasksPage() {
               status: getTaskStatus(job),
               location: job.job_location,
               dueDate: job.job_due_date || editTask.dueDate,
+              dueDateFlexible: job.due_date_flexible ?? editTask.dueDateFlexible,
               budget: Number(job.job_budget ?? editTask.budget),
               remote: false,
               createdAt: new Date().toISOString(),
@@ -801,6 +856,7 @@ export default function TasksPage() {
               <TableHead>Status</TableHead>
               <TableHead className="hidden md:table-cell">Taskmaster</TableHead>
               <TableHead className="hidden md:table-cell">Tasker</TableHead>
+              <TableHead className="hidden md:table-cell">Posted</TableHead>
               <TableHead className="hidden md:table-cell">Due Date</TableHead>
               <TableHead className="hidden md:table-cell">Offers</TableHead>
               <TableHead>Budget</TableHead>
@@ -811,7 +867,7 @@ export default function TasksPage() {
             {isLoading ? (
               <TableRow>
                 <TableCell
-                  colSpan={9}
+                  colSpan={10}
                   className="text-center py-8 text-muted-foreground"
                 >
                   Loading...
@@ -820,7 +876,7 @@ export default function TasksPage() {
             ) : filteredTasks.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={9}
+                  colSpan={10}
                   className="text-center py-8 text-muted-foreground"
                 >
                   No tasks found
@@ -913,9 +969,12 @@ export default function TasksPage() {
                     )}
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
+                    <span className="text-sm text-muted-foreground">{formatDate(task.createdAt)}</span>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span>{formatDate(task.dueDate)}</span>
+                      <span>{task.dueDateFlexible || !task.dueDate ? "Flexible" : formatDate(task.dueDate)}</span>
                     </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
@@ -993,6 +1052,14 @@ export default function TasksPage() {
                           >
                             Edit Task
                           </DropdownMenuItem>
+                          {task.customCategoryName && (
+                            <DropdownMenuItem
+                              onClick={() => handlePromoteCustomCategory(task.id)}
+                              disabled={!!promotingTaskId}
+                            >
+                              {promotingTaskId === task.id ? "Promoting…" : "Promote to category"}
+                            </DropdownMenuItem>
+                          )}
                           {task.deletion_status && (
                             <DropdownMenuItem
                               onClick={() => {
@@ -1089,8 +1156,18 @@ export default function TasksPage() {
                                     {selectedTask.category}
                                   </Badge>
                                   {selectedTask.customCategoryName && (
-                                    <span className="text-sm text-blue-600">
-                                      User suggested: {selectedTask.customCategoryName}
+                                    <span className="flex items-center gap-2">
+                                      <span className="text-sm text-blue-600">
+                                        User suggested: {selectedTask.customCategoryName}
+                                      </span>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handlePromoteCustomCategory(selectedTask.id)}
+                                        disabled={!!promotingTaskId}
+                                      >
+                                        {promotingTaskId === selectedTask.id ? "Promoting…" : "Promote to category"}
+                                      </Button>
                                     </span>
                                   )}
                                   <Badge
