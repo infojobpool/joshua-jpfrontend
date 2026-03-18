@@ -2,8 +2,6 @@
 "use client";
 
 import { MobileDashboard } from "../../components/mobile/MobileDashboard";
-import { useIsMobile } from "../../components/mobile/MobileWrapper";
-
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -371,9 +369,9 @@ export default function Dashboard() {
   const router = useRouter();
   const { user, userId, isAuthenticated, logout, addNotifications, updateUserProfileImage, checkAuth } = useStore();
   const { items: notificationItems, unreadCount, markAsRead, clearOldKeepLatest, bellAnimating } = useNotifications(!!isAuthenticated);
-  const { isMobile } = useIsMobile();
-  // Prevent SSR → CSR flicker on mobile by delaying mobile-only UI until mounted
+  // Inline mobile detection to avoid useIsMobile (potential React #310 cause on desktop)
   const [mounted, setMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   // Notifications UI state
   const [showNotifications, setShowNotifications] = useState(false);
   const formatTimeAgo = (iso: string) => {
@@ -399,7 +397,13 @@ export default function Dashboard() {
       return "";
     }
   }, [userId, user]);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    setIsMobile(typeof window !== "undefined" && window.innerWidth < 768);
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   const [authHydrated, setAuthHydrated] = useState(false);
   useEffect(() => {
     checkAuth();
