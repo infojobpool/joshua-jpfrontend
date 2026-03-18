@@ -74,28 +74,25 @@ export function TaskLocationMap({
   const effectiveLat = latitude != null && !isNaN(latitude) ? latitude : geocoded?.lat ?? null;
   const effectiveLng = longitude != null && !isNaN(longitude) ? longitude : geocoded?.lng ?? null;
 
-  if (effectiveLat == null || effectiveLng == null || isNaN(effectiveLat) || isNaN(effectiveLng)) {
-    if (geocodeLoading && location?.trim().length >= 4) {
-      return (
-        <div className={`rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 flex items-center justify-center ${className}`} style={{ height: height ?? 120, minHeight: height ?? 120 }}>
-          <span className="text-sm text-gray-500">Loading map…</span>
-        </div>
-      );
-    }
-    return null;
-  }
+  const hasValidCoords =
+    effectiveLat != null &&
+    effectiveLng != null &&
+    !isNaN(effectiveLat) &&
+    !isNaN(effectiveLng);
 
-  const displayHeight = height ?? (variant === "detail" ? 220 : 120);
-  const openInMapsUrl = `https://www.google.com/maps?q=${effectiveLat},${effectiveLng}`;
-  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${effectiveLat},${effectiveLng}`;
-
+  // Map init effect - MUST run before any return (Rules of Hooks)
   useEffect(() => {
-    if (typeof window === "undefined" || !mapRef.current) return;
+    if (!hasValidCoords || typeof window === "undefined") return;
     setMapError(false);
 
+    const el = mapRef.current;
+    if (!el) return; // Div not mounted yet (we return early from render when no coords)
+
     const initMap = async () => {
+      if (!mapRef.current) return; // Re-check after async import
       try {
         const L = (await import("leaflet")).default;
+        if (!L?.Icon?.Default?.prototype) return;
 
         // Fix default marker icon path (Leaflet issue with bundlers)
         delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -113,7 +110,10 @@ export function TaskLocationMap({
           mapInstanceRef.current = null;
         }
 
-        const map = L.map(mapRef.current, {
+        const container = mapRef.current;
+        if (!container) return;
+
+        const map = L.map(container, {
           center: [effectiveLat, effectiveLng],
           zoom: 15,
           zoomControl: false,
@@ -148,7 +148,23 @@ export function TaskLocationMap({
         mapInstanceRef.current = null;
       }
     };
-  }, [effectiveLat, effectiveLng]);
+  }, [effectiveLat, effectiveLng, hasValidCoords]);
+
+  // Early returns for rendering - after all hooks
+  if (!hasValidCoords) {
+    if (geocodeLoading && location?.trim().length >= 4) {
+      return (
+        <div className={`rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 flex items-center justify-center ${className}`} style={{ height: height ?? 120, minHeight: height ?? 120 }}>
+          <span className="text-sm text-gray-500">Loading map…</span>
+        </div>
+      );
+    }
+    return null;
+  }
+
+  const displayHeight = height ?? (variant === "detail" ? 220 : 120);
+  const openInMapsUrl = `https://www.google.com/maps?q=${effectiveLat},${effectiveLng}`;
+  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${effectiveLat},${effectiveLng}`;
 
   // When map fails to load, show a helpful message instead of crashing
   if (mapError) {
