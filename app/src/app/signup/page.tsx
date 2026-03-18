@@ -14,7 +14,7 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, CheckCircle, ArrowRight } from "lucide-react";
 //import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
 import { Toaster } from "../../components/ui/sonner";
 import { toast } from "sonner";
@@ -42,6 +42,7 @@ export default function SignUpPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [signupSuccess, setSignupSuccess] = useState(false);
 
   const togglePasswordVisibility = () => {
     setShowPassword((prev) => !prev);
@@ -86,10 +87,7 @@ export default function SignUpPage() {
     try {
       setIsLoading(true);
       await axiosInstance.post("/user-registration/", payload);
-      toast.success("Account created successfully! Please check your email to verify your account before signing in.");
-      setTimeout(() => {
-        router.push("/signin");
-      }, 3000);
+      setSignupSuccess(true);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         const status = err.response?.status;
@@ -142,8 +140,40 @@ export default function SignUpPage() {
           </Link>
         </div>
 
-        {/* Main Card */}
+        {/* Main Card - show success view or form */}
         <Card className="backdrop-blur-sm bg-white/95 border-0 shadow-xl shadow-slate-200/50 rounded-2xl overflow-hidden">
+          {signupSuccess ? (
+            <div className="p-6 space-y-5">
+              <div className="flex justify-center">
+                <div className="h-14 w-14 rounded-full bg-emerald-100 flex items-center justify-center">
+                  <CheckCircle className="h-8 w-8 text-emerald-600" />
+                </div>
+              </div>
+              <div className="text-center space-y-1">
+                <CardTitle className="text-xl">Account created!</CardTitle>
+                <CardDescription className="text-slate-600">
+                  You must verify your email before you can sign in.
+                </CardDescription>
+              </div>
+              <div className="rounded-lg bg-blue-50 dark:bg-slate-800/50 border border-blue-200 dark:border-slate-700 p-4 space-y-3">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Next steps:</p>
+                <ol className="text-sm text-slate-600 dark:text-slate-300 space-y-2 list-decimal list-inside">
+                  <li>Check your inbox at <strong className="text-slate-800 dark:text-slate-100">{formData.user_email}</strong></li>
+                  <li>Click the verification link (check spam folder too)</li>
+                  <li>Return here to sign in</li>
+                </ol>
+              </div>
+              <Link href="/signin" className="block">
+                <Button className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium">
+                  Go to Sign In
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+              <p className="text-xs text-center text-slate-500">
+                Didn&apos;t receive the email? Use &quot;Resend verification email&quot; on the sign in page.
+              </p>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit}>
             <CardHeader className="text-center pb-4 pt-5">
               <CardTitle className="text-2xl font-bold text-slate-900 tracking-tight">Join JobPool</CardTitle>
@@ -255,6 +285,7 @@ export default function SignUpPage() {
               </Link>
             </CardFooter>
           </form>
+          )}
         </Card>
 
         {/* Footer */}

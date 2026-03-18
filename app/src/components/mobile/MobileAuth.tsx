@@ -119,8 +119,8 @@ export function MobileSignIn() {
           ? `Status ${status}${dataMsg ? `: ${dataMsg}` : ''}`
           : networkMsg || 'Unknown error';
         
-        // Check if error is related to email verification
-        if (status === 403 || status === 401 || (dataMsg && (
+        // Check if error is related to email verification; 404 can mean unverified user (backend may hide them)
+        if (status === 404 || status === 403 || status === 401 || (dataMsg && (
           dataMsg.toLowerCase().includes("verify") || 
           dataMsg.toLowerCase().includes("verification") ||
           (dataMsg.toLowerCase().includes("email") && dataMsg.toLowerCase().includes("not"))
@@ -129,7 +129,11 @@ export function MobileSignIn() {
         }
         
         if (status === 404) {
-          toast.error(dataMsg || "User not found.");
+          toast.error(
+            dataMsg && !dataMsg.toLowerCase().includes("not found")
+              ? dataMsg
+              : "Account not found, or your email may not be verified yet. If you just signed up, please verify your email first—check your inbox (and spam folder) for the verification link."
+          );
         } else if (status >= 500) {
           toast.error("Server error. Please try again later.");
         } else {
@@ -220,6 +224,11 @@ export function MobileSignIn() {
         <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-indigo-200/40 rounded-full blur-3xl" />
       </div>
       <div className="relative w-full max-w-md">
+        <div className="mb-3 rounded-xl bg-blue-50/90 border border-blue-200/80 px-3 py-2.5 text-center">
+          <p className="text-xs text-slate-700">
+            <strong>New to JobPool?</strong> Verify your email before signing in—check inbox &amp; spam for the link.
+          </p>
+        </div>
         <MobileCard className="overflow-hidden border-0 shadow-xl shadow-slate-200/50 rounded-2xl bg-white/95 backdrop-blur-sm">
           <MobileCardHeader className="pb-2 pt-5">
             <div className="text-center">

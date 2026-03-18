@@ -124,7 +124,13 @@ export default function SignInPage() {
         }
 
         if (status === 404) {
-          toast.error(errorMessage || "User not found.");
+          // 404 can mean user doesn't exist OR user exists but email not verified (backend may hide unverified users)
+          setShowResendVerification(true);
+          toast.error(
+            errorMessage && !errorMessage.toLowerCase().includes("not found")
+              ? errorMessage
+              : "Account not found, or your email may not be verified yet. If you just signed up, please verify your email first—check your inbox (and spam folder) for the verification link."
+          );
         } else if (status === 403 || status === 401) {
           // Check if error is related to email verification
           if (errorMessage.toLowerCase().includes("verify") || 
@@ -248,6 +254,13 @@ export default function SignInPage() {
               style={{ mixBlendMode: 'multiply' }}
             />
           </Link>
+        </div>
+
+        {/* Info banner for new users */}
+        <div className="mb-4 rounded-xl bg-blue-50/90 dark:bg-slate-800/80 border border-blue-200/80 dark:border-slate-600 px-4 py-3 text-center">
+          <p className="text-sm text-slate-700 dark:text-slate-300">
+            <strong>New to JobPool?</strong> Verify your email before signing in—check your inbox (and spam) for the verification link.
+          </p>
         </div>
 
         {/* Main Card */}
