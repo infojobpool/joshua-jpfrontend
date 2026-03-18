@@ -16,13 +16,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -32,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Toaster } from "../../components/ui/sonner";
 import { toast } from "sonner";
-import { IndianRupee, Loader, Upload, X } from "lucide-react";
+import { IndianRupee, Loader, Pencil, Upload, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import axiosInstance from "../../lib/axiosInstance";
 import useStore from "../../lib/Zustand";
@@ -67,6 +60,19 @@ interface ImageData {
   file: File;
 }
 
+const CUSTOM_CATEGORY_VALUE = "__custom__";
+
+/** Get a fallback category ID when user types their own (Other/General preferred for admin clarity) */
+function getFallbackCategoryId(categories: Category[]): string | null {
+  if (!categories.length) return null;
+  const lower = (s: string) => s.toLowerCase();
+  const other = categories.find((c) => lower(c.name).includes("other"));
+  if (other) return other.id;
+  const general = categories.find((c) => lower(c.name).includes("general"));
+  if (general) return general.id;
+  return categories[0].id;
+}
+
 export default function PostTaskPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -87,6 +93,7 @@ export default function PostTaskPage() {
   const [dueDateFlexible, setDueDateFlexible] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState("");
+  const [customCategoryName, setCustomCategoryName] = useState("");
   const { userId } = useStore();
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
 
@@ -243,6 +250,9 @@ export default function PostTaskPage() {
   };
 
   const handleSelectChange = (name: string, value: string) => {
+    if (name === "category" && value !== CUSTOM_CATEGORY_VALUE) {
+      setCustomCategoryName("");
+    }
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -268,6 +278,7 @@ export default function PostTaskPage() {
     e.preventDefault();
     if (isSubmitting) return;
 
+    const isCustomCategory = formData.category === CUSTOM_CATEGORY_VALUE;
     if (
       !formData.title ||
       !formData.description ||
@@ -276,6 +287,10 @@ export default function PostTaskPage() {
       !formData.location?.trim()
     ) {
       toast.error("Please fill in all required fields (including Location)");
+      return;
+    }
+    if (isCustomCategory && !customCategoryName.trim()) {
+      toast.error("Please type your category name, or select one from the list");
       return;
     }
 
@@ -349,7 +364,15 @@ export default function PostTaskPage() {
     formDataToSubmit.append("user_id", userId || "");
     formDataToSubmit.append("title", formData.title);
     formDataToSubmit.append("description", formData.description);
-    formDataToSubmit.append("category", formData.category);
+
+    const isCustomCategory = formData.category === CUSTOM_CATEGORY_VALUE;
+    if (isCustomCategory) {
+      const fallbackId = getFallbackCategoryId(categories);
+      formDataToSubmit.append("category", fallbackId || categories[0]?.id || "general");
+      formDataToSubmit.append("custom_category_name", customCategoryName.trim());
+    } else {
+      formDataToSubmit.append("category", formData.category);
+    }
     formDataToSubmit.append("budget", formData.budget.toString());
     formDataToSubmit.append("location", formData.location);
     formDataToSubmit.append("due_date", dueDateFlexible ? "" : formData.dueDate);
@@ -502,29 +525,54 @@ export default function PostTaskPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="category">Category</Label>
-                    <Select
-                      value={formData.category}
-                      onValueChange={(value) =>
-                        handleSelectChange("category", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a category or subcategory" />
-                      </SelectTrigger>
-                      <SelectContent>
+                    <div className="space-y-2">
+                      <select
+                        id="category"
+                        value={formData.category}
+                        onChange={(e) =>
+                          handleSelectChange("category", e.target.value)
+                        }
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <option value="">Select a category or subcategory</option>
                         {categories.length > 0 ? (
-                          categories.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                              {category.name}
-                            </SelectItem>
-                          ))
+                          <>
+                            {categories.map((category) => (
+                                <option key={category.id} value={category.id}>
+                                  {category.name}
+                                </option>
+                              ))}
+                            <option value={CUSTOM_CATEGORY_VALUE}>
+                              ✏️ Can&apos;t find yours? Type your own
+                            </option>
+                          </>
                         ) : (
-                          <SelectItem value="loading" disabled>
+                          <option value="loading" disabled>
                             Loading categories...
-                          </SelectItem>
+                          </option>
                         )}
-                      </SelectContent>
-                    </Select>
+                      </select>
+                      {formData.category === CUSTOM_CATEGORY_VALUE && (
+                        <div className="pt-2 space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                          <Label htmlFor="customCategory" className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                            <Pencil className="h-3.5 w-3.5" />
+                            Your category name
+                          </Label>
+                          <Input
+                            id="customCategory"
+                            placeholder="e.g., Event Photography, Car Wash"
+                            value={customCategoryName}
+                            onChange={(e) =>
+                              setCustomCategoryName(e.target.value)}
+                            className="border-blue-200 focus:ring-blue-500"
+                            maxLength={60}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            We&apos;ll use the closest match for now. Admins can add your suggestion to the main list.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="budget">
