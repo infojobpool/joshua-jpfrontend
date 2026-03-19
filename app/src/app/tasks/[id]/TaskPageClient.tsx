@@ -23,7 +23,6 @@ import Header from "@/components/Header";
 import { ShareTaskButton } from "@/components/ShareTaskButton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { analytics } from "@/lib/analytics";
-import { analytics } from "@/lib/analytics";
 
 interface UserProfile {
   profile_id: string;
