@@ -1,0 +1,19 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "YOUR_APPLE_TEAM_ID.com.jobpool.app",
+        "paths": [
+          "/tasks/*",
+          "/tasks/*/"
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "YOUR_APPLE_TEAM_ID.com.jobpool.app"
+    ]
+  }
+}

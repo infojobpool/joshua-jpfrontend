@@ -13,6 +13,7 @@ import { SessionExpiredHandler } from "@/components/SessionExpiredHandler";
 import { PromoPopup } from "@/components/PromoPopup";
 import { AppEntranceWrapper } from "@/components/mobile/AppEntranceWrapper";
 import { SupportPill } from "@/components/SupportPill";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -72,6 +73,7 @@ export default function RootLayout({
         <link rel="mask-icon" href="/icons/icon-192x192.png" color="#1e3a8a" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden bg-white dark:bg-slate-950 text-gray-900 dark:text-slate-100`}>
+        <GoogleAnalytics />
         <ThemeProvider>
           <InAppNotificationProvider />
           <SessionExpiredHandler />
