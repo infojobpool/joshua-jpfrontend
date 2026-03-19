@@ -73,9 +73,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         pathname={pathname}
         handleLogout={handleLogout}
       />
-      <div className="flex flex-1">
+      <div className="flex flex-1 bg-slate-50">
         <Sidebar pathname={pathname} />
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main className="flex-1 p-4 md:p-6 bg-slate-50">{children}</main>
       </div>
     </div>
   )

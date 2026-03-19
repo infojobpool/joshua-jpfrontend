@@ -3,10 +3,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, CreditCard, DollarSign, Users, CheckCircle2, Clock, AlertCircle, IndianRupee } from "lucide-react";
+import { Activity, CreditCard, DollarSign, Users, CheckCircle2, Clock, AlertCircle, IndianRupee, RefreshCw } from "lucide-react";
+import Link from "next/link";
 import axiosInstance from "@/lib/axiosInstance";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 interface TaskStatus {
   id: number;
@@ -177,6 +179,12 @@ export default function AdminDashboard() {
     fetchData();
   }, []);
 
+  const handleRefresh = () => {
+    localStorage.removeItem("admin_dashboard_data");
+    localStorage.removeItem("admin_dashboard_data_timestamp");
+    fetchData();
+  };
+
   // Calculate statistics with memoization for better performance
   const statistics = useMemo(() => {
     const totalRevenue = jobs.reduce((sum, job) => sum + (job.job_budget || 0), 0);
@@ -201,6 +209,18 @@ export default function AdminDashboard() {
   return (
     <div className="flex flex-col gap-4">
       <Toaster />
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={isLoading}
+          className="gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
+      </div>
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl rounded-2xl">
@@ -270,9 +290,9 @@ export default function AdminDashboard() {
       </div>
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="bg-white/80 border rounded-xl p-1">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="tasks">Tasks</TabsTrigger>
-          <TabsTrigger value="payouts">Payouts</TabsTrigger>
+          <TabsTrigger value="overview" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900">Overview</TabsTrigger>
+          <TabsTrigger value="tasks" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900">Tasks</TabsTrigger>
+          <TabsTrigger value="payouts" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900">Payouts</TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
@@ -308,9 +328,17 @@ export default function AdminDashboard() {
         </TabsContent>
         <TabsContent value="payouts" className="space-y-4">
           <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl rounded-2xl">
-            <CardHeader>
-              <CardTitle className="font-semibold">Recent Payouts</CardTitle>
-              <CardDescription className="text-gray-600">Overview of recent payouts to taskers</CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between space-y-0">
+              <div>
+                <CardTitle className="font-semibold">Recent Payouts</CardTitle>
+                <CardDescription className="text-gray-600">Overview of recent payouts to taskers</CardDescription>
+              </div>
+              <Link
+                href="/payouts"
+                className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+              >
+                View all →
+              </Link>
             </CardHeader>
             <CardContent>
               <RecentPayoutsList taskOrders={taskOrders} isLoading={isLoading} />
@@ -496,10 +524,10 @@ function RecentTasksList({ jobs, isLoading }: { jobs: Job[]; isLoading: boolean 
               <span
                 className={`px-2 py-1 rounded-full text-xs ${
                   task.status === "Open"
-                    ? "bg-yellow-100 text-yellow-800"
+                    ? "bg-amber-100 text-amber-800"
                     : task.status === "Cancelled"
                       ? "bg-red-100 text-red-800"
-                      : "bg-gray-100 text-gray-800"
+                      : "bg-blue-100 text-blue-800"
                 }`}
               >
                 {task.status}
@@ -561,9 +589,9 @@ function RecentPayoutsList({ taskOrders, isLoading }: { taskOrders: TaskOrder[];
                 <span
                   className={`px-2 py-1 rounded-full text-xs ${
                     statusLabel === "Completed"
-                      ? "bg-green-100 text-green-800"
+                      ? "bg-emerald-100 text-emerald-800"
                       : statusLabel === "Pending" || statusLabel === "Processing"
-                        ? "bg-yellow-100 text-yellow-800"
+                        ? "bg-amber-100 text-amber-800"
                         : "bg-red-100 text-red-800"
                   }`}
                 >
