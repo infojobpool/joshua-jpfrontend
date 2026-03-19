@@ -2,11 +2,13 @@
 
 import Script from "next/script";
 
-const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+// Use env var; fallback to JobPool Web stream ID when Vercel doesn't pass it at build time
+const GA_MEASUREMENT_ID =
+  process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-VCZSRDN393";
 
 /**
  * Google Analytics 4 (GA4) component.
- * Loads gtag.js only when NEXT_PUBLIC_GA_MEASUREMENT_ID is set.
+ * Loads gtag.js for JobPool Web stream.
  * Works on web, PWA, and Capacitor mobile (WebView loads same app).
  */
 export function GoogleAnalytics() {
