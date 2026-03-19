@@ -24,6 +24,9 @@ interface User {
   tasker: boolean;
   task_manager: boolean;
   status: boolean;
+  created_at?: string;
+  joined_at?: string;
+  date_joined?: string;
 }
 
 interface Job {
@@ -39,6 +42,9 @@ interface Job {
   job_due_date: string;
   job_images: { urls: string[] };
   status: boolean;
+  created_at?: string;
+  timestamp?: string;
+  job_tstamp?: string;
 }
 
 interface ActivityItem {
@@ -47,6 +53,28 @@ interface ActivityItem {
   action: string;
   task?: string;
   time: string;
+  sortTime: number; // for sorting by actual date
+}
+
+/** Format ISO date to "X days/hours ago"; fallback for missing/invalid dates */
+function formatTimeAgo(isoDate: string | undefined, fallback: string = "Recently"): string {
+  if (!isoDate) return fallback;
+  try {
+    const d = new Date(isoDate);
+    if (isNaN(d.getTime())) return fallback;
+    const diff = Date.now() - d.getTime();
+    const mins = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins} min${mins === 1 ? "" : "s"} ago`;
+    if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+    if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
+    if (days < 365) return `${Math.floor(days / 30)} month${days < 60 ? "" : "s"} ago`;
+    return `${Math.floor(days / 365)} year${days < 730 ? "" : "s"} ago`;
+  } catch {
+    return fallback;
+  }
 }
 
 
@@ -65,6 +93,8 @@ interface TaskOrder {
   order_id: number;
   status: number;
   bid_amount: number;
+  tasker_name?: string;
+  created_at?: string;
 }
 
 export default function AdminDashboard() {
@@ -117,6 +147,8 @@ export default function AdminDashboard() {
         order_id: o.order_id,
         status: typeof o.status === "number" ? o.status : parseInt(o.status, 10),
         bid_amount: Number(o.bid_amount) || 0,
+        tasker_name: o.tasker_name,
+        created_at: o.created_at || o.updated_at,
       }));
 
       setUsers(users);
@@ -281,7 +313,7 @@ export default function AdminDashboard() {
               <CardDescription className="text-gray-600">Overview of recent payouts to taskers</CardDescription>
             </CardHeader>
             <CardContent>
-              <RecentPayoutsList />
+              <RecentPayoutsList taskOrders={taskOrders} isLoading={isLoading} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -291,22 +323,35 @@ export default function AdminDashboard() {
 }
 
 function ActivityList({ users, jobs, isLoading }: { users: User[]; jobs: Job[]; isLoading: boolean }) {
+  const userJoinedAt = (u: User) => u.created_at ?? u.joined_at ?? u.date_joined;
+  const jobCreatedAt = (j: Job) => j.created_at ?? j.timestamp ?? j.job_tstamp;
+
   const activities: ActivityItem[] = [
-    ...users.map((user, index) => ({
-      id: `user-${user.user_id}`,
-      user: user.user_fullname,
-      action: "joined as a tasker",
-      task: "",
-      time: `${index + 1} day${index ? "s" : ""} ago`, // Fallback timestamp
-    })),
-    ...jobs.map((job, index) => ({
-      id: `job-${job.job_id}`,
-      user: job.posted_by,
-      action: "created a new task",
-      task: job.job_title,
-      time: `${index + 1} hour${index ? "s" : ""} ago`, // Fallback timestamp
-    })),
-  ].sort((a, b) => parseInt(b.time) - parseInt(a.time)).slice(0, 5);
+    ...users.map((user) => {
+      const iso = userJoinedAt(user);
+      return {
+        id: `user-${user.user_id}`,
+        user: user.user_fullname,
+        action: "joined as a tasker",
+        task: "",
+        time: formatTimeAgo(iso),
+        sortTime: iso ? new Date(iso).getTime() : 0,
+      };
+    }),
+    ...jobs.map((job) => {
+      const iso = jobCreatedAt(job);
+      return {
+        id: `job-${job.job_id}`,
+        user: job.posted_by,
+        action: "created a new task",
+        task: job.job_title,
+        time: formatTimeAgo(iso),
+        sortTime: iso ? new Date(iso).getTime() : 0,
+      };
+    }),
+  ]
+    .sort((a, b) => b.sortTime - a.sortTime)
+    .slice(0, 5);
 
   return (
     <div className="space-y-8">
@@ -388,7 +433,12 @@ function TaskStatusList({ jobs, isLoading }: { jobs: Job[]; isLoading: boolean }
               </div>
               <div className="mt-1 h-2 w-full rounded-full bg-muted">
                 <div
-                  className={`h-full rounded-full bg-${status.color.replace("text-", "")}`}
+                  className={`h-full rounded-full ${
+                    status.id === 1 ? "bg-green-500" :
+                    status.id === 2 ? "bg-blue-500" :
+                    status.id === 3 ? "bg-yellow-500" :
+                    "bg-red-500"
+                  }`}
                   style={{ width: `${status.percentage}%` }}
                 />
               </div>
@@ -402,9 +452,15 @@ function TaskStatusList({ jobs, isLoading }: { jobs: Job[]; isLoading: boolean }
 
 function RecentTasksList({ jobs, isLoading }: { jobs: Job[]; isLoading: boolean }) {
   const tasks: RecentTask[] = useMemo(() => {
-    // Only process first 20 jobs to reduce computation
-    const limitedJobs = jobs.slice(0, 20);
-    return limitedJobs.map((job) => ({
+    const jobCreatedAt = (j: Job) => j.created_at ?? j.timestamp ?? j.job_tstamp;
+    const sorted = [...jobs]
+      .sort((a, b) => {
+        const ta = jobCreatedAt(a) ? new Date(jobCreatedAt(a)!).getTime() : 0;
+        const tb = jobCreatedAt(b) ? new Date(jobCreatedAt(b)!).getTime() : 0;
+        return tb - ta; // newest first
+      })
+      .slice(0, 5);
+    return sorted.map((job) => ({
       id: job.job_id,
       title: job.job_title || "Untitled",
       category: job.job_category_name || "General",
@@ -412,7 +468,7 @@ function RecentTasksList({ jobs, isLoading }: { jobs: Job[]; isLoading: boolean 
       tasker: "Unassigned", // No tasker data in API
       status: job.status ? "Cancelled" : "Open",
       amount: `₹${(job.job_budget || 0).toLocaleString()}`,
-    })).slice(0, 5); // Limit to 5 tasks
+    }));
   }, [jobs]);
 
   return (
@@ -457,80 +513,67 @@ function RecentTasksList({ jobs, isLoading }: { jobs: Job[]; isLoading: boolean 
   );
 }
 
-function RecentPayoutsList() {
-  const payouts = [
-    {
-      id: 1,
-      tasker: "Emily Johnson",
-      amount: "₹450.00",
-      date: "2023-04-15",
-      status: "Completed",
-      method: "Bank Transfer",
-    },
-    {
-      id: 2,
-      tasker: "Michael Brown",
-      amount: "₹150.00",
-      date: "2023-04-14",
-      status: "Completed",
-      method: "PayPal",
-    },
-    {
-      id: 3,
-      tasker: "Jessica Davis",
-      amount: "₹300.00",
-      date: "2023-04-14",
-      status: "Pending",
-      method: "Bank Transfer",
-    },
-    {
-      id: 4,
-      tasker: "Thomas Anderson",
-      amount: "₹600.00",
-      date: "2023-04-13",
-      status: "Completed",
-      method: "PayPal",
-    },
-    {
-      id: 5,
-      tasker: "Sarah Williams",
-      amount: "₹275.00",
-      date: "2023-04-12",
-      status: "Failed",
-      method: "Bank Transfer",
-    },
-  ];
+const PAYOUT_STATUS_MAP: Record<number, string> = {
+  [-1]: "Pending",
+  0: "Processing",
+  1: "Completed",
+  2: "Failed",
+};
+
+function RecentPayoutsList({ taskOrders, isLoading }: { taskOrders: TaskOrder[]; isLoading: boolean }) {
+  const recentPayouts = useMemo(() => {
+    return [...taskOrders]
+      .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
+      .slice(0, 5);
+  }, [taskOrders]);
+
+  const formatPayoutDate = (iso: string | undefined) => {
+    if (!iso) return "—";
+    try {
+      const d = new Date(iso);
+      return isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+    } catch {
+      return "—";
+    }
+  };
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-5 font-medium text-sm">
+      <div className="grid grid-cols-4 font-medium text-sm">
         <div>Tasker</div>
         <div>Amount</div>
         <div>Date</div>
-        <div>Method</div>
         <div>Status</div>
       </div>
-      {payouts.map((payout) => (
-        <div key={payout.id} className="grid grid-cols-5 text-sm py-2 border-t">
-          <div>{payout.tasker}</div>
-          <div>{payout.amount}</div>
-          <div>{payout.date}</div>
-          <div>{payout.method}</div>
-          <div>
-            <span
-              className={`px-2 py-1 rounded-full text-xs ${
-                payout.status === "Completed"
-                  ? "bg-green-100 text-green-800"
-                  : payout.status === "Pending"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : "bg-red-100 text-red-800"
-              }`}
-            >
-              {payout.status}
-            </span>
-          </div>
-        </div>
-      ))}
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading payouts...</p>
+      ) : recentPayouts.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No recent payouts</p>
+      ) : (
+        recentPayouts.map((order) => {
+          const statusLabel = PAYOUT_STATUS_MAP[order.status] ?? "Unknown";
+          return (
+            <div key={order.order_id} className="grid grid-cols-4 text-sm py-2 border-t">
+              <div>{order.tasker_name || `Order #${order.order_id}`}</div>
+              <div>₹{(order.bid_amount || 0).toLocaleString()}</div>
+              <div>{formatPayoutDate(order.created_at)}</div>
+              <div>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs ${
+                    statusLabel === "Completed"
+                      ? "bg-green-100 text-green-800"
+                      : statusLabel === "Pending" || statusLabel === "Processing"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {statusLabel}
+                </span>
+              </div>
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }

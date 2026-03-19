@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { BarChart3, Users, Tags, CreditCard, CheckSquare, User2Icon, Ban, MessageSquare } from "lucide-react"
+import { BarChart3, Users, Tags, CreditCard, CheckSquare, User2Icon, Ban, Gavel, XCircle } from "lucide-react"
 import { cn } from "../lib/utils"
 import { useEffect, useState } from "react"
 import axiosInstance from "@/lib/axiosInstance"
@@ -32,6 +32,11 @@ const sidebarNavItems = [
     icon: CheckSquare,
   },
   {
+    title: "Bids",
+    href: "/bids",
+    icon: Gavel,
+  },
+  {
     title: "Customers",
     href: "/customers",
     icon: Users,
@@ -40,6 +45,16 @@ const sidebarNavItems = [
     title: "Payouts",
     href: "/payouts",
     icon: CreditCard,
+  },
+  {
+    title: "Tasker Cancellations",
+    href: "/tasker-cancellations",
+    icon: XCircle,
+  },
+  {
+    title: "Tasks Cancelled",
+    href: "/tasks-cancelled",
+    icon: Ban,
   },
 ]
 
