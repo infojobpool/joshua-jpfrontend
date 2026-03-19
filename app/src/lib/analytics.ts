@@ -15,15 +15,13 @@ export function trackEvent(
   params?: Record<string, string | number | boolean>
 ) {
   if (typeof window === "undefined" || !window.gtag) return;
-  const id = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
-  if (!id) return;
   window.gtag("event", eventName, params);
 }
 
 /** JobPool-specific event helpers */
 export const analytics = {
   taskViewed: (taskId: string, title?: string) =>
-    trackEvent("task_viewed", { task_id: taskId, task_title: title || "" }),
+    trackEvent("view_task", { task_id: taskId, task_title: title || "" }),
 
   taskShared: (taskId: string, method?: string) =>
     trackEvent("task_shared", { task_id: taskId, share_method: method || "unknown" }),
@@ -37,4 +35,17 @@ export const analytics = {
   signUp: () => trackEvent("sign_up"),
   login: () => trackEvent("login"),
   search: (query: string) => trackEvent("search", { search_term: query }),
+
+  /** Page view events for funnels */
+  viewTask: (taskId: string, title?: string) =>
+    trackEvent("view_task", { task_id: taskId, task_title: title || "", page_path: "/tasks/[id]" }),
+  viewSignup: () => trackEvent("view_signup", { page_path: "/signup" }),
+  viewDashboard: () => trackEvent("view_dashboard", { page_path: "/dashboard" }),
+
+  /** App download button clicks (from website) */
+  appDownloadClick: (store: "play_store" | "app_store") =>
+    trackEvent("app_download_click", { store, link_placement: "footer" }),
+
+  /** PWA installed (Add to Home Screen) */
+  pwaInstalled: () => trackEvent("pwa_installed", { platform: "web" }),
 };

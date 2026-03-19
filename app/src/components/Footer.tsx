@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { analytics } from "@/lib/analytics";
 import {
   Facebook,
   Twitter,
@@ -167,6 +168,7 @@ const Footer: React.FC = () => {
                   href={PLAY_STORE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => analytics.appDownloadClick("play_store")}
                   className="inline-flex items-center gap-3 rounded-lg border border-slate-500 bg-slate-800/80 px-4 py-3 text-white transition hover:bg-slate-700 hover:border-slate-400"
                 >
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center [&>svg]:fill-current">
@@ -181,6 +183,7 @@ const Footer: React.FC = () => {
                   href={APP_STORE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => analytics.appDownloadClick("app_store")}
                   className="inline-flex items-center gap-3 rounded-lg border border-slate-500 bg-slate-800/80 px-4 py-3 text-white transition hover:bg-slate-700 hover:border-slate-400"
                 >
                   <Apple className="h-8 w-8 shrink-0 text-white" />

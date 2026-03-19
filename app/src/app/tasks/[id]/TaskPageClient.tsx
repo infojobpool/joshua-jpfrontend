@@ -22,6 +22,8 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import { ShareTaskButton } from "@/components/ShareTaskButton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { analytics } from "@/lib/analytics";
+import { analytics } from "@/lib/analytics";
 
 interface UserProfile {
   profile_id: string;
@@ -110,6 +112,24 @@ export default function TaskDetailPage() {
     bidsFromCombinedRef.current = false;
     prefetchedBidsRef.current = null;
   }, [id]);
+
+  // Track task view for GA4 funnel
+  const trackedTaskIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!task || !id || loading || loadError) return;
+    if (trackedTaskIdRef.current === id) return;
+    trackedTaskIdRef.current = id;
+    analytics.taskViewed(id, task.title);
+  }, [task, id, loading, loadError]);
+
+  // Track task view for analytics
+  const trackedTaskIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!task || !id || loading || loadError) return;
+    if (trackedTaskIdRef.current === id) return;
+    trackedTaskIdRef.current = id;
+    analytics.taskViewed(id, task.title);
+  }, [task, id, loading, loadError]);
 
   // Refetch bids when tab becomes visible and taskmaster has 0 offers (after initial load)
   useEffect(() => {

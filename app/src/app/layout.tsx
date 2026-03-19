@@ -14,6 +14,7 @@ import { PromoPopup } from "@/components/PromoPopup";
 import { AppEntranceWrapper } from "@/components/mobile/AppEntranceWrapper";
 import { SupportPill } from "@/components/SupportPill";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
+import { PwaInstallTracker } from "@/components/PwaInstallTracker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -74,6 +75,7 @@ export default function RootLayout({
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden bg-white dark:bg-slate-950 text-gray-900 dark:text-slate-100`}>
         <GoogleAnalytics />
+        <PwaInstallTracker />
         <ThemeProvider>
           <InAppNotificationProvider />
           <SessionExpiredHandler />

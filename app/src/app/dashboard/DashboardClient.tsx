@@ -51,6 +51,7 @@ import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { EmptyState } from "@/components/EmptyState";
 import { ShareTaskButton } from "@/components/ShareTaskButton";
+import { analytics } from "@/lib/analytics";
 
 // Load Leaflet map client-only to avoid mobile crashes
 const TaskLocationMap = dynamic(
@@ -412,6 +413,10 @@ export default function Dashboard() {
     const t = setTimeout(() => setAuthHydrated(true), 50);
     return () => clearTimeout(t);
   }, [checkAuth]);
+
+  useEffect(() => {
+    if (authHydrated && isAuthenticated) analytics.viewDashboard();
+  }, [authHydrated, isAuthenticated]);
   const mobile = mounted && isMobile;
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
   const [loading, setLoading] = useState(true);

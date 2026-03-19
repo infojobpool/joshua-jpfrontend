@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, ChangeEvent, FormEvent } from "react";
+import { useState, ChangeEvent, FormEvent, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { analytics } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -56,6 +57,10 @@ export default function SignUpPage() {
   const handleRadioChange = (value: AccountType) => {
     setFormData((prev) => ({ ...prev, accountType: value }));
   };
+
+  useEffect(() => {
+    analytics.viewSignup();
+  }, []);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
