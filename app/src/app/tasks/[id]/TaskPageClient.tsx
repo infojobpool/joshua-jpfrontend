@@ -121,15 +121,6 @@ export default function TaskDetailPage() {
     analytics.taskViewed(id, task.title);
   }, [task, id, loading, loadError]);
 
-  // Track task view for analytics
-  const trackedTaskIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!task || !id || loading || loadError) return;
-    if (trackedTaskIdRef.current === id) return;
-    trackedTaskIdRef.current = id;
-    analytics.taskViewed(id, task.title);
-  }, [task, id, loading, loadError]);
-
   // Refetch bids when tab becomes visible and taskmaster has 0 offers (after initial load)
   useEffect(() => {
     const handleFocus = () => {
