@@ -285,8 +285,8 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
-import { Search, Eye, EyeOff, CreditCard, Phone, Download, ToggleLeft, ToggleRight } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Search, Eye, EyeOff, CreditCard, Phone, Download, ToggleLeft, ToggleRight, Calendar, CheckCircle, IndianRupee } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import { toast } from "sonner";
 
@@ -305,6 +305,11 @@ interface Customer {
   status: boolean;
   verification_status: number;
   bank_info: BankInfo | null;
+  created_at?: string;
+  joined_at?: string;
+  date_joined?: string;
+  tasks_completed?: number;
+  earnings?: number;
 }
 
 export default function CustomersPage() {
@@ -319,7 +324,9 @@ export default function CustomersPage() {
     try {
       setIsLoading(true);
       const response = await axiosInstance.get("all-user-details/");
-      setCustomers(response.data);
+      const raw = response.data?.data ?? response.data;
+      const list = Array.isArray(raw) ? raw : [];
+      setCustomers(list);
     } catch {
       toast.error("An error occurred while fetching customers");
     } finally {
@@ -331,12 +338,46 @@ export default function CustomersPage() {
     fetchCustomers();
   }, []);
 
-  const filteredCustomers = customers.filter(
-    (customer) =>
-      customer.user_fullname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.user_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (customer.phone_number && customer.phone_number.includes(searchTerm))
-  );
+  const filteredCustomers = useMemo(() => {
+    const filtered = customers.filter(
+      (customer) =>
+        customer.user_fullname.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.user_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (customer.phone_number && customer.phone_number.includes(searchTerm))
+    );
+    const joinedAt = (c: Customer) =>
+      (c as any).created_at ?? (c as any).joined_at ?? (c as any).date_joined ?? "";
+    return [...filtered].sort((a, b) => {
+      const ta = joinedAt(a) ? new Date(joinedAt(a)).getTime() : 0;
+      const tb = joinedAt(b) ? new Date(joinedAt(b)).getTime() : 0;
+      return tb - ta; // newest first
+    });
+  }, [customers, searchTerm]);
+
+  const formatJoinedDate = (c: Customer) => {
+    const iso = (c as any).created_at ?? (c as any).joined_at ?? (c as any).date_joined;
+    if (!iso) return "—";
+    try {
+      const d = new Date(iso);
+      return isNaN(d.getTime()) ? "—" : d.toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "—";
+    }
+  };
+
+  const newThisWeek = useMemo(() => {
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return customers.filter((c) => {
+      const iso = (c as any).created_at ?? (c as any).joined_at ?? (c as any).date_joined;
+      return iso && new Date(iso).getTime() >= weekAgo;
+    }).length;
+  }, [customers]);
 
   const toggleBankDetails = (userId: string) => {
     const newVisibleBankDetails = new Set(visibleBankDetails);
@@ -534,6 +575,11 @@ export default function CustomersPage() {
           <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-lg">
             Total: {filteredCustomers.length} customers
           </div>
+          {newThisWeek > 0 && (
+            <div className="text-sm text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg font-medium">
+              +{newThisWeek} new this week
+            </div>
+          )}
           <button
             onClick={downloadExcel}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
@@ -569,6 +615,9 @@ export default function CustomersPage() {
                   Name
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Joined
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Email
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -576,6 +625,12 @@ export default function CustomersPage() {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Role
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Tasks
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Earnings
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Verification
@@ -591,7 +646,7 @@ export default function CustomersPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex items-center justify-center gap-2">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                       Loading customers...
@@ -600,7 +655,7 @@ export default function CustomersPage() {
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={10} className="px-6 py-12 text-center">
                     <div className="text-red-600">
                       {error}
                     </div>
@@ -614,7 +669,7 @@ export default function CustomersPage() {
                 </tr>
               ) : filteredCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
                     {searchTerm ? "No customers found matching your search" : "No customers found"}
                   </td>
                 </tr>
@@ -624,6 +679,12 @@ export default function CustomersPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {customer.user_fullname}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Calendar className="h-4 w-4 text-gray-400 shrink-0" />
+                        {formatJoinedDate(customer)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -638,6 +699,20 @@ export default function CustomersPage() {
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         {getUserRoles(customer)}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <CheckCircle className="h-4 w-4 text-emerald-500" />
+                        {customer.tasks_completed ?? 0}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                        <IndianRupee className="h-4 w-4 text-gray-500" />
+                        {typeof customer.earnings === "number"
+                          ? customer.earnings.toLocaleString("en-IN")
+                          : "0"}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getVerificationStatus(customer.verification_status)}
