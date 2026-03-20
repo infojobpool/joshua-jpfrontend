@@ -103,7 +103,7 @@ import {
   MessageCircle, 
   CreditCard,
   Smartphone,
-  DollarSign,
+  IndianRupee,
   Clock,
   MapPin
 } from "lucide-react"
@@ -174,7 +174,7 @@ export function HowItWorks() {
       highlight: "Work when you want, where you want"
     },
     {
-      icon: <DollarSign className="h-8 w-8 text-yellow-600" />,
+      icon: <IndianRupee className="h-8 w-8 text-yellow-600" />,
       title: "Payments on lock",
       description: "Nobody likes chasing money, so we secure customer payments upfront. When a task is marked complete, your bank account will know about it.",
       highlight: "Get paid quickly and securely"

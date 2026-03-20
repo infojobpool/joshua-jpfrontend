@@ -2,7 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
-import { Shield, Clock, DollarSign, Users } from "lucide-react";
+import { Shield, Clock, IndianRupee, Users } from "lucide-react";
 
 const FEATURES = [
   {
@@ -16,7 +16,7 @@ const FEATURES = [
     description: "Post a task in minutes and get it done by local helpers.",
   },
   {
-    icon: DollarSign,
+    icon: IndianRupee,
     title: "Fair Pricing",
     description: "Set your budget and get offers from helpers in your price range.",
   },

@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Smartphone, Clock, DollarSign, Shield, ArrowRight } from "lucide-react";
+import { Smartphone, Clock, IndianRupee, Shield, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const CARDS = [
@@ -25,7 +25,7 @@ const CARDS = [
     cta: "Work when you want, where you want",
   },
   {
-    icon: DollarSign,
+    icon: IndianRupee,
     iconColor: "text-amber-600",
     bgColor: "bg-amber-50",
     title: "Payments on lock",

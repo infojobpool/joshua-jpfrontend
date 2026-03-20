@@ -19,8 +19,8 @@ export function MobileHeroSection() {
           </div>
         </div>
         <h1 className="text-3xl font-extrabold leading-tight tracking-tight">Get Any Task Done</h1>
-        <p className="text-blue-100/90">Post a task. Get offers from local helpers. Done safely.</p>
-        <div className="flex items-center justify-center gap-1.5 text-[11px] text-blue-100/90 flex-wrap">
+        <p className="text-white">Post a task. Get offers from local helpers. Done safely.</p>
+        <div className="flex items-center justify-center gap-1.5 text-[11px] text-white flex-wrap">
           <span className="px-2 py-1 rounded-full bg-white/10 border border-white/20">100% Verified users</span>
           <span className="px-2 py-1 rounded-full bg-white/10 border border-white/20">Safer transactions</span>
           <span className="px-2 py-1 rounded-full bg-white/10 border border-white/20">Unlimited Free quotes in mobile</span>
@@ -28,7 +28,7 @@ export function MobileHeroSection() {
         <div className="pt-1">
           <div className="flex gap-1.5 overflow-x-auto pb-1 px-1" style={{ WebkitOverflowScrolling: 'touch' }}>
             {['Cleaning','Moving','Handyman','Assembly','Delivery','Plumbing','Electrical','Mounting'].map((label) => (
-              <span key={label} className="shrink-0 px-3 py-1.5 rounded-full text-sm bg-white/10 border border-white/20 text-blue-100">
+              <span key={label} className="shrink-0 px-3 py-1.5 rounded-full text-sm bg-white/10 border border-white/20 text-white">
                 {label}
               </span>
             ))}
@@ -40,15 +40,15 @@ export function MobileHeroSection() {
           <div className="grid grid-cols-3 gap-1.5 text-left">
             <div className="bg-white/10 border border-white/20 rounded-xl p-2">
               <p className="text-white text-sm font-semibold">1. Post</p>
-              <p className="text-[11px] text-blue-100">Describe the task</p>
+              <p className="text-[11px] text-white">Describe the task</p>
             </div>
             <div className="bg-white/10 border border-white/20 rounded-xl p-2">
               <p className="text-white text-sm font-semibold">2. Compare</p>
-              <p className="text-[11px] text-blue-100">Get offers fast</p>
+              <p className="text-[11px] text-white">Get offers fast</p>
             </div>
             <div className="bg-white/10 border border-white/20 rounded-xl p-2">
               <p className="text-white text-sm font-semibold">3. Done</p>
-              <p className="text-[11px] text-blue-100">Pay when complete</p>
+              <p className="text-[11px] text-white">Pay when complete</p>
             </div>
           </div>
         </div>

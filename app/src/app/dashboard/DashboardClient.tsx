@@ -4633,12 +4633,12 @@ export default function Dashboard() {
                             {/* Header with title and status */}
                             <div className="flex justify-between items-start gap-3 mb-3 pt-0.5">
                               <div className="flex-1 min-w-0">
-                                <h3 className={`font-semibold text-gray-900 dark:text-slate-100 line-clamp-2 tracking-tight ${isMobile ? "text-base" : "text-lg"} leading-snug`}>
+                                <h3 className={`font-bold text-slate-900 dark:text-slate-100 line-clamp-2 tracking-tight ${isMobile ? "text-base" : "text-lg"} leading-snug`}>
                                   {task.title}
                                 </h3>
                                 <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500 dark:text-slate-400">
                                   <Clock className="h-3.5 w-3.5 text-slate-400" />
-                                  <span>Posted: {getCardPostedAt(task)}</span>
+                                  <span>Posted {getCardPostedAt(task)}</span>
                                   {(task.dueDate || task.dueDateFlexible) && task.dueDate !== "Unknown" && (
                                     <>
                                       <span className="mx-1 text-slate-300">•</span>
@@ -4659,26 +4659,19 @@ export default function Dashboard() {
                               {task.description}
                             </p>
 
-                            {/* Premium info blocks – card-style instead of flat horizontal */}
+                            {/* Premium info blocks – Airtasker-style: light gray budget card, location/date with icon + label + value */}
                             <div className={`grid ${isMobile ? "grid-cols-1" : "grid-cols-2"} gap-3 mb-1`}>
-                              {/* Budget card */}
-                              <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50/80 dark:from-slate-700/90 dark:to-slate-800/90 p-3.5 border border-blue-200/60 dark:border-slate-600/80 shadow-sm">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 dark:bg-blue-500/20">
-                                  <IndianRupee className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                                </div>
-                                <div>
-                                  <p className="text-[10px] uppercase tracking-wider text-blue-600/80 dark:text-blue-400/80 font-semibold">Budget</p>
-                                  <p className="font-bold text-blue-700 dark:text-blue-300 tabular-nums text-base">₹{task.budget}</p>
-                                </div>
+                              {/* Budget card – Airtasker: light gray, TASK BUDGET label, large bold price */}
+                              <div className="flex flex-col items-center justify-center rounded-2xl bg-gray-100 dark:bg-slate-700/90 p-4 border border-gray-200/80 dark:border-slate-600/80">
+                                <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-semibold mb-1">Task Budget</p>
+                                <p className="font-bold text-slate-900 dark:text-slate-100 tabular-nums text-xl">₹{task.budget}</p>
                               </div>
-                              {/* Location card */}
-                              <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/80 dark:from-slate-700/90 dark:to-slate-800/90 p-3.5 border border-slate-200/80 dark:border-slate-600/80 shadow-sm">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-200/80 dark:bg-slate-600/50">
-                                  <MapPin className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                                </div>
+                              {/* Location card – Airtasker: [Icon] LOCATION (small gray) + dark value */}
+                              <div className="flex items-center gap-3 rounded-2xl bg-slate-50 dark:bg-slate-700/90 p-3.5 border border-slate-200/80 dark:border-slate-600/80">
+                                <MapPin className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
                                 <div className="min-w-0 flex-1">
                                   <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Location</p>
-                                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate" title={task.location}>{shortLocation(task.location)}</p>
+                                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate" title={task.location}>{shortLocation(task.location)}</p>
                                   {typeof (task as any).distance_km === "number" && (
                                     <Badge className="mt-0.5 shrink-0 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border-0 text-[10px] font-medium">
                                       ~{(task as any).distance_km.toFixed(1)} km away

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Clock, DollarSign, MapPin, Search, Filter, Star, Loader2, MapPinOff } from "lucide-react"
+import { Clock, IndianRupee, MapPin, Search, Filter, Star, Loader2, MapPinOff } from "lucide-react"
 import { ShareTaskButton } from "@/components/ShareTaskButton"
 import axiosInstance from "@/lib/axiosInstance"
 import { formatDateWithTime } from "@/lib/utils"
@@ -102,7 +102,7 @@ function TaskCardWithPrefetch({
     <Card className="flex flex-col">
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start gap-2">
-          <CardTitle className="text-lg">{task.title}</CardTitle>
+          <CardTitle className="text-lg font-bold text-slate-900">{task.title}</CardTitle>
           <div className="flex items-center gap-1 shrink-0">
             <Badge variant="outline" className="text-xs font-normal">
               {task.custom_category_name || task.category_name || "General"}
@@ -127,17 +127,21 @@ function TaskCardWithPrefetch({
       </CardHeader>
       <CardContent className="flex-1">
         <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{task.description}</p>
-        <div className="flex flex-col gap-2 text-sm">
-          <div className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-            <span>${task.budget}</span>
+        <div className="flex flex-col gap-3 text-sm">
+          {/* Task Budget – Airtasker-style highlighted */}
+          <div className="rounded-xl bg-gray-100 dark:bg-slate-800 p-3 text-center">
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-semibold mb-0.5">Task Budget</p>
+            <p className="font-bold text-slate-900 dark:text-slate-100 text-lg">₹{task.budget}</p>
           </div>
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span>{task.location}</span>
-            {typeof task.distance_km === "number" && (
-              <Badge variant="secondary" className="text-xs font-normal">~{task.distance_km.toFixed(1)} km away</Badge>
-            )}
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-500">Location</p>
+              <span className="font-medium text-slate-900">{task.location}</span>
+              {typeof task.distance_km === "number" && (
+                <Badge variant="secondary" className="text-xs font-normal ml-1">~{task.distance_km.toFixed(1)} km away</Badge>
+              )}
+            </div>
           </div>
           {task.location && (
             <a
@@ -624,8 +628,8 @@ function BrowseContent() {
                       onValueChange={setPriceRange}
                     />
                     <div className="flex justify-between mt-2 text-sm text-muted-foreground">
-                      <span>${priceRange[0]}</span>
-                      <span>${priceRange[1]}</span>
+                      <span>₹{priceRange[0]}</span>
+                      <span>₹{priceRange[1]}</span>
                     </div>
                   </div>
                 </div>
@@ -754,8 +758,8 @@ function BrowseContent() {
                         onValueChange={setPriceRange}
                       />
                       <div className="flex justify-between mt-2 text-sm text-muted-foreground">
-                        <span>${priceRange[0]}</span>
-                        <span>${priceRange[1]}</span>
+                        <span>₹{priceRange[0]}</span>
+                        <span>₹{priceRange[1]}</span>
                       </div>
                     </div>
                   </div>
