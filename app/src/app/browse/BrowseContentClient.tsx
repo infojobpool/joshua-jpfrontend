@@ -103,11 +103,14 @@ function TaskCardWithPrefetch({
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start gap-2">
           <CardTitle className="task-title text-2xl md:text-3xl text-slate-900">{task.title}</CardTitle>
-          <div className="flex items-center gap-1 shrink-0">
-            <Badge variant="outline" className="text-xs font-normal">
-              {task.custom_category_name || task.category_name || "General"}
-            </Badge>
-            <Badge variant="outline">Open</Badge>
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <div className="flex items-center gap-1">
+              <Badge variant="outline" className="text-xs font-normal">
+                {task.custom_category_name || task.category_name || "General"}
+              </Badge>
+              <Badge variant="outline">Open</Badge>
+            </div>
+            <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
           </div>
         </div>
         <CardDescription className="flex items-center gap-2 flex-wrap">
@@ -173,11 +176,11 @@ function TaskCardWithPrefetch({
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex gap-2">
-        {/* Budget + button aligned – same width */}
-        <div className="flex-1 flex flex-col gap-2 min-w-0">
-          <div className="rounded-xl bg-gray-100 dark:bg-slate-800 p-3 text-center">
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-semibold mb-0.5">Task Budget</p>
+      <CardFooter className="flex flex-col gap-3 items-center">
+        {/* Budget + button – centered, Airtasker-style */}
+        <div className="w-full max-w-sm mx-auto flex flex-col gap-2">
+          <div className="rounded-xl bg-gray-100 dark:bg-slate-800 p-4 text-center">
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-bold mb-1">Task Budget</p>
             <p className="task-budget-amount text-2xl md:text-3xl text-slate-900 dark:text-slate-100">₹{task.budget}</p>
           </div>
           <Link
@@ -187,10 +190,9 @@ function TaskCardWithPrefetch({
             onMouseEnter={() => { try { prefetchBidsForTask(task.id); } catch {} }}
             onTouchStart={() => { try { prefetchBidsForTask(task.id); } catch {} }}
           >
-            <Button className="w-full">View Task</Button>
+            <Button className="w-full font-bold">View Task</Button>
           </Link>
         </div>
-        <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" className="shrink-0 self-end" />
       </CardFooter>
     </Card>
     </div>

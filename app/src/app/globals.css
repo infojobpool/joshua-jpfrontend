@@ -122,21 +122,19 @@
   }
 }
 
-/* Premium task title – light cursive, stylish */
+/* Airtasker-style task title – bold, condensed sans-serif */
 .task-title {
-  font-family: var(--font-cormorant), var(--font-geist-sans), Georgia, serif;
-  font-weight: 600;
-  font-style: italic;
-  letter-spacing: 0.01em;
-  line-height: 1.25;
+  font-family: var(--font-archivo), var(--font-geist-sans), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
-/* Premium budget amount – unique, centered */
+/* Airtasker-style budget amount – bold, condensed, centered */
 .task-budget-amount {
-  font-family: var(--font-cormorant), var(--font-geist-sans), Georgia, serif;
-  font-weight: 700;
-  font-style: italic;
-  letter-spacing: 0.02em;
+  font-family: var(--font-archivo), var(--font-geist-sans), system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 /* Bell ring animation when new notification arrives */

@@ -990,11 +990,13 @@ export function OffersSection({
         </CardFooter>
       )}
       {!isTaskPoster && !shouldBlockSubmit && !hasSubmittedOffer && (
-        <CardFooter className="min-h-[200px] flex flex-col gap-4">
+        <CardFooter className="min-h-[200px] flex flex-col gap-4 items-center">
           {/* Task Budget – Airtasker: centered above Make an offer */}
-          <div className="rounded-xl bg-gray-100 dark:bg-slate-800 p-4 text-center w-full">
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-semibold mb-0.5">Task Budget</p>
-            <p className="task-budget-amount text-2xl md:text-3xl text-slate-900 dark:text-slate-100">₹{task.budget}</p>
+          <div className="w-full max-w-sm mx-auto">
+            <div className="rounded-xl bg-gray-100 dark:bg-slate-800 p-4 text-center">
+              <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-bold mb-1">Task Budget</p>
+              <p className="task-budget-amount text-2xl md:text-3xl text-slate-900 dark:text-slate-100">₹{task.budget}</p>
+            </div>
           </div>
           {verificationChecked && !isVerified ? (
             <div className="w-full p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -1048,7 +1050,7 @@ export function OffersSection({
               </div>
               <Button 
                 type="submit" 
-                className="w-full" 
+                className="w-full font-bold" 
                 disabled={!verificationChecked || !isVerified || isSubmitting}
               >
                 {isSubmitting ? "Submitting..." : !verificationChecked ? "Verifying..." : verificationChecked && !isVerified ? "Verification Required" : "Make an offer"}

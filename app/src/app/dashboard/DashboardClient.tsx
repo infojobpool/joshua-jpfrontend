@@ -4656,11 +4656,14 @@ export default function Dashboard() {
                                   )}
                                 </div>
                               </div>
-                              <Badge variant="outline" className="shrink-0 border-slate-200/80 dark:border-slate-600/80 text-slate-600 dark:text-slate-400 font-medium text-xs px-2.5 py-1 rounded-full bg-slate-50/80 dark:bg-slate-700/50">
-                                {task.status === "open" ? "🔓 Open" : 
-                                 task.status === "completed" ? "✅ Completed" :
-                                 task.status.charAt(0).toUpperCase() + task.status.slice(1)}
-                              </Badge>
+                              <div className="flex flex-col items-end gap-1.5 shrink-0">
+                                <Badge variant="outline" className="border-slate-200/80 dark:border-slate-600/80 text-slate-600 dark:text-slate-400 font-medium text-xs px-2.5 py-1 rounded-full bg-slate-50/80 dark:bg-slate-700/50">
+                                  {task.status === "open" ? "🔓 Open" : 
+                                   task.status === "completed" ? "✅ Completed" :
+                                   task.status.charAt(0).toUpperCase() + task.status.slice(1)}
+                                </Badge>
+                                <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
+                              </div>
                             </div>
 
                             {/* Description */}
@@ -4696,24 +4699,23 @@ export default function Dashboard() {
                               </div>
                             </div>
 
-                            {/* Task Budget + Action – aligned same width */}
-                            <div className="flex gap-2 items-stretch">
-                              <div className="flex-1 flex flex-col gap-2 min-w-0">
+                            {/* Task Budget + Action – centered, bold */}
+                            <div className="flex flex-col gap-2 items-center">
+                              <div className="w-full max-w-sm mx-auto">
                                 <div className="rounded-2xl bg-gray-100 dark:bg-slate-700/90 p-4 border border-gray-200/80 dark:border-slate-600/80 text-center">
-                                  <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-semibold mb-0.5">Task Budget</p>
+                                  <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-bold mb-1">Task Budget</p>
                                   <p className="task-budget-amount text-2xl md:text-3xl text-slate-900 dark:text-slate-100 tabular-nums">₹{task.budget}</p>
                                 </div>
                                 <Link
                                   href={`/tasks/${task.id}`}
-                                  className="block"
+                                  className="block mt-2"
                                   onClick={() => { try { storeTaskForNav(task); } catch {} }}
                                 >
-                                  <Button className={`w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 dark:from-blue-600 dark:to-indigo-600 dark:hover:from-blue-500 dark:hover:to-indigo-500 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 rounded-xl ${isMobile ? "py-2.5 text-sm" : "py-3 px-4"}`}>
+                                  <Button className={`w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 dark:from-blue-600 dark:to-indigo-600 dark:hover:from-blue-500 dark:hover:to-indigo-500 text-white font-bold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 rounded-xl ${isMobile ? "py-2.5 text-sm" : "py-3 px-4"}`}>
                                     <span>{hasUserBid ? "View Offer" : "Make an Offer"}</span>
                                   </Button>
                                 </Link>
                               </div>
-                              <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" className="shrink-0 self-end" />
                             </div>
                           </div>
                         </Card>
