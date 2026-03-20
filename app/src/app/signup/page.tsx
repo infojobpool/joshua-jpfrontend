@@ -27,6 +27,7 @@ type AccountType = "tasker" | "poster" | "both";
 interface FormData {
   user_fullname: string;
   user_email: string;
+  phone_number: string;
   password: string;
   confirm_password: string;
   // accountType: AccountType;
@@ -37,16 +38,21 @@ export default function SignUpPage() {
   const [formData, setFormData] = useState<FormData>({
     user_fullname: "",
     user_email: "",
+    phone_number: "",
     password: "",
     confirm_password: "",
     // accountType: "both",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [signupSuccess, setSignupSuccess] = useState(false);
 
   const togglePasswordVisibility = () => {
     setShowPassword((prev) => !prev);
+  };
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword((prev) => !prev);
   };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -65,7 +71,7 @@ export default function SignUpPage() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const { user_fullname, user_email, password, confirm_password } = formData;
+    const { user_fullname, user_email, phone_number, password, confirm_password } = formData;
 
     if (!user_fullname || !user_email || !password || !confirm_password) {
       toast.error("Please fill in all required fields");
@@ -80,6 +86,7 @@ export default function SignUpPage() {
     const payload = {
       user_fullname,
       user_email,
+      phone_number: phone_number?.trim() || undefined,
       password,
       confirm_password,
 
@@ -215,6 +222,19 @@ export default function SignUpPage() {
               </div>
 
               <div className="space-y-1.5">
+                <Label htmlFor="phone_number" className="text-sm font-medium text-slate-700">Phone Number</Label>
+                <Input
+                  id="phone_number"
+                  name="phone_number"
+                  type="tel"
+                  placeholder="Enter your phone number"
+                  value={formData.phone_number}
+                  onChange={handleChange}
+                  className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200"
+                />
+              </div>
+
+              <div className="space-y-1.5">
                 <Label htmlFor="password" className="text-sm font-medium text-slate-700">Password</Label>
                 <div className="relative">
                   <Input
@@ -242,16 +262,25 @@ export default function SignUpPage() {
 
               <div className="space-y-1.5">
                 <Label htmlFor="confirm_password" className="text-sm font-medium text-slate-700">Confirm Password</Label>
-                <Input
-                  id="confirm_password"
-                  name="confirm_password"
-                  type="password"
-                  placeholder="Confirm your password"
-                  value={formData.confirm_password}
-                  onChange={handleChange}
-                  required
-                  className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200"
-                />
+                <div className="relative">
+                  <Input
+                    id="confirm_password"
+                    name="confirm_password"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Confirm your password"
+                    value={formData.confirm_password}
+                    onChange={handleChange}
+                    required
+                    className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200 pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={toggleConfirmPasswordVisibility}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
               </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-3 pt-4 px-6">
