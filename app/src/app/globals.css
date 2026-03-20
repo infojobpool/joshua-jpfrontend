@@ -120,7 +120,21 @@
   body {
     @apply bg-background text-foreground;
   }
+}
 
+/* Airtasker-style task title – bold, condensed, distinctive */
+.task-title {
+  font-family: var(--font-archivo), var(--font-geist-sans), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+/* Airtasker-style budget amount – large, bold, centered */
+.task-budget-amount {
+  font-family: var(--font-archivo), var(--font-geist-sans), system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 /* Bell ring animation when new notification arrives */

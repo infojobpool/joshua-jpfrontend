@@ -757,11 +757,6 @@ export function OffersSection({
             : "Submit an offer for this task"}
             </CardDescription>
           </div>
-          {/* Task Budget – amount on right, Airtasker-style */}
-          <div className="rounded-xl bg-gray-100 dark:bg-slate-800 px-4 py-2 flex items-center justify-between gap-4 min-w-[140px]">
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-semibold">Task Budget</p>
-            <p className="font-bold text-slate-900 dark:text-slate-100 text-xl">₹{task.budget}</p>
-          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -995,7 +990,12 @@ export function OffersSection({
         </CardFooter>
       )}
       {!isTaskPoster && !shouldBlockSubmit && !hasSubmittedOffer && (
-        <CardFooter className="min-h-[200px]">
+        <CardFooter className="min-h-[200px] flex flex-col gap-4">
+          {/* Task Budget – Airtasker: centered above Make an offer */}
+          <div className="rounded-xl bg-gray-100 dark:bg-slate-800 p-4 text-center w-full">
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-semibold mb-0.5">Task Budget</p>
+            <p className="task-budget-amount text-2xl md:text-3xl text-slate-900 dark:text-slate-100">₹{task.budget}</p>
+          </div>
           {verificationChecked && !isVerified ? (
             <div className="w-full p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-sm text-yellow-800 font-medium mb-2">

@@ -102,7 +102,7 @@ function TaskCardWithPrefetch({
     <Card className="flex flex-col">
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start gap-2">
-          <CardTitle className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">{task.title}</CardTitle>
+          <CardTitle className="task-title text-xl md:text-2xl text-slate-900">{task.title}</CardTitle>
           <div className="flex items-center gap-1 shrink-0">
             <Badge variant="outline" className="text-xs font-normal">
               {task.custom_category_name || task.category_name || "General"}
@@ -113,6 +113,15 @@ function TaskCardWithPrefetch({
         <CardDescription className="flex items-center gap-2 flex-wrap">
           <Clock className="h-3 w-3 shrink-0" />
           <span>Posted: {getDisplayPostedAt(task.postedAt)}</span>
+          {task.location && (
+            <>
+              <span className="text-muted-foreground">•</span>
+              <span className="flex items-center gap-1">
+                <MapPin className="h-3 w-3 shrink-0" />
+                <span className="text-xs truncate max-w-[140px]">{task.location}</span>
+              </span>
+            </>
+          )}
           {(task.dueDate || task.dueDateFlexible || !task.dueDate) && (
             <>
               <span className="text-muted-foreground">•</span>
@@ -128,29 +137,27 @@ function TaskCardWithPrefetch({
       <CardContent className="flex-1">
         <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{task.description}</p>
         <div className="flex flex-col gap-3 text-sm">
-          {/* Task Budget – Airtasker-style highlighted */}
-          <div className="rounded-xl bg-gray-100 dark:bg-slate-800 p-3 text-center">
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-semibold mb-0.5">Task Budget</p>
-            <p className="font-bold text-slate-900 dark:text-slate-100 text-lg">₹{task.budget}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-gray-500">Location</p>
-              <span className="font-medium text-slate-900">{task.location}</span>
-              {typeof task.distance_km === "number" && (
-                <Badge variant="secondary" className="text-xs font-normal ml-1">~{task.distance_km.toFixed(1)} km away</Badge>
-              )}
+          {/* Location – Airtasker-style small */}
+          {task.location && (
+            <div className="flex items-center gap-2">
+              <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400">Location</p>
+                <span className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate block">{task.location}</span>
+                {typeof task.distance_km === "number" && (
+                  <span className="text-[10px] text-gray-500">~{task.distance_km.toFixed(1)} km away</span>
+                )}
+              </div>
             </div>
-          </div>
+          )}
           {task.location && (
             <a
               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.location)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 mt-1"
+              className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700"
             >
-              <MapPin className="h-4 w-4 shrink-0" />
+              <MapPin className="h-3 w-3 shrink-0" />
               Open in Google Maps
             </a>
           )}
@@ -166,7 +173,13 @@ function TaskCardWithPrefetch({
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex flex-col sm:flex-row gap-2">
+      <CardFooter className="flex flex-col gap-3">
+        {/* Task Budget – Airtasker: centered above button */}
+        <div className="rounded-xl bg-gray-100 dark:bg-slate-800 p-3 text-center w-full">
+          <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-semibold mb-0.5">Task Budget</p>
+          <p className="task-budget-amount text-2xl md:text-3xl text-slate-900 dark:text-slate-100">₹{task.budget}</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
         <Link
           href={`/tasks/${task.id}`}
           className="flex-1"
@@ -177,6 +190,7 @@ function TaskCardWithPrefetch({
           <Button className="w-full">View Task</Button>
         </Link>
         <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
+        </div>
       </CardFooter>
     </Card>
     </div>

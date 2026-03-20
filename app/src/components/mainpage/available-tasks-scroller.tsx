@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import Link from "next/link"
 import { ChevronLeft, ChevronRight, MapPin, Loader2, Briefcase } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
+import { prefetchBidsForTask } from "@/lib/taskNavCache"
 
 interface Task {
   id: string
@@ -147,7 +148,7 @@ export function AvailableTasksScroller() {
                         <span className="text-xs font-medium text-gray-500 uppercase tracking-wide flex-shrink-0">
                           {task.category_name}
                         </span>
-                        <h3 className="font-bold text-slate-900 mt-1 line-clamp-2 flex-1 min-h-0 text-base md:text-lg tracking-tight">
+                        <h3 className="task-title text-slate-900 mt-1 line-clamp-2 flex-1 min-h-0 text-base md:text-lg">
                           {task.title}
                         </h3>
                         {task.location && (

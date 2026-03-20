@@ -4233,7 +4233,7 @@ export default function Dashboard() {
                         {/* Header with title and status */}
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex-1 min-w-0">
-                            <h3 className={`font-semibold ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-500" : "text-gray-900"} line-clamp-2 ${isMobile ? "text-base" : "text-lg"}`}>
+                            <h3 className={`task-title ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-500 line-through" : "text-slate-900 dark:text-slate-100"} line-clamp-2 ${isMobile ? "text-base md:text-lg" : "text-lg md:text-xl"}`}>
                               {task.title}
                             </h3>
                             <div className="flex items-center gap-2 mt-1">
@@ -4633,12 +4633,21 @@ export default function Dashboard() {
                             {/* Header with title and status */}
                             <div className="flex justify-between items-start gap-3 mb-3 pt-0.5">
                               <div className="flex-1 min-w-0">
-                                <h3 className={`font-bold text-slate-900 dark:text-slate-100 line-clamp-2 tracking-tight ${isMobile ? "text-base md:text-lg" : "text-lg md:text-xl"} leading-snug`}>
+                                <h3 className={`task-title text-slate-900 dark:text-slate-100 line-clamp-2 ${isMobile ? "text-lg md:text-xl" : "text-xl md:text-2xl"} leading-snug`}>
                                   {task.title}
                                 </h3>
-                                <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-                                  <Clock className="h-3.5 w-3.5 text-slate-400" />
+                                <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+                                  <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                                   <span>Posted {getCardPostedAt(task)}</span>
+                                  {task.location && (
+                                    <>
+                                      <span className="mx-1 text-slate-300">•</span>
+                                      <span className="flex items-center gap-1 truncate max-w-[120px]">
+                                        <MapPin className="h-3 w-3 shrink-0" />
+                                        <span className="truncate">{task.location}</span>
+                                      </span>
+                                    </>
+                                  )}
                                   {(task.dueDate || task.dueDateFlexible) && task.dueDate !== "Unknown" && (
                                     <>
                                       <span className="mx-1 text-slate-300">•</span>
@@ -4659,15 +4668,16 @@ export default function Dashboard() {
                               {task.description}
                             </p>
 
-                            {/* Premium info blocks – Airtasker-style: light gray budget card, location/date with icon + label + value */}
-                            <div className={`grid ${isMobile ? "grid-cols-1" : "grid-cols-2"} gap-3 mb-1`}>
-                              {/* Budget card – Airtasker: light gray, amount right */}
-                              <div className="flex items-center justify-between rounded-2xl bg-gray-100 dark:bg-slate-700/90 p-4 border border-gray-200/80 dark:border-slate-600/80">
-                                <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-semibold">Task Budget</p>
-                                <p className="font-bold text-slate-900 dark:text-slate-100 tabular-nums text-xl">₹{task.budget}</p>
+                            {/* Location – Airtasker-style small (compact row) */}
+                            {task.location && (
+                              <div className="flex items-center gap-2 mb-3">
+                                <MapPin className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                                <div className="min-w-0">
+                                  <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Location</p>
+                                  <span className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate block">{task.location}</span>
+                                </div>
                               </div>
-                              {/* Location removed – shown in header/filter */}
-                            </div>
+                            )}
                             {/* Poster card */}
                             <div className="flex items-center gap-3 rounded-2xl bg-white/80 dark:bg-slate-800/80 p-3 border border-slate-200/80 dark:border-slate-600/80 shadow-sm ring-1 ring-slate-100/50 dark:ring-slate-700/30">
                               <Avatar className="h-9 w-9 shrink-0 ring-2 ring-white dark:ring-slate-600 shadow-md">
@@ -4686,10 +4696,14 @@ export default function Dashboard() {
                               </div>
                             </div>
 
-                            {/* Location removed – shown in header/filter */}
+                            {/* Task Budget – Airtasker: centered above Make an Offer */}
+                            <div className="rounded-2xl bg-gray-100 dark:bg-slate-700/90 p-4 border border-gray-200/80 dark:border-slate-600/80 text-center mb-4">
+                              <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-semibold mb-0.5">Task Budget</p>
+                              <p className="task-budget-amount text-2xl md:text-3xl text-slate-900 dark:text-slate-100 tabular-nums">₹{task.budget}</p>
+                            </div>
 
                             {/* Action button */}
-                            <div className="mt-4 pt-1 flex gap-2 items-center">
+                            <div className="flex gap-2 items-center">
                               <Link
                                 href={`/tasks/${task.id}`}
                                 className="flex-1 min-w-0 block"
@@ -4750,7 +4764,7 @@ export default function Dashboard() {
                       {/* Header with title and status */}
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1 min-w-0">
-                          <h3 className={`font-semibold ${isCancelled ? 'text-gray-500 line-through' : 'text-gray-900'} line-clamp-2 ${isMobile ? "text-base" : "text-lg"}`}>
+                          <h3 className={`task-title ${isCancelled ? 'text-gray-500 line-through' : 'text-slate-900 dark:text-slate-100'} line-clamp-2 ${isMobile ? "text-base md:text-lg" : "text-lg md:text-xl"}`}>
                             {task.title}
                           </h3>
                           <div className="flex items-center gap-2 mt-1 text-xs">
