@@ -286,7 +286,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Search, Eye, EyeOff, CreditCard, Phone, Download, ToggleLeft, ToggleRight, Calendar, CheckCircle, IndianRupee } from "lucide-react";
+import { Search, Eye, EyeOff, CreditCard, Phone, Download, Calendar } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import { toast } from "sonner";
 
@@ -318,7 +318,6 @@ export default function CustomersPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [visibleBankDetails, setVisibleBankDetails] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string>("");
-  const [updatingStatus, setUpdatingStatus] = useState<Set<string>>(new Set());
 
   const fetchCustomers = async () => {
     try {
@@ -389,36 +388,6 @@ export default function CustomersPage() {
     setVisibleBankDetails(newVisibleBankDetails);
   };
 
-  const toggleCustomerStatus = async (userId: string, currentStatus: boolean) => {
-    try {
-      setUpdatingStatus(prev => new Set(prev).add(userId));
-      
-      const response = await axiosInstance.patch(`user-status/${userId}/`, {
-        status: !currentStatus
-      });
-
-      if (response.status === 200) {
-        setCustomers(prev => 
-          prev.map(customer => 
-            customer.user_id === userId 
-              ? { ...customer, status: !currentStatus }
-              : customer
-          )
-        );
-        toast.success(`Customer ${!currentStatus ? 'deactivated' : 'activated'} successfully`);
-      }
-    } catch (error) {
-      toast.error("Failed to update customer status");
-      console.error("Status update error:", error);
-    } finally {
-      setUpdatingStatus(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(userId);
-        return newSet;
-      });
-    }
-  };
-
   const downloadExcel = async () => {
     try {
       const response = await axiosInstance.get('customers/download-excel/', {
@@ -452,18 +421,28 @@ export default function CustomersPage() {
   };
 
   const getVerificationStatus = (status: number) => {
-    const statusConfig: Record<number, { text: string; color: string }> = {
-      0: { text: "Pending Verification", color: "bg-yellow-100 text-yellow-800" },
-      2: { text: "Pending Bank Verification", color: "bg-orange-100 text-orange-800" },
-      3: { text: "Verified", color: "bg-green-100 text-green-800" }
-    };
-    
-    const config = statusConfig[status] || { text: "Unknown", color: "bg-gray-100 text-gray-800" };
-    
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
-        {config.text}
+    // verification_status: 0=none, 1=PAN done, 2=Aadhar done, 3=Bank done (all verified)
+    const pan = status >= 1;
+    const aadhar = status >= 2;
+    const bank = status >= 3;
+
+    const Step = ({ label, done }: { label: string; done: boolean }) => (
+      <span
+        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${
+          done ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
+        }`}
+        title={done ? `${label} verified` : `${label} pending`}
+      >
+        {done ? "✓" : "—"} {label}
       </span>
+    );
+
+    return (
+      <div className="flex flex-wrap gap-1">
+        <Step label="PAN" done={pan} />
+        <Step label="Aadhar" done={aadhar} />
+        <Step label="Bank" done={bank} />
+      </div>
     );
   };
 
@@ -539,33 +518,6 @@ export default function CustomersPage() {
     return roles.length > 0 ? roles.join(", ") : "Customer";
   };
 
-  const renderStatusToggle = (customer: Customer) => {
-    const isUpdating = updatingStatus.has(customer.user_id);
-    const isActive = !customer.status; // Since status true means inactive in your logic
-    
-    return (
-      <button
-        onClick={() => toggleCustomerStatus(customer.user_id, customer.status)}
-        disabled={isUpdating}
-        className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
-          isActive 
-            ? "bg-green-100 text-green-800 hover:bg-green-200" 
-            : "bg-red-100 text-red-800 hover:bg-red-200"
-        } ${isUpdating ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-        title={`Click to ${isActive ? 'deactivate' : 'activate'} customer`}
-      >
-        {isUpdating ? (
-          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
-        ) : isActive ? (
-          <ToggleRight className="h-3 w-3" />
-        ) : (
-          <ToggleLeft className="h-3 w-3" />
-        )}
-        {isActive ? "Active" : "Inactive"}
-      </button>
-    );
-  };
-
   return (
     <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -627,26 +579,17 @@ export default function CustomersPage() {
                   Role
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tasks
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Earnings
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Verification
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Bank Details
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex items-center justify-center gap-2">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                       Loading customers...
@@ -655,7 +598,7 @@ export default function CustomersPage() {
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-12 text-center">
+                  <td colSpan={7} className="px-6 py-12 text-center">
                     <div className="text-red-600">
                       {error}
                     </div>
@@ -669,7 +612,7 @@ export default function CustomersPage() {
                 </tr>
               ) : filteredCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                     {searchTerm ? "No customers found matching your search" : "No customers found"}
                   </td>
                 </tr>
@@ -701,27 +644,10 @@ export default function CustomersPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2 text-sm text-gray-700">
-                        <CheckCircle className="h-4 w-4 text-emerald-500" />
-                        {customer.tasks_completed ?? 0}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                        <IndianRupee className="h-4 w-4 text-gray-500" />
-                        {typeof customer.earnings === "number"
-                          ? customer.earnings.toLocaleString("en-IN")
-                          : "0"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
                       {getVerificationStatus(customer.verification_status)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap min-w-[200px]">
                       {renderBankDetails(customer)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {renderStatusToggle(customer)}
                     </td>
                   </tr>
                 ))
