@@ -4625,23 +4625,15 @@ export default function Dashboard() {
                       const hasUserBid = requestedTasks.some(bid => bid.task_id === task.id);
                       
                       return (
-                        <Card key={task.id} className="group flex flex-col bg-white dark:bg-slate-800/95 border border-slate-200/80 dark:border-slate-700/80 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/30 hover:shadow-xl hover:shadow-slate-200/60 dark:hover:shadow-slate-900/40 hover:border-slate-300/80 dark:hover:border-slate-600 hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden ring-1 ring-slate-100/50 dark:ring-slate-700/30">
+                        <Card key={task.id} className="group flex flex-col bg-white dark:bg-slate-800/95 border border-slate-200/60 dark:border-slate-700/60 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.06),0_12px_24px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.25),0_12px_24px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden">
                           {/* Mobile-optimized layout */}
                           <div className={`relative ${isMobile ? "p-4" : "p-6"}`}>
-                            {/* Premium accent bar */}
-                            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 dark:from-blue-600 dark:via-indigo-600 dark:to-blue-700" />
                             {/* Header with title and status */}
                             <div className="flex justify-between items-start gap-3 mb-3 pt-0.5">
                               <div className="flex-1 min-w-0">
                                 <h3 className={`task-title text-slate-900 dark:text-slate-100 line-clamp-2 ${isMobile ? "text-xl md:text-2xl" : "text-2xl md:text-3xl"} leading-snug`}>
                                   {task.title}
                                 </h3>
-                                {task.location && (
-                                  <div className="flex items-center gap-1 mt-1.5 text-xs text-slate-500 dark:text-slate-400 truncate max-w-[200px]">
-                                    <MapPin className="h-3 w-3 shrink-0" />
-                                    <span className="truncate">{task.location}</span>
-                                  </div>
-                                )}
                               </div>
                               <div className="flex flex-col items-end gap-1.5 shrink-0">
                                 <Badge variant="outline" className={`font-medium text-xs px-2.5 py-1 rounded-full ${
@@ -4659,21 +4651,21 @@ export default function Dashboard() {
                               </div>
                             </div>
 
-                            {/* Location – Airtasker-style small (compact row) */}
+                            {/* Location – separate section */}
                             {task.location && (
-                              <div className="flex items-center gap-2 mb-3">
-                                <MapPin className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                                <div className="min-w-0">
-                                  <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Location</p>
-                                  <span className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate block">{task.location}</span>
+                              <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+                                <MapPin className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Location</p>
+                                  <span className="text-sm font-medium text-slate-800 dark:text-slate-200 block">{task.location}</span>
                                 </div>
                               </div>
                             )}
 
-                            {/* Task Budget + Action – centered, bold */}
-                            <div className="flex flex-col gap-2 items-center">
+                            {/* Task Budget + Action – centered, premium */}
+                            <div className="flex flex-col gap-3 items-center">
                               <div className="w-full max-w-sm mx-auto">
-                                <div className="rounded-2xl bg-gray-100 dark:bg-slate-700/90 p-4 border border-gray-200/80 dark:border-slate-600/80 text-center ring-1 ring-slate-200/60 dark:ring-slate-600/50">
+                                <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/80 dark:from-slate-800/80 dark:to-slate-700/60 p-5 border border-slate-200/50 dark:border-slate-600/50 text-center shadow-sm">
                                   <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-bold mb-1">Task Budget</p>
                                   <p className="task-budget-amount text-2xl md:text-3xl text-slate-900 dark:text-slate-100 tabular-nums">₹{task.budget}</p>
                                 </div>
@@ -4682,7 +4674,7 @@ export default function Dashboard() {
                                   className="block mt-2"
                                   onClick={() => { try { storeTaskForNav(task); } catch {} }}
                                 >
-                                  <Button className={`w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 dark:from-blue-600 dark:to-indigo-600 dark:hover:from-blue-500 dark:hover:to-indigo-500 text-white font-bold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 rounded-xl ${isMobile ? "py-2.5 text-sm" : "py-3 px-4"}`}>
+                                  <Button className={`w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 dark:from-blue-600 dark:to-indigo-600 dark:hover:from-blue-500 dark:hover:to-indigo-500 text-white font-bold shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-300 rounded-2xl ${isMobile ? "py-2.5 text-sm" : "py-3 px-4"}`}>
                                     <span>{hasUserBid ? "View Offer" : "Make an Offer"}</span>
                                   </Button>
                                 </Link>

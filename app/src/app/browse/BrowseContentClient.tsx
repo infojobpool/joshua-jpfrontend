@@ -90,7 +90,7 @@ function TaskCardWithPrefetch({
   }, [index, prefetchFirstN, task?.id]);
   return (
     <div ref={cardRef}>
-    <Card className="flex flex-col bg-white dark:bg-slate-800/95 shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 border border-slate-200/80 dark:border-slate-700/80 rounded-xl overflow-hidden">
+    <Card className="flex flex-col bg-white dark:bg-slate-800/95 border border-slate-200/60 dark:border-slate-700/60 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.06),0_12px_24px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.25),0_12px_24px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden">
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start gap-2">
           <CardTitle className="task-title text-2xl md:text-3xl text-slate-900">{task.title}</CardTitle>
@@ -107,13 +107,13 @@ function TaskCardWithPrefetch({
       </CardHeader>
       <CardContent className="flex-1">
         <div className="flex flex-col gap-3 text-sm">
-          {/* Location – Airtasker-style small */}
+          {/* Location – separate section */}
           {task.location && (
-            <div className="flex items-center gap-2">
-              <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400">Location</p>
-                <span className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate block">{task.location}</span>
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+              <MapPin className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Location</p>
+                <span className="text-sm font-medium text-slate-900 dark:text-slate-100 block">{task.location}</span>
                 {typeof task.distance_km === "number" && (
                   <span className="text-[10px] text-gray-500">~{task.distance_km.toFixed(1)} km away</span>
                 )}
@@ -136,8 +136,8 @@ function TaskCardWithPrefetch({
       <CardFooter className="flex flex-col gap-3 items-center">
         {/* Budget + button – centered, Airtasker-style */}
         <div className="w-full max-w-sm mx-auto flex flex-col gap-2">
-          <div className="rounded-xl bg-gray-100 dark:bg-slate-800 p-4 text-center ring-1 ring-slate-200/60 dark:ring-slate-600/50">
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-bold mb-1">Task Budget</p>
+          <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/80 dark:from-slate-800/80 dark:to-slate-700/60 p-5 text-center border border-slate-200/50 dark:border-slate-600/50 shadow-sm">
+            <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold mb-1">Task Budget</p>
             <p className="task-budget-amount text-2xl md:text-3xl text-slate-900 dark:text-slate-100">₹{task.budget}</p>
           </div>
           <Link
@@ -147,7 +147,7 @@ function TaskCardWithPrefetch({
             onMouseEnter={() => { try { prefetchBidsForTask(task.id); } catch {} }}
             onTouchStart={() => { try { prefetchBidsForTask(task.id); } catch {} }}
           >
-            <Button className="w-full font-bold">View Task</Button>
+            <Button className="w-full font-bold rounded-2xl shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/25">View Task</Button>
           </Link>
         </div>
       </CardFooter>
