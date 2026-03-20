@@ -221,6 +221,15 @@
   }
 }
 
+/* Support pill – subtle glow pulse */
+@keyframes support-pulse {
+  0%, 100% { box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35); }
+  50% { box-shadow: 0 6px 24px rgba(37, 99, 235, 0.55); }
+}
+.animate-support-pulse {
+  animation: support-pulse 2s ease-in-out infinite;
+}
+
 .dashboard-card-stagger > * {
   animation: cardStaggerIn 0.4s ease-out both;
   transition: transform 0.25s ease, box-shadow 0.3s ease;
