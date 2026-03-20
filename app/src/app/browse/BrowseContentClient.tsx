@@ -99,7 +99,7 @@ function TaskCardWithPrefetch({
   }, [index, prefetchFirstN, task?.id]);
   return (
     <div ref={cardRef}>
-    <Card className="flex flex-col bg-white dark:bg-slate-800/95 shadow-md border border-slate-200/80 dark:border-slate-700/80">
+    <Card className="flex flex-col bg-white dark:bg-slate-800/95 shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 border border-slate-200/80 dark:border-slate-700/80 rounded-xl overflow-hidden">
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start gap-2">
           <CardTitle className="task-title text-2xl md:text-3xl text-slate-900">{task.title}</CardTitle>
@@ -179,7 +179,7 @@ function TaskCardWithPrefetch({
       <CardFooter className="flex flex-col gap-3 items-center">
         {/* Budget + button – centered, Airtasker-style */}
         <div className="w-full max-w-sm mx-auto flex flex-col gap-2">
-          <div className="rounded-xl bg-gray-100 dark:bg-slate-800 p-4 text-center">
+          <div className="rounded-xl bg-gray-100 dark:bg-slate-800 p-4 text-center ring-1 ring-slate-200/60 dark:ring-slate-600/50">
             <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-bold mb-1">Task Budget</p>
             <p className="task-budget-amount text-2xl md:text-3xl text-slate-900 dark:text-slate-100">₹{task.budget}</p>
           </div>

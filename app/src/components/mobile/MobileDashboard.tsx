@@ -211,7 +211,7 @@ export function MobileDashboard() {
             <MobileCard key={task.id} onClick={() => handleViewDetails(task.id)}>
               <MobileCardHeader>
                 <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900 text-lg leading-tight flex-1 pr-2">
+                  <h3 className="task-title text-gray-900 text-xl md:text-2xl leading-tight flex-1 pr-2">
                     {task.title}
                   </h3>
                   <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">

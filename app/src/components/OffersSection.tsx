@@ -993,7 +993,7 @@ export function OffersSection({
         <CardFooter className="min-h-[200px] flex flex-col gap-4 items-center">
           {/* Task Budget – Airtasker: centered above Make an offer */}
           <div className="w-full max-w-sm mx-auto">
-            <div className="rounded-xl bg-gray-100 dark:bg-slate-800 p-4 text-center">
+            <div className="rounded-xl bg-gray-100 dark:bg-slate-800 p-4 text-center ring-1 ring-slate-200/60 dark:ring-slate-600/50">
               <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-bold mb-1">Task Budget</p>
               <p className="task-budget-amount text-2xl md:text-3xl text-slate-900 dark:text-slate-100">₹{task.budget}</p>
             </div>

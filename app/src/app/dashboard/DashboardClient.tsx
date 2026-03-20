@@ -4233,7 +4233,7 @@ export default function Dashboard() {
                         {/* Header with title and status */}
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex-1 min-w-0">
-                            <h3 className={`task-title ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-500 line-through" : "text-slate-900 dark:text-slate-100"} line-clamp-2 ${isMobile ? "text-base md:text-lg" : "text-lg md:text-xl"}`}>
+                            <h3 className={`task-title ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-500 line-through" : "text-slate-900 dark:text-slate-100"} line-clamp-2 ${isMobile ? "text-xl md:text-2xl" : "text-2xl md:text-3xl"} leading-snug`}>
                               {task.title}
                             </h3>
                             <div className="flex items-center gap-2 mt-1">
@@ -4657,9 +4657,15 @@ export default function Dashboard() {
                                 </div>
                               </div>
                               <div className="flex flex-col items-end gap-1.5 shrink-0">
-                                <Badge variant="outline" className="border-slate-200/80 dark:border-slate-600/80 text-slate-600 dark:text-slate-400 font-medium text-xs px-2.5 py-1 rounded-full bg-slate-50/80 dark:bg-slate-700/50">
+                                <Badge variant="outline" className={`font-medium text-xs px-2.5 py-1 rounded-full ${
+                                  task.status === "open" ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800" :
+                                  task.status === "in_progress" ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800" :
+                                  task.status === "completed" ? "bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-600" :
+                                  "bg-slate-50/80 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-slate-600/80"
+                                }`}>
                                   {task.status === "open" ? "🔓 Open" : 
                                    task.status === "completed" ? "✅ Completed" :
+                                   task.status === "in_progress" ? "🚀 In Progress" :
                                    task.status.charAt(0).toUpperCase() + task.status.slice(1)}
                                 </Badge>
                                 <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
@@ -4702,7 +4708,7 @@ export default function Dashboard() {
                             {/* Task Budget + Action – centered, bold */}
                             <div className="flex flex-col gap-2 items-center">
                               <div className="w-full max-w-sm mx-auto">
-                                <div className="rounded-2xl bg-gray-100 dark:bg-slate-700/90 p-4 border border-gray-200/80 dark:border-slate-600/80 text-center">
+                                <div className="rounded-2xl bg-gray-100 dark:bg-slate-700/90 p-4 border border-gray-200/80 dark:border-slate-600/80 text-center ring-1 ring-slate-200/60 dark:ring-slate-600/50">
                                   <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-bold mb-1">Task Budget</p>
                                   <p className="task-budget-amount text-2xl md:text-3xl text-slate-900 dark:text-slate-100 tabular-nums">₹{task.budget}</p>
                                 </div>
@@ -4766,7 +4772,7 @@ export default function Dashboard() {
                       {/* Header with title and status */}
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1 min-w-0">
-                          <h3 className={`task-title ${isCancelled ? 'text-gray-500 line-through' : 'text-slate-900 dark:text-slate-100'} line-clamp-2 ${isMobile ? "text-base md:text-lg" : "text-lg md:text-xl"}`}>
+                          <h3 className={`task-title ${isCancelled ? 'text-gray-500 line-through' : 'text-slate-900 dark:text-slate-100'} line-clamp-2 ${isMobile ? "text-xl md:text-2xl" : "text-2xl md:text-3xl"} leading-snug`}>
                             {task.title}
                           </h3>
                           <div className="flex items-center gap-2 mt-1 text-xs">
@@ -5017,7 +5023,7 @@ export default function Dashboard() {
                       {/* Header with title and status */}
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1 min-w-0">
-                          <h3 className={`font-bold text-slate-900 line-clamp-2 tracking-tight ${isMobile ? "text-base md:text-lg" : "text-lg md:text-xl"}`}>
+                          <h3 className={`task-title text-slate-900 dark:text-slate-100 line-clamp-2 ${isMobile ? "text-xl md:text-2xl" : "text-2xl md:text-3xl"} leading-snug`}>
                             {task.title}
                           </h3>
                           <div className="flex items-center gap-2 mt-1">
@@ -5110,7 +5116,7 @@ export default function Dashboard() {
                       {/* Header with title and status */}
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1 min-w-0">
-                          <h3 className={`font-bold text-slate-900 line-clamp-2 tracking-tight ${isMobile ? "text-base md:text-lg" : "text-lg md:text-xl"}`}>
+                          <h3 className={`task-title text-slate-900 dark:text-slate-100 line-clamp-2 ${isMobile ? "text-xl md:text-2xl" : "text-2xl md:text-3xl"} leading-snug`}>
                             {bid.task_title}
                           </h3>
                           <div className="flex items-center gap-2 mt-1">

@@ -148,7 +148,7 @@ export function AvailableTasksScroller() {
                         <span className="text-xs font-medium text-gray-500 uppercase tracking-wide flex-shrink-0">
                           {task.category_name}
                         </span>
-                        <h3 className="task-title text-slate-900 mt-1 line-clamp-2 flex-1 min-h-0 text-lg md:text-xl">
+                        <h3 className="task-title text-slate-900 mt-1 line-clamp-2 flex-1 min-h-0 text-xl md:text-2xl">
                           {task.title}
                         </h3>
                         {task.location && (
