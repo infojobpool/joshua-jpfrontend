@@ -9,14 +9,22 @@ interface EmptyStateProps {
   description?: string;
   action?: { label: string; onClick: () => void };
   secondaryAction?: { label: string; onClick: () => void };
+  /** Optional custom illustration (SVG) - when provided, replaces the icon */
+  illustration?: React.ReactNode;
 }
 
-export function EmptyState({ icon: Icon, title, description, action, secondaryAction }: EmptyStateProps) {
+export function EmptyState({ icon: Icon, title, description, action, secondaryAction, illustration }: EmptyStateProps) {
   return (
     <div className="min-h-[320px] flex items-center justify-center py-16 px-6">
       <div className="text-center max-w-sm">
-        <div className="mx-auto w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center mb-4">
-          <Icon className="w-8 h-8 text-slate-500 dark:text-slate-400" />
+        <div className="mx-auto mb-4 flex justify-center">
+          {illustration ? (
+            <div className="w-24 h-24 flex items-center justify-center">{illustration}</div>
+          ) : (
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+              <Icon className="w-8 h-8 text-slate-500 dark:text-slate-400" />
+            </div>
+          )}
         </div>
         <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">{title}</h3>
         {description && (

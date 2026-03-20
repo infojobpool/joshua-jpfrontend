@@ -50,6 +50,7 @@ import { useNotifications } from "@/lib/useNotifications";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { EmptyState } from "@/components/EmptyState";
+import { SearchEmptyIllustration, BriefcaseEmptyIllustration } from "@/components/empty-state-illustrations";
 import { ShareTaskButton } from "@/components/ShareTaskButton";
 import { analytics } from "@/lib/analytics";
 
@@ -4204,7 +4205,7 @@ export default function Dashboard() {
                 {sortedPostedTasksForMyTasks.map((task) => (
                     <Card
                       key={task.id}
-                      className={`relative bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-md hover:shadow-lg transition-all duration-200 rounded-2xl overflow-hidden group border-l-4 border-l-[#3b82f6]/50 ${
+                      className={`relative bg-white dark:bg-slate-800/95 border border-slate-200/60 dark:border-slate-700/60 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.06),0_12px_24px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.25),0_12px_24px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden group ${
                         task.deletion_status || task.cancel_status ? "opacity-60 cursor-not-allowed" : ""
                       }`}
                     >
@@ -4297,11 +4298,6 @@ export default function Dashboard() {
                           </div>
                         </div>
 
-                        {/* Description */}
-                        <p className={`text-sm ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-400" : "text-gray-600"} line-clamp-2 mb-3`}>
-                          {task.description}
-                        </p>
-
                         {/* Tasker Cancellation Message */}
                         {task.cancel_status && task.cancelled_by_role === "tasker" && (
                           <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
@@ -4322,17 +4318,22 @@ export default function Dashboard() {
                           </div>
                         )}
 
-                        {/* Mobile-optimized info row */}
-                        <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"}`}>
-                          <div className="flex items-center gap-2">
-                            <div className={`flex items-center gap-1 ${task.cancel_status && task.cancelled_by_role === "tasker" ? "bg-gray-200" : "bg-blue-100"} px-2 py-1 rounded-lg`}>
-                              <IndianRupee className={`h-4 w-4 ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-500" : "text-blue-600"} font-bold`} />
-                              <span className={`font-bold ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-500" : "text-blue-800"}`}>{task.budget}</span>
+                        {/* Location – separate section (like Available) */}
+                        {task.location && (
+                          <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+                            <MapPin className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Location</p>
+                              <span className="text-sm font-medium text-slate-800 dark:text-slate-200 block">{task.location}</span>
                             </div>
-                            <div className={`flex items-center gap-1 ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-400" : "text-gray-500"}`}>
-                              <MapPin className="h-3 w-3" />
-                              <span className="text-xs">{task.location}</span>
-                            </div>
+                          </div>
+                        )}
+
+                        {/* Budget row */}
+                        <div className="mb-3">
+                          <div className={`rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/80 dark:from-slate-800/80 dark:to-slate-700/60 px-4 py-2.5 border border-slate-200/50 dark:border-slate-600/50 inline-block ${task.cancel_status && task.cancelled_by_role === "tasker" ? "opacity-70" : ""}`}>
+                            <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-bold mb-0.5">Task Budget</p>
+                            <span className={`font-bold text-lg tabular-nums ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-500" : "text-blue-800 dark:text-blue-200"}`}>₹{task.budget}</span>
                           </div>
                         </div>
 
@@ -4572,7 +4573,7 @@ export default function Dashboard() {
                     </div>
                     <Button 
                       type="submit" 
-                      className="bg-slate-900 hover:bg-slate-800 text-white font-medium px-5 py-2.5 rounded-lg"
+                      className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-medium px-5 py-2.5 rounded-lg"
                     >
                       Search
                     </Button>
@@ -4608,6 +4609,7 @@ export default function Dashboard() {
                   icon={Search}
                   title="No tasks found"
                   description="No tasks match your current filters. Try adjusting them."
+                  illustration={<SearchEmptyIllustration />}
                   action={{
                     label: "Clear filters",
                     onClick: () => {
@@ -4708,6 +4710,7 @@ export default function Dashboard() {
                   icon={Briefcase}
                   title="No assigned tasks"
                   description="You don't have any tasks assigned yet. Browse available tasks to submit bids."
+                  illustration={<BriefcaseEmptyIllustration />}
                   action={{ label: "Browse tasks", onClick: () => setActiveTab("available") }}
                   secondaryAction={{ label: "My tasks", onClick: () => setActiveTab("my-tasks") }}
                 />
@@ -4722,7 +4725,7 @@ export default function Dashboard() {
                   const waitingForTasker = !isCancelled && task.taskmaster_completed && !task.tasker_completed && task.job_completion_status !== 1 && task.job_completion_status !== "1";
                   
                   return (
-                  <Card key={task.id} className={`group flex flex-col bg-white dark:bg-slate-800/95 border border-slate-200/80 dark:border-slate-700/80 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/30 hover:shadow-xl hover:shadow-slate-200/60 dark:hover:shadow-slate-900/40 hover:border-slate-300/80 dark:hover:border-slate-600 transition-all duration-300 rounded-2xl overflow-hidden ring-1 ring-slate-100/50 dark:ring-slate-700/30 ${isCancelled ? 'opacity-60' : ''}`}>
+                  <Card key={task.id} className={`group flex flex-col bg-white dark:bg-slate-800/95 border border-slate-200/60 dark:border-slate-700/60 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.06),0_12px_24px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.25),0_12px_24px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden ${isCancelled ? 'opacity-60' : ''}`}>
                     {/* Mobile-optimized layout */}
                     <div className={`relative ${isMobile ? "p-4" : "p-6"}`}>
                       {!isCancelled && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 dark:from-blue-600 dark:via-indigo-600 dark:to-blue-700" />}
@@ -4761,7 +4764,6 @@ export default function Dashboard() {
                           </div>
                         </div>
                         {(() => {
-                          // Debug logging
                           if (isCancelled) {
                             console.log(`🔍 Task ${task.id} is cancelled:`, {
                               cancel_status: task.cancel_status,
@@ -4791,11 +4793,6 @@ export default function Dashboard() {
                         })()}
                       </div>
 
-                      {/* Description */}
-                      <p className={`text-sm ${isCancelled ? 'text-gray-400 line-through' : 'text-gray-600'} line-clamp-2 mb-3`}>
-                        {task.description}
-                      </p>
-
                       {/* Cancellation reason if cancelled */}
                       {isCancelled && task.cancellation_reason && (
                         <div className={`mb-3 p-2 rounded text-xs ${cancelledByTaskmaster ? 'bg-orange-100 border border-orange-300 text-orange-800' : 'bg-gray-200 text-gray-600'}`}>
@@ -4803,17 +4800,22 @@ export default function Dashboard() {
                         </div>
                       )}
 
-                      {/* Mobile-optimized info row */}
-                      <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"}`}>
-                        <div className="flex items-center gap-2">
-                          <div className={`flex items-center gap-1 ${isCancelled ? 'bg-gray-200' : 'bg-orange-100'} px-2 py-1 rounded-lg`}>
-                            <IndianRupee className={`h-4 w-4 ${isCancelled ? 'text-gray-500' : 'text-orange-600'} font-bold`} />
-                            <span className={`font-bold ${isCancelled ? 'text-gray-500' : 'text-orange-800'}`}>{task.budget}</span>
+                      {/* Location – separate section (like Available) */}
+                      {task.location && (
+                        <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+                          <MapPin className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Location</p>
+                            <span className="text-sm font-medium text-slate-800 dark:text-slate-200 block">{task.location}</span>
                           </div>
-                          <div className={`flex items-center gap-1 ${isCancelled ? 'text-gray-400' : 'text-gray-500'}`}>
-                            <MapPin className="h-3 w-3" />
-                            <span className="text-xs">{task.location}</span>
-                          </div>
+                        </div>
+                      )}
+
+                      {/* Budget + Posted by row */}
+                      <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"} mb-3`}>
+                        <div className={`rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/80 dark:from-slate-800/80 dark:to-slate-700/60 px-4 py-2.5 border border-slate-200/50 dark:border-slate-600/50 ${isCancelled ? 'opacity-70' : ''}`}>
+                          <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-bold mb-0.5">Task Budget</p>
+                          <span className={`font-bold text-lg tabular-nums ${isCancelled ? 'text-gray-500' : 'text-orange-800 dark:text-orange-200'}`}>₹{task.budget}</span>
                         </div>
                         <div className={`flex items-center gap-1 ${isCancelled ? 'text-gray-400' : 'text-gray-500'}`}>
                           <Avatar className="h-4 w-4">
@@ -4825,17 +4827,10 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-                      {(task.latitude != null && task.longitude != null) && (
-                        isMobile ? (
-                          <div className="my-2 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                            <MapPin className="h-4 w-4 shrink-0" />
-                            <span className="truncate">{task.location || "Location"}</span>
-                          </div>
-                        ) : (
-                          <div className="my-2">
-                            <TaskLocationMap latitude={task.latitude} longitude={task.longitude} location={task.location} height={100} variant="card" />
-                          </div>
-                        )
+                      {(task.latitude != null && task.longitude != null) && !isMobile && (
+                        <div className="my-2">
+                          <TaskLocationMap latitude={task.latitude} longitude={task.longitude} location={task.location} height={100} variant="card" />
+                        </div>
                       )}
 
                       {/* Waiting for taskmaster message */}
@@ -4974,7 +4969,7 @@ export default function Dashboard() {
             ) : (
               <div className={`grid gap-4 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
                 {sortedCompletedTasks.map((task) => (
-                  <Card key={task.id} className="bg-gradient-to-br from-emerald-50 via-green-50 to-lime-50 dark:from-emerald-950/40 dark:via-slate-800/60 dark:to-slate-800/40 border-l-4 border-l-emerald-500 dark:border-l-emerald-400 shadow-lg shadow-slate-200/40 hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 rounded-2xl overflow-hidden">
+                  <Card key={task.id} className="group flex flex-col bg-white dark:bg-slate-800/95 border border-slate-200/60 dark:border-slate-700/60 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.06),0_12px_24px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.25),0_12px_24px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden border-l-4 border-l-emerald-500 dark:border-l-emerald-400">
                     {/* Mobile-optimized layout */}
                     <div className={isMobile ? "p-4" : "p-6"}>
                       {/* Header with title and status */}
@@ -4997,22 +4992,22 @@ export default function Dashboard() {
                         </Badge>
                       </div>
 
-                      {/* Description */}
-                      <p className="text-sm text-gray-600 line-clamp-2 mb-3">
-                        {task.description}
-                      </p>
+                      {/* Location – separate section (like Available) */}
+                      {task.location && (
+                        <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+                          <MapPin className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Location</p>
+                            <span className="text-sm font-medium text-slate-800 dark:text-slate-200 block">{task.location}</span>
+                          </div>
+                        </div>
+                      )}
 
-                      {/* Mobile-optimized info row */}
-                      <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"}`}>
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1 bg-green-100 px-2 py-1 rounded-lg">
-                            <IndianRupee className="h-4 w-4 text-green-600 font-bold" />
-                            <span className="font-bold text-green-800">{task.budget}</span>
-                          </div>
-                          <div className="flex items-center gap-1 text-gray-500">
-                            <MapPin className="h-3 w-3" />
-                            <span className="text-xs">{task.location}</span>
-                          </div>
+                      {/* Budget + Rating row */}
+                      <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"} mb-3`}>
+                        <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/80 dark:from-slate-800/80 dark:to-slate-700/60 px-4 py-2.5 border border-slate-200/50 dark:border-slate-600/50">
+                          <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-bold mb-0.5">Task Budget</p>
+                          <span className="font-bold text-lg tabular-nums text-green-800 dark:text-green-200">₹{task.budget}</span>
                         </div>
                         <div className="flex items-center gap-1 text-gray-500">
                           <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
@@ -5067,7 +5062,7 @@ export default function Dashboard() {
             ) : (
               <div className={`grid gap-4 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
                 {sortedRequestedTasks.map((bid) => (
-                  <Card key={bid.bid_id} className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-800/80 dark:via-slate-800/60 dark:to-indigo-900/30 border-l-4 border-l-blue-500 dark:border-l-indigo-400 shadow-lg shadow-slate-200/40 hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 rounded-2xl overflow-hidden">
+                  <Card key={bid.bid_id} className="group flex flex-col bg-white dark:bg-slate-800/95 border border-slate-200/60 dark:border-slate-700/60 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.06),0_12px_24px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.25),0_12px_24px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden">
                     {/* Mobile-optimized layout */}
                     <div className={isMobile ? "p-4" : "p-6"}>
                       {/* Header with title and status */}
@@ -5081,7 +5076,7 @@ export default function Dashboard() {
                             <span className="text-xs text-gray-500">Bid placed: {bid.created_at}</span>
                           </div>
                         </div>
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 shrink-0">
                           {bid.task_deleted && (
                             <Badge className="bg-gray-600 text-white text-xs px-2 py-1">🗑️ Deleted</Badge>
                           )}
@@ -5091,22 +5086,22 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-                      {/* Description */}
-                      <p className="text-sm text-gray-600 line-clamp-2 mb-3">
-                        {bid.task_description}
-                      </p>
+                      {/* Location – separate section (like Available) */}
+                      {bid.task_location && (
+                        <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+                          <MapPin className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Location</p>
+                            <span className="text-sm font-medium text-slate-800 dark:text-slate-200 block">{bid.task_location}</span>
+                          </div>
+                        </div>
+                      )}
 
-                      {/* Mobile-optimized info row */}
-                      <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"}`}>
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1 bg-blue-100 px-2 py-1 rounded-lg">
-                            <IndianRupee className="h-4 w-4 text-blue-600 font-bold" />
-                            <span className="font-bold text-blue-800">Your bid: {bid.bid_amount}</span>
-                          </div>
-                          <div className="flex items-center gap-1 text-gray-500">
-                            <MapPin className="h-3 w-3" />
-                            <span className="text-xs">{bid.task_location}</span>
-                          </div>
+                      {/* Budget + Posted by row */}
+                      <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"} mb-3`}>
+                        <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/80 dark:from-slate-800/80 dark:to-slate-700/60 px-4 py-2.5 border border-slate-200/50 dark:border-slate-600/50">
+                          <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-bold mb-0.5">Your Bid</p>
+                          <span className="font-bold text-lg tabular-nums text-blue-800 dark:text-blue-200">₹{bid.bid_amount}</span>
                         </div>
                         <div className="flex items-center gap-1 text-gray-500">
                           <Avatar className="h-4 w-4">
@@ -5118,17 +5113,10 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-                      {(bid.latitude != null && bid.longitude != null) && (
-                        isMobile ? (
-                          <div className="my-3 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                            <MapPin className="h-4 w-4 shrink-0" />
-                            <span className="truncate">{bid.task_location || "Location"}</span>
-                          </div>
-                        ) : (
-                          <div className="my-3">
-                            <TaskLocationMap latitude={bid.latitude} longitude={bid.longitude} location={bid.task_location} height={100} variant="card" />
-                          </div>
-                        )
+                      {(bid.latitude != null && bid.longitude != null) && !isMobile && (
+                        <div className="my-2">
+                          <TaskLocationMap latitude={bid.latitude} longitude={bid.longitude} location={bid.task_location} height={100} variant="card" />
+                        </div>
                       )}
 
                       {/* Action button */}

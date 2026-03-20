@@ -307,6 +307,7 @@ import useStore from "@/lib/Zustand";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./ui/dialog";
+import { NoOffersEmptyState } from "./NoOffersEmptyState";
 
 interface Image {
   id: string;
@@ -778,13 +779,15 @@ export function OffersSection({
               <p className="text-center text-xs text-muted-foreground">Loading offers…</p>
             </div>
           ) : (
-          <p className="text-center text-muted-foreground py-4">
-            {isTaskPoster
-              ? "No offers yet"
-              : hasSubmittedOffer
-              ? "Your offer is being processed"
-              : "No offers submitted yet"}
-          </p>
+          <NoOffersEmptyState
+            variant={
+              isTaskPoster
+                ? "poster"
+                : hasSubmittedOffer
+                ? "processing"
+                : "tasker"
+            }
+          />
           )
         ) : (
           visibleOffers.map((offer) => (
