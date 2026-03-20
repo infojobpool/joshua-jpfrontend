@@ -9,11 +9,9 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Clock, IndianRupee, MapPin, Search, Filter, Star, Loader2, MapPinOff } from "lucide-react"
+import { IndianRupee, MapPin, Search, Filter, Loader2, MapPinOff } from "lucide-react"
 import { ShareTaskButton } from "@/components/ShareTaskButton"
 import axiosInstance from "@/lib/axiosInstance"
-import { formatDateWithTime } from "@/lib/utils"
 import { storeTaskForNav, prefetchBidsForTask } from "@/lib/taskNavCache"
 import { toast } from "sonner"
 
@@ -55,13 +53,6 @@ class BrowseErrorBoundary extends Component<
     }
     return <div key={this.state.retryKey}>{this.props.children}</div>
   }
-}
-
-/** Format posted date; fallback to "Recently" when API returns no date */
-function getDisplayPostedAt(postedAt?: string | null): string {
-  const formatted = formatDateWithTime(postedAt);
-  if (!formatted || formatted === "—") return "Recently";
-  return formatted;
 }
 
 function TaskCardWithPrefetch({
@@ -113,32 +104,8 @@ function TaskCardWithPrefetch({
             <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
           </div>
         </div>
-        <CardDescription className="flex items-center gap-2 flex-wrap">
-          <Clock className="h-3 w-3 shrink-0" />
-          <span>Posted: {getDisplayPostedAt(task.postedAt)}</span>
-          {task.location && (
-            <>
-              <span className="text-muted-foreground">•</span>
-              <span className="flex items-center gap-1">
-                <MapPin className="h-3 w-3 shrink-0" />
-                <span className="text-xs truncate max-w-[140px]">{task.location}</span>
-              </span>
-            </>
-          )}
-          {(task.dueDate || task.dueDateFlexible || !task.dueDate) && (
-            <>
-              <span className="text-muted-foreground">•</span>
-              <span>
-                Due: {task.dueDateFlexible || !task.dueDate
-                  ? "Flexible"
-                  : formatDateWithTime(task.dueDate)}
-              </span>
-            </>
-          )}
-        </CardDescription>
       </CardHeader>
       <CardContent className="flex-1">
-        <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{task.description}</p>
         <div className="flex flex-col gap-3 text-sm">
           {/* Location – Airtasker-style small */}
           {task.location && (
@@ -164,16 +131,6 @@ function TaskCardWithPrefetch({
               Open in Google Maps
             </a>
           )}
-          <div className="flex items-center gap-2">
-            <Avatar className="h-4 w-4">
-              <AvatarFallback>{task.posted_by?.charAt(0)?.toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <span>{task.posted_by}</span>
-            <div className="flex items-center">
-              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-              <span className="text-xs ml-0.5">4.5</span>
-            </div>
-          </div>
         </div>
       </CardContent>
       <CardFooter className="flex flex-col gap-3 items-center">

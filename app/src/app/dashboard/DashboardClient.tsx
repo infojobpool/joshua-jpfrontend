@@ -4636,25 +4636,12 @@ export default function Dashboard() {
                                 <h3 className={`task-title text-slate-900 dark:text-slate-100 line-clamp-2 ${isMobile ? "text-xl md:text-2xl" : "text-2xl md:text-3xl"} leading-snug`}>
                                   {task.title}
                                 </h3>
-                                <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-                                  <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                                  <span>Posted {getCardPostedAt(task)}</span>
-                                  {task.location && (
-                                    <>
-                                      <span className="mx-1 text-slate-300">•</span>
-                                      <span className="flex items-center gap-1 truncate max-w-[120px]">
-                                        <MapPin className="h-3 w-3 shrink-0" />
-                                        <span className="truncate">{task.location}</span>
-                                      </span>
-                                    </>
-                                  )}
-                                  {(task.dueDate || task.dueDateFlexible) && task.dueDate !== "Unknown" && (
-                                    <>
-                                      <span className="mx-1 text-slate-300">•</span>
-                                      <span>Due: {task.dueDateFlexible || !task.dueDate ? "Flexible" : formatDateWithTime(task.dueDate)}</span>
-                                    </>
-                                  )}
-                                </div>
+                                {task.location && (
+                                  <div className="flex items-center gap-1 mt-1.5 text-xs text-slate-500 dark:text-slate-400 truncate max-w-[200px]">
+                                    <MapPin className="h-3 w-3 shrink-0" />
+                                    <span className="truncate">{task.location}</span>
+                                  </div>
+                                )}
                               </div>
                               <div className="flex flex-col items-end gap-1.5 shrink-0">
                                 <Badge variant="outline" className={`font-medium text-xs px-2.5 py-1 rounded-full ${
@@ -4672,11 +4659,6 @@ export default function Dashboard() {
                               </div>
                             </div>
 
-                            {/* Description */}
-                            <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-4 leading-relaxed">
-                              {task.description}
-                            </p>
-
                             {/* Location – Airtasker-style small (compact row) */}
                             {task.location && (
                               <div className="flex items-center gap-2 mb-3">
@@ -4687,23 +4669,6 @@ export default function Dashboard() {
                                 </div>
                               </div>
                             )}
-                            {/* Poster card */}
-                            <div className="flex items-center gap-3 rounded-2xl bg-white/80 dark:bg-slate-800/80 p-3 border border-slate-200/80 dark:border-slate-600/80 shadow-sm ring-1 ring-slate-100/50 dark:ring-slate-700/30">
-                              <Avatar className="h-9 w-9 shrink-0 ring-2 ring-white dark:ring-slate-600 shadow-md">
-                                {(() => {
-                                  const raw = (task as any).posted_by_profile_image || posterProfileCache[String((task as any).posted_by_id)];
-                                  const url = raw ? (resolveProfileImageUrl(raw) || raw) : undefined;
-                                  return url ? <AvatarImage src={url} alt="" /> : null;
-                                })()}
-                                <AvatarFallback className="text-sm bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold">
-                                  {task.posted_by?.charAt(0)?.toUpperCase() || "?"}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Posted by</p>
-                                <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{task.posted_by || "Unknown"}</p>
-                              </div>
-                            </div>
 
                             {/* Task Budget + Action – centered, bold */}
                             <div className="flex flex-col gap-2 items-center">
