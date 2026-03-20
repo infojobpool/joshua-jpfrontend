@@ -102,7 +102,7 @@ function TaskCardWithPrefetch({
     <Card className="flex flex-col">
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start gap-2">
-          <CardTitle className="text-lg font-bold text-slate-900">{task.title}</CardTitle>
+          <CardTitle className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">{task.title}</CardTitle>
           <div className="flex items-center gap-1 shrink-0">
             <Badge variant="outline" className="text-xs font-normal">
               {task.custom_category_name || task.category_name || "General"}

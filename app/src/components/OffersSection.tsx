@@ -746,14 +746,23 @@ export function OffersSection({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Offers ({offers.length})</CardTitle>
-        <CardDescription>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <CardTitle>Offers ({offers.length})</CardTitle>
+            <CardDescription>
           {isTaskPoster
             ? "Choose the best offer for your task"
             : hasSubmittedOffer
             ? "Your submitted offer"
             : "Submit an offer for this task"}
-        </CardDescription>
+            </CardDescription>
+          </div>
+          {/* Task Budget – amount on right, Airtasker-style */}
+          <div className="rounded-xl bg-gray-100 dark:bg-slate-800 px-4 py-2 flex items-center justify-between gap-4 min-w-[140px]">
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-semibold">Task Budget</p>
+            <p className="font-bold text-slate-900 dark:text-slate-100 text-xl">₹{task.budget}</p>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {visibleOffers.length === 0 ? (
@@ -1042,7 +1051,7 @@ export function OffersSection({
                 className="w-full" 
                 disabled={!verificationChecked || !isVerified || isSubmitting}
               >
-                {isSubmitting ? "Submitting..." : !verificationChecked ? "Verifying..." : verificationChecked && !isVerified ? "Verification Required" : "Submit Offer"}
+                {isSubmitting ? "Submitting..." : !verificationChecked ? "Verifying..." : verificationChecked && !isVerified ? "Verification Required" : "Make an offer"}
               </Button>
             </form>
           )}

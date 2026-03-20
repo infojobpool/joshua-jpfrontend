@@ -786,6 +786,7 @@ export default function TaskDetailPage() {
           tasker_completed: Boolean((job as any).tasker_completed),
           taskmaster_completed: Boolean((job as any).taskmaster_completed),
           postedAt: formattedPosted,
+          postedAtISO: rawPosted && !isNaN(new Date(rawPosted).getTime()) ? new Date(rawPosted).toISOString() : undefined,
           dueDate:
             job.due_date_flexible === true || !job.job_due_date
               ? "Flexible"
@@ -1306,7 +1307,7 @@ export default function TaskDetailPage() {
       const response = await axiosInstance.post("/bid-a-job/", payload);
 
       if (response.data.status_code === 201) {
-        toast.success("Your offer has been submitted and the task moved to My Bids.");
+        toast.success("Offer submitted successfully! You can track it in My Bids.");
         addNotifications([{
           id: `bid-${id}-${userId}-${Date.now()}`,
           type: "system",

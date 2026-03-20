@@ -204,6 +204,17 @@ interface TaskInfoProps {
   paymentCheckDone?: boolean;
 }
 
+function formatPostedAgo(iso: string | undefined, fallback: string): string {
+  if (!iso) return fallback;
+  const d = new Date(iso);
+  const diff = Date.now() - d.getTime();
+  if (diff < 60000) return "Just now";
+  if (diff < 3600000) return `about ${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `about ${Math.floor(diff / 3600000)}h ago`;
+  if (diff < 604800000) return `about ${Math.floor(diff / 86400000)}d ago`;
+  return fallback;
+}
+
 export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPoster, isEditing = false, setIsEditing, isPaymentPending: parentPaymentPending, paymentCheckDone }: TaskInfoProps) {
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -341,17 +352,38 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
                 className="text-xl font-bold bg-white/80 border-2 border-blue-200 focus:border-blue-400 rounded-lg px-3 py-2"
               />
             ) : (
-              <CardTitle className="text-xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent leading-tight">
+              <CardTitle className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight leading-tight">
                 {task.title}
               </CardTitle>
             )}
-            <div className="flex items-center gap-3 flex-wrap min-h-[32px]">
-              <div className="flex items-center gap-1.5 text-gray-600">
-                <div className="p-1 rounded-full bg-blue-100">
-                  <Clock className="h-3 w-3 text-blue-600" />
+            <div className="flex flex-col gap-2 mt-2">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="h-6 w-6 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden">
+                    {task.poster?.avatar ? (
+                      <img src={task.poster.avatar} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-xs font-semibold text-slate-600">{task.poster?.name?.charAt(0) || "?"}</span>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Posted by</p>
+                    <p className="text-sm font-medium text-slate-900">{task.poster?.name || "Unknown"}</p>
+                  </div>
                 </div>
-                <span className="text-sm font-medium">Posted {task.postedAt}</span>
+                <span className="text-xs text-gray-500 ml-auto">
+                  {formatPostedAgo((task as any).postedAtISO, task.postedAt)}
+                </span>
               </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-slate-500 shrink-0" />
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">To be done on</p>
+                  <p className="text-sm font-medium text-slate-900">{task.dueDate || "Flexible"}</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap min-h-[32px] mt-2">
               <Badge 
                 variant={displayStatus === "in_progress" ? "default" : "outline"}
                 className={`px-2 py-1 text-xs font-semibold rounded-full ${
@@ -478,50 +510,42 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
           </div>
         </div>
 
-        {/* Task Details Grid */}
+        {/* Task Details Grid - Location removed (shown in header/filter) */}
         <div className="grid grid-cols-2 gap-3">
-          {/* Budget */}
-          <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-lg p-3 border border-emerald-200/50">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="p-1 rounded bg-emerald-100">
-                <IndianRupee className="h-3 w-3 text-emerald-600" />
+          {/* Budget - only when editing; otherwise shown in OffersSection */}
+          {isEditing && isTaskPoster && (
+            <>
+              <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-lg p-3 border border-emerald-200/50">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="p-1 rounded bg-emerald-100">
+                    <IndianRupee className="h-3 w-3 text-emerald-600" />
+                  </div>
+                  <h4 className="text-xs font-semibold text-gray-800">Budget</h4>
+                </div>
+                <Input
+                  name="budget"
+                  type="number"
+                  value={formData.budget}
+                  onChange={handleChange}
+                  placeholder="Budget"
+                  className="border-emerald-200 focus:border-emerald-400 bg-white/80 text-sm"
+                />
               </div>
-              <h4 className="text-xs font-semibold text-gray-800">Budget</h4>
-            </div>
-            {isEditing && isTaskPoster ? (
-              <Input
-                name="budget"
-                type="number"
-                value={formData.budget}
-                onChange={handleChange}
-                placeholder="Budget"
-                className="border-emerald-200 focus:border-emerald-400 bg-white/80 text-sm"
-              />
-            ) : (
-              <p className="text-lg font-bold text-emerald-700">₹{task.budget}</p>
-            )}
-          </div>
-
-          {/* Location */}
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200/50">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="p-1 rounded bg-blue-100">
-                <MapPin className="h-3 w-3 text-blue-600" />
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200/50">
+                <div className="flex items-center gap-2 mb-1">
+                  <MapPin className="h-3 w-3 text-blue-600" />
+                  <h4 className="text-xs font-semibold text-gray-800">Location</h4>
+                </div>
+                <Input
+                  name="location"
+                  value={formData.location}
+                  onChange={handleChange}
+                  placeholder="Location"
+                  className="border-blue-200 focus:border-blue-400 bg-white/80 text-sm"
+                />
               </div>
-              <h4 className="text-xs font-semibold text-gray-800">Location</h4>
-            </div>
-            {isEditing && isTaskPoster ? (
-              <Input
-                name="location"
-                value={formData.location}
-                onChange={handleChange}
-                placeholder="Location"
-                className="border-blue-200 focus:border-blue-400 bg-white/80 text-sm"
-              />
-            ) : (
-              <p className="text-gray-700 text-xs leading-relaxed line-clamp-2">{task.location}</p>
-            )}
-          </div>
+            </>
+          )}
 
           {/* Due Date */}
           <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-3 border border-purple-200/50">

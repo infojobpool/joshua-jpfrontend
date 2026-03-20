@@ -4152,7 +4152,7 @@ export default function Dashboard() {
 
           {activeTab === "my-tasks" && (
           <div className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks You've Posted</h2>
+            <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks You've Posted</h2>
             {/* Premium Toolbar */}
             <div className={`mb-3 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 shadow-sm transition-all duration-200`}> 
               <div className={`flex ${isMobile ? "flex-col gap-2" : "items-center gap-3"}`}>
@@ -4432,7 +4432,7 @@ export default function Dashboard() {
 
           {activeTab === "available" && (
           <div className="space-y-4 mt-4 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Available Tasks</h2>
+            <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Available Tasks</h2>
             <div className={`grid gap-6 ${isMobile ? "grid-cols-1" : "md:grid-cols-4"}`} style={{zIndex:1, position:'relative'}}>
               <div className={`${isMobile ? "hidden" : "md:col-span-1"} space-y-6`}>
                 <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
@@ -4633,7 +4633,7 @@ export default function Dashboard() {
                             {/* Header with title and status */}
                             <div className="flex justify-between items-start gap-3 mb-3 pt-0.5">
                               <div className="flex-1 min-w-0">
-                                <h3 className={`font-bold text-slate-900 dark:text-slate-100 line-clamp-2 tracking-tight ${isMobile ? "text-base" : "text-lg"} leading-snug`}>
+                                <h3 className={`font-bold text-slate-900 dark:text-slate-100 line-clamp-2 tracking-tight ${isMobile ? "text-base md:text-lg" : "text-lg md:text-xl"} leading-snug`}>
                                   {task.title}
                                 </h3>
                                 <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500 dark:text-slate-400">
@@ -4661,24 +4661,12 @@ export default function Dashboard() {
 
                             {/* Premium info blocks – Airtasker-style: light gray budget card, location/date with icon + label + value */}
                             <div className={`grid ${isMobile ? "grid-cols-1" : "grid-cols-2"} gap-3 mb-1`}>
-                              {/* Budget card – Airtasker: light gray, TASK BUDGET label, large bold price */}
-                              <div className="flex flex-col items-center justify-center rounded-2xl bg-gray-100 dark:bg-slate-700/90 p-4 border border-gray-200/80 dark:border-slate-600/80">
-                                <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-semibold mb-1">Task Budget</p>
+                              {/* Budget card – Airtasker: light gray, amount right */}
+                              <div className="flex items-center justify-between rounded-2xl bg-gray-100 dark:bg-slate-700/90 p-4 border border-gray-200/80 dark:border-slate-600/80">
+                                <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-semibold">Task Budget</p>
                                 <p className="font-bold text-slate-900 dark:text-slate-100 tabular-nums text-xl">₹{task.budget}</p>
                               </div>
-                              {/* Location card – Airtasker: [Icon] LOCATION (small gray) + dark value */}
-                              <div className="flex items-center gap-3 rounded-2xl bg-slate-50 dark:bg-slate-700/90 p-3.5 border border-slate-200/80 dark:border-slate-600/80">
-                                <MapPin className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Location</p>
-                                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate" title={task.location}>{shortLocation(task.location)}</p>
-                                  {typeof (task as any).distance_km === "number" && (
-                                    <Badge className="mt-0.5 shrink-0 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border-0 text-[10px] font-medium">
-                                      ~{(task as any).distance_km.toFixed(1)} km away
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
+                              {/* Location removed – shown in header/filter */}
                             </div>
                             {/* Poster card */}
                             <div className="flex items-center gap-3 rounded-2xl bg-white/80 dark:bg-slate-800/80 p-3 border border-slate-200/80 dark:border-slate-600/80 shadow-sm ring-1 ring-slate-100/50 dark:ring-slate-700/30">
@@ -4698,18 +4686,7 @@ export default function Dashboard() {
                               </div>
                             </div>
 
-                            {(task.latitude != null && task.longitude != null) || (task.location && task.location.trim().length >= 4) ? (
-                              isMobile ? (
-                                <div className="my-3 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                                  <MapPin className="h-4 w-4 shrink-0" />
-                                  <span className="truncate">{task.location || "Location"}</span>
-                                </div>
-                              ) : (
-                                <div className="my-4 rounded-xl overflow-hidden border border-slate-200/80 dark:border-slate-600/80 shadow-inner">
-                                  <TaskLocationMap latitude={task.latitude} longitude={task.longitude} location={task.location} height={110} variant="card" />
-                                </div>
-                              )
-                            ) : null}
+                            {/* Location removed – shown in header/filter */}
 
                             {/* Action button */}
                             <div className="mt-4 pt-1 flex gap-2 items-center">
@@ -4738,7 +4715,7 @@ export default function Dashboard() {
           {activeTab === "assigned" && (
           <div className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks Assigned to You</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks Assigned to You</h2>
               {assignedTasks.length > 0 && (
                 <select value={assignedSortBy} onChange={e=>setAssignedSortBy(e.target.value)} className="w-[160px] sm:w-[180px] rounded-md border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-gray-700 dark:text-slate-200">
                   <option value="newest">Newest first</option>
@@ -4981,7 +4958,7 @@ export default function Dashboard() {
           {activeTab === "completed" && (
           <div className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Completed</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Completed</h2>
               {completedTasks.length > 0 && (
                 <select value={completedSortBy} onChange={e=>setCompletedSortBy(e.target.value)} className="w-[160px] sm:w-[180px] rounded-md border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-gray-700 dark:text-slate-200">
                   <option value="newest">Newest first</option>
@@ -5024,7 +5001,7 @@ export default function Dashboard() {
                       {/* Header with title and status */}
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1 min-w-0">
-                          <h3 className={`font-semibold text-gray-900 line-clamp-2 ${isMobile ? "text-base" : "text-lg"}`}>
+                          <h3 className={`font-bold text-slate-900 line-clamp-2 tracking-tight ${isMobile ? "text-base md:text-lg" : "text-lg md:text-xl"}`}>
                             {task.title}
                           </h3>
                           <div className="flex items-center gap-2 mt-1">
@@ -5093,7 +5070,7 @@ export default function Dashboard() {
           {activeTab === "my-bids" && (
           <div className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />My Bids</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />My Bids</h2>
               {requestedTasks.length > 0 && (
                 <select value={myBidsSortBy} onChange={e=>setMyBidsSortBy(e.target.value)} className="w-[160px] sm:w-[180px] rounded-md border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-gray-700 dark:text-slate-200">
                   <option value="newest">Newest first</option>
@@ -5117,7 +5094,7 @@ export default function Dashboard() {
                       {/* Header with title and status */}
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1 min-w-0">
-                          <h3 className={`font-semibold text-gray-900 line-clamp-2 ${isMobile ? "text-base" : "text-lg"}`}>
+                          <h3 className={`font-bold text-slate-900 line-clamp-2 tracking-tight ${isMobile ? "text-base md:text-lg" : "text-lg md:text-xl"}`}>
                             {bid.task_title}
                           </h3>
                           <div className="flex items-center gap-2 mt-1">

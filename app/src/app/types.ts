@@ -36,6 +36,7 @@ export interface Image {
     tasker_completed?: boolean;
     taskmaster_completed?: boolean;
     postedAt: string;
+    postedAtISO?: string;
     dueDate: string;
     category: string;
     images: Image[];
