@@ -4205,7 +4205,7 @@ export default function Dashboard() {
                 {sortedPostedTasksForMyTasks.map((task) => (
                     <Card
                       key={task.id}
-                      className={`relative bg-white dark:bg-slate-800/95 border border-slate-200/60 dark:border-slate-700/60 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.06),0_12px_24px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.25),0_12px_24px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden group ${
+                      className={`relative bg-white dark:bg-slate-800/95 border-0 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.15),0_4px_12px_rgba(0,0,0,0.2)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_16px_rgba(0,0,0,0.25)] transition-all duration-300 rounded-2xl overflow-hidden group ${
                         task.deletion_status || task.cancel_status ? "opacity-60 cursor-not-allowed" : ""
                       }`}
                     >
@@ -4214,7 +4214,7 @@ export default function Dashboard() {
                         <div className={`w-full text-white text-center py-1.5 px-3 font-semibold text-xs ${
                           task.taskmaster_completed && !task.tasker_completed && task.job_completion_status !== 1 && task.job_completion_status !== "1"
                             ? "bg-amber-600"
-                            : "bg-emerald-700"
+                            : "bg-emerald-600"
                         }`}>
                           {task.taskmaster_completed && !task.tasker_completed && task.job_completion_status !== 1 && task.job_completion_status !== "1"
                             ? "✓ You've confirmed — Waiting for tasker to mark work done"
@@ -4229,89 +4229,85 @@ export default function Dashboard() {
                         </div>
                       )}
                       
-                      {/* Mobile-optimized layout */}
-                      <div className={`${isMobile ? "p-4" : "p-6"} ${task.cancel_status && task.cancelled_by_role === "tasker" ? "opacity-70" : ""}`}>
-                        {/* Header with title and status */}
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="flex-1 min-w-0">
-                            <h3 className={`task-title ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-500 line-through" : "text-slate-900 dark:text-slate-100"} line-clamp-2 ${isMobile ? "text-xl md:text-2xl" : "text-2xl md:text-3xl"} leading-snug`}>
-                              {task.title}
-                            </h3>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Clock className="h-3 w-3 text-gray-400" />
-                              <span className={`text-xs ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-400" : "text-gray-500"}`}>{getCardPostedAt(task)}</span>
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-end gap-2 ml-3 shrink-0">
-                            <div className="flex items-center gap-2">
-                              <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
-                              <Badge
-                                variant="outline"
-                                className={`font-medium text-xs px-2 py-1 rounded-full ${
-                                  task.cancel_status && task.cancelled_by_role === "tasker"
-                                    ? "border-orange-300 text-orange-700 bg-orange-50"
-                                    : task.cancel_status
-                                    ? "border-red-200 text-red-600 bg-red-50"
-                                    : task.deletion_status
-                                    ? "border-red-200 text-red-600 bg-red-50"
-                                    : task.status === "in_progress"
-                                    ? "border-emerald-300 text-emerald-700 bg-emerald-50"
-                                    : task.status === "completed"
-                                    ? "border-gray-300 text-gray-600 bg-gray-50"
-                                    : "border-gray-300 text-gray-600 bg-gray-50"
-                                }`}
-                              >
-                                {task.cancel_status && task.cancelled_by_role === "tasker"
-                                  ? "⚠️ Tasker Cancelled"
-                                  : task.cancel_status
-                                  ? "❌ Canceled"
-                                  : task.deletion_status
-                                  ? "🗑️ Deleted"
-                                  : task.status === "in_progress"
-                                  ? "🚀 In Progress"
-                                  : task.status === "completed"
-                                  ? "✅ Completed"
-                                  : "📋 Open"}
-                              </Badge>
-                              {!task.deletion_status && !task.cancel_status && (
-                                <div className="flex gap-1.5">
-                                  {(task.status === "open" || task.status === "in_progress") && (
-                                    <button
-                                      onClick={() => handleCancelClick(task.id)}
-                                      className="px-2.5 py-1 rounded-lg border-2 border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium text-xs transition-all duration-200 active:scale-[0.98]"
-                                      aria-label="Cancel task"
-                                      title="Cancel task"
-                                    >
-                                      Cancel
-                                    </button>
-                                  )}
-                                  {task.status === "open" && (
-                                    <button
-                                      onClick={() => handleDeleteClick(task.id)}
-                                      className="px-2.5 py-1 rounded-lg border-2 border-red-200 bg-red-50 hover:bg-red-100 text-red-600 font-medium text-xs transition-all duration-200 active:scale-[0.98]"
-                                      aria-label="Delete task"
-                                      title="Delete task"
-                                    >
-                                      Delete
-                                    </button>
-                                  )}
-                                </div>
+                      {/* Premium layout – no boxes, clean typography */}
+                      <div className={`relative ${isMobile ? "p-4" : "p-6"} ${task.cancel_status && task.cancelled_by_role === "tasker" ? "opacity-70" : ""}`}>
+                        {/* Share – top right only */}
+                        <div className="absolute top-4 right-4 md:top-6 md:right-6">
+                          <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
+                        </div>
+
+                        {/* Title – full, no truncation */}
+                        <h3 className={`task-title pr-10 ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-500 line-through" : "text-slate-900 dark:text-slate-100"} ${isMobile ? "text-lg md:text-xl" : "text-xl md:text-2xl"} leading-snug font-semibold`}>
+                          {task.title}
+                        </h3>
+
+                        {/* Meta row: date, status, actions */}
+                        <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
+                          <span className={`flex items-center gap-1 ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-400" : "text-slate-500"}`}>
+                            <Clock className="h-3 w-3 shrink-0" />
+                            {getCardPostedAt(task)}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className={`font-medium text-xs px-2 py-0.5 rounded-md ${
+                              task.cancel_status && task.cancelled_by_role === "tasker"
+                                ? "border-orange-200 text-orange-600 bg-orange-50/50"
+                                : task.cancel_status
+                                ? "border-red-200 text-red-600 bg-red-50/50"
+                                : task.deletion_status
+                                ? "border-red-200 text-red-600 bg-red-50/50"
+                                : task.status === "in_progress"
+                                ? "border-emerald-200 text-emerald-700 bg-emerald-50/50"
+                                : task.status === "completed"
+                                ? "border-slate-200 text-slate-600 bg-slate-50/50"
+                                : "border-slate-200 text-slate-600 bg-slate-50/50"
+                            }`}
+                          >
+                            {task.cancel_status && task.cancelled_by_role === "tasker"
+                              ? "⚠️ Tasker Cancelled"
+                              : task.cancel_status
+                              ? "❌ Canceled"
+                              : task.deletion_status
+                              ? "🗑️ Deleted"
+                              : task.status === "in_progress"
+                              ? "🚀 In Progress"
+                              : task.status === "completed"
+                              ? "✅ Completed"
+                              : "📋 Open"}
+                          </Badge>
+                          {!task.deletion_status && !task.cancel_status && (
+                            <>
+                              {(task.status === "open" || task.status === "in_progress") && (
+                                <button
+                                  onClick={() => handleCancelClick(task.id)}
+                                  className="text-amber-600 hover:text-amber-700 font-medium hover:underline"
+                                  aria-label="Cancel task"
+                                  title="Cancel task"
+                                >
+                                  Cancel
+                                </button>
                               )}
-                            </div>
-                          </div>
+                              {task.status === "open" && (
+                                <button
+                                  onClick={() => handleDeleteClick(task.id)}
+                                  className="text-red-600 hover:text-red-700 font-medium hover:underline"
+                                  aria-label="Delete task"
+                                  title="Delete task"
+                                >
+                                  Delete
+                                </button>
+                              )}
+                            </>
+                          )}
                         </div>
 
                         {/* Tasker Cancellation Message */}
                         {task.cancel_status && task.cancelled_by_role === "tasker" && (
-                          <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                            <p className="text-sm text-orange-800 font-medium mb-1">
-                              ⚠️ Tasker cancelled this task
-                            </p>
-                            <p className="text-xs text-orange-700">
-                              {task.cancellation_reason && (
-                                <span className="block mb-1"><strong>Reason:</strong> {task.cancellation_reason}</span>
-                              )}
-                              Please repost the task to find a new tasker. You will receive a refund if payment was made, otherwise no refund is needed.
+                          <div className="mt-3 p-3 rounded-lg bg-orange-50/80 dark:bg-orange-950/30 border border-orange-200/60">
+                            <p className="text-sm text-orange-800 dark:text-orange-200 font-medium mb-1">⚠️ Tasker cancelled this task</p>
+                            <p className="text-xs text-orange-700 dark:text-orange-300">
+                              {task.cancellation_reason && <span className="block mb-1"><strong>Reason:</strong> {task.cancellation_reason}</span>}
+                              Please repost the task to find a new tasker.
                             </p>
                             <Link href="/post-task" className="mt-2 inline-block">
                               <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white text-xs">
@@ -4321,101 +4317,49 @@ export default function Dashboard() {
                           </div>
                         )}
 
-                        {/* Location – separate section (like Available) */}
+                        {/* Location – clean inline, no box */}
                         {task.location && (
-                          <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
-                            <MapPin className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Location</p>
-                              <span className="text-sm font-medium text-slate-800 dark:text-slate-200 block">{task.location}</span>
-                            </div>
+                          <div className="flex items-start gap-2 mt-4 py-2 border-t border-slate-100 dark:border-slate-700/60">
+                            <MapPin className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+                            <span className="text-sm text-slate-600 dark:text-slate-400">{task.location}</span>
                           </div>
                         )}
 
-                        {/* Budget row – centered */}
-                        <div className="mb-3 flex justify-center">
-                          <div className={`rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/80 dark:from-slate-800/80 dark:to-slate-700/60 px-4 py-2.5 border border-slate-200/50 dark:border-slate-600/50 text-center ${task.cancel_status && task.cancelled_by_role === "tasker" ? "opacity-70" : ""}`}>
-                            <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-bold mb-0.5">Task Budget</p>
-                            <span className={`font-bold text-lg tabular-nums ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-500" : "text-blue-800 dark:text-blue-200"}`}>₹{task.budget}</span>
-                          </div>
+                        {/* Budget – clean typography, no box */}
+                        <div className={`mt-4 py-3 text-center ${task.cancel_status && task.cancelled_by_role === "tasker" ? "opacity-70" : ""}`}>
+                          <p className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">Budget</p>
+                          <p className={`font-bold text-xl tabular-nums ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-500" : "text-slate-900 dark:text-slate-100"}`}>₹{task.budget}</p>
                         </div>
 
-                        {/* Action buttons */}
-                        <div className={`flex gap-2 mt-4 ${isMobile ? "flex-col" : "flex-row"} flex-wrap items-center`}>
+                        {/* Action buttons – clean, minimal */}
+                        <div className="flex gap-2 mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60">
                           {task.cancel_status && task.cancelled_by_role === "tasker" ? (
                             <div className="flex gap-2 w-full">
-                              <Link href="/post-task" className="flex-1">
-                                <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white">
-                                  Repost Task
-                                </Button>
-                              </Link>
-                              <Button
-                                variant="destructive"
-                                className="flex-1"
-                                onClick={() => handlePermanentDelete(task.id)}
-                              >
-                                Delete Permanently
-                              </Button>
+                              <Link href="/post-task" className="flex-1"><Button className="w-full bg-orange-600 hover:bg-orange-700 text-white rounded-xl">Repost Task</Button></Link>
+                              <Button variant="outline" className="flex-1 rounded-xl text-red-600 border-red-200 hover:bg-red-50" onClick={() => handlePermanentDelete(task.id)}>Delete</Button>
                             </div>
                           ) : task.deletion_status || task.cancel_status ? (
                             <div className="flex gap-2 w-full">
-                              <Button
-                                variant="outline"
-                                className="flex-1"
-                                onClick={() => handleRequestUndeleteClick(task.id)}
-                              >
-                                Request Access
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                className="flex-1"
-                                onClick={() => handlePermanentDelete(task.id)}
-                              >
-                                Delete Permanently
-                              </Button>
+                              <Button variant="outline" className="flex-1 rounded-xl" onClick={() => handleRequestUndeleteClick(task.id)}>Request Access</Button>
+                              <Button variant="outline" className="flex-1 rounded-xl text-red-600 border-red-200 hover:bg-red-50" onClick={() => handlePermanentDelete(task.id)}>Delete</Button>
                             </div>
                           ) : task.status === "in_progress" ? (
-                            <>
-                              <div className="flex flex-wrap gap-2 w-full items-center justify-center sm:justify-start">
-                                <Link href={`/tasks/${task.id}`} className="shrink-0" onClick={() => { try { storeTaskForNav(task); } catch {} }} onMouseEnter={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }}>
-                                  <Button
-                                    variant="outline"
-                                    className={`border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow transition-all duration-200 active:scale-[0.98] ${isMobile ? "py-2 px-3 text-sm" : "py-2 px-4 text-sm"}`}
-                                  >
-                                    <span className="mr-1.5">👁️</span>
-                                    View Details
-                                  </Button>
-                                </Link>
-                                {task.job_completion_status !== 1 && task.job_completion_status !== "1" && !task.taskmaster_completed && (
-                                  <Button
-                                    className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-all duration-200 active:scale-[0.98]"
-                                    onClick={() => {
-                                      setCompleteReviewTask(task);
-                                      setCompleteReviewAsTaskmaster(true);
-                                    }}
-                                    disabled={completingTaskId === task.id}
-                                  >
-                                    <span className="mr-1.5">✅</span>
-                                    {completingTaskId === task.id ? "Updating..." : "Confirm work done"}
-                                  </Button>
-                                )}
-                                {(task.tasker_completed && !task.taskmaster_completed) && (
-                                  <span className="text-xs text-muted-foreground">The tasker says they're done. Confirm above to close this task.</span>
-                                )}
-                                {(task.taskmaster_completed && !task.tasker_completed) && (
-                                  <span className="text-xs text-muted-foreground">You've confirmed. Waiting for tasker to mark work as done.</span>
-                                )}
-                              </div>
-                            </>
-                          ) : (
-                            <div className="flex gap-2 w-full items-center justify-center sm:justify-start">
-                              <Link href={`/tasks/${task.id}`} className="flex-1 min-w-0 max-w-xs" onClick={() => { try { storeTaskForNav(task); } catch {} }} onMouseEnter={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }}>
-                                <Button variant="outline" className={`w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 active:scale-[0.98] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
-                                  <span className="mr-1.5">👁️</span>
-                                  View Details
-                                </Button>
+                            <div className="flex flex-wrap gap-2 w-full">
+                              <Link href={`/tasks/${task.id}`} className="flex-1 min-w-0" onClick={() => { try { storeTaskForNav(task); } catch {} }} onMouseEnter={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }}>
+                                <Button variant="outline" className="w-full rounded-xl border-slate-200">👁️ View Details</Button>
                               </Link>
+                              {task.job_completion_status !== 1 && task.job_completion_status !== "1" && !task.taskmaster_completed && (
+                                <Button className="flex-1 min-w-0 rounded-xl bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setCompleteReviewTask(task); setCompleteReviewAsTaskmaster(true); }} disabled={completingTaskId === task.id}>
+                                  ✅ {completingTaskId === task.id ? "Updating..." : "Confirm work done"}
+                                </Button>
+                              )}
+                              {(task.tasker_completed && !task.taskmaster_completed) && <span className="text-xs text-slate-500 w-full">Tasker marked done. Confirm above.</span>}
+                              {(task.taskmaster_completed && !task.tasker_completed) && <span className="text-xs text-slate-500 w-full">Waiting for tasker to mark work done.</span>}
                             </div>
+                          ) : (
+                            <Link href={`/tasks/${task.id}`} className="flex-1 min-w-0" onClick={() => { try { storeTaskForNav(task); } catch {} }} onMouseEnter={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }}>
+                              <Button variant="outline" className="w-full rounded-xl border-slate-200">👁️ View Details</Button>
+                            </Link>
                           )}
                         </div>
                       </div>
@@ -4622,61 +4566,38 @@ export default function Dashboard() {
                       const hasUserBid = requestedTasks.some(bid => bid.task_id === task.id);
                       
                       return (
-                        <Card key={task.id} className="group flex flex-col bg-white dark:bg-slate-800/95 border border-slate-200/60 dark:border-slate-700/60 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.06),0_12px_24px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.25),0_12px_24px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden">
-                          {/* Mobile-optimized layout */}
+                        <Card key={task.id} className="group flex flex-col bg-white dark:bg-slate-800/95 border-0 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.15),0_4px_12px_rgba(0,0,0,0.2)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_16px_rgba(0,0,0,0.25)] transition-all duration-300 rounded-2xl overflow-hidden">
                           <div className={`relative ${isMobile ? "p-4" : "p-6"}`}>
-                            {/* Header with title and status */}
-                            <div className="flex justify-between items-start gap-3 mb-3 pt-0.5">
-                              <div className="flex-1 min-w-0">
-                                <h3 className={`task-title text-slate-900 dark:text-slate-100 line-clamp-2 ${isMobile ? "text-xl md:text-2xl" : "text-2xl md:text-3xl"} leading-snug`}>
-                                  {task.title}
-                                </h3>
-                              </div>
-                              <div className="flex flex-col items-end gap-1.5 shrink-0">
-                                <Badge variant="outline" className={`font-medium text-xs px-2.5 py-1 rounded-full ${
-                                  task.status === "open" ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800" :
-                                  task.status === "in_progress" ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800" :
-                                  task.status === "completed" ? "bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-600" :
-                                  "bg-slate-50/80 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-slate-600/80"
-                                }`}>
-                                  {task.status === "open" ? "🔓 Open" : 
-                                   task.status === "completed" ? "✅ Completed" :
-                                   task.status === "in_progress" ? "🚀 In Progress" :
-                                   task.status.charAt(0).toUpperCase() + task.status.slice(1)}
-                                </Badge>
-                                <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
-                              </div>
+                            <div className="absolute top-4 right-4 md:top-6 md:right-6">
+                              <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
                             </div>
-
-                            {/* Location – separate section */}
+                            <h3 className="task-title pr-10 text-slate-900 dark:text-slate-100 font-semibold leading-snug text-lg md:text-xl">
+                              {task.title}
+                            </h3>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Badge variant="outline" className={`text-xs px-2 py-0.5 rounded-md ${
+                                task.status === "open" ? "border-emerald-200 text-emerald-700 bg-emerald-50/50" :
+                                task.status === "in_progress" ? "border-blue-200 text-blue-700 bg-blue-50/50" :
+                                "border-slate-200 text-slate-600 bg-slate-50/50"
+                              }`}>
+                                {task.status === "open" ? "🔓 Open" : task.status === "in_progress" ? "🚀 In Progress" : "✅ Completed"}
+                              </Badge>
+                            </div>
                             {task.location && (
-                              <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
-                                <MapPin className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Location</p>
-                                  <span className="text-sm font-medium text-slate-800 dark:text-slate-200 block">{task.location}</span>
-                                </div>
+                              <div className="flex items-start gap-2 mt-4 py-2 border-t border-slate-100 dark:border-slate-700/60">
+                                <MapPin className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+                                <span className="text-sm text-slate-600 dark:text-slate-400">{task.location}</span>
                               </div>
                             )}
-
-                            {/* Task Budget + Action – centered, premium */}
-                            <div className="flex flex-col gap-3 items-center">
-                              <div className="w-full max-w-sm mx-auto">
-                                <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/80 dark:from-slate-800/80 dark:to-slate-700/60 p-5 border border-slate-200/50 dark:border-slate-600/50 text-center shadow-sm">
-                                  <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-bold mb-1">Task Budget</p>
-                                  <p className="task-budget-amount text-2xl md:text-3xl text-slate-900 dark:text-slate-100 tabular-nums">₹{task.budget}</p>
-                                </div>
-                                <Link
-                                  href={`/tasks/${task.id}`}
-                                  className="block mt-2"
-                                  onClick={() => { try { storeTaskForNav(task); } catch {} }}
-                                >
-                                  <Button className={`w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 dark:from-blue-600 dark:to-indigo-600 dark:hover:from-blue-500 dark:hover:to-indigo-500 text-white font-bold shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-300 rounded-2xl ${isMobile ? "py-2.5 text-sm" : "py-3 px-4"}`}>
-                                    <span>{hasUserBid ? "View Offer" : "Make an Offer"}</span>
-                                  </Button>
-                                </Link>
-                              </div>
+                            <div className="mt-4 py-3 text-center border-t border-slate-100 dark:border-slate-700/60">
+                              <p className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">Budget</p>
+                              <p className="font-bold text-xl tabular-nums text-slate-900 dark:text-slate-100">₹{task.budget}</p>
                             </div>
+                            <Link href={`/tasks/${task.id}`} className="block mt-3" onClick={() => { try { storeTaskForNav(task); } catch {} }}>
+                              <Button className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5">
+                                {hasUserBid ? "View Offer" : "Make an Offer"}
+                              </Button>
+                            </Link>
                           </div>
                         </Card>
                       );
@@ -4720,75 +4641,36 @@ export default function Dashboard() {
                   const waitingForTasker = !isCancelled && task.taskmaster_completed && !task.tasker_completed && task.job_completion_status !== 1 && task.job_completion_status !== "1";
                   
                   return (
-                  <Card key={task.id} className={`group flex flex-col bg-white dark:bg-slate-800/95 border border-slate-200/60 dark:border-slate-700/60 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.06),0_12px_24px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.25),0_12px_24px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden ${isCancelled ? 'opacity-60' : ''}`}>
-                    {/* Mobile-optimized layout */}
+                  <Card key={task.id} className={`group flex flex-col bg-white dark:bg-slate-800/95 border-0 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.15),0_4px_12px_rgba(0,0,0,0.2)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_16px_rgba(0,0,0,0.25)] transition-all duration-300 rounded-2xl overflow-hidden ${isCancelled ? 'opacity-60' : ''}`}>
                     <div className={`relative ${isMobile ? "p-4" : "p-6"}`}>
-                      {!isCancelled && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 dark:from-blue-600 dark:via-indigo-600 dark:to-blue-700" />}
-                      {/* Header with title and status */}
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex-1 min-w-0">
-                          <h3 className={`task-title ${isCancelled ? 'text-gray-500 line-through' : 'text-slate-900 dark:text-slate-100'} line-clamp-2 ${isMobile ? "text-xl md:text-2xl" : "text-2xl md:text-3xl"} leading-snug`}>
-                            {task.title}
-                          </h3>
-                          <div className="flex items-center gap-2 mt-1 text-xs">
-                            <Clock className={`h-3 w-3 shrink-0 ${isCancelled ? 'text-gray-400' : 'text-gray-400'}`} />
-                            <span className={isCancelled ? 'text-gray-400' : 'text-gray-500'}>Posted: {getCardPostedAt(task)}</span>
-                            {(task.dueDate || task.dueDateFlexible) && (
-                              <>
-                                <span className="mx-1 text-gray-300">•</span>
-                                <span className={isCancelled ? 'text-gray-400' : 'text-gray-500'}>
-                                  Due: {task.dueDateFlexible || !task.dueDate ? "Flexible" : formatDateWithTime(task.dueDate)}
-                                </span>
-                              </>
-                            )}
-                            {isCancelled && cancelledByTasker && (
-                              <Badge variant="outline" className="text-xs border-gray-400 text-gray-600">
-                                ❌ Cancelled by you
-                              </Badge>
-                            )}
-                            {isCancelled && cancelledByTaskmaster && (
-                              <Badge variant="outline" className="text-xs border-orange-400 text-orange-600 bg-orange-50">
-                                ⚠️ Cancelled by Taskmaster
-                              </Badge>
-                            )}
-                            {isCancelled && !cancelledByTasker && !cancelledByTaskmaster && (
-                              <Badge variant="outline" className="text-xs border-gray-400 text-gray-600">
-                                ❌ Cancelled
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
-                          {(() => {
-                            if (isCancelled) {
-                              console.log(`🔍 Task ${task.id} is cancelled:`, {
-                                cancel_status: task.cancel_status,
-                                cancelled: task.cancelled,
-                                status: task.status,
-                                cancelled_by_role: task.cancelled_by_role,
-                                isCancelled
-                              });
-                            }
-                            return waitingForTaskmaster ? (
-                              <Badge className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-2 py-1">
-                                ⏳ Waiting for taskmaster
-                              </Badge>
-                            ) : waitingForTasker ? (
-                              <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-2 py-1">
-                                ✓ Task owner confirmed
-                              </Badge>
-                            ) : !isCancelled ? (
-                          <Badge className="bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs px-2 py-1">
-                            🚀 In Progress
-                          </Badge>
-                            ) : (
-                              <Badge variant="outline" className="border-gray-400 text-gray-600 font-semibold text-xs px-2 py-1">
-                                ❌ Cancelled
-                              </Badge>
-                            );
-                          })()}
-                        </div>
+                      {!isCancelled && <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600" />}
+                      {/* Share – top right */}
+                      <div className="absolute top-4 right-4 md:top-6 md:right-6">
+                        <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
+                      </div>
+                      {/* Title – full */}
+                      <h3 className={`task-title pr-10 ${isCancelled ? 'text-gray-500 line-through' : 'text-slate-900 dark:text-slate-100'} ${isMobile ? "text-lg md:text-xl" : "text-xl md:text-2xl"} leading-snug font-semibold`}>
+                        {task.title}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
+                        <span className={`flex items-center gap-1 ${isCancelled ? 'text-gray-400' : 'text-slate-500'}`}>
+                          <Clock className="h-3 w-3 shrink-0" />Posted: {getCardPostedAt(task)}
+                        </span>
+                        {(task.dueDate || task.dueDateFlexible) && (
+                          <span className={isCancelled ? 'text-gray-400' : 'text-slate-500'}>
+                            Due: {task.dueDateFlexible || !task.dueDate ? "Flexible" : formatDateWithTime(task.dueDate)}
+                          </span>
+                        )}
+                        {isCancelled && cancelledByTasker && <Badge variant="outline" className="text-xs border-gray-300 text-gray-600">❌ Cancelled by you</Badge>}
+                        {isCancelled && cancelledByTaskmaster && <Badge variant="outline" className="text-xs border-orange-200 text-orange-600">⚠️ Cancelled by Taskmaster</Badge>}
+                        {isCancelled && !cancelledByTasker && !cancelledByTaskmaster && <Badge variant="outline" className="text-xs border-gray-300 text-gray-600">❌ Cancelled</Badge>}
+                        {!isCancelled && (waitingForTaskmaster ? (
+                          <Badge className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-md">⏳ Waiting for taskmaster</Badge>
+                        ) : waitingForTasker ? (
+                          <Badge className="bg-emerald-600 text-white text-xs px-2 py-0.5 rounded-md">✓ Task owner confirmed</Badge>
+                        ) : (
+                          <Badge className="bg-orange-600 text-white text-xs px-2 py-0.5 rounded-md">🚀 In Progress</Badge>
+                        ))}
                       </div>
 
                       {/* Cancellation reason if cancelled */}
@@ -4798,32 +4680,23 @@ export default function Dashboard() {
                         </div>
                       )}
 
-                      {/* Location – separate section (like Available) */}
+                      {/* Location – clean inline, no box */}
                       {task.location && (
-                        <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
-                          <MapPin className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Location</p>
-                            <span className="text-sm font-medium text-slate-800 dark:text-slate-200 block">{task.location}</span>
-                          </div>
+                        <div className="flex items-start gap-2 mt-4 py-2 border-t border-slate-100 dark:border-slate-700/60">
+                          <MapPin className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+                          <span className="text-sm text-slate-600 dark:text-slate-400">{task.location}</span>
                         </div>
                       )}
 
-                      {/* Budget + Posted by row – budget centered */}
-                      <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"} mb-3`}>
-                        <div className={`flex-1 flex justify-center ${isCancelled ? 'opacity-70' : ''}`}>
-                          <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/80 dark:from-slate-800/80 dark:to-slate-700/60 px-4 py-2.5 border border-slate-200/50 dark:border-slate-600/50 text-center inline-block">
-                            <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-bold mb-0.5">Task Budget</p>
-                            <span className={`font-bold text-lg tabular-nums ${isCancelled ? 'text-gray-500' : 'text-orange-800 dark:text-orange-200'}`}>₹{task.budget}</span>
-                          </div>
+                      {/* Budget + Posted by – clean, no box */}
+                      <div className={`flex items-center justify-between mt-4 py-3 ${isCancelled ? 'opacity-70' : ''}`}>
+                        <div className="flex-1 text-center">
+                          <p className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">Budget</p>
+                          <p className={`font-bold text-xl tabular-nums ${isCancelled ? 'text-gray-500' : 'text-slate-900 dark:text-slate-100'}`}>₹{task.budget}</p>
                         </div>
-                        <div className={`flex items-center gap-1 ${isCancelled ? 'text-gray-400' : 'text-gray-500'}`}>
-                          <Avatar className="h-4 w-4">
-                            <AvatarFallback className="text-xs">
-                              {task.posted_by?.charAt(0) || "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs">{task.posted_by}</span>
+                        <div className={`flex items-center gap-1.5 text-sm ${isCancelled ? 'text-gray-400' : 'text-slate-500'}`}>
+                          <Avatar className="h-5 w-5"><AvatarFallback className="text-xs">{task.posted_by?.charAt(0) || "?"}</AvatarFallback></Avatar>
+                          <span>{task.posted_by}</span>
                         </div>
                       </div>
 
@@ -4847,55 +4720,25 @@ export default function Dashboard() {
                         </div>
                       )}
 
-                      {/* Action buttons – View Details + Confirm side by side */}
-                      <div className="flex flex-wrap items-center gap-2 mt-4 justify-center sm:justify-start">
+                      {/* Action buttons – clean */}
+                      <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60">
                         {isCancelled ? (
-                          <Button
-                            variant="destructive"
-                            className="shrink-0 px-4 py-2 font-semibold rounded-lg border-2 border-red-200 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 transition-all duration-200 active:scale-[0.98]"
-                            onClick={() => {
-                              if (confirm('⚠️ Are you sure you want to permanently delete this cancelled task? This action cannot be undone.')) {
-                                setAssignedTasks((prev) => prev.filter((t) => t.id !== task.id));
-                                toast.success("Task removed from your list");
-                              }
-                            }}
-                          >
-                            Delete Permanently
-                          </Button>
+                          <Button variant="outline" className="rounded-xl text-red-600 border-red-200 hover:bg-red-50" onClick={() => { if (confirm('⚠️ Delete this cancelled task?')) { setAssignedTasks((prev) => prev.filter((t) => t.id !== task.id)); toast.success("Task removed"); } }}>Delete</Button>
                         ) : waitingForTaskmaster ? (
                           <>
-                            <Link href={`/tasks/${task.id}`} className="shrink-0" onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); storeTaskForNav(task); } catch {} }} onMouseEnter={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }}>
-                              <Button variant="outline" className="border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg px-4 py-2 transition-all duration-200 active:scale-[0.98]">
-                                <span className="mr-1.5">👁️</span>View Details
-                              </Button>
+                            <Link href={`/tasks/${task.id}`} className="flex-1 min-w-0" onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); storeTaskForNav(task); } catch {} }} onMouseEnter={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }}>
+                              <Button variant="outline" className="w-full rounded-xl border-slate-200">👁️ View Details</Button>
                             </Link>
-                            <div className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-100 border-2 border-blue-300 text-blue-800 font-semibold text-sm cursor-default">
-                              <span>✅</span>Marked complete — waiting for taskmaster
-                            </div>
+                            <span className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-sm">✅ Waiting for taskmaster</span>
                           </>
                         ) : (
                           <>
-                            <Link href={`/tasks/${task.id}`} className="shrink-0" onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); storeTaskForNav(task); } catch {} }} onMouseEnter={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }}>
-                              <Button variant="outline" className="border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 font-semibold rounded-lg px-4 py-2 transition-all duration-200 active:scale-[0.98]">
-                                <span className="mr-1.5">👁️</span>View Details
-                              </Button>
+                            <Link href={`/tasks/${task.id}`} className="flex-1 min-w-0" onClick={() => { try { sessionStorage.setItem("nav_from_assigned","1"); storeTaskForNav(task); } catch {} }} onMouseEnter={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(String(task.id)); } catch {} }}>
+                              <Button variant="outline" className="w-full rounded-xl border-slate-200">👁️ View Details</Button>
                             </Link>
-                            <Button
-                              variant="outline"
-                              className="shrink-0 px-4 py-2 rounded-lg border-2 border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold transition-all duration-200 active:scale-[0.98]"
-                              onClick={() => handleAssignedCancelClick(task.id)}
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              className="shrink-0 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg transition-all duration-200 active:scale-[0.98]"
-                              onClick={() => {
-                                setCompleteReviewTask(task);
-                                setCompleteReviewAsTaskmaster(false);
-                              }}
-                              disabled={completingTaskId === task.id}
-                            >
-                              <span className="mr-1.5">✅</span>{completingTaskId === task.id ? "Updating..." : "Mark as complete (Tasker)"}
+                            <Button variant="outline" className="rounded-xl text-amber-600 border-amber-200 hover:bg-amber-50" onClick={() => handleAssignedCancelClick(task.id)}>Cancel</Button>
+                            <Button className="flex-1 min-w-0 rounded-xl bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setCompleteReviewTask(task); setCompleteReviewAsTaskmaster(false); }} disabled={completingTaskId === task.id}>
+                              ✅ {completingTaskId === task.id ? "Updating..." : "Mark as complete"}
                             </Button>
                           </>
                         )}
@@ -5042,74 +4885,41 @@ export default function Dashboard() {
             ) : (
               <div className={`grid gap-4 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
                 {sortedRequestedTasks.map((bid) => (
-                  <Card key={bid.bid_id} className="group flex flex-col bg-white dark:bg-slate-800/95 border border-slate-200/60 dark:border-slate-700/60 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.06),0_12px_24px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.25),0_12px_24px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden">
-                    {/* Mobile-optimized layout */}
-                    <div className={isMobile ? "p-4" : "p-6"}>
-                      {/* Header with title and status */}
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex-1 min-w-0">
-                          <h3 className={`task-title text-slate-900 dark:text-slate-100 line-clamp-2 ${isMobile ? "text-xl md:text-2xl" : "text-2xl md:text-3xl"} leading-snug`}>
-                            {bid.task_title}
-                          </h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Clock className="h-3 w-3 text-gray-400" />
-                            <span className="text-xs text-gray-500">Bid placed: {bid.created_at}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <ShareTaskButton taskId={String(bid.task_id)} title={bid.task_title} description={bid.task_description} budget={bid.job_budget} variant="icon" />
-                          {bid.task_deleted && (
-                            <Badge className="bg-gray-600 text-white text-xs px-2 py-1">🗑️ Deleted</Badge>
-                          )}
-                          {bid.task_cancelled && (
-                            <Badge className="bg-red-600 text-white text-xs px-2 py-1">❌ Cancelled</Badge>
-                          )}
-                        </div>
+                  <Card key={bid.bid_id} className="group flex flex-col bg-white dark:bg-slate-800/95 border-0 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.15),0_4px_12px_rgba(0,0,0,0.2)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_16px_rgba(0,0,0,0.25)] transition-all duration-300 rounded-2xl overflow-hidden">
+                    <div className={`relative ${isMobile ? "p-4" : "p-6"}`}>
+                      <div className="absolute top-4 right-4 md:top-6 md:right-6">
+                        <ShareTaskButton taskId={String(bid.task_id)} title={bid.task_title} description={bid.task_description} budget={bid.job_budget} variant="icon" />
                       </div>
-
-                      {/* Location – separate section (like Available) */}
+                      <h3 className="task-title pr-10 text-slate-900 dark:text-slate-100 font-semibold leading-snug text-lg md:text-xl">
+                        {bid.task_title}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
+                        <span className="text-slate-500 flex items-center gap-1"><Clock className="h-3 w-3" />Bid placed: {bid.created_at}</span>
+                        {bid.task_deleted && <Badge className="bg-gray-600 text-white text-xs px-2 py-0.5 rounded-md">🗑️ Deleted</Badge>}
+                        {bid.task_cancelled && <Badge className="bg-red-600 text-white text-xs px-2 py-0.5 rounded-md">❌ Cancelled</Badge>}
+                      </div>
                       {bid.task_location && (
-                        <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
-                          <MapPin className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Location</p>
-                            <span className="text-sm font-medium text-slate-800 dark:text-slate-200 block">{bid.task_location}</span>
-                          </div>
+                        <div className="flex items-start gap-2 mt-4 py-2 border-t border-slate-100 dark:border-slate-700/60">
+                          <MapPin className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+                          <span className="text-sm text-slate-600 dark:text-slate-400">{bid.task_location}</span>
                         </div>
                       )}
-
-                      {/* Budget + Posted by row – budget centered */}
-                      <div className={`flex items-center justify-between ${isMobile ? "flex-col gap-2" : "gap-4"} mb-3`}>
-                        <div className="flex-1 flex justify-center">
-                          <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/80 dark:from-slate-800/80 dark:to-slate-700/60 px-4 py-2.5 border border-slate-200/50 dark:border-slate-600/50 text-center inline-block">
-                            <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-bold mb-0.5">Your Bid</p>
-                            <span className="font-bold text-lg tabular-nums text-blue-800 dark:text-blue-200">₹{bid.bid_amount}</span>
-                          </div>
+                      <div className="flex items-center justify-between mt-4 py-3 border-t border-slate-100 dark:border-slate-700/60">
+                        <div className="flex-1 text-center">
+                          <p className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">Your Bid</p>
+                          <p className="font-bold text-xl tabular-nums text-slate-900 dark:text-slate-100">₹{bid.bid_amount}</p>
                         </div>
-                        <div className="flex items-center gap-1 text-gray-500">
-                          <Avatar className="h-4 w-4">
-                            <AvatarFallback className="text-xs">
-                              {bid.posted_by?.charAt(0) || "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs">{bid.posted_by}</span>
+                        <div className="flex items-center gap-1.5 text-sm text-slate-500">
+                          <Avatar className="h-5 w-5"><AvatarFallback className="text-xs">{bid.posted_by?.charAt(0) || "?"}</AvatarFallback></Avatar>
+                          <span>{bid.posted_by}</span>
                         </div>
                       </div>
-
                       {(bid.latitude != null && bid.longitude != null) && !isMobile && (
-                        <div className="my-2">
-                          <TaskLocationMap latitude={bid.latitude} longitude={bid.longitude} location={bid.task_location} height={100} variant="card" />
-                        </div>
+                        <div className="my-2"><TaskLocationMap latitude={bid.latitude} longitude={bid.longitude} location={bid.task_location} height={100} variant="card" /></div>
                       )}
-
-                      {/* Action button */}
-                      <div className="mt-4 flex justify-center sm:justify-start">
-                        <Link href={`/tasks/${bid.task_id}`} className="flex-1 min-w-0 max-w-xs" onClick={() => { try { storeTaskForNav({ id: bid.task_id, title: bid.task_title, description: bid.task_description, budget: bid.job_budget ?? 0, location: bid.task_location, posted_by: bid.posted_by }); } catch {} }} onMouseEnter={() => { try { prefetchBidsForTask(String(bid.task_id)); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(String(bid.task_id)); } catch {} }}>
-                          <Button variant="outline" className={`w-full border-2 border-blue-300 hover:border-blue-400 text-blue-700 hover:text-blue-800 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 active:scale-[0.98] ${isMobile ? "py-2 text-sm" : "py-3 px-4"}`}>
-                            <span className="mr-1.5">👁️</span>View Task Details
-                          </Button>
-                        </Link>
-                      </div>
+                      <Link href={`/tasks/${bid.task_id}`} className="block mt-3" onClick={() => { try { storeTaskForNav({ id: bid.task_id, title: bid.task_title, description: bid.task_description, budget: bid.job_budget ?? 0, location: bid.task_location, posted_by: bid.posted_by }); } catch {} }} onMouseEnter={() => { try { prefetchBidsForTask(String(bid.task_id)); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(String(bid.task_id)); } catch {} }}>
+                        <Button variant="outline" className="w-full rounded-xl border-slate-200">👁️ View Task Details</Button>
+                      </Link>
                     </div>
                   </Card>
                 ))}
