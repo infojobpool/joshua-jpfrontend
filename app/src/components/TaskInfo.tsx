@@ -352,7 +352,7 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
                 className="text-xl font-bold bg-white/80 border-2 border-blue-200 focus:border-blue-400 rounded-lg px-3 py-2"
               />
             ) : (
-              <CardTitle className="task-title text-2xl md:text-3xl text-slate-900 leading-tight">
+              <CardTitle className="task-title text-2xl md:text-3xl lg:text-4xl text-slate-900 leading-tight">
                 {task.title}
               </CardTitle>
             )}

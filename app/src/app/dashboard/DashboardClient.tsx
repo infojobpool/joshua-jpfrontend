@@ -4633,7 +4633,7 @@ export default function Dashboard() {
                             {/* Header with title and status */}
                             <div className="flex justify-between items-start gap-3 mb-3 pt-0.5">
                               <div className="flex-1 min-w-0">
-                                <h3 className={`task-title text-slate-900 dark:text-slate-100 line-clamp-2 ${isMobile ? "text-lg md:text-xl" : "text-xl md:text-2xl"} leading-snug`}>
+                                <h3 className={`task-title text-slate-900 dark:text-slate-100 line-clamp-2 ${isMobile ? "text-xl md:text-2xl" : "text-2xl md:text-3xl"} leading-snug`}>
                                   {task.title}
                                 </h3>
                                 <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
@@ -4696,24 +4696,24 @@ export default function Dashboard() {
                               </div>
                             </div>
 
-                            {/* Task Budget – Airtasker: centered above Make an Offer */}
-                            <div className="rounded-2xl bg-gray-100 dark:bg-slate-700/90 p-4 border border-gray-200/80 dark:border-slate-600/80 text-center mb-4">
-                              <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-semibold mb-0.5">Task Budget</p>
-                              <p className="task-budget-amount text-2xl md:text-3xl text-slate-900 dark:text-slate-100 tabular-nums">₹{task.budget}</p>
-                            </div>
-
-                            {/* Action button */}
-                            <div className="flex gap-2 items-center">
-                              <Link
-                                href={`/tasks/${task.id}`}
-                                className="flex-1 min-w-0 block"
-                                onClick={() => { try { storeTaskForNav(task); } catch {} }}
-                              >
-                                <Button className={`w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 dark:from-blue-600 dark:to-indigo-600 dark:hover:from-blue-500 dark:hover:to-indigo-500 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 rounded-xl ${isMobile ? "py-2.5 text-sm" : "py-3 px-4"}`}>
-                                  <span>{hasUserBid ? "View Offer" : "Make an Offer"}</span>
-                                </Button>
-                              </Link>
-                              <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
+                            {/* Task Budget + Action – aligned same width */}
+                            <div className="flex gap-2 items-stretch">
+                              <div className="flex-1 flex flex-col gap-2 min-w-0">
+                                <div className="rounded-2xl bg-gray-100 dark:bg-slate-700/90 p-4 border border-gray-200/80 dark:border-slate-600/80 text-center">
+                                  <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-semibold mb-0.5">Task Budget</p>
+                                  <p className="task-budget-amount text-2xl md:text-3xl text-slate-900 dark:text-slate-100 tabular-nums">₹{task.budget}</p>
+                                </div>
+                                <Link
+                                  href={`/tasks/${task.id}`}
+                                  className="block"
+                                  onClick={() => { try { storeTaskForNav(task); } catch {} }}
+                                >
+                                  <Button className={`w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 dark:from-blue-600 dark:to-indigo-600 dark:hover:from-blue-500 dark:hover:to-indigo-500 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 rounded-xl ${isMobile ? "py-2.5 text-sm" : "py-3 px-4"}`}>
+                                    <span>{hasUserBid ? "View Offer" : "Make an Offer"}</span>
+                                  </Button>
+                                </Link>
+                              </div>
+                              <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" className="shrink-0 self-end" />
                             </div>
                           </div>
                         </Card>

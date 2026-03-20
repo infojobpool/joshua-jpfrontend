@@ -99,10 +99,10 @@ function TaskCardWithPrefetch({
   }, [index, prefetchFirstN, task?.id]);
   return (
     <div ref={cardRef}>
-    <Card className="flex flex-col">
+    <Card className="flex flex-col bg-white dark:bg-slate-800/95 shadow-md border border-slate-200/80 dark:border-slate-700/80">
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start gap-2">
-          <CardTitle className="task-title text-xl md:text-2xl text-slate-900">{task.title}</CardTitle>
+          <CardTitle className="task-title text-2xl md:text-3xl text-slate-900">{task.title}</CardTitle>
           <div className="flex items-center gap-1 shrink-0">
             <Badge variant="outline" className="text-xs font-normal">
               {task.custom_category_name || task.category_name || "General"}
@@ -173,24 +173,24 @@ function TaskCardWithPrefetch({
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex flex-col gap-3">
-        {/* Task Budget – Airtasker: centered above button */}
-        <div className="rounded-xl bg-gray-100 dark:bg-slate-800 p-3 text-center w-full">
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-semibold mb-0.5">Task Budget</p>
-          <p className="task-budget-amount text-2xl md:text-3xl text-slate-900 dark:text-slate-100">₹{task.budget}</p>
+      <CardFooter className="flex gap-2">
+        {/* Budget + button aligned – same width */}
+        <div className="flex-1 flex flex-col gap-2 min-w-0">
+          <div className="rounded-xl bg-gray-100 dark:bg-slate-800 p-3 text-center">
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-semibold mb-0.5">Task Budget</p>
+            <p className="task-budget-amount text-2xl md:text-3xl text-slate-900 dark:text-slate-100">₹{task.budget}</p>
+          </div>
+          <Link
+            href={`/tasks/${task.id}`}
+            className="block"
+            onClick={() => { try { storeTaskForNav({ ...task, posted_by_id: task.user_ref_id, images: task.job_images?.urls?.map((url: string, i: number) => ({ id: `img${i+1}`, url, alt: `Image ${i+1}` })) }); } catch {} }}
+            onMouseEnter={() => { try { prefetchBidsForTask(task.id); } catch {} }}
+            onTouchStart={() => { try { prefetchBidsForTask(task.id); } catch {} }}
+          >
+            <Button className="w-full">View Task</Button>
+          </Link>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-        <Link
-          href={`/tasks/${task.id}`}
-          className="flex-1"
-          onClick={() => { try { storeTaskForNav({ ...task, posted_by_id: task.user_ref_id, images: task.job_images?.urls?.map((url: string, i: number) => ({ id: `img${i+1}`, url, alt: `Image ${i+1}` })) }); } catch {} }}
-          onMouseEnter={() => { try { prefetchBidsForTask(task.id); } catch {} }}
-          onTouchStart={() => { try { prefetchBidsForTask(task.id); } catch {} }}
-        >
-          <Button className="w-full">View Task</Button>
-        </Link>
-        <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
-        </div>
+        <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" className="shrink-0 self-end" />
       </CardFooter>
     </Card>
     </div>
