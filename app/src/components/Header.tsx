@@ -65,6 +65,11 @@ const Header: React.FC<HeaderProps> = ({ user, onSignOut }) => {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
+                <Link href="/wallet" className="w-full">
+                  Wallet
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
                 <Link href="/support" className="w-full">
                   Contact Support
                 </Link>

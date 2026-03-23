@@ -31,6 +31,7 @@ import {
   Camera,
   X,
   Briefcase,
+  Wallet,
 } from "lucide-react";
 import useStore from "../../lib/Zustand";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
@@ -64,6 +65,7 @@ interface UserProfile {
   bank_info?: BankInfo;
   isEditing?: boolean;
   job_title?: string;
+  upi_vpa?: string;
 }
 
 interface User {
@@ -114,6 +116,7 @@ export default function ProfilePage() {
     joinDate: "",
     isEditing: false,
     job_title: "",
+    upi_vpa: "",
   });
 
   const [verificationStatus, setVerificationStatus] = useState({
@@ -227,6 +230,7 @@ export default function ProfilePage() {
             };
           })(),
           job_title: payload.job_title || "",
+          upi_vpa: payload.upi_vpa ?? "",
         });
 
         // Backend returns only verification_status (0–3) and bank_info. No separate pan/aadhar/bank flags.
@@ -438,6 +442,10 @@ export default function ProfilePage() {
       updateFormData.append("name", formData.get("name") as string);
       updateFormData.append("phone_number", formData.get("phone") as string);
       updateFormData.append("addresses", JSON.stringify(addresses));
+      const upiVpa = formData.get("upi_vpa") as string;
+      if (upiVpa?.trim()) {
+        updateFormData.append("upi_vpa", upiVpa.trim());
+      }
       if (fileInputRef.current?.files?.[0]) {
         updateFormData.append("file", fileInputRef.current.files[0]);
       }
@@ -464,6 +472,7 @@ export default function ProfilePage() {
         avatar: data.data.file_path || profileuser.avatar,
         cover_image: data.data.cover_image ?? data.data.cover_img ?? profileuser.cover_image,
         isEditing: false,
+        upi_vpa: data.data.upi_vpa ?? profileuser.upi_vpa,
       });
       if (data.data.file_path) {
         updateUserProfileImage(data.data.file_path);
@@ -687,6 +696,16 @@ export default function ProfilePage() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700" htmlFor="upi_vpa">UPI ID</label>
+                    <input
+                      id="upi_vpa"
+                      name="upi_vpa"
+                      placeholder="user@paytm"
+                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      defaultValue={profileuser.upi_vpa}
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <label className="text-sm font-medium">Addresses</label>
                     {profileuser.addresses.map((addr) => (
                       <div
@@ -777,6 +796,17 @@ export default function ProfilePage() {
                         <p className="font-medium text-slate-800">{profileuser.phone || "—"}</p>
                       </div>
                     </div>
+                    {profileuser.upi_vpa && (
+                      <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                          <Wallet className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500">UPI ID</p>
+                          <p className="font-medium text-slate-800">{profileuser.upi_vpa}</p>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
                         <MapPin className="h-5 w-5 text-emerald-600" />
