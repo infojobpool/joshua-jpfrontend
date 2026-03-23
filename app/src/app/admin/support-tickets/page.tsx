@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -11,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Mail, Phone, Calendar, FileText, AlertCircle } from "lucide-react"
+import { Loader2, Mail, Phone, Calendar, FileText, AlertCircle, Wallet } from "lucide-react"
 import { toast } from "sonner"
 
 interface SupportTicket {
@@ -137,6 +138,17 @@ export default function SupportTicketsAdminPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          <Link
+            href="/admin/withdrawals"
+            className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-emerald-600 transition-colors font-medium"
+          >
+            <Wallet className="h-4 w-4" />
+            Wallet Withdrawals
+          </Link>
+          <span className="text-slate-300">|</span>
+          <span className="text-sm text-slate-500">Support Tickets</span>
+        </div>
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2">Support Tickets</h1>
           <p className="text-gray-600">Manage and track all support requests</p>

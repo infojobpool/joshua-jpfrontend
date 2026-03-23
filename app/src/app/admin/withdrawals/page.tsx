@@ -10,7 +10,8 @@ import axiosInstance from "@/lib/axiosInstance";
 import { toast } from "sonner";
 
 interface Withdrawal {
-  id: string;
+  id?: string;
+  transaction_id?: string;
   user_id?: string;
   user_name?: string;
   user_email?: string;
@@ -45,7 +46,11 @@ export default function AdminWithdrawalsPage() {
     fetchWithdrawals();
   }, []);
 
-  const updateStatus = async (id: string, status: "completed" | "failed") => {
+  const getTxId = (w: Withdrawal) => w.transaction_id ?? w.id ?? "";
+
+  const updateStatus = async (w: Withdrawal, status: "completed" | "failed") => {
+    const id = getTxId(w);
+    if (!id) return;
     try {
       setActionLoading(id);
       await axiosInstance.patch(`/admin/wallet-transaction/${id}`, { status });
@@ -80,13 +85,17 @@ export default function AdminWithdrawalsPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
-        <Link
-          href="/admin/support-tickets"
-          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-emerald-600 transition-colors mb-6 font-medium"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Admin
-        </Link>
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          <Link
+            href="/admin/support-tickets"
+            className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-emerald-600 transition-colors font-medium"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Support Tickets
+          </Link>
+          <span className="text-slate-300">|</span>
+          <span className="text-sm text-slate-500 font-medium">Wallet Withdrawals</span>
+        </div>
 
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
@@ -118,7 +127,7 @@ export default function AdminWithdrawalsPage() {
         ) : (
           <div className="space-y-4">
             {pendingWithdrawals.map((w) => (
-              <Card key={w.id}>
+              <Card key={getTxId(w) || w.created_at}>
                 <CardHeader>
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                     <div className="flex-1">
@@ -151,10 +160,10 @@ export default function AdminWithdrawalsPage() {
                       <Button
                         size="sm"
                         className="bg-emerald-600 hover:bg-emerald-700"
-                        disabled={actionLoading === w.id}
-                        onClick={() => updateStatus(w.id, "completed")}
+                        disabled={actionLoading === getTxId(w)}
+                        onClick={() => updateStatus(w, "completed")}
                       >
-                        {actionLoading === w.id ? (
+                        {actionLoading === getTxId(w) ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <>
@@ -166,10 +175,10 @@ export default function AdminWithdrawalsPage() {
                       <Button
                         size="sm"
                         variant="destructive"
-                        disabled={actionLoading === w.id}
-                        onClick={() => updateStatus(w.id, "failed")}
+                        disabled={actionLoading === getTxId(w)}
+                        onClick={() => updateStatus(w, "failed")}
                       >
-                        {actionLoading === w.id ? (
+                        {actionLoading === getTxId(w) ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <>

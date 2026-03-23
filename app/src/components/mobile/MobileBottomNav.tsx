@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, User, MessageCircle, Plus } from "lucide-react";
+import { Home, Search, User, MessageCircle, Plus, Wallet } from "lucide-react";
 
 export function MobileBottomNav() {
   const pathname = usePathname();
@@ -23,6 +23,7 @@ export function MobileBottomNav() {
     { href: "/dashboard", icon: Search, label: "Browse" },
     { type: "post" as const },
     { href: "/messages", icon: MessageCircle, label: "Messages" },
+    { href: "/wallet", icon: Wallet, label: "Wallet" },
     { href: "/profile", icon: User, label: "Profile" },
   ];
 

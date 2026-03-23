@@ -39,7 +39,8 @@ import {
   Gavel,
   MessageSquare,
   ClipboardList,
-  Home
+  Home,
+  Wallet
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
@@ -3657,6 +3658,12 @@ export default function Dashboard() {
                           </div>
                           <span className="text-gray-800 dark:text-slate-200 font-medium">My Profile</span>
                         </Link>
+                        <Link href="/wallet" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200">
+                          <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                            <Wallet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                          </div>
+                          <span className="text-gray-800 dark:text-slate-200 font-medium">Wallet</span>
+                        </Link>
                         <Link href="/supportpage" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200">
                           <div className="p-2 rounded-lg bg-gray-100">
                             <HelpCircle className="h-4 w-4 text-gray-600" />
@@ -3772,6 +3779,12 @@ export default function Dashboard() {
                       </div>
                       <span className="text-gray-700 dark:text-slate-200 font-medium">My Profile</span>
                     </Link>
+                    <Link href="/wallet" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200">
+                      <div className="p-2 rounded-lg bg-emerald-100">
+                        <Wallet className="h-4 w-4 text-emerald-600" />
+                      </div>
+                      <span className="text-gray-700 dark:text-slate-200 font-medium">Wallet</span>
+                    </Link>
                     <Link href="/supportpage" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
                       <div className="p-2 rounded-lg bg-gray-100">
                         <HelpCircle className="h-4 w-4 text-gray-600" />
@@ -3850,6 +3863,12 @@ export default function Dashboard() {
                         <User className="h-4 w-4 text-blue-600" />
                       </div>
                       <span className="text-gray-700 dark:text-slate-200 font-medium">My Profile</span>
+                    </Link>
+                    <Link href="/wallet" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
+                      <div className="p-2 rounded-lg bg-emerald-100">
+                        <Wallet className="h-4 w-4 text-emerald-600" />
+                      </div>
+                      <span className="text-gray-700 dark:text-slate-200 font-medium">Wallet</span>
                     </Link>
                     <Link href="/supportpage" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
                       <div className="p-2 rounded-lg bg-gray-100">

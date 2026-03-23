@@ -62,7 +62,7 @@ export default function WalletPage() {
     if (!userId) return;
     try {
       setLoading(true);
-      const response = await axiosInstance.get(`/wallet?user_id=${userId}`);
+      const response = await axiosInstance.get(`/wallet?user_id=${userId}&limit=30`);
       const data = response.data?.data ?? response.data;
       setWallet({
         balance: data.balance ?? 0,
