@@ -72,18 +72,19 @@ export default function WalletPage() {
     return () => clearTimeout(t);
   }, [checkAuth]);
 
-  const fetchWallet = async () => {
+  const fetchWallet = async (preserveUpi?: string) => {
     if (!userId) return;
     try {
       setLoading(true);
       const response = await axiosInstance.get(`/wallet?user_id=${userId}&limit=30`);
       const data = response.data?.data ?? response.data;
-      const upiVpa = data?.upi_vpa ?? data?.upi ?? data?.user?.upi_vpa ?? "";
+      const fromApi = data?.upi_vpa ?? data?.upi ?? data?.user?.upi_vpa ?? "";
+      const upiVpa = (typeof fromApi === "string" && fromApi.trim()) ? fromApi.trim() : (preserveUpi ?? "");
       setWallet({
         balance: data.balance ?? 0,
         currency: data.currency ?? "INR",
         transactions: Array.isArray(data.transactions) ? data.transactions : [],
-        upi_vpa: typeof upiVpa === "string" ? upiVpa.trim() : "",
+        upi_vpa: upiVpa,
       });
     } catch (err: any) {
       console.error("Wallet fetch error:", err);
@@ -126,9 +127,8 @@ export default function WalletPage() {
       await axiosInstance.post(`/wallet/add-upi?user_id=${userId}&upi_vpa=${encodeURIComponent(vpa)}`);
       toast.success("UPI ID added successfully");
       setUpiInput("");
-      // Optimistic: show UPI right away in case GET /wallet doesn't return it
-      setWallet((prev) => prev ? { ...prev, upi_vpa: vpa } : prev);
-      fetchWallet();
+      // Preserve UPI in fetchWallet - backend GET /wallet may not return upi_vpa yet
+      await fetchWallet(vpa);
     } catch (err: any) {
       const msg = err.response?.data?.message ?? "Failed to add UPI";
       toast.error(msg);
