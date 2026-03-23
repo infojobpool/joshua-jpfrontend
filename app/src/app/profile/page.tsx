@@ -621,36 +621,38 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="space-y-6 pt-2">
               {!profileuser.isEditing && (
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="rounded-xl bg-gradient-to-br from-slate-50 to-white p-4 text-center border border-slate-100 shadow-sm">
-                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
-                      <Calendar className="h-5 w-5 text-emerald-600" />
+                <>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="rounded-xl bg-gradient-to-br from-slate-50 to-white p-4 text-center border border-slate-100 shadow-sm">
+                      <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
+                        <Calendar className="h-5 w-5 text-emerald-600" />
+                      </div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Member since</p>
+                      <p className="text-sm font-bold text-slate-800 mt-1">{profileuser.joinDate || "—"}</p>
                     </div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Member since</p>
-                    <p className="text-sm font-bold text-slate-800 mt-1">{profileuser.joinDate || "—"}</p>
-                  </div>
-                  <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50/80 p-4 text-center border border-emerald-100 shadow-sm">
-                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-200/60">
-                      <CheckCircle className="h-5 w-5 text-emerald-700" />
+                    <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50/80 p-4 text-center border border-emerald-100 shadow-sm">
+                      <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-200/60">
+                        <CheckCircle className="h-5 w-5 text-emerald-700" />
+                      </div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Verification</p>
+                      <p className={`text-sm font-bold mt-1 ${verificationStatus.bank.completed ? "text-emerald-700" : "text-slate-600"}`}>
+                        {verificationStatus.bank.completed ? "Verified" : verificationStatus.aadhar.completed ? "Aadhar" : verificationStatus.pan.completed ? "PAN" : "Pending"}
+                      </p>
                     </div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Verification</p>
-                    <p className={`text-sm font-bold mt-1 ${verificationStatus.bank.completed ? "text-emerald-700" : "text-slate-600"}`}>
-                      {verificationStatus.bank.completed ? "Verified" : verificationStatus.aadhar.completed ? "Aadhar" : verificationStatus.pan.completed ? "PAN" : "Pending"}
-                    </p>
-                  </div>
-                  <div className="rounded-xl bg-gradient-to-br from-slate-50 to-white p-4 text-center border border-slate-100 shadow-sm">
-                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
-                      <Phone className="h-5 w-5 text-emerald-600" />
+                    <div className="rounded-xl bg-gradient-to-br from-slate-50 to-white p-4 text-center border border-slate-100 shadow-sm">
+                      <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
+                        <Phone className="h-5 w-5 text-emerald-600" />
+                      </div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Contact</p>
+                      <p className="text-sm font-bold text-slate-800 mt-1">{profileuser.phone || "—"}</p>
                     </div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Contact</p>
-                    <p className="text-sm font-bold text-slate-800 mt-1">{profileuser.phone || "—"}</p>
                   </div>
-                </div>
-                <TrustBadges
-                  heading="Your details are safe"
-                  subtext="Encrypted, compliant & protected"
-                  variant="compact"
-                />
+                  <TrustBadges
+                    heading="Your details are safe"
+                    subtext="Encrypted, compliant & protected"
+                    variant="compact"
+                  />
+                </>
               )}
               {profileuser.isEditing ? (
                 <form onSubmit={saveProfileChanges} className="space-y-4">
