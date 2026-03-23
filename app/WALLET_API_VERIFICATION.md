@@ -52,10 +52,19 @@ Authorization: Bearer <user_jwt>
 ```ts
 const res = await axiosInstance.get(`wallet?user_id=${userId}&limit=${limit}`);
 const payload = res.data?.data ?? res.data;
-const { balance, currency, transactions, upi_vpa } = payload;
+const { balance, currency, upi_vpa, transactions } = payload;
+// upi_vpa is included so "Your UPI ID" card shows on load and after add-upi; null when not set
 ```
 
-> **Backend requirement:** Include `upi_vpa` in the GET `/wallet` response so the Wallet page can display "Your UPI ID". Without it, the UPI card only appears after the user adds UPI (optimistic update) until the next full reload.
+> **Note:** `upi_vpa` is `null` when no UPI is set. UPI is shown after add-upi and persists on page reload when the backend returns it.
+
+---
+
+## Frontend UX (Wallet Page)
+
+1. **Initial load**: Use `upi_vpa` from `GET /wallet` response. If present, show a "Your UPI ID" card with the value.
+2. **After add-upi success**: Show success toast, then update local state with the new `upi_vpa` (from add-upi response `data.upi_vpa` or the value sent) so the "Your UPI ID" card appears immediately.
+3. **Flow**: Add UPI → success toast → set `upi_vpa` from add-upi response → show "Your UPI ID" card. Reload page → fetch wallet → show "Your UPI ID" if `upi_vpa` is present.
 
 ---
 
@@ -223,7 +232,8 @@ await axiosInstance.patch(`admin/wallet-transaction/${transactionId}`, { status:
 | **Admin withdrawals vs task orders** | Admin `/admin/wallet/withdrawals` is for **wallet UPI withdrawals**, not task order payouts. Task orders use `get-all-task-orders`. These are separate flows. |
 | **Payouts page** | `admin/.../payouts/page.tsx` uses task orders. A separate page (or tab) is needed for wallet withdrawals using `admin/wallet/withdrawals` and `admin/wallet-transaction/{id}`. |
 | **Transaction `id` vs `transaction_id`** | User wallet transactions return `id`; admin uses `transaction_id`. Frontend handles both: `w.transaction_id ?? w.id`. |
-| **User wallet frontend** | Implemented at `/wallet` – balance, add UPI, withdraw, transactions list. Header has Wallet link. |
+| **User wallet frontend** | Implemented at `/wallet` – balance, "Your UPI ID" card, add UPI, withdraw, transactions list. Header has Wallet link. |
+| **GET /wallet upi_vpa** | Backend now includes `upi_vpa` in response so UPI shows on load and reload. |
 
 ---
 

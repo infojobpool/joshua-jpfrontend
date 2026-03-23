@@ -124,11 +124,11 @@ export default function WalletPage() {
     if (!userId) return;
     try {
       setAddUpiLoading(true);
-      await axiosInstance.post(`/wallet/add-upi?user_id=${userId}&upi_vpa=${encodeURIComponent(vpa)}`);
+      const res = await axiosInstance.post(`/wallet/add-upi?user_id=${userId}&upi_vpa=${encodeURIComponent(vpa)}`);
       toast.success("UPI ID added successfully");
       setUpiInput("");
-      // Preserve UPI in fetchWallet - backend GET /wallet may not return upi_vpa yet
-      await fetchWallet(vpa);
+      const addedUpi = (res.data?.data ?? res.data)?.upi_vpa ?? vpa;
+      await fetchWallet(addedUpi);
     } catch (err: any) {
       const msg = err.response?.data?.message ?? "Failed to add UPI";
       toast.error(msg);

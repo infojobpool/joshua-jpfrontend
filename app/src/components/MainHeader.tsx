@@ -36,7 +36,7 @@ const MainHeader: React.FC = () => {
     return null;
   }
 
-  // Hide header on key authenticated app pages to reduce clutter
+  // Hide header on key authenticated app pages to reduce clutter (they use their own Header)
   const hideOnPrefixes = [
     "/dashboard",
     "/post-task",
@@ -45,6 +45,8 @@ const MainHeader: React.FC = () => {
     "/browse-tasks",
     "/profile",
     "/messages",
+    "/wallet",
+    "/settings",
   ];
   if (isAuthenticated && pathname && hideOnPrefixes.some((p) => pathname.startsWith(p))) {
     return null;
