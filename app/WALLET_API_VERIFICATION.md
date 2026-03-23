@@ -162,6 +162,7 @@ Authorization: Bearer <admin_jwt>
         "transaction_id": 42,
         "user_id": "abc123",
         "user_name": "John Doe",
+        "user_email": "john@example.com",
         "amount": 50.5,
         "upi_vpa": "user@paytm",
         "created_at": "2025-03-23T12:00:00"
