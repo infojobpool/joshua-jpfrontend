@@ -16,6 +16,9 @@ import {
   Loader2,
   Plus,
   Minus,
+  Info,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import useStore from "@/lib/Zustand";
 import axiosInstance from "@/lib/axiosInstance";
@@ -51,6 +54,17 @@ export default function WalletPage() {
   const [addUpiLoading, setAddUpiLoading] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawLoading, setWithdrawLoading] = useState(false);
+  const [showUpi, setShowUpi] = useState(false);
+
+  const maskUpi = (upi: string) => {
+    if (!upi || upi.length < 5) return upi;
+    const atIndex = upi.indexOf("@");
+    if (atIndex <= 0) return upi.slice(0, 4) + "***";
+    const local = upi.slice(0, atIndex);
+    const domain = upi.slice(atIndex); // includes @
+    const visible = local.length <= 4 ? local.slice(0, 2) : local.slice(0, 4);
+    return visible + "***" + domain;
+  };
 
   useEffect(() => {
     checkAuth();
@@ -218,6 +232,41 @@ export default function WalletPage() {
                 <p className="text-sm text-emerald-100/80">{wallet.currency}</p>
               </CardHeader>
             </Card>
+
+            {/* UPI ID display - shown when UPI is set */}
+            {wallet.upi_vpa && wallet.upi_vpa.trim() && (
+              <Card className="border-0 shadow-lg rounded-2xl bg-white ring-1 ring-slate-200/50">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Wallet className="h-5 w-5 text-emerald-600" />
+                    Your UPI ID
+                    <span
+                      className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 cursor-help"
+                      title={`Full UPI: ${wallet.upi_vpa}. Withdrawals are sent here.`}
+                    >
+                      <Info className="h-4 w-4 shrink-0" />
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-mono font-semibold text-slate-800 text-lg">
+                      {showUpi ? wallet.upi_vpa : maskUpi(wallet.upi_vpa)}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowUpi(!showUpi)}
+                      className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 transition-colors"
+                      title={showUpi ? "Hide UPI ID" : "Show full UPI ID"}
+                      aria-label={showUpi ? "Hide" : "Show"}
+                    >
+                      {showUpi ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <p className="text-sm text-slate-500 mt-1">Withdrawals will be sent to this UPI ID</p>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Add UPI form - shown when UPI is missing or empty */}
             {(!wallet.upi_vpa || !wallet.upi_vpa.trim()) && (

@@ -3606,9 +3606,9 @@ export default function Dashboard() {
                       )}
                       <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
                     </div>
-                    <div className="flex flex-col items-start">
-                      <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-medium text-gray-900 dark:text-slate-100">{safeUser.name || "User"}</span>
+                <div className="flex flex-col items-start min-w-0">
+                    <div className="flex items-center gap-1.5 flex-nowrap">
+                      <span className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate max-w-[120px]">{safeUser.name || "User"}</span>
                         {user?.verification_status >= 3 && <VerifiedBadge size="sm" />}
                       </div>
                       <span className="text-xs text-gray-500 dark:text-slate-400">Online</span>
@@ -3616,69 +3616,69 @@ export default function Dashboard() {
                     <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {profileDropdownOpen && (
-                    <div className="absolute right-0 mt-3 w-64 max-w-[80vw] bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-700 py-2 z-50 animate-fade-in-up">
-                      <div className="px-4 py-3 border-b border-gray-100">
-                        <div className="flex items-center gap-3">
+                    <div className="absolute right-0 mt-3 w-72 max-w-[85vw] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl shadow-slate-200/50 dark:shadow-black/20 border border-slate-100 dark:border-slate-700/80 overflow-hidden z-50 animate-fade-in-up ring-1 ring-slate-900/5">
+                      <div className="px-5 py-4 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900 border-b border-slate-100 dark:border-slate-700/50">
+                        <div className="flex items-center gap-4">
                           {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
                             <img 
                               src={resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image || ""} 
                               alt={safeUser.name || "Profile"} 
-                              className="h-10 w-10 rounded-full object-cover border-2 border-gray-200"
+                              className="h-12 w-12 rounded-full object-cover ring-2 ring-white dark:ring-slate-800 shadow-md"
                             />
                           ) : (
-                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-lg font-semibold border-2 border-gray-200">
+                            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-lg font-semibold ring-2 ring-white dark:ring-slate-800 shadow-md">
                               {(safeUser.name ? safeUser.name.charAt(0) : "U")}
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <p className="font-medium text-gray-900 dark:text-slate-100 text-sm truncate">
+                            <div className="flex items-center gap-2 flex-nowrap min-w-0">
+                              <p className="font-semibold text-slate-900 dark:text-slate-100 text-base truncate" title={safeUser.name || "User"}>
                                 {safeUser.name || "User"}
                               </p>
                               {user?.verification_status >= 3 && <VerifiedBadge size="sm" />}
                             </div>
                             {safeUser.email && (
-                              <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400 break-all">
+                              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 truncate" title={safeUser.email}>
                                 {safeUser.email}
                               </p>
                             )}
                           </div>
                         </div>
                       </div>
-                      <div className="py-2">
-                        <Link href="/" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200">
-                          <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                      <div className="py-1.5">
+                        <Link href="/" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                          <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
                             <Home className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                           </div>
-                          <span className="text-gray-800 dark:text-slate-200 font-medium">Go to Home</span>
+                          <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Go to Home</span>
                         </Link>
-                        <Link href="/profile" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200">
-                          <div className="p-2 rounded-lg bg-[#eff6ff]">
-                            <User className="h-4 w-4 text-[#2563eb]" />
+                        <Link href="/profile" className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                          <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/20">
+                            <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                           </div>
-                          <span className="text-gray-800 dark:text-slate-200 font-medium">My Profile</span>
+                          <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">My Profile</span>
                         </Link>
-                        <Link href="/wallet" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200">
-                          <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                        <Link href="/wallet" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                          <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
                             <Wallet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                           </div>
-                          <span className="text-gray-800 dark:text-slate-200 font-medium">Wallet</span>
+                          <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Wallet</span>
                         </Link>
-                        <Link href="/supportpage" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200">
-                          <div className="p-2 rounded-lg bg-gray-100">
-                            <HelpCircle className="h-4 w-4 text-gray-600" />
+                        <Link href="/supportpage" className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                          <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800">
+                            <HelpCircle className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                           </div>
-                          <span className="text-gray-800 dark:text-slate-200 font-medium">Contact Support</span>
+                          <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Contact Support</span>
                         </Link>
-                        <div className="border-t border-gray-100 my-2"></div>
+                        <div className="border-t border-slate-100 dark:border-slate-700/50 my-1.5" />
                         <button 
                           onClick={handleSignOut} 
-                          className="flex items-center gap-3 px-4 py-3 hover:bg-red-50 transition-colors duration-200 w-full text-left"
+                          className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors duration-150 w-[calc(100%-1rem)] text-left"
                         >
-                          <div className="p-2 rounded-lg bg-red-100">
-                            <LogOut className="h-4 w-4 text-red-600" />
+                          <div className="p-2 rounded-xl bg-red-50 dark:bg-red-900/20">
+                            <LogOut className="h-4 w-4 text-red-600 dark:text-red-400" />
                           </div>
-                          <span className="text-red-600 font-medium">Sign Out</span>
+                          <span className="text-red-600 dark:text-red-400 font-medium text-sm">Sign Out</span>
                         </button>
                       </div>
                     </div>
@@ -3735,71 +3735,77 @@ export default function Dashboard() {
                   )}
                   <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                <span className="text-lg">{safeUser.name || "User"}</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-lg truncate max-w-[140px]">{safeUser.name || "User"}</span>
                   {user?.verification_status >= 3 && <VerifiedBadge size="md" />}
                 </div>
                 <ChevronDown className={`h-5 w-5 transition-transform duration-300 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
               
               {profileDropdownOpen && (
-                  <div className="absolute right-0 mt-3 w-64 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-700 py-2 z-50 animate-fade-in-up">
-                  <div className="px-4 py-3 border-b border-gray-100">
-                    <div className="flex items-center gap-3">
+                  <div className="absolute right-0 mt-3 w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl shadow-slate-200/50 dark:shadow-black/20 border border-slate-100 dark:border-slate-700/80 overflow-hidden z-50 animate-fade-in-up ring-1 ring-slate-900/5">
+                  <div className="px-5 py-4 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900 border-b border-slate-100 dark:border-slate-700/50">
+                    <div className="flex items-center gap-4">
                       {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
                         <img 
                           src={resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image} 
                           alt={safeUser.name || "Profile"} 
-                          className="h-12 w-12 rounded-full object-cover border-2 border-gray-200"
+                          className="h-12 w-12 rounded-full object-cover ring-2 ring-white dark:ring-slate-800 shadow-md"
                         />
                       ) : (
-                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-xl font-semibold border-2 border-gray-200">
+                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-xl font-semibold ring-2 ring-white dark:ring-slate-800 shadow-md">
                           {safeUser.name?.charAt(0) || "U"}
                         </div>
                       )}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-1.5">
-                        <p className="font-medium text-gray-900 dark:text-slate-100 text-lg">{safeUser.name || "User"}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-nowrap min-w-0">
+                          <p className="font-semibold text-slate-900 dark:text-slate-100 text-base truncate" title={safeUser.name || "User"}>
+                            {safeUser.name || "User"}
+                          </p>
                           {user?.verification_status >= 3 && <VerifiedBadge size="md" />}
                         </div>
-                        <p className="text-sm text-gray-500 dark:text-slate-400">{safeUser.email || ""}</p>
+                        {safeUser.email && (
+                          <p className="text-sm text-slate-500 dark:text-slate-400 truncate mt-0.5" title={safeUser.email}>
+                            {safeUser.email}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
-                  <div className="py-2">
-                    <Link href="/" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200">
-                      <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                  <div className="py-1.5">
+                    <Link href="/" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                      <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
                         <Home className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                       </div>
-                      <span className="text-gray-700 dark:text-slate-200 font-medium">Go to Home</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Go to Home</span>
                     </Link>
-                    <Link href="/profile" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200">
-                      <div className="p-2 rounded-lg bg-blue-100">
-                        <User className="h-4 w-4 text-blue-600" />
+                    <Link href="/profile" className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                      <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/20">
+                        <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       </div>
-                      <span className="text-gray-700 dark:text-slate-200 font-medium">My Profile</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">My Profile</span>
                     </Link>
-                    <Link href="/wallet" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200">
-                      <div className="p-2 rounded-lg bg-emerald-100">
-                        <Wallet className="h-4 w-4 text-emerald-600" />
+                    <Link href="/wallet" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                      <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
+                        <Wallet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                       </div>
-                      <span className="text-gray-700 dark:text-slate-200 font-medium">Wallet</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Wallet</span>
                     </Link>
-                    <Link href="/supportpage" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
-                      <div className="p-2 rounded-lg bg-gray-100">
-                        <HelpCircle className="h-4 w-4 text-gray-600" />
+                    <Link href="/supportpage" className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                      <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800">
+                        <HelpCircle className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                       </div>
-                      <span className="text-gray-700 dark:text-slate-200 font-medium">Contact Support</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Contact Support</span>
                     </Link>
-                    <div className="border-t border-gray-100 my-2"></div>
+                    <div className="border-t border-slate-100 dark:border-slate-700/50 my-1.5" />
                     <button
                       onClick={handleSignOut}
-                      className="flex items-center gap-3 px-4 py-3 hover:bg-red-50 transition-colors duration-200 w-full text-left"
+                      className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors duration-150 w-[calc(100%-1rem)] text-left"
                     >
-                      <div className="p-2 rounded-lg bg-red-100">
-                        <LogOut className="h-4 w-4 text-red-600" />
+                      <div className="p-2 rounded-xl bg-red-50 dark:bg-red-900/20">
+                        <LogOut className="h-4 w-4 text-red-600 dark:text-red-400" />
                       </div>
-                      <span className="text-red-600 font-medium">Sign Out</span>
+                      <span className="text-red-600 dark:text-red-400 font-medium text-sm">Sign Out</span>
                     </button>
                   </div>
                 </div>
@@ -3837,54 +3843,65 @@ export default function Dashboard() {
                 <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
               {profileDropdownOpen && (
-                <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl border border-gray-200 py-3 z-50 animate-fade-in-up">
-                  <div className="px-4 py-3 border-b border-gray-100">
-                    <div className="flex items-center gap-3">
+                <div className="absolute right-0 mt-3 w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl shadow-slate-200/50 dark:shadow-black/20 border border-slate-100 dark:border-slate-700/80 overflow-hidden py-3 z-50 animate-fade-in-up ring-1 ring-slate-900/5">
+                  <div className="px-5 py-4 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900 border-b border-slate-100 dark:border-slate-700/50">
+                    <div className="flex items-center gap-4">
                       {safeUser && (resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
                         <img 
                           src={resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image || ""} 
                           alt={(safeUser.name) || "Profile"} 
-                          className="h-10 w-10 rounded-full object-cover border-2 border-gray-200"
+                          className="h-12 w-12 rounded-full object-cover ring-2 ring-white dark:ring-slate-800 shadow-md"
                         />
                       ) : (
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-lg font-semibold border-2 border-gray-200">
+                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-lg font-semibold ring-2 ring-white dark:ring-slate-800 shadow-md">
                           {(safeUser.name ? safeUser.name.charAt(0) : "U")}
                         </div>
                       )}
-                      <div>
-                        <p className="font-medium text-gray-900">{safeUser.name || "User"}</p>
-                        <p className="text-sm text-gray-500 dark:text-slate-400">{safeUser.email || ""}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-nowrap">
+                          <p className="font-semibold text-slate-900 dark:text-slate-100 text-base truncate" title={safeUser.name || "User"}>{safeUser.name || "User"}</p>
+                          {user?.verification_status >= 3 && <VerifiedBadge size="sm" />}
+                        </div>
+                        {safeUser.email && (
+                          <p className="text-sm text-slate-500 dark:text-slate-400 truncate mt-0.5" title={safeUser.email}>{safeUser.email}</p>
+                        )}
                       </div>
                     </div>
                   </div>
-                  <div className="py-2">
-                    <Link href="/profile" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
-                      <div className="p-2 rounded-lg bg-blue-100">
-                        <User className="h-4 w-4 text-blue-600" />
+                  <div className="py-1.5">
+                    <Link href="/" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                      <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
+                        <Home className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                       </div>
-                      <span className="text-gray-700 dark:text-slate-200 font-medium">My Profile</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Go to Home</span>
                     </Link>
-                    <Link href="/wallet" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
-                      <div className="p-2 rounded-lg bg-emerald-100">
-                        <Wallet className="h-4 w-4 text-emerald-600" />
+                    <Link href="/profile" className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                      <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/20">
+                        <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       </div>
-                      <span className="text-gray-700 dark:text-slate-200 font-medium">Wallet</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">My Profile</span>
                     </Link>
-                    <Link href="/supportpage" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
-                      <div className="p-2 rounded-lg bg-gray-100">
-                        <HelpCircle className="h-4 w-4 text-gray-600" />
+                    <Link href="/wallet" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                      <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
+                        <Wallet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                       </div>
-                      <span className="text-gray-700 dark:text-slate-200 font-medium">Contact Support</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Wallet</span>
                     </Link>
-                    <div className="border-t border-gray-100 my-2"></div>
+                    <Link href="/supportpage" className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                      <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800">
+                        <HelpCircle className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                      </div>
+                      <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Contact Support</span>
+                    </Link>
+                    <div className="border-t border-slate-100 dark:border-slate-700/50 my-1.5" />
                     <button 
                       onClick={handleSignOut} 
-                      className="flex items-center gap-3 px-4 py-3 hover:bg-red-50 transition-colors duration-200 w-full text-left"
+                      className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors duration-150 w-[calc(100%-1rem)] text-left"
                     >
-                      <div className="p-2 rounded-lg bg-red-100">
-                        <LogOut className="h-4 w-4 text-red-600" />
+                      <div className="p-2 rounded-xl bg-red-50 dark:bg-red-900/20">
+                        <LogOut className="h-4 w-4 text-red-600 dark:text-red-400" />
                       </div>
-                      <span className="text-red-600 font-medium">Sign Out</span>
+                      <span className="text-red-600 dark:text-red-400 font-medium text-sm">Sign Out</span>
                     </button>
                   </div>
                 </div>
