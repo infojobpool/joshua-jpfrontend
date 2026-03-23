@@ -73,9 +73,7 @@ export function AvailableTasksScroller() {
   }, [tasks.length])
 
   const formatBudget = (n: number) => {
-    if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`
-    if (n >= 1000) return `₹${(n / 1000).toFixed(1)}k`
-    return `₹${n}`
+    return `₹${Math.round(n).toLocaleString("en-IN")}`
   }
 
   return (
@@ -140,7 +138,7 @@ export function AvailableTasksScroller() {
                     onMouseEnter={() => { try { prefetchBidsForTask(task.id); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(task.id); } catch {} }}
                   >
                     <motion.div
-                      className="bg-white border border-gray-100 rounded-2xl w-[280px] h-[200px] overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col"
+                      className="bg-white border border-gray-100 rounded-2xl w-[280px] h-[220px] overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
@@ -148,7 +146,7 @@ export function AvailableTasksScroller() {
                         <span className="text-xs font-medium text-gray-500 uppercase tracking-wide flex-shrink-0">
                           {task.category_name}
                         </span>
-                        <h3 className="task-title text-slate-900 mt-1 line-clamp-2 min-h-[2.8em] text-xl md:text-2xl leading-snug">
+                        <h3 className="task-title text-slate-900 mt-1 line-clamp-2 min-h-[3.25rem] text-base md:text-lg leading-relaxed break-words">
                           {task.title}
                         </h3>
                         {task.location && (
