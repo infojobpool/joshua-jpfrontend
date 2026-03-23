@@ -33,6 +33,7 @@ Authorization: Bearer <user_jwt>
   "data": {
     "balance": 100.0,
     "currency": "INR",
+    "upi_vpa": "user@paytm",
     "transactions": [
       {
         "id": 1,
@@ -51,8 +52,10 @@ Authorization: Bearer <user_jwt>
 ```ts
 const res = await axiosInstance.get(`wallet?user_id=${userId}&limit=${limit}`);
 const payload = res.data?.data ?? res.data;
-const { balance, currency, transactions } = payload;
+const { balance, currency, transactions, upi_vpa } = payload;
 ```
+
+> **Backend requirement:** Include `upi_vpa` in the GET `/wallet` response so the Wallet page can display "Your UPI ID". Without it, the UPI card only appears after the user adds UPI (optimistic update) until the next full reload.
 
 ---
 

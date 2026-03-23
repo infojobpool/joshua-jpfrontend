@@ -78,11 +78,12 @@ export default function WalletPage() {
       setLoading(true);
       const response = await axiosInstance.get(`/wallet?user_id=${userId}&limit=30`);
       const data = response.data?.data ?? response.data;
+      const upiVpa = data?.upi_vpa ?? data?.upi ?? data?.user?.upi_vpa ?? "";
       setWallet({
         balance: data.balance ?? 0,
         currency: data.currency ?? "INR",
         transactions: Array.isArray(data.transactions) ? data.transactions : [],
-        upi_vpa: data.upi_vpa ?? "",
+        upi_vpa: typeof upiVpa === "string" ? upiVpa.trim() : "",
       });
     } catch (err: any) {
       console.error("Wallet fetch error:", err);
@@ -125,6 +126,8 @@ export default function WalletPage() {
       await axiosInstance.post(`/wallet/add-upi?user_id=${userId}&upi_vpa=${encodeURIComponent(vpa)}`);
       toast.success("UPI ID added successfully");
       setUpiInput("");
+      // Optimistic: show UPI right away in case GET /wallet doesn't return it
+      setWallet((prev) => prev ? { ...prev, upi_vpa: vpa } : prev);
       fetchWallet();
     } catch (err: any) {
       const msg = err.response?.data?.message ?? "Failed to add UPI";
