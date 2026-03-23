@@ -48,7 +48,7 @@ const sidebarNavItems = [
   },
   {
     title: "Wallet Withdrawals",
-    href: `${process.env.NEXT_PUBLIC_APP_URL || "https://www.jobpool.in"}/admin/withdrawals`,
+    href: "/wallet-withdrawals",
     icon: Wallet,
   },
   {
@@ -132,7 +132,6 @@ export function Sidebar({ pathname }: SidebarProps) {
           <Link
             key={item.href}
             href={item.href}
-            {...(item.href.startsWith("http") && { target: "_blank", rel: "noopener noreferrer" })}
             className={cn(
               "flex items-center gap-3 rounded-xl px-3 py-2 transition-all hover:bg-blue-50 hover:text-blue-700",
               pathname === item.href ? "bg-blue-50 text-blue-700" : "text-gray-600",
