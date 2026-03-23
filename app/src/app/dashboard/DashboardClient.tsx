@@ -38,7 +38,8 @@ import {
   Bell,
   Gavel,
   MessageSquare,
-  ClipboardList
+  ClipboardList,
+  Home
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
@@ -52,6 +53,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { EmptyState } from "@/components/EmptyState";
 import { SearchEmptyIllustration, BriefcaseEmptyIllustration } from "@/components/empty-state-illustrations";
 import { ShareTaskButton } from "@/components/ShareTaskButton";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { analytics } from "@/lib/analytics";
 
 // Load Leaflet map client-only to avoid mobile crashes
@@ -3605,11 +3607,7 @@ export default function Dashboard() {
                     <div className="flex flex-col items-start">
                       <div className="flex items-center gap-1.5">
                       <span className="text-sm font-medium text-gray-900 dark:text-slate-100">{safeUser.name || "User"}</span>
-                        {user?.verification_status >= 3 && (
-                          <span title="Verified Account">
-                            <CheckCircle className="h-4 w-4 text-blue-600" />
-                          </span>
-                        )}
+                        {user?.verification_status >= 3 && <VerifiedBadge size="sm" />}
                       </div>
                       <span className="text-xs text-gray-500 dark:text-slate-400">Online</span>
                     </div>
@@ -3635,11 +3633,7 @@ export default function Dashboard() {
                               <p className="font-medium text-gray-900 dark:text-slate-100 text-sm truncate">
                                 {safeUser.name || "User"}
                               </p>
-                              {user?.verification_status >= 3 && (
-                                <span title="Verified Account">
-                                  <CheckCircle className="h-4 w-4 text-blue-600" />
-                                </span>
-                              )}
+                              {user?.verification_status >= 3 && <VerifiedBadge size="sm" />}
                             </div>
                             {safeUser.email && (
                               <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400 break-all">
@@ -3650,13 +3644,19 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div className="py-2">
-                        <Link href="/profile" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
+                        <Link href="/" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200">
+                          <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                            <Home className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                          </div>
+                          <span className="text-gray-800 dark:text-slate-200 font-medium">Go to Home</span>
+                        </Link>
+                        <Link href="/profile" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200">
                           <div className="p-2 rounded-lg bg-[#eff6ff]">
                             <User className="h-4 w-4 text-[#2563eb]" />
                           </div>
                           <span className="text-gray-800 dark:text-slate-200 font-medium">My Profile</span>
                         </Link>
-                        <Link href="/supportpage" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
+                        <Link href="/supportpage" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200">
                           <div className="p-2 rounded-lg bg-gray-100">
                             <HelpCircle className="h-4 w-4 text-gray-600" />
                           </div>
@@ -3694,6 +3694,13 @@ export default function Dashboard() {
             </div>
           )}
           <div className="hidden md:flex items-center gap-4 animate-slide-in-right">
+            <Link
+              href="/"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-colors font-medium text-sm"
+            >
+              <Home className="h-4 w-4" />
+              Home
+            </Link>
             <ThemeToggle />
             {/* Enhanced Notifications with proper clickable functionality */}
             <div className="relative">
@@ -3722,11 +3729,7 @@ export default function Dashboard() {
                 </div>
                 <div className="flex items-center gap-1.5">
                 <span className="text-lg">{safeUser.name || "User"}</span>
-                  {user?.verification_status >= 3 && (
-                    <span title="Verified Account">
-                      <CheckCircle className="h-5 w-5 text-blue-600" />
-                    </span>
-                  )}
+                  {user?.verification_status >= 3 && <VerifiedBadge size="md" />}
                 </div>
                 <ChevronDown className={`h-5 w-5 transition-transform duration-300 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -3749,18 +3752,20 @@ export default function Dashboard() {
                       <div className="flex-1">
                         <div className="flex items-center gap-1.5">
                         <p className="font-medium text-gray-900 dark:text-slate-100 text-lg">{safeUser.name || "User"}</p>
-                          {user?.verification_status >= 3 && (
-                            <span title="Verified Account">
-                              <CheckCircle className="h-5 w-5 text-blue-600" />
-                            </span>
-                          )}
+                          {user?.verification_status >= 3 && <VerifiedBadge size="md" />}
                         </div>
                         <p className="text-sm text-gray-500 dark:text-slate-400">{safeUser.email || ""}</p>
                       </div>
                     </div>
                   </div>
                   <div className="py-2">
-                    <Link href="/profile" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors duration-200">
+                    <Link href="/" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200">
+                      <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                        <Home className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                      <span className="text-gray-700 dark:text-slate-200 font-medium">Go to Home</span>
+                    </Link>
+                    <Link href="/profile" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200">
                       <div className="p-2 rounded-lg bg-blue-100">
                         <User className="h-4 w-4 text-blue-600" />
                       </div>
