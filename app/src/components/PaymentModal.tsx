@@ -119,6 +119,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { TrustBadges } from "@/components/TrustBadges"
 
 interface Task {
   id: string
@@ -198,6 +199,12 @@ export function PaymentModal({ show, task, handlePayment, closeModal, isSubmitti
               <span className="font-bold text-lg text-green-600">₹{totalAmount.toFixed(2)}</span>
             </div>
           </div>
+
+          <TrustBadges
+            heading="Secure payment"
+            subtext="Encrypted & protected"
+            variant="compact"
+          />
 
           {/* <div className="space-y-2">
             <label className="text-sm font-medium">Payment Method</label>

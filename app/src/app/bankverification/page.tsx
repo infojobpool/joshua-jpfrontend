@@ -72,6 +72,7 @@ import {
 } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import BankVerification from "../../components/verification/bank-verification";
+import { TrustBadges } from "../../components/TrustBadges";
 import { useRouter } from "next/navigation";
 
 export default function BankVerificationPage() {
@@ -105,8 +106,13 @@ export default function BankVerificationPage() {
             Please complete the bank verification process
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           <BankVerification onComplete={handleComplete} />
+          <TrustBadges
+            heading="Your details are safe"
+            subtext="Encrypted, compliant & protected"
+            variant="compact"
+          />
         </CardContent>
         <CardFooter className="flex justify-between">
           <div className="flex gap-2">

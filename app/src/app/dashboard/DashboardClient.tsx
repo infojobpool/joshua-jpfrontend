@@ -54,6 +54,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { SearchEmptyIllustration, BriefcaseEmptyIllustration } from "@/components/empty-state-illustrations";
 import { ShareTaskButton } from "@/components/ShareTaskButton";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { TrustBadges } from "@/components/TrustBadges";
 import { analytics } from "@/lib/analytics";
 
 // Load Leaflet map client-only to avoid mobile crashes
@@ -3924,6 +3925,17 @@ export default function Dashboard() {
             </Link>
           </div>
         </div>
+
+        {/* Trust badges for unverified users */}
+        {user && (user.verification_status == null || Number(user.verification_status) < 3) && (
+          <div className="mb-4">
+            <TrustBadges
+              heading="Your details are safe"
+              subtext="Encrypted, compliant & protected"
+              variant="compact"
+            />
+          </div>
+        )}
 
         {/* Profile completion banner - soft nudge when profile incomplete */}
         {!profileBannerDismissed && user && !isProfileComplete(getProfileImageFromUser(user)) && (

@@ -2,6 +2,7 @@
 
 import { Shield, Lock, Clock, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { TrustBadges } from "@/components/TrustBadges"
 
 interface VerificationIntroProps {
   onStart: () => void
@@ -16,6 +17,12 @@ export default function VerificationIntro({ onStart }: VerificationIntroProps) {
           Completing the verification process helps us ensure security and comply with regulations.
         </p>
       </div>
+
+      <TrustBadges
+        heading="Your details are safe with us"
+        subtext="We use industry-standard security to protect your information"
+        variant="default"
+      />
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="flex items-start space-x-3 rounded-lg border p-4">

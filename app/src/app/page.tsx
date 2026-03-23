@@ -12,6 +12,7 @@ import { Features } from '../components/mainpage/features'
 import { Testimonials } from '../components/mainpage/testimonials'
 import { FeaturedServices } from '../components/mainpage/featured-services'
 import { AvailableTasksScroller } from '../components/mainpage/available-tasks-scroller'
+import { TrustBadgesSection } from '../components/mainpage/TrustBadgesSection'
 import { MobileWrapper } from '../components/mobile/MobileWrapper'
 
 export default function Home() {
@@ -20,6 +21,7 @@ export default function Home() {
       {/* Mobile landing (default on small screens) */}
       <div className="md:hidden">
         <MobileHeroSection />
+        <TrustBadgesSection />
         <MobileServiceScroller />
         <MobileHeroBanner />
         <MobileShowcase />
@@ -31,6 +33,7 @@ export default function Home() {
       {/* Desktop landing (md and up) */}
       <div className="hidden md:block">
         <HeroSection />
+        <TrustBadgesSection />
         <FeaturedServices />
         <AvailableTasksScroller />
         <HowItWorks />

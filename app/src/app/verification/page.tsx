@@ -276,6 +276,7 @@ import AadharVerification from "../../components/verification/aadhar-verificatio
 import VerificationComplete from "../../components/verification/verification-complete"
 import VerificationIntro from "../../components/verification/verification-intro"
 import VerticalStepIndicator from "../../components/verification/vertical-step-indicator"
+import { TrustBadges } from "../../components/TrustBadges"
 import axiosInstance from "../../lib/axiosInstance"
 import useStore from "../../lib/Zustand"
 import { CheckCircle } from "lucide-react"
@@ -549,8 +550,13 @@ export default function VerificationFlow() {
             <VerificationComplete verificationStatus={verificationStatus} />
           ) : (
             <div className="flex flex-col gap-6 md:flex-row">
-              <div className="w-full md:w-1/3">
+              <div className="w-full md:w-1/3 space-y-4">
                 <VerticalStepIndicator currentStep={currentStep} steps={steps} />
+                <TrustBadges
+                  heading="Your details are safe"
+                  subtext="Encrypted, compliant & protected"
+                  variant="compact"
+                />
               </div>
               <div className="w-full md:w-2/3">
                 {currentStep === 0 && <VerificationIntro onStart={handleNext} />}

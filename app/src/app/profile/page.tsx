@@ -34,7 +34,8 @@ import {
 } from "lucide-react";
 import useStore from "../../lib/Zustand";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
-import Header from "@/components/Header"; // Import the Header component
+import Header from "@/components/Header";
+import { TrustBadges } from "@/components/TrustBadges";
 
 interface Address {
   id: number;
@@ -645,6 +646,11 @@ export default function ProfilePage() {
                     <p className="text-sm font-bold text-slate-800 mt-1">{profileuser.phone || "—"}</p>
                   </div>
                 </div>
+                <TrustBadges
+                  heading="Your details are safe"
+                  subtext="Encrypted, compliant & protected"
+                  variant="compact"
+                />
               )}
               {profileuser.isEditing ? (
                 <form onSubmit={saveProfileChanges} className="space-y-4">
