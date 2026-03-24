@@ -1,8 +1,11 @@
 import axiosInstance from "@/lib/axiosInstance";
 import { getApiErrorMessage } from "@/lib/apiError";
 
-/** Body shapes backends may accept — try first match that returns non-404 */
-const ATTEMPTS: { path: string; body: (userIds: string[]) => Record<string, unknown> }[] = [
+/**
+ * FastAPI routes tried in order (admin JWT required). Implement ONE on your backend.
+ * See conversation / deploy notes for the contract.
+ */
+const BACKEND_ATTEMPTS: { path: string; body: (userIds: string[]) => Record<string, unknown> }[] = [
   {
     path: "/admin/remind-incomplete-profile/",
     body: (user_ids) => ({ user_ids, email: true, whatsapp: true }),
@@ -29,9 +32,8 @@ export type ReminderResult =
   | { ok: false; error: string; noEndpoint?: boolean };
 
 /**
- * 1) If `recipients` is passed, calls Next.js `/api/reminders/send` (server uses your
- *    REMINDER_* env vars or REMINDER_BATCH_WEBHOOK_URL — secrets stay on Vercel).
- * 2) If that returns 501 (not configured), falls back to FastAPI routes in ATTEMPTS.
+ * Order: (1) FastAPI admin routes above — (2) if all 404, optional Vercel `/api/reminders/send`
+ * when `recipients` is passed and REMINDER_* env is set on Vercel.
  */
 export async function sendIncompleteProfileReminders(
   userIds: string[],
@@ -41,7 +43,26 @@ export async function sendIncompleteProfileReminders(
     return { ok: false, error: "No users selected" };
   }
 
-  if (recipients && recipients.length > 0 && typeof window !== "undefined") {
+  let backend404 = true;
+  for (const { path, body } of BACKEND_ATTEMPTS) {
+    try {
+      const res = await axiosInstance.post(path, body(userIds));
+      const msg =
+        (res.data?.message as string) ||
+        (res.data?.data?.message as string) ||
+        "Reminders queued";
+      return { ok: true, message: msg };
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) {
+        continue;
+      }
+      backend404 = false;
+      return { ok: false, error: getApiErrorMessage(err) || "Request failed" };
+    }
+  }
+
+  if (recipients && recipients.length > 0 && typeof window !== "undefined" && backend404) {
     const token = localStorage.getItem("token");
     if (token) {
       try {
@@ -60,43 +81,23 @@ export async function sendIncompleteProfileReminders(
         if (r.ok) {
           return { ok: true, message: data.message || "Reminders sent" };
         }
-        if (r.status === 501) {
-          // Env not set on Vercel — try backend
-        } else {
+        if (r.status !== 501) {
           return {
             ok: false,
             error: data.error || data.message || `Reminder API error (${r.status})`,
           };
         }
       } catch {
-        /* fall through to backend */
+        /* no Vercel route */
       }
     }
   }
 
-  let last404 = true;
-  for (const { path, body } of ATTEMPTS) {
-    try {
-      const res = await axiosInstance.post(path, body(userIds));
-      const msg =
-        (res.data?.message as string) ||
-        (res.data?.data?.message as string) ||
-        "Reminders queued";
-      return { ok: true, message: msg };
-    } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 404) {
-        continue;
-      }
-      last404 = false;
-      return { ok: false, error: getApiErrorMessage(err) || "Request failed" };
-    }
-  }
-  if (last404) {
+  if (backend404) {
     return {
       ok: false,
       error:
-        "Configure Vercel env (REMINDER_BATCH_WEBHOOK_URL or email/WhatsApp URLs) — see .env.example — or add POST /admin/remind-incomplete-profile/ on the API.",
+        "Add POST /api/v1/admin/remind-incomplete-profile/ on your FastAPI backend (admin JWT). It should send email + WhatsApp for the given user_ids.",
       noEndpoint: true,
     };
   }
