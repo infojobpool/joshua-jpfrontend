@@ -41,7 +41,8 @@ import {
   ClipboardList,
   Home,
   Wallet,
-  RotateCcw
+  RotateCcw,
+  Sparkles
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
@@ -3705,13 +3706,10 @@ export default function Dashboard() {
               <div className="mt-3 text-left space-y-0.5">
                 <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Welcome back, {safeUser?.name?.split(" ")[0] || "there"}!</p>
                 <h1 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-slate-100">Dashboard</h1>
-                <p className="text-xs text-gray-600 dark:text-slate-400">Tasks and bids</p>
-                <Link
-                  href="/post-task"
-                  className="inline-flex items-center text-sm font-semibold text-[#2563eb] hover:text-[#1d4ed8] dark:text-blue-400 dark:hover:text-blue-300 pt-1.5 transition-colors"
-                >
-                  Post a task
-                </Link>
+                <div className="mt-2 inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-full border border-amber-200/70 bg-gradient-to-r from-amber-50/90 to-orange-50/40 dark:from-amber-950/35 dark:to-orange-950/25 dark:border-amber-800/50 px-2.5 py-1">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" aria-hidden />
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-900/90 dark:text-amber-200/95 leading-tight">Verified · secure payouts</span>
+                </div>
               </div>
             </div>
           )}
@@ -4069,10 +4067,12 @@ export default function Dashboard() {
           {(() => {
             const tabCls = (v: string) => {
               const active = activeTab === v;
-              const base = "inline-flex items-center justify-center gap-1.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 active:scale-[0.98]";
-              const activeCls = "bg-white dark:bg-slate-700 shadow-md ring-1 ring-[#3b82f6]/30 text-[#2563eb]";
-              const inactiveCls = "text-gray-600 dark:text-slate-400";
-              const mobileCls = isMobile ? "flex flex-col gap-0.5 px-2 py-1.5 flex-shrink-0 rounded-lg text-[11px]" : "px-4 py-2";
+              const base = "inline-flex items-center justify-center gap-1.5 rounded-xl whitespace-nowrap transition-all duration-200 active:scale-[0.98]";
+              const activeCls =
+                "bg-white dark:bg-slate-700 shadow-md ring-2 ring-[#3b82f6]/35 text-[#1d4ed8] dark:text-blue-300 font-bold";
+              const inactiveCls =
+                "text-slate-800 dark:text-slate-100 font-semibold bg-white/55 dark:bg-slate-700/55 ring-1 ring-slate-200/70 dark:ring-slate-600/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]";
+              const mobileCls = isMobile ? "flex flex-col gap-0.5 px-2 py-1.5 flex-shrink-0 rounded-lg text-[11px]" : "px-4 py-2 text-sm font-semibold";
               return `${base} ${mobileCls} ${active ? activeCls : inactiveCls}`;
             };
             const onTab = (value: string) => {
@@ -4121,7 +4121,7 @@ export default function Dashboard() {
           {/* Active filter chips (mobile) - removed per request */}
 
           {isMobile && showFilters && (
-            <div id="mobile-filters" className="mt-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div id="mobile-filters" className="mt-1 rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm dark:border-slate-600 dark:bg-slate-900">
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 block">Sort by</label>
@@ -4462,7 +4462,7 @@ export default function Dashboard() {
           )}
 
           {activeTab === "available" && (
-          <div className="space-y-4 mt-4 animate-fade-in-up min-h-[500px]">
+          <div className={`${isMobile ? "space-y-2 mt-2" : "space-y-4 mt-4"} animate-fade-in-up min-h-[500px]`}>
             <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Available Tasks</h2>
             <div className={`grid gap-6 ${isMobile ? "grid-cols-1" : "md:grid-cols-4"}`} style={{zIndex:1, position:'relative'}}>
               <div className={`${isMobile ? "hidden" : "md:col-span-1"} space-y-6`}>
@@ -4588,39 +4588,64 @@ export default function Dashboard() {
                 </Card>
               </div>
 
-              <div className={`${isMobile ? "col-span-1" : "md:col-span-3"} space-y-6`}>
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <form onSubmit={handleSearch} className="flex-1 flex gap-3">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <Input
-                        type="search"
-                        placeholder="Search tasks by title or description..."
-                        className="pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:border-gray-400 focus:ring-0 text-gray-700 placeholder:text-gray-400 transition-all duration-200"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                    </div>
-                    <Button 
-                      type="submit" 
-                      className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-medium px-5 py-2.5 rounded-lg"
+              <div className={`${isMobile ? "col-span-1" : "md:col-span-3"} ${isMobile ? "space-y-2" : "space-y-6"}`}>
+                {isMobile ? (
+                  <div className="flex rounded-2xl border border-slate-200/90 dark:border-slate-600 bg-white dark:bg-slate-900 shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden">
+                    <form onSubmit={handleSearch} className="flex flex-1 min-w-0 items-stretch">
+                      <label htmlFor="dashboard-available-search" className="relative flex flex-1 min-w-0 items-center pl-3">
+                        <span className="sr-only">Search tasks</span>
+                        <Search className="pointer-events-none h-4 w-4 shrink-0 text-slate-400" />
+                        <Input
+                          id="dashboard-available-search"
+                          type="search"
+                          placeholder="Search by title or description…"
+                          className="h-11 flex-1 min-w-0 border-0 bg-transparent pl-2 pr-2 text-sm text-slate-900 shadow-none placeholder:text-slate-400 focus-visible:ring-0 dark:text-slate-100"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                      </label>
+                      <Button
+                        type="submit"
+                        className="h-11 shrink-0 rounded-none border-0 bg-[#2563eb] px-4 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
+                      >
+                        Search
+                      </Button>
+                    </form>
+                    <button
+                      type="button"
+                      className="flex h-11 shrink-0 items-center gap-1.5 border-l border-slate-200/90 bg-slate-50/90 px-3 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-800"
+                      onClick={() => setShowFilters(!showFilters)}
+                      aria-expanded={showFilters}
+                      aria-controls="mobile-filters"
                     >
-                      Search
-                    </Button>
-                  </form>
-                  <Button
-                    variant="outline"
-                    className="sm:hidden bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 font-medium px-4 py-2.5 rounded-lg transition-all duration-200"
-                    onClick={() => setShowFilters(!showFilters)}
-                    aria-expanded={showFilters}
-                    aria-controls="mobile-filters"
-                  >
-                    <Filter className="mr-2 h-4 w-4" />
-                    Filters
-                  </Button>
-                </div>
+                      <Filter className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
+                      Filters
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <form onSubmit={handleSearch} className="flex-1 flex gap-3">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          type="search"
+                          placeholder="Search tasks by title or description..."
+                          className="pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:border-gray-400 focus:ring-0 text-gray-700 placeholder:text-gray-400 transition-all duration-200"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-medium px-5 py-2.5 rounded-lg"
+                      >
+                        Search
+                      </Button>
+                    </form>
+                  </div>
+                )}
 
-                <div className="flex justify-between items-center">
+                <div className={`flex justify-between items-center ${isMobile ? "pt-0.5" : ""}`}>
                   <p className="text-sm text-muted-foreground">
                     {sortedAvailableTasks.length} tasks found
                   </p>
