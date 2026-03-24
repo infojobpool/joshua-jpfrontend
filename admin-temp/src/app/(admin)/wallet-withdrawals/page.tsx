@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Loader2,
   Wallet,
@@ -33,9 +35,34 @@ interface Withdrawal {
   created_at?: string;
   updated_at?: string;
   note?: string;
+  admin_note?: string;
 }
 
 type StatusFilter = "all" | "pending" | "completed" | "failed";
+
+const NOTES_STORAGE_KEY = "jobpool_admin_withdrawal_notes";
+const NOTE_MAX = 500;
+
+function readStoredNotes(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(NOTES_STORAGE_KEY);
+    if (!raw) return {};
+    const p = JSON.parse(raw) as unknown;
+    return typeof p === "object" && p !== null && !Array.isArray(p) ? (p as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeStoredNotes(map: Record<string, string>) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    /* ignore quota */
+  }
+}
 
 function normalizeWithdrawal(raw: Record<string, unknown>): Withdrawal | null {
   if (!raw || typeof raw !== "object") return null;
@@ -64,7 +91,8 @@ function normalizeWithdrawal(raw: Record<string, unknown>): Withdrawal | null {
     status,
     created_at: (raw.created_at ?? raw.createdAt) as string | undefined,
     updated_at: (raw.updated_at ?? raw.updatedAt) as string | undefined,
-    note: raw.note as string | undefined,
+    note: (raw.note ?? raw.notes) as string | undefined,
+    admin_note: raw.admin_note as string | undefined,
   };
 }
 
@@ -98,6 +126,9 @@ export default function WalletWithdrawalsPage() {
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [noteSaving, setNoteSaving] = useState<string | null>(null);
+  /** Draft text per transaction id */
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   /** null = ok or not loaded; 'auth' = 401 / invalid token; 'other' = other error */
   const [loadError, setLoadError] = useState<null | "auth" | "other">(null);
@@ -140,6 +171,22 @@ export default function WalletWithdrawalsPage() {
     fetchWithdrawals();
   }, []);
 
+  useEffect(() => {
+    setNoteDrafts((prev) => {
+      const stored = readStoredNotes();
+      const next = { ...prev };
+      for (const w of withdrawals) {
+        const id = String(w.transaction_id ?? w.id ?? "").trim();
+        if (!id) continue;
+        if (!(id in next)) {
+          const fromApi = (w.note || w.admin_note || "").trim();
+          next[id] = fromApi || stored[id] || "";
+        }
+      }
+      return next;
+    });
+  }, [withdrawals]);
+
   const getTxId = (w: Withdrawal) =>
     String(w.transaction_id ?? w.id ?? "").trim();
 
@@ -174,6 +221,37 @@ export default function WalletWithdrawalsPage() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const saveNote = async (txId: string) => {
+    const text = (noteDrafts[txId] ?? "").slice(0, NOTE_MAX);
+    setNoteDrafts((p) => ({ ...p, [txId]: text }));
+    setNoteSaving(txId);
+    let serverOk = false;
+    try {
+      await axiosInstance.patch(`/admin/wallet-transaction/${txId}`, { note: text });
+      serverOk = true;
+    } catch {
+      try {
+        await axiosInstance.patch(`/admin/wallet-transaction/${txId}`, { admin_note: text });
+        serverOk = true;
+      } catch {
+        serverOk = false;
+      }
+    }
+    const stored = readStoredNotes();
+    stored[txId] = text;
+    writeStoredNotes(stored);
+    if (serverOk) {
+      toast.success("Note saved");
+      await fetchWithdrawals();
+    } else {
+      toast.success("Note saved on this device", {
+        description:
+          "The API did not accept a note field yet — stored locally in your browser. Add note support to PATCH /admin/wallet-transaction/{id} to sync server-side.",
+      });
+    }
+    setNoteSaving(null);
   };
 
   const formatDate = (dateStr?: string) => {
@@ -226,9 +304,8 @@ export default function WalletWithdrawalsPage() {
           Wallet Withdrawals
         </h1>
         <p className="text-muted-foreground mt-1">
-          All UPI withdrawal requests with user and payout details. Use{" "}
-          <strong>Pending</strong> to approve or reject; completed and failed rows are
-          read-only history.
+          All UPI withdrawal requests with user and payout details. Add <strong>short notes</strong> per
+          row and save (syncs to the server when supported, otherwise kept in this browser).
         </p>
       </div>
 
@@ -327,6 +404,7 @@ export default function WalletWithdrawalsPage() {
                         <th className="p-3 font-semibold">User</th>
                         <th className="p-3 font-semibold">UPI</th>
                         <th className="p-3 font-semibold">Requested</th>
+                        <th className="p-3 font-semibold min-w-[200px] max-w-[260px]">Notes</th>
                         <th className="p-3 font-semibold w-[180px]">Actions</th>
                       </tr>
                     </thead>
@@ -374,6 +452,41 @@ export default function WalletWithdrawalsPage() {
                                     </span>
                                   )}
                                 </span>
+                              </div>
+                            </td>
+                            <td className="p-3 align-top">
+                              <div className="space-y-1.5">
+                                <Label htmlFor={`note-${id}`} className="sr-only">
+                                  Note for transaction {id}
+                                </Label>
+                                <Textarea
+                                  id={`note-${id}`}
+                                  placeholder="Short internal note…"
+                                  rows={2}
+                                  maxLength={NOTE_MAX}
+                                  className="min-h-[52px] text-xs resize-y max-w-[240px]"
+                                  value={noteDrafts[id] ?? ""}
+                                  onChange={(e) =>
+                                    setNoteDrafts((p) => ({
+                                      ...p,
+                                      [id]: e.target.value.slice(0, NOTE_MAX),
+                                    }))
+                                  }
+                                />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-7 text-xs"
+                                  disabled={noteSaving === id}
+                                  onClick={() => saveNote(id)}
+                                >
+                                  {noteSaving === id ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    "Save note"
+                                  )}
+                                </Button>
                               </div>
                             </td>
                             <td className="p-3 align-top">
@@ -454,8 +567,41 @@ export default function WalletWithdrawalsPage() {
                           )}
                         </CardDescription>
                       </CardHeader>
+                      <CardContent className="pt-0 space-y-2 border-t">
+                        <Label htmlFor={`note-m-${id}`} className="text-xs font-medium">
+                          Notes
+                        </Label>
+                        <Textarea
+                          id={`note-m-${id}`}
+                          placeholder="Short internal note…"
+                          rows={3}
+                          maxLength={NOTE_MAX}
+                          className="min-h-[72px] text-sm"
+                          value={noteDrafts[id] ?? ""}
+                          onChange={(e) =>
+                            setNoteDrafts((p) => ({
+                              ...p,
+                              [id]: e.target.value.slice(0, NOTE_MAX),
+                            }))
+                          }
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          className="w-full"
+                          disabled={noteSaving === id}
+                          onClick={() => saveNote(id)}
+                        >
+                          {noteSaving === id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            "Save note"
+                          )}
+                        </Button>
+                      </CardContent>
                       {pending && (
-                        <CardContent className="pt-0 flex gap-2">
+                        <CardContent className="pt-0 flex gap-2 border-t">
                           <Button
                             size="sm"
                             className="flex-1 bg-emerald-600 hover:bg-emerald-700"
