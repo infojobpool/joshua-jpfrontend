@@ -28,10 +28,17 @@ function normalizeApiBase(): string {
       .filter(Boolean);
     const hasApiVersion =
       segments[0] === "api" && segments[1] != null && /^v\d+$/.test(segments[1]);
-    // Production API lives under /api/v1; bare https://api.jobpool.in 404s on /admin-login/
-    if (!hasApiVersion && u.hostname === "api.jobpool.in") {
-      u.pathname = "/api/v1";
-      return u.toString().replace(/\/+$/, "");
+    // FastAPI routes live under /api/v1/... — bare host (e.g. jobpoolbackend.onrender.com) or
+    // https://api.jobpool.in without /api/v1 would POST /admin-login/ at root → 404.
+    if (!hasApiVersion) {
+      if (segments.length === 0) {
+        u.pathname = "/api/v1";
+        return u.toString().replace(/\/+$/, "");
+      }
+      if (segments.length === 1 && segments[0] === "api") {
+        u.pathname = "/api/v1";
+        return u.toString().replace(/\/+$/, "");
+      }
     }
   } catch {
     return DEFAULT_API_BASE;
