@@ -2,11 +2,42 @@
 
 import axios from "axios";
 
+const DEFAULT_API_BASE = "https://api.jobpool.in/api/v1";
+
+/** Ensures admin calls hit the FastAPI host, not the Vercel admin origin (which 404s on /admin-login/). */
 function normalizeApiBase(): string {
-  const raw =
-    (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_BASE_URL) ||
-    "https://api.jobpool.in/api/v1";
-  return raw.replace(/\/+$/, "");
+  let raw =
+    (typeof process !== "undefined" &&
+      process.env.NEXT_PUBLIC_API_BASE_URL?.trim()) ||
+    DEFAULT_API_BASE;
+  raw = raw.replace(/\/+$/, "");
+
+  // Relative values like "/api/v1" resolve against the admin site's origin → 404. Force absolute API URL.
+  if (
+    raw.startsWith("/") ||
+    (!raw.startsWith("http://") && !raw.startsWith("https://"))
+  ) {
+    return DEFAULT_API_BASE;
+  }
+
+  try {
+    const u = new URL(raw);
+    const segments = u.pathname
+      .replace(/^\/|\/$/g, "")
+      .split("/")
+      .filter(Boolean);
+    const hasApiVersion =
+      segments[0] === "api" && segments[1] != null && /^v\d+$/.test(segments[1]);
+    // Production API lives under /api/v1; bare https://api.jobpool.in 404s on /admin-login/
+    if (!hasApiVersion && u.hostname === "api.jobpool.in") {
+      u.pathname = "/api/v1";
+      return u.toString().replace(/\/+$/, "");
+    }
+  } catch {
+    return DEFAULT_API_BASE;
+  }
+
+  return raw;
 }
 
 // Must match the backend that serves /api/v1 (set NEXT_PUBLIC_API_BASE_URL in Vercel / .env)
