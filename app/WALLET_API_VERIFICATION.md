@@ -222,6 +222,40 @@ await axiosInstance.patch(`admin/wallet-transaction/${transactionId}`, { status:
 
 ---
 
+### 6. POST `/admin/remind-incomplete-profile/` – email + WhatsApp reminders (admin)
+
+| | Value |
+|---|---|
+| **Full path** | `POST /api/v1/admin/remind-incomplete-profile/` |
+| **Body** | `{ "user_ids": ["id1", "id2"], "email": true, "whatsapp": true }` — at least one of `email` / `whatsapp` must be `true`; max **500** `user_ids` per request |
+| **Auth** | Admin JWT (`get_current_admin_id`, same as other admin wallet routes) |
+
+**Success response (200):**
+```json
+{
+  "status_code": 200,
+  "message": "Reminders processed",
+  "data": {
+    "summary": {
+      "requested": 2,
+      "email_sent_ok": 1,
+      "email_failed": 0,
+      "whatsapp_sent_ok": 1,
+      "whatsapp_failed": 0,
+      "skipped_empty_ids": 0,
+      "admin_id": "..."
+    },
+    "results": [
+      { "user_id": "...", "found": true, "email_sent": true, "whatsapp_sent": false }
+    ]
+  }
+}
+```
+
+**Admin frontend (`admin-temp`):** Verification reminders page calls this route first; the UI toast uses `message` plus `data.summary` when present. Large selections are split into batches of 500 client-side. No Vercel `REMINDER_*` env vars are required when this endpoint is deployed.
+
+---
+
 ## Response Handling
 
 - All responses use: `{ status_code, message, data? }`.
