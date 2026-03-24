@@ -1,85 +1,132 @@
 // lib/axiosInstance.ts
 
-import axios from 'axios';
+import axios from "axios";
 
-// Admin backend: API is at api.jobpool.in (refresh must hit API, not admin.jobpool.in)
-const API_BASE = 'https://api.jobpool.in/api/v1';
+function normalizeApiBase(): string {
+  const raw =
+    (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_BASE_URL) ||
+    "https://api.jobpool.in/api/v1";
+  return raw.replace(/\/+$/, "");
+}
+
+// Must match the backend that serves /api/v1 (set NEXT_PUBLIC_API_BASE_URL in Vercel / .env)
+export const API_BASE = normalizeApiBase();
+
 const axiosInstance = axios.create({
   baseURL: API_BASE,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   withCredentials: true,
   timeout: 30000,
   maxRedirects: 0,
 });
 
+function extractRefreshToken(body: unknown): string | undefined {
+  if (!body || typeof body !== "object") return undefined;
+  const b = body as Record<string, unknown>;
+  const data = b.data;
+  if (data && typeof data === "object") {
+    const d = data as Record<string, unknown>;
+    if (typeof d.token === "string") return d.token;
+    if (typeof d.access_token === "string") return d.access_token;
+  }
+  if (typeof b.token === "string") return b.token;
+  if (typeof b.access_token === "string") return b.access_token;
+  return undefined;
+}
+
 // Add a request interceptor to include JWT in headers
 axiosInstance.interceptors.request.use(
   (config) => {
-    const url = (config.url || '').toLowerCase();
-    const isLogin = url.includes('admin-login');
+    const url = (config.url || "").toLowerCase();
+    const isLogin = url.includes("admin-login");
     if (!isLogin) {
-      const token = localStorage.getItem('token');
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (token) {
-        config.headers['Authorization'] = `Bearer ${token}`;
+        config.headers["Authorization"] = `Bearer ${token}`;
       }
     }
-    // Cache-bust GET requests so admin list reflects latest edits immediately
-    if ((config.method || 'get').toLowerCase() === 'get') {
+    if ((config.method || "get").toLowerCase() === "get") {
       config.params = { ...(config.params || {}), _t: Date.now() };
     }
     try {
-      const fullUrl = `${config.baseURL || ''}${config.url || ''}`;
-      // Lightweight console trace to verify admin requests
-      // Example: [admin][http] PUT http://api/update-job/task_17/
+      const fullUrl = `${config.baseURL || ""}${config.url || ""}`;
       // eslint-disable-next-line no-console
-      console.log('[admin][http]', (config.method || 'GET').toUpperCase(), fullUrl, config.params || '');
-    } catch {}
+      console.log(
+        "[admin][http]",
+        (config.method || "GET").toUpperCase(),
+        fullUrl,
+        config.params || ""
+      );
+    } catch {
+      /* ignore */
+    }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Add a response interceptor to handle token refresh
+// On 401: POST refresh-token with same Authorization; prefer data.token per backend contract
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     try {
       const cfg = error?.config || {};
-      const fullUrl = `${cfg.baseURL || ''}${cfg.url || ''}`;
+      const fullUrl = `${cfg.baseURL || ""}${cfg.url || ""}`;
       // eslint-disable-next-line no-console
-      console.warn('[admin][http][error]', (cfg.method || 'GET').toUpperCase(), fullUrl, error?.response?.status);
-    } catch {}
+      console.warn(
+        "[admin][http][error]",
+        (cfg.method || "GET").toUpperCase(),
+        fullUrl,
+        error?.response?.status
+      );
+    } catch {
+      /* ignore */
+    }
+
     const status = error?.response?.status;
-    const url = (error?.config?.url || '').toLowerCase();
-    const isLogin = url.includes('admin-login');
-    const isRefresh = url.includes('refresh-token');
-    if (status === 401) {
-      if (isLogin || isRefresh) {
-        return Promise.reject(error);
-      }
-      if (!localStorage.getItem('token')) {
-        return Promise.reject(error);
-      }
-      try {
-        const refreshResponse = await axios.post(
-          `${API_BASE}/refresh-token/`,
-          {},
-          { withCredentials: true }
-        );
-        const newToken = refreshResponse.data?.token;
-        if (newToken) {
-          localStorage.setItem('token', newToken);
-          error.config.headers['Authorization'] = `Bearer ${newToken}`;
-          return axiosInstance(error.config);
-        }
-      } catch (refreshError) {
-        localStorage.removeItem('token');
-      }
+    const url = (error?.config?.url || "").toLowerCase();
+    const isLogin = url.includes("admin-login");
+    const isRefresh = url.includes("refresh-token");
+
+    if (status !== 401) {
       return Promise.reject(error);
+    }
+    if (isLogin || isRefresh) {
+      return Promise.reject(error);
+    }
+
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) {
+      return Promise.reject(error);
+    }
+
+    try {
+      const refreshResponse = await axios.post(
+        `${API_BASE}/refresh-token/`,
+        {},
+        {
+          withCredentials: true,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const newToken = extractRefreshToken(refreshResponse.data);
+      if (newToken && error.config) {
+        localStorage.setItem("token", newToken);
+        error.config.headers["Authorization"] = `Bearer ${newToken}`;
+        return axiosInstance(error.config);
+      }
+      localStorage.removeItem("token");
+    } catch {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+      }
     }
     return Promise.reject(error);
   }

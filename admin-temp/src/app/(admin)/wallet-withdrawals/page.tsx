@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wallet, Check, X, IndianRupee, User } from "lucide-react";
+import { Loader2, Wallet, Check, X, IndianRupee, User, LogIn } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
+import { getApiErrorMessage } from "@/lib/apiError";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -25,18 +27,41 @@ export default function WalletWithdrawalsPage() {
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  /** null = ok or not loaded; 'auth' = 401 / invalid token; 'other' = other error */
+  const [loadError, setLoadError] = useState<null | "auth" | "other">(null);
 
   const fetchWithdrawals = async () => {
     try {
       setIsLoading(true);
+      setLoadError(null);
       const response = await axiosInstance.get("/admin/wallet/withdrawals");
-      const data = response.data?.data ?? response.data;
-      setWithdrawals(Array.isArray(data) ? data : data?.withdrawals ?? []);
+      const wrapped = response.data?.data ?? response.data;
+      const list = Array.isArray(wrapped?.withdrawals)
+        ? wrapped.withdrawals
+        : Array.isArray(wrapped)
+          ? wrapped
+          : Array.isArray(response.data?.withdrawals)
+            ? response.data.withdrawals
+            : [];
+      setWithdrawals(list);
     } catch (err: any) {
       console.error("Withdrawals fetch error:", err);
-      const msg =
-        err.response?.data?.message ??
-        (err.response?.status === 401 ? "Admin authentication required. Please log in." : "Failed to load withdrawals");
+      const status = err.response?.status;
+      const detail = getApiErrorMessage(err).toLowerCase();
+      const isAuth =
+        status === 401 ||
+        status === 403 ||
+        detail.includes("invalid") ||
+        detail.includes("expired") ||
+        detail.includes("unauthorized") ||
+        detail.includes("not enough permissions") ||
+        detail.includes("forbidden");
+      setLoadError(isAuth ? "auth" : "other");
+      const msg = isAuth
+        ? status === 403
+          ? "Admin access required. Sign in via the admin portal (admin-login), not the regular user login."
+          : "Admin session expired or invalid. Log in again."
+        : getApiErrorMessage(err) || "Failed to load withdrawals";
       toast.error(msg);
       setWithdrawals([]);
     } finally {
@@ -59,8 +84,7 @@ export default function WalletWithdrawalsPage() {
       toast.success(`Withdrawal marked as ${status}`);
       fetchWithdrawals();
     } catch (err: any) {
-      const msg = err.response?.data?.message ?? `Failed to update status`;
-      toast.error(msg);
+      toast.error(getApiErrorMessage(err) || "Failed to update status");
     } finally {
       setActionLoading(null);
     }
@@ -102,6 +126,38 @@ export default function WalletWithdrawalsPage() {
           <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
           <span className="ml-2 text-muted-foreground">Loading withdrawals...</span>
         </div>
+      ) : loadError === "auth" ? (
+        <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-900/50">
+          <CardContent className="pt-6">
+            <div className="text-center py-10 px-4 max-w-md mx-auto space-y-4">
+              <LogIn className="h-12 w-12 mx-auto text-amber-600 dark:text-amber-500" />
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Admin sign-in required</h3>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Use the <strong>admin</strong> login page (same JWT as <code className="text-xs bg-muted px-1 rounded">POST /admin-login/</code>), not the regular app login.
+                  If your token expired and refresh did not return a new token, sign in again.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <Button asChild className="bg-[#2563eb] hover:bg-[#1d4ed8]">
+                  <Link href="/">Go to admin login</Link>
+                </Button>
+                <Button variant="outline" onClick={() => fetchWithdrawals()}>
+                  Retry
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : loadError === "other" ? (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-10">
+              <p className="text-muted-foreground mb-4">Could not load withdrawals.</p>
+              <Button onClick={() => fetchWithdrawals()}>Try again</Button>
+            </div>
+          </CardContent>
+        </Card>
       ) : pendingWithdrawals.length === 0 ? (
         <Card>
           <CardContent className="pt-6">

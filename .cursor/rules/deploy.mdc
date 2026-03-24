@@ -40,6 +40,7 @@ The **user** site builds from folder **`app`** (e.g. www.jobpool.in). The **admi
 | **Vercel Root Directory** | `app` | `admin-temp` |
 | **Wallet UPI withdrawals UI** | `/admin/withdrawals` (uses **user** JWT — not for admin APIs) | `/wallet-withdrawals` (uses **admin** JWT after `admin-login`) |
 
+- **Env:** Set `NEXT_PUBLIC_API_BASE_URL` to your API root **including** `/api/v1` (no trailing slash), e.g. `https://api.jobpool.in/api/v1`. Rebuild after changing env.
 - Create a **second Vercel project** (same GitHub repo), set **Root Directory** to **`admin-temp`**, production branch **`clean-main`** (or match your admin workflow).
 - After each push, **both** projects should build if you want admin changes (including **Wallet Withdrawals** in the sidebar) to go live.
 - See also `app/WALLET_API_VERIFICATION.md` for wallet API notes.
