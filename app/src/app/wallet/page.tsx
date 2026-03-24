@@ -19,7 +19,16 @@ import {
   Info,
   Eye,
   EyeOff,
+  Pencil,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import useStore from "@/lib/Zustand";
 import axiosInstance from "@/lib/axiosInstance";
 import Header from "@/components/Header";
@@ -55,6 +64,10 @@ export default function WalletPage() {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [showUpi, setShowUpi] = useState(false);
+  const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
+  const [withdrawDialogUpi, setWithdrawDialogUpi] = useState("");
+  const [upiEditing, setUpiEditing] = useState(false);
+  const [upiInline, setUpiInline] = useState("");
 
   const maskUpi = (upi: string) => {
     if (!upi || upi.length < 5) return upi;
@@ -114,30 +127,40 @@ export default function WalletPage() {
     }
   }, [authReady, userId, router]);
 
-  const handleAddUpi = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const vpa = upiInput.trim();
-    if (!vpa) {
+  const saveUpiId = async (vpa: string, successToast = "UPI ID saved") => {
+    const trimmed = vpa.trim();
+    if (!trimmed) {
       toast.error("Please enter a valid UPI ID");
-      return;
+      return false;
     }
-    if (!userId) return;
+    if (!userId) return false;
     try {
       setAddUpiLoading(true);
-      const res = await axiosInstance.post(`/wallet/add-upi?user_id=${userId}&upi_vpa=${encodeURIComponent(vpa)}`);
-      toast.success("UPI ID added successfully");
-      setUpiInput("");
-      const addedUpi = (res.data?.data ?? res.data)?.upi_vpa ?? vpa;
+      const res = await axiosInstance.post(
+        `/wallet/add-upi?user_id=${userId}&upi_vpa=${encodeURIComponent(trimmed)}`
+      );
+      toast.success(successToast);
+      const addedUpi = (res.data?.data ?? res.data)?.upi_vpa ?? trimmed;
       await fetchWallet(addedUpi);
-    } catch (err: any) {
-      const msg = err.response?.data?.message ?? "Failed to add UPI";
+      return true;
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Failed to update UPI";
       toast.error(msg);
+      return false;
     } finally {
       setAddUpiLoading(false);
     }
   };
 
-  const handleWithdraw = async (e: React.FormEvent) => {
+  const handleAddUpi = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const ok = await saveUpiId(upiInput, "UPI ID added successfully");
+    if (ok) setUpiInput("");
+  };
+
+  const handleWithdrawForm = (e: React.FormEvent) => {
     e.preventDefault();
     const amount = parseFloat(withdrawAmount);
     if (isNaN(amount) || amount <= 0) {
@@ -148,19 +171,39 @@ export default function WalletPage() {
       toast.error("Insufficient balance");
       return;
     }
-    if (!wallet.upi_vpa) {
-      toast.error("Please add UPI ID first");
+    if (!wallet.upi_vpa?.trim()) {
+      toast.error("Please add a UPI ID first");
       return;
     }
     if (!userId) return;
+    setWithdrawDialogUpi(wallet.upi_vpa.trim());
+    setWithdrawDialogOpen(true);
+  };
+
+  const executeWithdraw = async () => {
+    const amount = parseFloat(withdrawAmount);
+    if (isNaN(amount) || amount <= 0 || !wallet || amount > wallet.balance || !userId) return;
+    const vpa = withdrawDialogUpi.trim();
+    if (!vpa) {
+      toast.error("Enter a UPI ID to receive the withdrawal");
+      return;
+    }
     try {
       setWithdrawLoading(true);
+      if (vpa !== (wallet.upi_vpa || "").trim()) {
+        await axiosInstance.post(
+          `/wallet/add-upi?user_id=${userId}&upi_vpa=${encodeURIComponent(vpa)}`
+        );
+      }
       await axiosInstance.post(`/wallet/withdraw?user_id=${userId}&amount=${amount}`);
       toast.success("Withdrawal request submitted");
+      setWithdrawDialogOpen(false);
       setWithdrawAmount("");
       fetchWallet();
-    } catch (err: any) {
-      const msg = err.response?.data?.message ?? "Failed to withdraw";
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Failed to withdraw";
       toast.error(msg);
     } finally {
       setWithdrawLoading(false);
@@ -240,33 +283,92 @@ export default function WalletPage() {
             {wallet.upi_vpa && wallet.upi_vpa.trim() && (
               <Card className="border-0 shadow-lg rounded-2xl bg-white ring-1 ring-slate-200/50">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Wallet className="h-5 w-5 text-emerald-600" />
-                    Your UPI ID
-                    <span
-                      className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 cursor-help"
-                      title={`Full UPI: ${wallet.upi_vpa}. Withdrawals are sent here.`}
-                    >
-                      <Info className="h-4 w-4 shrink-0" />
-                    </span>
-                  </CardTitle>
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Wallet className="h-5 w-5 text-emerald-600" />
+                      Your UPI ID
+                      <span
+                        className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 cursor-help"
+                        title={`Full UPI: ${wallet.upi_vpa}. Withdrawals are sent here.`}
+                      >
+                        <Info className="h-4 w-4 shrink-0" />
+                      </span>
+                    </CardTitle>
+                    {!upiEditing && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 rounded-lg gap-1.5 text-xs"
+                        onClick={() => {
+                          setUpiInline(wallet.upi_vpa || "");
+                          setUpiEditing(true);
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Change UPI
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-mono font-semibold text-slate-800 text-lg">
-                      {showUpi ? wallet.upi_vpa : maskUpi(wallet.upi_vpa)}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setShowUpi(!showUpi)}
-                      className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 transition-colors"
-                      title={showUpi ? "Hide UPI ID" : "Show full UPI ID"}
-                      aria-label={showUpi ? "Hide" : "Show"}
-                    >
-                      {showUpi ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                  <p className="text-sm text-slate-500 mt-1">Withdrawals will be sent to this UPI ID</p>
+                  {upiEditing ? (
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="upi-inline">UPI ID</Label>
+                        <Input
+                          id="upi-inline"
+                          type="text"
+                          placeholder="user@paytm"
+                          value={upiInline}
+                          onChange={(e) => setUpiInline(e.target.value)}
+                          className="rounded-xl mt-1 font-mono"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          className="rounded-xl bg-emerald-600 hover:bg-emerald-700"
+                          disabled={addUpiLoading || !upiInline.trim()}
+                          onClick={async () => {
+                            const ok = await saveUpiId(upiInline, "UPI ID updated");
+                            if (ok) setUpiEditing(false);
+                          }}
+                        >
+                          {addUpiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="rounded-xl"
+                          onClick={() => {
+                            setUpiEditing(false);
+                            setUpiInline("");
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-mono font-semibold text-slate-800 text-lg">
+                          {showUpi ? wallet.upi_vpa : maskUpi(wallet.upi_vpa)}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setShowUpi(!showUpi)}
+                          className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 transition-colors"
+                          title={showUpi ? "Hide UPI ID" : "Show full UPI ID"}
+                          aria-label={showUpi ? "Hide" : "Show"}
+                        >
+                          {showUpi ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      <p className="text-sm text-slate-500 mt-1">Withdrawals will be sent to this UPI ID</p>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -320,7 +422,7 @@ export default function WalletPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleWithdraw} className="space-y-4">
+                <form onSubmit={handleWithdrawForm} className="space-y-4">
                   <div>
                     <Label htmlFor="amount">Amount (₹)</Label>
                     <Input
@@ -336,10 +438,14 @@ export default function WalletPage() {
                   </div>
                   <Button
                     type="submit"
-                    disabled={withdrawLoading || !wallet.upi_vpa || parseFloat(withdrawAmount || "0") <= 0 || parseFloat(withdrawAmount || "0") > wallet.balance}
+                    disabled={
+                      withdrawLoading ||
+                      !wallet.upi_vpa ||
+                      parseFloat(withdrawAmount || "0") <= 0 ||
+                      parseFloat(withdrawAmount || "0") > wallet.balance
+                    }
                     className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700"
                   >
-                    {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Withdraw
                   </Button>
                 </form>
@@ -396,6 +502,70 @@ export default function WalletPage() {
             </Card>
           </div>
         ) : null}
+
+        <Dialog open={withdrawDialogOpen} onOpenChange={setWithdrawDialogOpen}>
+          <DialogContent className="sm:max-w-md" showCloseButton={!withdrawLoading}>
+            <DialogHeader>
+              <DialogTitle>Confirm withdrawal?</DialogTitle>
+              <DialogDescription className="sr-only">
+                Confirm the withdrawal amount, review the 24 hour credit notice, and edit UPI if needed.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 text-left text-muted-foreground text-sm">
+              <p>
+                Are you sure you want to withdraw{" "}
+                <span className="font-semibold text-foreground">
+                  ₹
+                  {parseFloat(withdrawAmount || "0").toLocaleString("en-IN", {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 2,
+                  })}
+                </span>
+                ?
+              </p>
+              <p className="rounded-lg bg-slate-50 dark:bg-slate-900/50 px-3 py-2 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700">
+                Your amount will typically be credited to your linked UPI / bank account within{" "}
+                <strong className="text-foreground">24 hours</strong> after approval.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="withdraw-dialog-upi">UPI ID (you can edit before confirming)</Label>
+              <Input
+                id="withdraw-dialog-upi"
+                type="text"
+                className="font-mono"
+                placeholder="user@paytm"
+                value={withdrawDialogUpi}
+                onChange={(e) => setWithdrawDialogUpi(e.target.value)}
+              />
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setWithdrawDialogOpen(false)}
+                disabled={withdrawLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className="bg-emerald-600 hover:bg-emerald-700"
+                onClick={() => void executeWithdraw()}
+                disabled={withdrawLoading || !withdrawDialogUpi.trim()}
+              >
+                {withdrawLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Submitting…
+                  </>
+                ) : (
+                  "Yes, withdraw"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

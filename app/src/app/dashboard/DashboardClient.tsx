@@ -4598,7 +4598,7 @@ export default function Dashboard() {
                         <Input
                           id="dashboard-available-search"
                           type="search"
-                          placeholder="Search by title or description…"
+                          placeholder="Find tasks by title or keyword"
                           className="h-11 flex-1 min-w-0 border-0 bg-transparent pl-2 pr-2 text-sm text-slate-900 shadow-none placeholder:text-slate-400 focus-visible:ring-0 dark:text-slate-100"
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
@@ -4606,7 +4606,7 @@ export default function Dashboard() {
                       </label>
                       <Button
                         type="submit"
-                        className="h-11 shrink-0 rounded-none border-0 bg-[#2563eb] px-4 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
+                        className="h-11 shrink-0 rounded-none border-0 bg-[#2563eb] px-2.5 text-xs font-semibold text-white hover:bg-[#1d4ed8] min-w-[3.25rem]"
                       >
                         Search
                       </Button>
@@ -4629,7 +4629,7 @@ export default function Dashboard() {
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
                           type="search"
-                          placeholder="Search tasks by title or description..."
+                          placeholder="Find tasks by title or keyword"
                           className="pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:border-gray-400 focus:ring-0 text-gray-700 placeholder:text-gray-400 transition-all duration-200"
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
@@ -4637,7 +4637,7 @@ export default function Dashboard() {
                       </div>
                       <Button
                         type="submit"
-                        className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-medium px-5 py-2.5 rounded-lg"
+                        className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-semibold px-3 py-2.5 rounded-lg shrink-0"
                       >
                         Search
                       </Button>
