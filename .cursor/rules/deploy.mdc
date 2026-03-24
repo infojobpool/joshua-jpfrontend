@@ -30,6 +30,20 @@ git push origin clean-main
 - Root Directory in Vercel set to `app`
 - Git credentials working (HTTPS or SSH)
 
+## Admin app (`admin-temp`) — separate Vercel project (recommended)
+
+The **user** site builds from folder **`app`** (e.g. www.jobpool.in). The **admin** dashboard lives in **`admin-temp`** (Next.js app on port 3002 locally). It is **not** included in the `app` build unless you merge projects.
+
+| | User app | Admin app |
+|---|----------|-----------|
+| **Folder** | `app/` | `admin-temp/` |
+| **Vercel Root Directory** | `app` | `admin-temp` |
+| **Wallet UPI withdrawals UI** | `/admin/withdrawals` (uses **user** JWT — not for admin APIs) | `/wallet-withdrawals` (uses **admin** JWT after `admin-login`) |
+
+- Create a **second Vercel project** (same GitHub repo), set **Root Directory** to **`admin-temp`**, production branch **`clean-main`** (or match your admin workflow).
+- After each push, **both** projects should build if you want admin changes (including **Wallet Withdrawals** in the sidebar) to go live.
+- See also `app/WALLET_API_VERIFICATION.md` for wallet API notes.
+
 ## Notes
 
 - Vercel deploys on every push to `clean-main`

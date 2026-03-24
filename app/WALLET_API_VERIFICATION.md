@@ -58,6 +58,12 @@ const { balance, currency, upi_vpa, transactions } = payload;
 
 > **Note:** `upi_vpa` is `null` when no UPI is set. UPI is shown after add-upi and persists on page reload when the backend returns it.
 
+### Backend contract: `upi_vpa` on every `GET /wallet`
+
+- **Always include** `upi_vpa` in the `GET /wallet` JSON (string when set, `null` when not). Do not omit the key.
+- **Why:** The user app shows “Your UPI ID” from this response on **full page reload** and when returning to **Wallet** later. If `upi_vpa` is missing, the UI must guess (e.g. preserve after add-upi); with the field present, reloads match what the user saw right after adding UPI.
+- **Redeploy backend** after any change that affects this payload so production stays in sync.
+
 ---
 
 ## Frontend UX (Wallet Page)

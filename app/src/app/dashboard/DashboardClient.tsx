@@ -40,7 +40,8 @@ import {
   MessageSquare,
   ClipboardList,
   Home,
-  Wallet
+  Wallet,
+  RotateCcw
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
@@ -3586,34 +3587,49 @@ export default function Dashboard() {
           {/* Move profile block up on mobile */}
           {mobile && (
             <div className="w-full">
-              <div className="flex items-center justify-end">
-                <div className="relative">
+              {/* Mobile top bar: theme (left) · notifications + profile (right) */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center shrink-0">
+                  <ThemeToggle />
+                </div>
+                <div className="flex items-center gap-2 shrink-0 min-w-0">
                   <button
-                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                    className="flex items-center gap-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-800 dark:text-slate-200 px-4 py-2.5 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md dark:hover:bg-slate-700/80"
+                    type="button"
+                    onClick={() => setShowNotifications((s) => !s)}
+                    className="relative inline-flex items-center justify-center h-10 w-10 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-all duration-200"
+                    aria-label="Notifications"
+                    title="Notifications"
                   >
-                    <div className="relative">
+                    <Bell className={`h-5 w-5 text-gray-700 dark:text-slate-300 ${bellAnimating ? "animate-bell-ring" : ""}`} />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full text-[10px] font-medium bg-emerald-600 text-white">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
+                  </button>
+                  <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                    className="flex items-center gap-2 h-10 pl-2 pr-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-800 dark:text-slate-200 rounded-xl shadow-sm transition-all duration-200 hover:shadow-md dark:hover:bg-slate-700/80"
+                    aria-label="Account menu"
+                    aria-expanded={profileDropdownOpen}
+                  >
+                    <div className="relative shrink-0">
                       {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
-                        <img 
-                          src={resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image} 
-                          alt={safeUser.name || "Profile"} 
-                          className="h-8 w-8 rounded-full object-cover border-2 border-gray-200"
+                        <img
+                          src={resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image}
+                          alt={safeUser.name || "Profile"}
+                          className="h-8 w-8 rounded-full object-cover border-2 border-gray-200 dark:border-slate-600"
                         />
                       ) : (
                         <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-sm font-semibold border-2 border-gray-200">
                           {safeUser.name?.charAt(0) || "U"}
                         </div>
                       )}
-                      <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
+                      <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 bg-green-500 rounded-full border-2 border-white dark:border-slate-800" />
                     </div>
-                <div className="flex flex-col items-start min-w-0">
-                    <div className="flex items-center gap-1.5 flex-nowrap">
-                      <span className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate max-w-[120px]">{safeUser.name || "User"}</span>
-                        {user?.verification_status >= 3 && <VerifiedBadge size="sm" />}
-                      </div>
-                      <span className="text-xs text-gray-500 dark:text-slate-400">Online</span>
-                    </div>
-                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${profileDropdownOpen ? "rotate-180" : ""}`} />
                   </button>
                   {profileDropdownOpen && (
                     <div className="absolute right-0 mt-3 w-72 max-w-[85vw] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl shadow-slate-200/50 dark:shadow-black/20 border border-slate-100 dark:border-slate-700/80 overflow-hidden z-50 animate-fade-in-up ring-1 ring-slate-900/5">
@@ -3652,7 +3668,7 @@ export default function Dashboard() {
                           </div>
                           <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Go to Home</span>
                         </Link>
-                        <Link href="/profile" className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                        <Link href="/profile" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
                           <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/20">
                             <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                           </div>
@@ -3685,10 +3701,17 @@ export default function Dashboard() {
                   )}
                 </div>
               </div>
-              <div className="mt-2 text-left">
+              </div>
+              <div className="mt-3 text-left space-y-0.5">
                 <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Welcome back, {safeUser?.name?.split(" ")[0] || "there"}!</p>
                 <h1 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-slate-100">Dashboard</h1>
-                <p className="text-xs text-gray-600 dark:text-slate-400 mt-0.5">Tasks and bids</p>
+                <p className="text-xs text-gray-600 dark:text-slate-400">Tasks and bids</p>
+                <Link
+                  href="/post-task"
+                  className="inline-flex items-center text-sm font-semibold text-[#2563eb] hover:text-[#1d4ed8] dark:text-blue-400 dark:hover:text-blue-300 pt-1.5 transition-colors"
+                >
+                  Post a task
+                </Link>
               </div>
             </div>
           )}
@@ -3910,33 +3933,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Mobile quick actions: Profile and Post */}
-        {mobile && (
-          <div className="md:hidden mb-3 flex items-center gap-3">
-            <ThemeToggle />
-            <Link href="/post-task" className="flex-1">
-              <Button className="w-full h-10 rounded-xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-medium shadow-md transition-all duration-200">
-                Post a Task
-              </Button>
-            </Link>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowNotifications((s) => !s)}
-                className="relative inline-flex items-center justify-center h-10 w-10 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-all duration-200"
-                aria-label="Notifications"
-                title="Notifications"
-              >
-                <Bell className={`h-5 w-5 text-gray-700 dark:text-slate-300 ${bellAnimating ? "animate-bell-ring" : ""}`} />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full text-[10px] font-medium bg-emerald-600 text-white">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Premium Post Task Button */}
         {/* Hide big CTA bar on small screens to avoid duplicate name/header block */}
         <div className="hidden md:flex justify-start mb-8 animate-fade-in-up">
@@ -4119,8 +4115,8 @@ export default function Dashboard() {
             );
           })()}
 
-          {/* Mobile spacer to ensure content never peeks under the tabs */}
-          <div className="md:hidden h-10"></div>
+          {/* Slim gap under sticky tabs on mobile */}
+          <div className="md:hidden h-1" aria-hidden />
 
           {/* Active filter chips (mobile) - removed per request */}
 
@@ -4205,32 +4201,74 @@ export default function Dashboard() {
           )}
 
           {activeTab === "my-tasks" && (
-          <div className="space-y-6 mt-8 animate-fade-in-up min-h-[500px]">
-            <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks You've Posted</h2>
-            {/* Premium Toolbar */}
-            <div className={`mb-3 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 shadow-sm transition-all duration-200`}> 
+          <div className="space-y-3 md:space-y-6 mt-2 md:mt-8 animate-fade-in-up min-h-[500px]">
+            <h2 className="text-lg md:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks You've Posted</h2>
+            {/* Toolbar: minimal on mobile, classic on desktop */}
+            <div
+              className={
+                isMobile
+                  ? "mb-2 rounded-2xl bg-slate-100/80 dark:bg-slate-800/60 px-2.5 py-2.5 border-0 shadow-none"
+                  : "mb-3 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 shadow-sm transition-all duration-200"
+              }
+            >
               <div className={`flex ${isMobile ? "flex-col gap-2" : "items-center gap-3"}`}>
               <div className={`relative ${isMobile ? "w-full" : "w-80"}`}>
-                <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className={`h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 ${isMobile ? "text-slate-400" : "text-gray-400"}`} />
                 <Input
                   placeholder="Search your tasks..."
                   value={myTasksQuery}
                   onChange={(e) => setMyTasksQuery(e.target.value)}
-                  className={`pl-9 ${isMobile ? "h-10" : "h-9"}`}
+                  className={
+                    isMobile
+                      ? "pl-9 h-9 rounded-full border border-slate-200/90 dark:border-slate-600 bg-white dark:bg-slate-900/80 text-sm shadow-none placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-blue-500/30"
+                      : "pl-9 h-9"
+                  }
                 />
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <select value={myTasksFilter} onChange={e=>setMyTasksFilter(e.target.value as any)} className={`${isMobile ? "h-10" : "h-9"} w-44 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700`}>
+              <div className={`flex items-center gap-2 ${isMobile ? "w-full" : "flex-wrap"}`}>
+                <select
+                  value={myTasksFilter}
+                  onChange={(e) => setMyTasksFilter(e.target.value as any)}
+                  className={
+                    isMobile
+                      ? "flex-1 min-w-0 h-9 rounded-xl border-0 bg-white dark:bg-slate-900/90 px-2.5 text-xs font-medium text-slate-700 dark:text-slate-200 ring-1 ring-slate-200/80 dark:ring-slate-600 shadow-none"
+                      : "h-9 w-44 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700"
+                  }
+                >
                   <option value="all">All</option>
                   <option value="in_progress">In Progress</option>
                   <option value="open">Open</option>
                   <option value="completed">Completed</option>
                 </select>
-                <select value={myTasksSortBy} onChange={e=>setMyTasksSortBy(e.target.value)} className={`${isMobile ? "h-10" : "h-9"} w-40 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700`}>
+                <select
+                  value={myTasksSortBy}
+                  onChange={(e) => setMyTasksSortBy(e.target.value)}
+                  className={
+                    isMobile
+                      ? "flex-1 min-w-0 h-9 rounded-xl border-0 bg-white dark:bg-slate-900/90 px-2.5 text-xs font-medium text-slate-700 dark:text-slate-200 ring-1 ring-slate-200/80 dark:ring-slate-600 shadow-none"
+                      : "h-9 w-40 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700"
+                  }
+                >
                   <option value="newest">Newest first</option>
                   <option value="oldest">Oldest first</option>
                 </select>
-                <Button variant="outline" className={`${isMobile ? "h-10" : "h-9"} border-gray-300`} onClick={() => { setMyTasksFilter("all"); setMyTasksQuery(""); }}>Clear</Button>
+                {isMobile ? (
+                  <button
+                    type="button"
+                    aria-label="Clear search and filters"
+                    onClick={() => {
+                      setMyTasksFilter("all");
+                      setMyTasksQuery("");
+                    }}
+                    className="shrink-0 h-9 w-9 inline-flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white/80 dark:hover:bg-slate-700/80 transition-colors"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <Button variant="outline" className="h-9 border-gray-300" onClick={() => { setMyTasksFilter("all"); setMyTasksQuery(""); }}>
+                    Clear
+                  </Button>
+                )}
               </div>
               {!isMobile && (
                 <div className="ml-auto hidden md:flex items-center gap-2 pr-1">
