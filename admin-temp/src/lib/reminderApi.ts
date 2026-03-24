@@ -17,20 +17,63 @@ const ATTEMPTS: { path: string; body: (userIds: string[]) => Record<string, unkn
   },
 ];
 
+export type ReminderRecipient = {
+  user_id: string;
+  email?: string;
+  phone?: string;
+  name?: string;
+};
+
 export type ReminderResult =
   | { ok: true; message?: string }
   | { ok: false; error: string; noEndpoint?: boolean };
 
 /**
- * Ask the API to send email + WhatsApp reminders for incomplete verification/profile.
- * Implement ONE of these routes on FastAPI (see verification-reminders page copy).
+ * 1) If `recipients` is passed, calls Next.js `/api/reminders/send` (server uses your
+ *    REMINDER_* env vars or REMINDER_BATCH_WEBHOOK_URL — secrets stay on Vercel).
+ * 2) If that returns 501 (not configured), falls back to FastAPI routes in ATTEMPTS.
  */
 export async function sendIncompleteProfileReminders(
-  userIds: string[]
+  userIds: string[],
+  recipients?: ReminderRecipient[]
 ): Promise<ReminderResult> {
   if (userIds.length === 0) {
     return { ok: false, error: "No users selected" };
   }
+
+  if (recipients && recipients.length > 0 && typeof window !== "undefined") {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const r = await fetch("/api/reminders/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ recipients }),
+        });
+        const data = (await r.json().catch(() => ({}))) as {
+          message?: string;
+          error?: string;
+        };
+        if (r.ok) {
+          return { ok: true, message: data.message || "Reminders sent" };
+        }
+        if (r.status === 501) {
+          // Env not set on Vercel — try backend
+        } else {
+          return {
+            ok: false,
+            error: data.error || data.message || `Reminder API error (${r.status})`,
+          };
+        }
+      } catch {
+        /* fall through to backend */
+      }
+    }
+  }
+
   let last404 = true;
   for (const { path, body } of ATTEMPTS) {
     try {
@@ -53,7 +96,7 @@ export async function sendIncompleteProfileReminders(
     return {
       ok: false,
       error:
-        "No reminder endpoint found (404). Add POST /admin/remind-incomplete-profile/ on the API.",
+        "Configure Vercel env (REMINDER_BATCH_WEBHOOK_URL or email/WhatsApp URLs) — see .env.example — or add POST /admin/remind-incomplete-profile/ on the API.",
       noEndpoint: true,
     };
   }

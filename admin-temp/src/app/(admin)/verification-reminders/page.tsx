@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Mail, MessageCircle, RefreshCw, Send, UserX, AlertCircle } from "lucide-react";
-import { sendIncompleteProfileReminders } from "@/lib/reminderApi";
+import { sendIncompleteProfileReminders, type ReminderRecipient } from "@/lib/reminderApi";
 
 interface CustomerRow {
   user_id: string;
@@ -80,13 +80,30 @@ export default function VerificationRemindersPage() {
     });
   };
 
+  const buildRecipients = (userIds: string[]): ReminderRecipient[] => {
+    const byId = new Map(customers.map((c) => [c.user_id, c]));
+    const out: ReminderRecipient[] = [];
+    for (const id of userIds) {
+      const c = byId.get(id);
+      if (!c) continue;
+      out.push({
+        user_id: c.user_id,
+        email: trim(c.user_email) || undefined,
+        phone: trim(c.phone_number) || undefined,
+        name: trim(c.user_fullname) || undefined,
+      });
+    }
+    return out;
+  };
+
   const runSend = async (userIds: string[]) => {
     if (userIds.length === 0) {
       toast.error("Select at least one user");
       return;
     }
     setSending(true);
-    const result = await sendIncompleteProfileReminders(userIds);
+    const recipients = buildRecipients(userIds);
+    const result = await sendIncompleteProfileReminders(userIds, recipients);
     setSending(false);
     if (result.ok) {
       toast.success(result.message || "Reminders sent");
@@ -120,16 +137,15 @@ export default function VerificationRemindersPage() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2 text-amber-900 dark:text-amber-100">
             <AlertCircle className="h-5 w-5 shrink-0" />
-            Automation note
+            How email &amp; WhatsApp connect
           </CardTitle>
           <CardDescription className="text-amber-900/85 dark:text-amber-200/90 text-sm leading-relaxed">
-            Fully <strong>automatic</strong> daily WhatsApp/email requires a{" "}
-            <strong>backend cron job</strong> plus providers (e.g. SendGrid, Meta WhatsApp Cloud API).
-            This page triggers sends <strong>from the admin panel</strong> when your API implements{" "}
-            <code className="text-xs bg-white/80 dark:bg-slate-900 px-1 rounded">
-              POST /api/v1/admin/remind-incomplete-profile/
-            </code>{" "}
-            (see attempts in <code className="text-xs">reminderApi.ts</code>).
+            Sends go through <strong>Vercel server route</strong>{" "}
+            <code className="text-xs bg-white/80 dark:bg-slate-900 px-1 rounded">/api/reminders/send</code> using
+            your existing HTTP APIs (set <code className="text-xs">REMINDER_*</code> env vars — see{" "}
+            <code className="text-xs">.env.example</code>). Secrets stay on the server. Alternatively, implement{" "}
+            <code className="text-xs">POST /admin/remind-incomplete-profile/</code> on FastAPI and the app falls
+            back to that. Scheduled &quot;auto&quot; nudges still need a backend cron.
           </CardDescription>
         </CardHeader>
       </Card>
