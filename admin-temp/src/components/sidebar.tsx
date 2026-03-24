@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { BarChart3, Users, Tags, CreditCard, CheckSquare, User2Icon, Ban, Gavel, XCircle, Wallet } from "lucide-react"
+import { BarChart3, Users, Tags, CreditCard, CheckSquare, User2Icon, Ban, Gavel, XCircle, Wallet, Bell } from "lucide-react"
 import { cn } from "../lib/utils"
 import { useEffect, useState } from "react"
 import axiosInstance from "@/lib/axiosInstance"
@@ -40,6 +40,11 @@ const sidebarNavItems = [
     title: "Customers",
     href: "/customers",
     icon: Users,
+  },
+  {
+    title: "Verification reminders",
+    href: "/verification-reminders",
+    icon: Bell,
   },
   {
     title: "Payouts",
