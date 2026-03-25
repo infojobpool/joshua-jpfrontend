@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Mail, MessageCircle, RefreshCw, Send, UserX, AlertCircle } from "lucide-react";
+import { Loader2, Mail, MessageCircle, RefreshCw, Send, UserX } from "lucide-react";
 import { sendIncompleteProfileReminders, type ReminderRecipient } from "@/lib/reminderApi";
 
 interface CustomerRow {
@@ -132,25 +132,6 @@ export default function VerificationRemindersPage() {
           <strong>Send</strong> to request email + WhatsApp nudges via your API.
         </p>
       </div>
-
-      <Card className="border-amber-200 bg-amber-50/60 dark:bg-amber-950/20">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2 text-amber-900 dark:text-amber-100">
-            <AlertCircle className="h-5 w-5 shrink-0" />
-            Backend-first (recommended)
-          </CardTitle>
-          <CardDescription className="text-amber-900/85 dark:text-amber-200/90 text-sm leading-relaxed">
-            The admin app calls your <strong>FastAPI</strong> route first (
-            <code className="text-xs bg-white/80 dark:bg-slate-900 px-1 rounded">
-              POST /api/v1/admin/remind-incomplete-profile/
-            </code>
-            ). Implement that endpoint to use your email + WhatsApp services with keys stored only on the
-            server. If it returns 404, the UI may fall back to the optional Vercel route (
-            <code className="text-xs">REMINDER_*</code> in <code className="text-xs">.env.example</code>
-            ). Daily automatic sends still need a <strong>cron</strong> on the backend.
-          </CardDescription>
-        </CardHeader>
-      </Card>
 
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" size="sm" onClick={() => fetchCustomers()} disabled={loading}>
