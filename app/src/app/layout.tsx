@@ -86,7 +86,7 @@ export default function RootLayout({
           <InAppNotificationProvider />
           <SessionExpiredHandler />
           <NotificationPoller />
-          <PromoPopup imageSrc="/images/promo-popup.png" />
+          <PromoPopup />
           <MobileLayout>
             <AppEntranceWrapper>
               <MainHeader />
