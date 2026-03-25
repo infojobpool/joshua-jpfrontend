@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useId, useState } from "react";
+import Image from "next/image";
 import { ChevronDown, Smartphone, UserCheck, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,17 +30,26 @@ export function MobileWelcomeBonus() {
       className="md:hidden scroll-mt-4 bg-slate-100 px-4 py-4"
       aria-labelledby={headerId}
     >
-      <div className="max-w-md mx-auto rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-        <div className="flex gap-3">
-          <div className="w-1 shrink-0 self-stretch rounded-full bg-blue-600 min-h-[3rem]" aria-hidden />
-          <div className="min-w-0 flex-1 pt-0.5">
-            <h2 id={headerId} className="text-base font-bold text-slate-900 tracking-tight">
-              Welcome bonus · ₹100
-            </h2>
-            <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-              For new users — credited to your JobPool wallet after you finish signup and profile in the app.
-            </p>
-          </div>
+      <div className="max-w-md mx-auto overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="relative w-full aspect-video bg-slate-100">
+          <Image
+            src="/images/welcome-bonus-banner.png"
+            alt="JobPool — join us and earn. Download the app."
+            fill
+            className="object-cover object-center"
+            sizes="(max-width: 768px) 100vw, 448px"
+          />
+        </div>
+
+        <div className="px-4 pt-4 pb-4">
+        <div className="min-w-0">
+          <h2 id={headerId} className="text-base font-bold text-slate-900 tracking-tight">
+            Welcome bonus · ₹100
+          </h2>
+          <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+            For new users — credited to your{" "}
+            <span className="font-semibold text-slate-700">JobPool wallet</span> after signup and profile in the app.
+          </p>
         </div>
 
         <button
@@ -92,6 +102,7 @@ export function MobileWelcomeBonus() {
               JobPool may change or end this offer. T&amp;Cs apply.
             </p>
           </div>
+        </div>
         </div>
       </div>
     </section>
