@@ -31,11 +31,13 @@ import {
   Camera,
   X,
   Briefcase,
+  Wallet,
 } from "lucide-react";
 import useStore from "../../lib/Zustand";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 import Header from "@/components/Header";
 import { TrustBadges } from "@/components/TrustBadges";
+import { toast } from "sonner";
 
 interface Address {
   id: number;
@@ -64,6 +66,8 @@ interface UserProfile {
   bank_info?: BankInfo;
   isEditing?: boolean;
   job_title?: string;
+  /** Synced with wallet (GET /wallet, POST /wallet/add-upi). */
+  upi_vpa?: string;
 }
 
 interface User {
@@ -114,6 +118,7 @@ export default function ProfilePage() {
     joinDate: "",
     isEditing: false,
     job_title: "",
+    upi_vpa: "",
   });
 
   const [verificationStatus, setVerificationStatus] = useState({
@@ -199,6 +204,22 @@ export default function ProfilePage() {
         if (data?.status_code && data.status_code !== 200) {
           throw new Error(data?.message || "Failed to load profile");
         }
+
+        let upiVpa = "";
+        const fromProfile = payload.upi_vpa ?? payload.upi;
+        if (typeof fromProfile === "string" && fromProfile.trim()) {
+          upiVpa = fromProfile.trim();
+        } else {
+          try {
+            const wres = await axiosInstance.get(`/wallet?user_id=${effectiveUserId}&limit=1`);
+            const wd = wres.data?.data ?? wres.data;
+            const u = wd?.upi_vpa ?? wd?.upi;
+            if (typeof u === "string" && u.trim()) upiVpa = u.trim();
+          } catch {
+            /* wallet fetch optional */
+          }
+        }
+
         setProfileUser({
           profile_id: payload.profile_id || "",
           name: payload.name || "",
@@ -227,6 +248,7 @@ export default function ProfilePage() {
             };
           })(),
           job_title: payload.job_title || "",
+          upi_vpa: upiVpa,
         });
 
         // Backend returns only verification_status (0–3) and bank_info. No separate pan/aadhar/bank flags.
@@ -452,6 +474,27 @@ export default function ProfilePage() {
       });
 
       const data = response.data;
+      const newUpi = String(formData.get("upi_vpa") ?? "").trim();
+      let nextUpi = profileuser.upi_vpa || "";
+
+      if (newUpi && userId) {
+        try {
+          const res = await axiosInstance.post(
+            `/wallet/add-upi?user_id=${userId}&upi_vpa=${encodeURIComponent(newUpi)}`
+          );
+          nextUpi = String((res.data?.data ?? res.data)?.upi_vpa ?? newUpi).trim();
+          toast.success("Profile saved. UPI updated for wallet withdrawals.");
+        } catch (upiErr: unknown) {
+          const msg =
+            (upiErr as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+            "Could not sync UPI to wallet";
+          toast.error(`Profile saved. ${msg} You can add UPI from Wallet.`);
+        }
+      } else {
+        toast.success("Profile saved.");
+        nextUpi = profileuser.upi_vpa || "";
+      }
+
       setProfileUser({
         ...profileuser,
         name: data.data.name,
@@ -463,6 +506,7 @@ export default function ProfilePage() {
         })),
         avatar: data.data.file_path || profileuser.avatar,
         cover_image: data.data.cover_image ?? data.data.cover_img ?? profileuser.cover_image,
+        upi_vpa: nextUpi,
         isEditing: false,
       });
       if (data.data.file_path) {
@@ -687,6 +731,28 @@ export default function ProfilePage() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700" htmlFor="upi_vpa">
+                      UPI ID
+                    </label>
+                    <input
+                      id="upi_vpa"
+                      name="upi_vpa"
+                      type="text"
+                      inputMode="email"
+                      autoComplete="off"
+                      placeholder="yourname@paytm"
+                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      defaultValue={profileuser.upi_vpa || ""}
+                    />
+                    <p className="text-xs text-slate-500">
+                      Same UPI as in{" "}
+                      <Link href="/wallet" className="text-emerald-600 font-medium underline-offset-2 hover:underline">
+                        Wallet
+                      </Link>
+                      — used for withdrawals. Leave blank to keep your current wallet UPI unchanged.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
                     <label className="text-sm font-medium">Addresses</label>
                     {profileuser.addresses.map((addr) => (
                       <div
@@ -775,6 +841,23 @@ export default function ProfilePage() {
                       <div>
                         <p className="text-xs text-slate-500">Phone</p>
                         <p className="font-medium text-slate-800">{profileuser.phone || "—"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                        <Wallet className="h-5 w-5 text-emerald-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-slate-500">UPI ID</p>
+                        <p className="font-medium text-slate-800 break-all">
+                          {profileuser.upi_vpa?.trim() || "Not set"}
+                        </p>
+                        <Link
+                          href="/wallet"
+                          className="text-xs text-emerald-600 font-medium mt-1 inline-block underline-offset-2 hover:underline"
+                        >
+                          Open Wallet
+                        </Link>
                       </div>
                     </div>
                     <div className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3">
