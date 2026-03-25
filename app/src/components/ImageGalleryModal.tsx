@@ -1,65 +1,98 @@
+"use client";
+
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 interface Image {
-    id: string;
-    url: string;
-    alt: string;
-  }
+  id: string;
+  url: string;
+  alt: string;
+}
 
 interface ImageGalleryModalProps {
-    show: boolean;
-    images: Image[];
-    currentIndex: number;
-    closeGallery: () => void;
-    nextImage: (e: React.MouseEvent) => void;
-    prevImage: (e: React.MouseEvent) => void;
-  }
-  
-  export  function ImageGalleryModal({
-    show,
-    images,
-    currentIndex,
-    closeGallery,
-    nextImage,
-    prevImage,
-  }: ImageGalleryModalProps) {
-    if (!show || images.length === 0) return null;
-  
-    return (
+  show: boolean;
+  images: Image[];
+  currentIndex: number;
+  closeGallery: () => void;
+  nextImage: (e: React.MouseEvent) => void;
+  prevImage: (e: React.MouseEvent) => void;
+}
+
+/**
+ * Full-screen lightbox: image uses the main viewport (not vertically centered as one block with caption),
+ * so on mobile the photo sits in the visible area instead of feeling “pushed down”.
+ */
+export function ImageGalleryModal({
+  show,
+  images,
+  currentIndex,
+  closeGallery,
+  nextImage,
+  prevImage,
+}: ImageGalleryModalProps) {
+  if (!show || images.length === 0) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[10050] flex flex-col bg-black/95"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Task images"
+      onClick={closeGallery}
+    >
       <div
-        className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
-        onClick={closeGallery}
+        className="flex shrink-0 items-center justify-end px-3 pt-[max(12px,env(safe-area-inset-top))] pb-2"
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative max-w-4xl w-full">
-          <button
-            className="absolute top-4 right-4 bg-black/50 text-white rounded-full p-2 z-10"
-            onClick={closeGallery}
-          >
-            <X className="h-6 w-6" />
-          </button>
-          <div className="relative">
-            <img
-              src={images[currentIndex].url}
-              alt={images[currentIndex].alt}
-              className="w-full h-auto max-h-screen object-contain"
-            />
-            <button
-              className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-2"
-              onClick={prevImage}
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </button>
-            <button
-              className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-2"
-              onClick={nextImage}
-            >
-              <ChevronRight className="h-6 w-6" />
-            </button>
-          </div>
-          <div className="text-center text-white mt-4">
-            {currentIndex + 1} / {images.length}
-          </div>
+        <button
+          type="button"
+          className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+          onClick={closeGallery}
+          aria-label="Close gallery"
+        >
+          <X className="h-6 w-6" />
+        </button>
+      </div>
+
+      <div
+        className="relative flex min-h-0 flex-1 items-center justify-center px-2 sm:px-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="relative flex h-full max-h-[min(78dvh,100%)] w-full max-w-4xl items-center justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={images[currentIndex].url}
+            alt={images[currentIndex].alt}
+            className="max-h-full max-w-full object-contain"
+          />
+          {images.length > 1 && (
+            <>
+              <button
+                type="button"
+                className="absolute left-1 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80 sm:left-2"
+                onClick={prevImage}
+                aria-label="Previous image"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+              <button
+                type="button"
+                className="absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80 sm:right-2"
+                onClick={nextImage}
+                aria-label="Next image"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            </>
+          )}
         </div>
       </div>
-    );
-  }
+
+      <div
+        className="shrink-0 px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-2 text-center text-sm text-white/90"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {currentIndex + 1} / {images.length}
+      </div>
+    </div>
+  );
+}

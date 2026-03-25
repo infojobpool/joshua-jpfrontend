@@ -303,6 +303,7 @@ import { CheckCircle2, Award, ArrowRight, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { motion } from "framer-motion"
+import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint"
 
 interface VerificationCompleteProps {
   verificationStatus: {
@@ -402,6 +403,7 @@ export default function VerificationComplete({ verificationStatus }: Verificatio
             <p className="mt-1 text-gray-600">
               Your account is now fully verified and you have access to all features.
             </p>
+            <WelcomeBonusProcessHint variant="compact" className="mt-4 max-w-md mx-auto text-center" />
           </motion.div>
 
           <motion.div className="w-full max-w-md space-y-3" variants={itemVariants}>
@@ -438,8 +440,11 @@ export default function VerificationComplete({ verificationStatus }: Verificatio
                   <User className="h-5 w-5 text-blue-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-800">Complete your profile</p>
-                  <p className="text-xs text-gray-600 mt-0.5">Add a photo and bio so taskers and posters can trust you. Do it now or later.</p>
+                  <p className="text-sm font-medium text-gray-800">Complete your profile — unlock ₹100 bonus</p>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    Finish your profile in the app (photo, details, UPI for wallet) so your ₹100 welcome bonus can be
+                    credited when all signup and verification steps are complete. T&amp;Cs apply.
+                  </p>
                   <div className="flex gap-3 mt-3">
                     <Button asChild variant="outline" size="sm">
                       <Link href="/profile">Complete profile</Link>
@@ -465,6 +470,7 @@ export default function VerificationComplete({ verificationStatus }: Verificatio
             <h3 className="text-2xl font-bold text-amber-700">Almost There, {user?.name}!</h3>
             <p className="mt-2 text-lg text-gray-700">You've completed some verification steps.</p>
             <p className="mt-1 text-gray-600">Complete the remaining steps to access all features.</p>
+            <WelcomeBonusProcessHint variant="compact" className="mt-4 max-w-md mx-auto text-center" />
           </motion.div>
 
           <motion.div className="w-full max-w-md space-y-3" variants={itemVariants}>
@@ -535,8 +541,11 @@ export default function VerificationComplete({ verificationStatus }: Verificatio
                   <User className="h-5 w-5 text-blue-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-800">Complete your profile</p>
-                  <p className="text-xs text-gray-600 mt-0.5">Add a photo and bio so taskers and posters can trust you. Do it now or later.</p>
+                  <p className="text-sm font-medium text-gray-800">Complete your profile — ₹100 welcome bonus</p>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    After verification, finish your profile so your wallet can receive the bonus when eligible. T&amp;Cs
+                    apply.
+                  </p>
                   <div className="flex gap-3 mt-3">
                     <Button asChild variant="outline" size="sm">
                       <Link href="/profile">Complete profile</Link>
@@ -571,6 +580,10 @@ export default function VerificationComplete({ verificationStatus }: Verificatio
             <h3 className="text-2xl font-bold text-amber-700">Welcome, {user?.name}!</h3>
             <p className="mt-2 text-lg text-gray-700">You've skipped all verification steps for now.</p>
             <p className="mt-1 text-gray-600">You can complete verification later, but some features may be limited.</p>
+            <WelcomeBonusProcessHint variant="compact" className="mt-4 max-w-md mx-auto text-center" />
+            <p className="text-xs text-amber-800/90 mt-2 max-w-md mx-auto">
+              Skipping verification may delay or prevent your ₹100 welcome bonus until you finish the full process.
+            </p>
           </motion.div>
 
           {/* Soft profile completion prompt */}
@@ -581,8 +594,11 @@ export default function VerificationComplete({ verificationStatus }: Verificatio
                   <User className="h-5 w-5 text-blue-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-800">Complete your profile</p>
-                  <p className="text-xs text-gray-600 mt-0.5">Add a photo and bio so others can trust you. Do it now or later.</p>
+                  <p className="text-sm font-medium text-gray-800">Complete profile &amp; bonus</p>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    When you complete verification and your profile, you can qualify for the ₹100 wallet bonus. T&amp;Cs
+                    apply.
+                  </p>
                   <div className="flex gap-3 mt-3">
                     <Button asChild variant="outline" size="sm">
                       <Link href="/profile">Complete profile</Link>

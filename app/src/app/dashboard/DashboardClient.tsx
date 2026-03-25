@@ -210,6 +210,43 @@ interface Category {
   name: string;
 }
 
+function isRealJobImageUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  const u = String(url);
+  return !u.includes("placeholder.svg") && !u.includes("placeholder.com");
+}
+
+function filterRealJobImages(images?: Image[] | null): Image[] {
+  if (!images?.length) return [];
+  return images.filter((img) => isRealJobImageUrl(img?.url));
+}
+
+/** Centered strip under card title — real photos only (no placeholder). */
+function DashboardCardThumbnails({ images }: { images?: Image[] }) {
+  const real = filterRealJobImages(images);
+  if (real.length === 0) return null;
+  return (
+    <div className="mt-3 flex w-full justify-center">
+      <div className="grid w-full max-w-[220px] grid-cols-3 gap-2 sm:max-w-[260px]">
+        {real.slice(0, 3).map((img) => (
+          <div
+            key={img.id}
+            className="relative aspect-square overflow-hidden rounded-xl border border-slate-200/70 shadow-sm dark:border-slate-600/70"
+          >
+            <Image
+              src={img.url}
+              alt={img.alt || "Task photo"}
+              fill
+              className="object-cover object-center"
+              sizes="(max-width: 768px) 28vw, 88px"
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 interface APIResponse<T> {
   status_code: number;
   message: string;
@@ -4331,6 +4368,7 @@ export default function Dashboard() {
                         <h3 className={`task-title pr-10 ${task.cancel_status && task.cancelled_by_role === "tasker" ? "text-gray-500 line-through" : "text-slate-900 dark:text-slate-100"} ${isMobile ? "text-lg md:text-xl" : "text-xl md:text-2xl"} leading-snug font-semibold`}>
                           {task.title}
                         </h3>
+                        <DashboardCardThumbnails images={task.images} />
 
                         {/* Meta row: date, status, actions */}
                         <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
@@ -4768,6 +4806,7 @@ export default function Dashboard() {
                       <h3 className={`task-title pr-10 ${isCancelled ? 'text-gray-500 line-through' : 'text-slate-900 dark:text-slate-100'} ${isMobile ? "text-lg md:text-xl" : "text-xl md:text-2xl"} leading-snug font-semibold`}>
                         {task.title}
                       </h3>
+                      <DashboardCardThumbnails images={task.images} />
                       <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
                         <span className={`flex items-center gap-1 ${isCancelled ? 'text-gray-400' : 'text-slate-500'}`}>
                           <Clock className="h-3 w-3 shrink-0" />Posted: {getCardPostedAt(task)}
@@ -4930,6 +4969,7 @@ export default function Dashboard() {
                           ✅ Completed
                         </Badge>
                       </div>
+                      <DashboardCardThumbnails images={task.images} />
 
                       {/* Location – separate section (like Available) */}
                       {task.location && (
@@ -5009,6 +5049,7 @@ export default function Dashboard() {
                       <h3 className="task-title pr-10 text-slate-900 dark:text-slate-100 font-semibold leading-snug text-lg md:text-xl">
                         {bid.task_title}
                       </h3>
+                      <DashboardCardThumbnails images={bid.images} />
                       <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
                         <span className="text-slate-500 flex items-center gap-1"><Clock className="h-3 w-3" />Bid placed: {bid.created_at}</span>
                         {bid.task_deleted && <Badge className="bg-gray-600 text-white text-xs px-2 py-0.5 rounded-md">🗑️ Deleted</Badge>}
@@ -5033,7 +5074,7 @@ export default function Dashboard() {
                       {(bid.latitude != null && bid.longitude != null) && !isMobile && (
                         <div className="my-2"><TaskLocationMap latitude={bid.latitude} longitude={bid.longitude} location={bid.task_location} height={100} variant="card" /></div>
                       )}
-                      <Link href={`/tasks/${bid.task_id}`} className="block mt-3" onClick={() => { try { storeTaskForNav({ id: bid.task_id, title: bid.task_title, description: bid.task_description, budget: bid.job_budget ?? 0, location: bid.task_location, posted_by: bid.posted_by }); } catch {} }} onMouseEnter={() => { try { prefetchBidsForTask(String(bid.task_id)); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(String(bid.task_id)); } catch {} }}>
+                      <Link href={`/tasks/${bid.task_id}`} className="block mt-3" onClick={() => { try { const imgs = filterRealJobImages(bid.images); storeTaskForNav({ id: bid.task_id, title: bid.task_title, description: bid.task_description, budget: bid.job_budget ?? 0, location: bid.task_location, posted_by: bid.posted_by, images: imgs.length ? imgs : undefined }); } catch {} }} onMouseEnter={() => { try { prefetchBidsForTask(String(bid.task_id)); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(String(bid.task_id)); } catch {} }}>
                         <Button variant="outline" className="w-full rounded-xl border-slate-200">👁️ View Task Details</Button>
                       </Link>
                     </div>

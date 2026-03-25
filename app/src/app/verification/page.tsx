@@ -280,6 +280,7 @@ import { TrustBadges } from "../../components/TrustBadges"
 import axiosInstance from "../../lib/axiosInstance"
 import useStore from "../../lib/Zustand"
 import { CheckCircle } from "lucide-react"
+import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint"
 
 export default function VerificationFlow() {
   const router = useRouter()
@@ -539,6 +540,7 @@ export default function VerificationFlow() {
           <CardDescription>
             Please complete the verification process to access all features
           </CardDescription>
+          <WelcomeBonusProcessHint variant="flow" className="mt-4" />
         </CardHeader>
         <CardContent>
           {isWaiting ? (

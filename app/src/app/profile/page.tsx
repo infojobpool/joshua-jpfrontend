@@ -37,7 +37,15 @@ import useStore from "../../lib/Zustand";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 import Header from "@/components/Header";
 import { TrustBadges } from "@/components/TrustBadges";
+import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint";
 import { toast } from "sonner";
+
+/** Android WebView: force visible text in fields (avoids white-on-white). */
+const PROFILE_FIELD_TEXT = {
+  color: "#0f172a",
+  WebkitTextFillColor: "#0f172a",
+  caretColor: "#0f172a",
+} as const;
 
 interface Address {
   id: number;
@@ -692,10 +700,11 @@ export default function ProfilePage() {
                     </div>
                   </div>
                   <TrustBadges
-                    heading="Your details are safe"
-                    subtext="Encrypted, compliant & protected"
-                    variant="compact"
+                    variant="strip"
+                    heading="Your data is safe with JobPool"
+                    subtext="Encrypted, DPDP-ready — industry-standard protection"
                   />
+                  <WelcomeBonusProcessHint variant="compact" className="mt-1" />
                 </>
               )}
               {profileuser.isEditing ? (
@@ -705,7 +714,8 @@ export default function ProfilePage() {
                     <input
                       id="name"
                       name="name"
-                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      style={PROFILE_FIELD_TEXT}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                       defaultValue={profileuser.name}
                     />
                   </div>
@@ -715,7 +725,8 @@ export default function ProfilePage() {
                       id="email"
                       name="email"
                       type="email"
-                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm bg-slate-50"
+                      style={PROFILE_FIELD_TEXT}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900"
                       defaultValue={profileuser.email}
                       disabled
                       readOnly
@@ -726,7 +737,8 @@ export default function ProfilePage() {
                     <input
                       id="phone"
                       name="phone"
-                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      style={PROFILE_FIELD_TEXT}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                       defaultValue={profileuser.phone}
                     />
                   </div>
@@ -741,7 +753,8 @@ export default function ProfilePage() {
                       inputMode="email"
                       autoComplete="off"
                       placeholder="yourname@paytm"
-                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      style={PROFILE_FIELD_TEXT}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                       defaultValue={profileuser.upi_vpa || ""}
                     />
                     <p className="text-xs text-slate-500">
@@ -752,6 +765,7 @@ export default function ProfilePage() {
                       — used for withdrawals. Leave blank to keep your current wallet UPI unchanged.
                     </p>
                   </div>
+                  <WelcomeBonusProcessHint variant="compact" />
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Addresses</label>
                     {profileuser.addresses.map((addr) => (
@@ -761,7 +775,8 @@ export default function ProfilePage() {
                       >
                         <textarea
                           name={`address-${addr.id}`}
-                          className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          style={PROFILE_FIELD_TEXT}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                           defaultValue={addr.address}
                           rows={2}
                           onChange={(e) =>

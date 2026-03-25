@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { CheckCircle } from "lucide-react"
 import axiosInstance from "../../lib/axiosInstance"
 import useStore from "../../lib/Zustand";
+import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint";
 
 interface PanVerificationProps {
   onComplete: () => void
@@ -107,6 +108,7 @@ export default function PanVerification({ onComplete }: PanVerificationProps) {
 
   return (
     <div className="space-y-6">
+      <WelcomeBonusProcessHint variant="step" />
       <div className="flex flex-col items-center gap-4 md:flex-row">
         <div className="flex w-full items-center justify-center md:w-1/3">
           <div className="rounded-lg bg-primary/10 p-4">

@@ -3,6 +3,7 @@
 import { Shield, Lock, Clock, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { TrustBadges } from "@/components/TrustBadges"
+import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint"
 
 interface VerificationIntroProps {
   onStart: () => void
@@ -11,6 +12,7 @@ interface VerificationIntroProps {
 export default function VerificationIntro({ onStart }: VerificationIntroProps) {
   return (
     <div className="space-y-6">
+      <WelcomeBonusProcessHint variant="flow" />
       <div className="text-center">
         <h3 className="text-xl font-medium">Why We Need Verification</h3>
         <p className="mt-2 text-gray-600">

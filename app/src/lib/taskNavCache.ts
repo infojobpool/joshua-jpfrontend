@@ -38,11 +38,13 @@ export function storeTaskForNav(task: NavTaskInput) {
         postedAt: task.postedAt || "N/A",
         dueDate: task.dueDate || "N/A",
         category: task.category || "",
-        images: (task.images && task.images.length) ? task.images.map((img, i) => ({
-          id: img.id || `img${i + 1}`,
-          url: typeof img === "object" && img.url ? img.url : "/images/placeholder.svg",
-          alt: (img as any).alt || `Image ${i + 1}`,
-        })) : [{ id: "img1", url: "/images/placeholder.svg", alt: "Image" }],
+        images: (task.images && task.images.length)
+          ? task.images.map((img, i) => ({
+              id: img.id || `img${i + 1}`,
+              url: typeof img === "object" && img.url ? img.url : "/images/placeholder.svg",
+              alt: (img as any).alt || `Image ${i + 1}`,
+            }))
+          : [],
         poster: {
           id: String(task.posted_by_id ?? ""),
           name: task.posted_by || "Unknown",

@@ -33,6 +33,7 @@ import { handleAxiosError } from "../../lib/handleAxiosError";
 import LocationDetector from "../../components/LocationDetector";
 import Header from "@/components/Header";
 import { TrustBadges } from "@/components/TrustBadges";
+import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint";
 
 interface User {
   id: string;
@@ -482,12 +483,13 @@ export default function PostTaskPage() {
             <p className="text-muted-foreground mt-1">
               Describe what you need done and find the right person for the job
             </p>
-            <div className="mt-4">
+            <div className="mt-4 space-y-2">
               <TrustBadges
-                heading="Your details are safe"
-                subtext="Encrypted, compliant & protected"
-                variant="compact"
+                variant="strip"
+                heading="Your data is safe with JobPool"
+                subtext="Encrypted, DPDP-ready — industry-standard protection"
               />
+              <WelcomeBonusProcessHint variant="compact" />
             </div>
             {error && (
               <div className="flex items-center justify-between gap-3 text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded-md mb-4">

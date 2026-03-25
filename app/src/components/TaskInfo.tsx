@@ -356,6 +356,47 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
                 {task.title}
               </CardTitle>
             )}
+
+            {/* Photos directly under title — centered; skip API placeholder-only entries */}
+            {task.images.some(
+              (img) =>
+                img?.url &&
+                !String(img.url).includes("placeholder.svg") &&
+                !String(img.url).includes("placeholder.com")
+            ) && (
+              <div className="space-y-2 pt-1 w-full">
+                <h3 className="text-xs font-semibold text-gray-600 flex items-center justify-center gap-1.5 uppercase tracking-wide">
+                  <div className="p-1 rounded bg-purple-100">
+                    <svg className="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  Images
+                </h3>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-w-lg mx-auto w-full justify-items-stretch">
+                  {task.images.map((image, index) => ({ image, index })).filter(({ image }) =>
+                    image?.url &&
+                    !String(image.url).includes("placeholder.svg") &&
+                    !String(image.url).includes("placeholder.com")
+                  ).map(({ image, index }) => (
+                    <div
+                      key={image.id}
+                      className="aspect-square rounded-lg overflow-hidden border border-gray-200/50 cursor-pointer relative group hover:border-blue-300 transition-all duration-200 hover:shadow-md"
+                      onClick={() => openImageGallery(index)}
+                    >
+                      <Image
+                        src={image.url}
+                        alt={image.alt}
+                        fill
+                        sizes="(max-width: 768px) 33vw, 180px"
+                        className="object-cover object-center group-hover:scale-105 transition-transform duration-200"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col gap-2 mt-2">
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 shrink-0">
@@ -441,47 +482,20 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
         </div>
       </CardHeader>
       <CardContent className="p-4 space-y-4">
-        {/* Images Section */}
-        {task.images.length > 0 && (
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-              <div className="p-1 rounded bg-purple-100">
-                <svg className="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              Images
-            </h3>
-            <div className="grid grid-cols-3 gap-2">
-              {task.images.map((image, index) => (
-                <div
-                  key={image.id}
-                  className="aspect-square rounded-lg overflow-hidden border border-gray-200/50 cursor-pointer relative group hover:border-blue-300 transition-all duration-200 hover:shadow-md"
-                  onClick={() => openImageGallery(index)}
-                >
-                  <Image
-                    src={image.url}
-                    alt={image.alt}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 33vw"
-                    className="object-cover group-hover:scale-105 transition-transform duration-200"
-                  />
-                </div>
-              ))}
-            </div>
-            {isEditing && isTaskPoster && (
-              <div className="bg-blue-50/80 rounded-lg p-2 border border-blue-200/50">
-                <Label htmlFor="images" className="text-xs font-medium text-blue-800">Upload New Images (Optional)</Label>
-                <Input
-                  id="images"
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="mt-1 border-blue-200 focus:border-blue-400 text-xs"
-                />
-              </div>
-            )}
+        {/* Image upload when editing (thumbnails when present stay in header) */}
+        {isEditing && isTaskPoster && (
+          <div className="bg-blue-50/80 rounded-lg p-2 border border-blue-200/50">
+            <Label htmlFor="images" className="text-xs font-medium text-blue-800">
+              {task.images.length > 0 ? "Upload New Images (Optional)" : "Upload Images (Optional)"}
+            </Label>
+            <Input
+              id="images"
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleImageChange}
+              className="mt-1 border-blue-200 focus:border-blue-400 text-xs"
+            />
           </div>
         )}
 

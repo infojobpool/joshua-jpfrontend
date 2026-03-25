@@ -276,7 +276,12 @@ const LocationDetector = ({ onLocationChange }) => {
             value={input}
             onChange={handleInputChange}
             placeholder="Enter or edit location"
-            className="border rounded-md p-2 w-full text-sm pr-8"
+            className="border rounded-md p-2 w-full text-sm pr-8 bg-white text-slate-900 placeholder:text-slate-400"
+            style={{
+              color: "#0f172a",
+              WebkitTextFillColor: "#0f172a",
+              caretColor: "#0f172a",
+            }}
             title="Type to edit or search for a new location"
           />
           {input && (

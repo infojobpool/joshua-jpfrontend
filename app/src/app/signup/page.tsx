@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import axiosInstance from "@/lib/axiosInstance";
 import axios from "axios";
 import { TrustBadges } from "@/components/TrustBadges";
+import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint";
 
 type AccountType = "tasker" | "poster" | "both";
 
@@ -174,7 +175,12 @@ export default function SignUpPage() {
                   <li>Check your inbox at <strong className="text-slate-800 dark:text-slate-100">{formData.user_email}</strong></li>
                   <li>Click the verification link (check spam folder too)</li>
                   <li>Return here to sign in</li>
+                  <li>
+                    After sign in, complete verification (PAN &amp; Aadhaar) and your profile in the app — you need
+                    the full journey to earn the <strong className="text-slate-800 dark:text-slate-100">₹100 welcome bonus</strong> in your wallet. T&amp;Cs apply.
+                  </li>
                 </ol>
+                <WelcomeBonusProcessHint variant="compact" className="text-left" />
               </div>
               <Link href="/signin" className="block">
                 <Button className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium">
@@ -193,6 +199,7 @@ export default function SignUpPage() {
               <CardDescription className="text-slate-600 text-sm mt-0.5">
                 Create your account to start connecting and earning
               </CardDescription>
+              <WelcomeBonusProcessHint variant="signup" className="mt-4 text-left" />
             </CardHeader>
             <CardContent className="space-y-4 px-6">
               <TrustBadges
