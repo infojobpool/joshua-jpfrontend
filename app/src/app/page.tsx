@@ -22,8 +22,8 @@ export default function Home() {
       {/* Mobile landing (default on small screens) */}
       <div className="md:hidden">
         <MobileHeroSection />
-        <MobileWelcomeBonus />
         <TrustBadgesSection />
+        <MobileWelcomeBonus />
         <MobileServiceScroller />
         <MobileHeroBanner />
         <MobileShowcase />

@@ -1,6 +1,7 @@
 "use client"
 
 import { Shield, Lock, FileCheck, BadgeCheck, Cloud } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 const BADGES = [
   { icon: Lock, label: "Secure & Encrypted" },
@@ -11,8 +12,8 @@ const BADGES = [
 ] as const
 
 interface TrustBadgesProps {
-  /** Compact for tight spaces */
-  variant?: "default" | "compact" | "landing"
+  /** Compact for tight spaces; `strip` = single horizontal row for mobile */
+  variant?: "default" | "compact" | "landing" | "strip"
   /** Center content (for landing page) */
   centered?: boolean
   /** Optional heading */
@@ -30,6 +31,37 @@ export function TrustBadges({
   className = "",
 }: TrustBadgesProps) {
   const isLanding = variant === "landing"
+
+  if (variant === "strip") {
+    return (
+      <div
+        className={cn(
+          "rounded-xl border border-blue-100/90 bg-gradient-to-r from-blue-50/95 via-white to-sky-50/80",
+          "px-3 py-2 shadow-sm dark:border-blue-900/40 dark:from-slate-900/90 dark:via-slate-900/80 dark:to-slate-900/70",
+          className
+        )}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="shrink-0 rounded-lg bg-blue-600 p-1.5 dark:bg-blue-500">
+            <Shield className="h-4 w-4 text-white" strokeWidth={2} aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-slate-900 dark:text-white leading-tight truncate">
+              {heading}
+            </p>
+            <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug line-clamp-1">
+              {subtext}
+            </p>
+          </div>
+          <Lock
+            className="shrink-0 h-3.5 w-3.5 text-blue-600/80 dark:text-blue-400"
+            strokeWidth={2}
+            aria-hidden
+          />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div

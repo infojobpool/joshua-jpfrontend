@@ -27,21 +27,23 @@ export function MobileWelcomeBonus() {
   return (
     <section
       id="welcome-bonus"
-      className="md:hidden scroll-mt-4 bg-slate-100 px-4 py-4"
+      className="md:hidden scroll-mt-4 bg-slate-100 px-4 pt-1 pb-3"
       aria-labelledby={headerId}
     >
       <div className="max-w-md mx-auto overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="relative w-full aspect-[512/341] bg-[#1a0d2e]">
-          <Image
-            src="/images/welcome-bonus-banner.png"
-            alt="JobPool ₹100 welcome bonus — install the app, sign up, and complete your profile."
-            fill
-            className="object-cover object-center"
-            sizes="(max-width: 768px) 100vw, 448px"
-          />
+        <div className="px-2.5 pt-3 pb-1">
+          <div className="relative w-full aspect-[512/341] overflow-hidden rounded-3xl bg-[#e3f2fb] shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]">
+            <Image
+              src="/images/welcome-bonus-banner.png"
+              alt="JobPool ₹100 welcome bonus — install the app, sign up, claim your bonus."
+              fill
+              className="object-cover object-center"
+              sizes="(max-width: 768px) 100vw, 448px"
+            />
+          </div>
         </div>
 
-        <div className="px-4 pt-4 pb-4">
+        <div className="px-4 pt-3 pb-4">
         <div className="min-w-0">
           <h2 id={headerId} className="text-base font-bold text-slate-900 tracking-tight">
             Welcome bonus · ₹100
