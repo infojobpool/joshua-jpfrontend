@@ -20,6 +20,16 @@ export function MobileHeroSection() {
         </div>
         <h1 className="text-3xl font-extrabold leading-tight tracking-tight">Get Any Task Done</h1>
         <p className="text-white">Post a task. Get offers from local helpers. Done safely.</p>
+        <p className="text-sm text-white/95 max-w-sm mx-auto leading-snug">
+          Complete signup &amp; profile in the app —{" "}
+          <span className="font-semibold text-white">₹100 welcome bonus</span> in your wallet.{" "}
+          <a
+            href="#welcome-bonus"
+            className="underline underline-offset-2 font-semibold text-white hover:text-white/90 focus:outline-none focus:ring-2 focus:ring-white/50 rounded"
+          >
+            How it works
+          </a>
+        </p>
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-white flex-wrap">
           <span className="px-2 py-1 rounded-full bg-white/10 border border-white/20">100% Verified users</span>
           <span className="px-2 py-1 rounded-full bg-white/10 border border-white/20">Safer transactions</span>

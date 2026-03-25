@@ -1,6 +1,7 @@
 // Enhanced Landing Page - Beautiful gradients, task examples, and modern UI
 import { HeroSection } from '../components/mainpage/hero-section'
 import { MobileHeroSection } from '../components/mobile/MobileHeroSection'
+import { MobileWelcomeBonus } from '../components/mobile/MobileWelcomeBonus'
 import { MobileServiceScroller } from '../components/mobile/MobileServiceScroller'
 import { MobileTestimonials } from '../components/mobile/MobileTestimonials'
 import { MobileWhyChoose } from '../components/mobile/MobileWhyChoose'
@@ -21,6 +22,7 @@ export default function Home() {
       {/* Mobile landing (default on small screens) */}
       <div className="md:hidden">
         <MobileHeroSection />
+        <MobileWelcomeBonus />
         <TrustBadgesSection />
         <MobileServiceScroller />
         <MobileHeroBanner />
