@@ -202,11 +202,6 @@ export default function SignUpPage() {
               <WelcomeBonusProcessHint variant="signup" className="mt-4 text-left" />
             </CardHeader>
             <CardContent className="space-y-4 px-6">
-              <TrustBadges
-                heading="Your details are safe"
-                subtext="Encrypted, compliant & protected"
-                variant="compact"
-              />
               <div className="space-y-1.5">
                 <Label htmlFor="user_fullname" className="text-sm font-medium text-slate-700">Full Name</Label>
                 <Input
@@ -330,6 +325,13 @@ export default function SignUpPage() {
                   Sign In Instead
                 </Button>
               </Link>
+
+              <TrustBadges
+                variant="strip"
+                heading="Your details are safe"
+                subtext="Encrypted, compliant & protected"
+                className="mt-1 w-full"
+              />
             </CardFooter>
           </form>
           )}
