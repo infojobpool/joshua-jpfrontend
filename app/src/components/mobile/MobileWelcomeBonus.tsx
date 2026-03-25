@@ -1,76 +1,98 @@
 "use client";
 
-import React from "react";
-import { Gift, Smartphone, UserCheck, Wallet } from "lucide-react";
+import React, { useCallback, useEffect, useId, useState } from "react";
+import { ChevronDown, Smartphone, UserCheck, Wallet } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 /**
- * Mobile-only block: explains ₹100 welcome bonus (aligned with marketing; confirm backend rules match).
+ * Mobile-only: minimal ₹100 welcome bonus card with expand/collapse (hash #welcome-bonus opens it).
  */
 export function MobileWelcomeBonus() {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const headerId = useId();
+
+  const syncHash = useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash === "#welcome-bonus") setOpen(true);
+  }, []);
+
+  useEffect(() => {
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    return () => window.removeEventListener("hashchange", syncHash);
+  }, [syncHash]);
+
   return (
     <section
       id="welcome-bonus"
-      className="md:hidden scroll-mt-4 bg-slate-50 px-4 py-5 border-b border-slate-100"
-      aria-labelledby="welcome-bonus-heading"
+      className="md:hidden scroll-mt-4 bg-slate-100 px-4 py-4"
+      aria-labelledby={headerId}
     >
-      <div className="max-w-md mx-auto rounded-2xl border border-emerald-200/80 bg-gradient-to-b from-white to-emerald-50/40 shadow-sm p-4">
-        <div className="flex items-start gap-3">
-          <div className="rounded-xl bg-emerald-600 p-2.5 text-white shadow-sm shrink-0">
-            <Gift className="h-6 w-6" aria-hidden />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 id="welcome-bonus-heading" className="text-lg font-extrabold text-slate-900 leading-tight">
-              Welcome bonus: ₹100
+      <div className="max-w-md mx-auto rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+        <div className="flex gap-3">
+          <div className="w-1 shrink-0 self-stretch rounded-full bg-blue-600 min-h-[3rem]" aria-hidden />
+          <div className="min-w-0 flex-1 pt-0.5">
+            <h2 id={headerId} className="text-base font-bold text-slate-900 tracking-tight">
+              Welcome bonus · ₹100
             </h2>
-            <p className="text-sm text-slate-600 mt-1">
-              For new users who finish onboarding in the app — credited to your{" "}
-              <span className="font-semibold text-slate-800">JobPool wallet</span>.
+            <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+              For new users — credited to your JobPool wallet after you finish signup and profile in the app.
             </p>
           </div>
         </div>
 
-        <ol className="mt-4 space-y-3">
-          <li className="flex gap-3 text-sm text-slate-700">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
-              1
-            </span>
-            <span className="flex gap-2 min-w-0">
-              <Smartphone className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" aria-hidden />
-              <span>
-                <strong className="text-slate-800">Install</strong> the JobPool app on your phone.
-              </span>
-            </span>
-          </li>
-          <li className="flex gap-3 text-sm text-slate-700">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
-              2
-            </span>
-            <span className="flex gap-2 min-w-0">
-              <UserCheck className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" aria-hidden />
-              <span>
-                <strong className="text-slate-800">Sign up</strong> and complete account verification steps.
-              </span>
-            </span>
-          </li>
-          <li className="flex gap-3 text-sm text-slate-700">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
-              3
-            </span>
-            <span className="flex gap-2 min-w-0">
-              <Wallet className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" aria-hidden />
-              <span>
-                <strong className="text-slate-800">Complete profile setup</strong> in the app. Bonus applies when
-                requirements are met.
-              </span>
-            </span>
-          </li>
-        </ol>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={() => setOpen((v) => !v)}
+          className="mt-4 flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-3 text-left transition-colors hover:bg-slate-50 active:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        >
+          <span className="text-sm font-semibold text-blue-600">How it works</span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 shrink-0 text-slate-500 transition-transform duration-300 ease-out",
+              open && "rotate-180"
+            )}
+            aria-hidden
+          />
+        </button>
 
-        <p className="mt-4 text-[11px] leading-relaxed text-slate-500 border-t border-slate-200/80 pt-3">
-          Eligibility: new accounts only; one welcome bonus per eligible user. Amount is credited to your in-app
-          wallet when signup and profile completion criteria are satisfied. JobPool may change or end this offer;
-          see app terms. T&amp;Cs apply.
-        </p>
+        <div
+          className={cn(
+            "grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none",
+            open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+          )}
+        >
+          <div id={panelId} aria-hidden={!open} className="min-h-0 overflow-hidden">
+            <div className="pt-4 space-y-0 border-t border-slate-100 mt-3">
+              <div className="flex gap-3 py-3 border-b border-slate-100 last:border-b-0">
+                <Smartphone className="h-4 w-4 shrink-0 text-slate-400 mt-0.5" strokeWidth={1.75} aria-hidden />
+                <p className="text-sm text-slate-700 leading-snug">
+                  <span className="font-semibold text-slate-900">Install</span> the JobPool app on your phone.
+                </p>
+              </div>
+              <div className="flex gap-3 py-3 border-b border-slate-100 last:border-b-0">
+                <UserCheck className="h-4 w-4 shrink-0 text-slate-400 mt-0.5" strokeWidth={1.75} aria-hidden />
+                <p className="text-sm text-slate-700 leading-snug">
+                  <span className="font-semibold text-slate-900">Sign up</span> and complete verification.
+                </p>
+              </div>
+              <div className="flex gap-3 py-3">
+                <Wallet className="h-4 w-4 shrink-0 text-slate-400 mt-0.5" strokeWidth={1.75} aria-hidden />
+                <p className="text-sm text-slate-700 leading-snug">
+                  <span className="font-semibold text-slate-900">Complete your profile</span> in the app. Bonus when
+                  requirements are met.
+                </p>
+              </div>
+            </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-slate-500 pb-0.5">
+              Eligibility: new accounts only; one welcome bonus per eligible user. Credited when criteria are satisfied.
+              JobPool may change or end this offer. T&amp;Cs apply.
+            </p>
+          </div>
+        </div>
       </div>
     </section>
   );
