@@ -31,10 +31,10 @@ export function MobileWelcomeBonus() {
       aria-labelledby={headerId}
     >
       <div className="max-w-md mx-auto overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="relative w-full aspect-video bg-slate-100">
+        <div className="relative w-full aspect-[512/341] bg-[#1a0d2e]">
           <Image
             src="/images/welcome-bonus-banner.png"
-            alt="JobPool — join us and earn. Download the app."
+            alt="JobPool ₹100 welcome bonus — install the app, sign up, and complete your profile."
             fill
             className="object-cover object-center"
             sizes="(max-width: 768px) 100vw, 448px"

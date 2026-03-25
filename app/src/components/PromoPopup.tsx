@@ -18,8 +18,8 @@ export interface PromoSlide {
 const DEFAULT_SLIDES: PromoSlide[] = [
   {
     src: "/images/welcome-bonus-banner.png",
-    alt: "JobPool — join us and earn. Download the app.",
-    panelClass: "bg-[#f5f4f2]",
+    alt: "JobPool ₹100 welcome bonus — install, sign up, and complete your profile.",
+    panelClass: "bg-[#1a0d2e]",
   },
   {
     src: "/images/promo-popup.png",
