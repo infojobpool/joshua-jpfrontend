@@ -77,11 +77,13 @@ function normalizeWithdrawal(raw: Record<string, unknown>): Withdrawal | null {
         : NaN;
   if (Number.isNaN(amount)) return null;
   const status =
-    typeof raw.status === "string"
-      ? raw.status
-      : typeof raw.transaction_status === "string"
-        ? raw.transaction_status
-        : "pending";
+    typeof raw.transaction_status === "string"
+      ? raw.transaction_status
+      : typeof raw.payment_status === "string"
+        ? raw.payment_status
+        : typeof raw.status === "string"
+          ? raw.status
+          : "pending";
   return {
     id: raw.id as string | number | undefined,
     transaction_id: (raw.transaction_id ?? raw.tx_id) as string | number | undefined,
