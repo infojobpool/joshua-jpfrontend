@@ -8,6 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Loader2,
   Wallet,
   Check,
@@ -36,33 +44,14 @@ interface Withdrawal {
   updated_at?: string;
   note?: string;
   admin_note?: string;
+  utr_reference?: string;
+  paid_at?: string;
+  payment_remark?: string;
 }
 
-type StatusFilter = "all" | "pending" | "completed" | "failed";
+type StatusFilter = "all" | "pending" | "in_process" | "completed" | "failed";
 
-const NOTES_STORAGE_KEY = "jobpool_admin_withdrawal_notes";
 const NOTE_MAX = 500;
-
-function readStoredNotes(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = localStorage.getItem(NOTES_STORAGE_KEY);
-    if (!raw) return {};
-    const p = JSON.parse(raw) as unknown;
-    return typeof p === "object" && p !== null && !Array.isArray(p) ? (p as Record<string, string>) : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeStoredNotes(map: Record<string, string>) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(map));
-  } catch {
-    /* ignore quota */
-  }
-}
 
 function normalizeWithdrawal(raw: Record<string, unknown>): Withdrawal | null {
   if (!raw || typeof raw !== "object") return null;
@@ -93,7 +82,39 @@ function normalizeWithdrawal(raw: Record<string, unknown>): Withdrawal | null {
     updated_at: (raw.updated_at ?? raw.updatedAt) as string | undefined,
     note: (raw.note ?? raw.notes) as string | undefined,
     admin_note: raw.admin_note as string | undefined,
+    utr_reference: raw.utr_reference as string | undefined,
+    paid_at: (raw.paid_at ?? raw.paidAt) as string | undefined,
+    payment_remark: raw.payment_remark as string | undefined,
   };
+}
+
+function extractMetaFromNote(note?: string): { utr: string; paidAt: string; remark: string } {
+  const text = (note ?? "").trim();
+  if (!text) return { utr: "", paidAt: "", remark: "" };
+  const lines = text.split("\n").map((l) => l.trim());
+  const get = (prefix: string) => {
+    const line = lines.find((l) => l.toLowerCase().startsWith(prefix.toLowerCase()));
+    return line ? line.slice(prefix.length).trim() : "";
+  };
+  return {
+    utr: get("UTR:"),
+    paidAt: get("Paid at:"),
+    remark: get("Remark:"),
+  };
+}
+
+function payoutDetails(w: Withdrawal, noteText?: string): { utr: string; paidAt: string; remark: string } {
+  const nativeUtr = (w.utr_reference ?? "").trim();
+  const nativePaidAt = (w.paid_at ?? "").trim();
+  const nativeRemark = (w.payment_remark ?? "").trim();
+  if (nativeUtr || nativePaidAt || nativeRemark) {
+    return {
+      utr: nativeUtr,
+      paidAt: nativePaidAt,
+      remark: nativeRemark,
+    };
+  }
+  return extractMetaFromNote(noteText);
 }
 
 function extractWithdrawalsList(payload: unknown): Withdrawal[] {
@@ -130,6 +151,11 @@ export default function WalletWithdrawalsPage() {
   /** Draft text per transaction id */
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [markPaidOpen, setMarkPaidOpen] = useState(false);
+  const [paidTxId, setPaidTxId] = useState("");
+  const [paidUtr, setPaidUtr] = useState("");
+  const [paidRemark, setPaidRemark] = useState("");
+  const [paidSubmitting, setPaidSubmitting] = useState(false);
   /** null = ok or not loaded; 'auth' = 401 / invalid token; 'other' = other error */
   const [loadError, setLoadError] = useState<null | "auth" | "other">(null);
 
@@ -173,14 +199,13 @@ export default function WalletWithdrawalsPage() {
 
   useEffect(() => {
     setNoteDrafts((prev) => {
-      const stored = readStoredNotes();
       const next = { ...prev };
       for (const w of withdrawals) {
         const id = String(w.transaction_id ?? w.id ?? "").trim();
         if (!id) continue;
         if (!(id in next)) {
           const fromApi = (w.note || w.admin_note || "").trim();
-          next[id] = fromApi || stored[id] || "";
+          next[id] = fromApi;
         }
       }
       return next;
@@ -193,22 +218,40 @@ export default function WalletWithdrawalsPage() {
   const filteredWithdrawals = useMemo(() => {
     if (statusFilter === "all") return withdrawals;
     return withdrawals.filter(
-      (w) => (w.status || "pending").toLowerCase() === statusFilter
+      (w) => {
+        const s = (w.status || "pending").toLowerCase();
+        if (statusFilter === "in_process") return s === "in_process" || s === "processing";
+        return s === statusFilter;
+      }
     );
   }, [withdrawals, statusFilter]);
 
   const counts = useMemo(() => {
-    const c = { all: withdrawals.length, pending: 0, completed: 0, failed: 0 };
+    const c = { all: withdrawals.length, pending: 0, in_process: 0, completed: 0, failed: 0 };
     for (const w of withdrawals) {
       const s = (w.status || "pending").toLowerCase();
       if (s === "pending") c.pending += 1;
+      else if (s === "in_process" || s === "processing") c.in_process += 1;
       else if (s === "completed" || s === "success" || s === "paid") c.completed += 1;
       else if (s === "failed" || s === "rejected" || s === "cancelled") c.failed += 1;
     }
     return c;
   }, [withdrawals]);
 
-  const updateStatus = async (w: Withdrawal, status: "completed" | "failed") => {
+  const serverNotesById = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const w of withdrawals) {
+      const id = getTxId(w);
+      if (!id) continue;
+      map[id] = (w.note || w.admin_note || "").trim();
+    }
+    return map;
+  }, [withdrawals]);
+
+  const updateStatus = async (
+    w: Withdrawal,
+    status: "completed" | "failed" | "in_process"
+  ) => {
     const id = getTxId(w);
     if (!id) return;
     try {
@@ -223,35 +266,67 @@ export default function WalletWithdrawalsPage() {
     }
   };
 
+  const openMarkPaid = (w: Withdrawal) => {
+    const id = getTxId(w);
+    if (!id) return;
+    const current = noteDrafts[id] ?? serverNotesById[id] ?? "";
+    const parsed = payoutDetails(w, current);
+    setPaidTxId(id);
+    setPaidUtr(parsed.utr);
+    setPaidRemark(parsed.remark);
+    setMarkPaidOpen(true);
+  };
+
+  const submitMarkPaid = async () => {
+    const txId = paidTxId.trim();
+    const utr = paidUtr.trim();
+    if (!txId) return;
+    if (!utr) {
+      toast.error("UTR / reference number is required");
+      return;
+    }
+    const paidAtIso = new Date().toISOString();
+    try {
+      setPaidSubmitting(true);
+      setActionLoading(txId);
+      await axiosInstance.patch(`/admin/wallet-transaction/${txId}`, {
+        status: "completed",
+        utr_reference: utr.slice(0, 128),
+        paid_at: paidAtIso,
+        payment_remark: paidRemark.trim().slice(0, NOTE_MAX),
+      });
+      toast.success("Withdrawal marked as completed");
+      setMarkPaidOpen(false);
+      await fetchWithdrawals();
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err) || "Failed to mark as paid");
+    } finally {
+      setPaidSubmitting(false);
+      setActionLoading(null);
+    }
+  };
+
   const saveNote = async (txId: string) => {
     const text = (noteDrafts[txId] ?? "").slice(0, NOTE_MAX);
     setNoteDrafts((p) => ({ ...p, [txId]: text }));
     setNoteSaving(txId);
-    let serverOk = false;
     try {
       await axiosInstance.patch(`/admin/wallet-transaction/${txId}`, { note: text });
-      serverOk = true;
-    } catch {
-      try {
-        await axiosInstance.patch(`/admin/wallet-transaction/${txId}`, { admin_note: text });
-        serverOk = true;
-      } catch {
-        serverOk = false;
-      }
-    }
-    const stored = readStoredNotes();
-    stored[txId] = text;
-    writeStoredNotes(stored);
-    if (serverOk) {
       toast.success("Note saved");
       await fetchWithdrawals();
-    } else {
-      toast.success("Note saved on this device", {
-        description:
-          "The API did not accept a note field yet — stored locally in your browser. Add note support to PATCH /admin/wallet-transaction/{id} to sync server-side.",
-      });
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err) || "Failed to save note");
     }
     setNoteSaving(null);
+  };
+
+  const handleNoteBlur = (txId: string) => {
+    if (!txId || noteSaving === txId) return;
+    const draft = (noteDrafts[txId] ?? "").trim().slice(0, NOTE_MAX);
+    const saved = (serverNotesById[txId] ?? "").trim();
+    if (draft !== saved) {
+      void saveNote(txId);
+    }
   };
 
   const formatDate = (dateStr?: string) => {
@@ -281,6 +356,13 @@ export default function WalletWithdrawalsPage() {
     if (s === "failed" || s === "rejected" || s === "cancelled") {
       return <Badge variant="destructive">Failed</Badge>;
     }
+    if (s === "in_process" || s === "processing") {
+      return (
+        <Badge variant="outline" className="bg-blue-50 text-blue-900 border-blue-200">
+          In Process
+        </Badge>
+      );
+    }
     return (
       <Badge variant="outline" className="bg-amber-50 text-amber-900 border-amber-200">
         Pending
@@ -291,6 +373,7 @@ export default function WalletWithdrawalsPage() {
   const filterTabs: { key: StatusFilter; label: string }[] = [
     { key: "all", label: `All (${counts.all})` },
     { key: "pending", label: `Pending (${counts.pending})` },
+    { key: "in_process", label: `In Process (${counts.in_process})` },
     { key: "completed", label: `Completed (${counts.completed})` },
     { key: "failed", label: `Failed (${counts.failed})` },
   ];
@@ -298,6 +381,58 @@ export default function WalletWithdrawalsPage() {
   return (
     <div className="space-y-6">
       <Toaster />
+      <Dialog open={markPaidOpen} onOpenChange={setMarkPaidOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Mark withdrawal as paid</DialogTitle>
+            <DialogDescription>
+              Enter payment reference details before confirming completion.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="paid-utr">UTR / Reference number</Label>
+              <Textarea
+                id="paid-utr"
+                rows={2}
+                maxLength={128}
+                placeholder="e.g. 41234423525234"
+                value={paidUtr}
+                onChange={(e) => setPaidUtr(e.target.value.slice(0, 128))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="paid-remark">Remark (optional)</Label>
+              <Textarea
+                id="paid-remark"
+                rows={2}
+                maxLength={180}
+                placeholder="Any internal comment"
+                value={paidRemark}
+                onChange={(e) => setPaidRemark(e.target.value.slice(0, 180))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setMarkPaidOpen(false)}
+              disabled={paidSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => void submitMarkPaid()}
+              disabled={paidSubmitting}
+            >
+              {paidSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm paid"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Wallet className="h-7 w-7 text-emerald-600" />
@@ -305,7 +440,7 @@ export default function WalletWithdrawalsPage() {
         </h1>
         <p className="text-muted-foreground mt-1">
           All UPI withdrawal requests with user and payout details. Add <strong>short notes</strong> per
-          row and save (syncs to the server when supported, otherwise kept in this browser).
+          row and save (stored server-side).
         </p>
       </div>
 
@@ -404,6 +539,7 @@ export default function WalletWithdrawalsPage() {
                         <th className="p-3 font-semibold">User</th>
                         <th className="p-3 font-semibold">UPI</th>
                         <th className="p-3 font-semibold">Requested</th>
+                        <th className="p-3 font-semibold min-w-[190px]">Payment Details</th>
                         <th className="p-3 font-semibold min-w-[200px] max-w-[260px]">Notes</th>
                         <th className="p-3 font-semibold w-[180px]">Actions</th>
                       </tr>
@@ -411,8 +547,9 @@ export default function WalletWithdrawalsPage() {
                     <tbody>
                       {filteredWithdrawals.map((w) => {
                         const id = getTxId(w);
-                        const pending =
-                          (w.status || "pending").toLowerCase() === "pending";
+                        const status = (w.status || "pending").toLowerCase();
+                        const pending = status === "pending" || status === "in_process" || status === "processing";
+                        const meta = payoutDetails(w, noteDrafts[id] ?? serverNotesById[id] ?? "");
                         return (
                           <tr key={id || `${w.created_at}-${w.amount}`} className="border-b last:border-0">
                             <td className="p-3 align-top">
@@ -455,7 +592,30 @@ export default function WalletWithdrawalsPage() {
                               </div>
                             </td>
                             <td className="p-3 align-top">
+                              {meta.utr || meta.paidAt || meta.remark ? (
+                                <div className="space-y-1 text-xs">
+                                  <div>
+                                    <span className="text-muted-foreground">UTR: </span>
+                                    <span className="font-mono break-all">{meta.utr || "—"}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Paid at: </span>
+                                    <span>{meta.paidAt ? formatDate(meta.paidAt) : "—"}</span>
+                                  </div>
+                                  {meta.remark && (
+                                    <div>
+                                      <span className="text-muted-foreground">Remark: </span>
+                                      <span className="break-words">{meta.remark}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </td>
+                            <td className="p-3 align-top">
                               <div className="space-y-1.5">
+                                {meta.utr && <div className="text-[11px] text-muted-foreground">UTR: {meta.utr}</div>}
                                 <Label htmlFor={`note-${id}`} className="sr-only">
                                   Note for transaction {id}
                                 </Label>
@@ -472,6 +632,7 @@ export default function WalletWithdrawalsPage() {
                                       [id]: e.target.value.slice(0, NOTE_MAX),
                                     }))
                                   }
+                                  onBlur={() => handleNoteBlur(id)}
                                 />
                                 <Button
                                   type="button"
@@ -494,9 +655,18 @@ export default function WalletWithdrawalsPage() {
                                 <div className="flex flex-wrap gap-1">
                                   <Button
                                     size="sm"
+                                    variant="outline"
+                                    className="h-8"
+                                    disabled={actionLoading === id}
+                                    onClick={() => updateStatus(w, "in_process")}
+                                  >
+                                    In Process
+                                  </Button>
+                                  <Button
+                                    size="sm"
                                     className="bg-emerald-600 hover:bg-emerald-700 h-8"
                                     disabled={actionLoading === id}
-                                    onClick={() => updateStatus(w, "completed")}
+                                    onClick={() => openMarkPaid(w)}
                                   >
                                     {actionLoading === id ? (
                                       <Loader2 className="h-3 w-3 animate-spin" />
@@ -534,7 +704,9 @@ export default function WalletWithdrawalsPage() {
               <div className="md:hidden space-y-4">
                 {filteredWithdrawals.map((w) => {
                   const id = getTxId(w);
-                  const pending = (w.status || "pending").toLowerCase() === "pending";
+                  const status = (w.status || "pending").toLowerCase();
+                  const pending = status === "pending" || status === "in_process" || status === "processing";
+                  const meta = payoutDetails(w, noteDrafts[id] ?? serverNotesById[id] ?? "");
                   return (
                     <Card key={id || `${w.created_at}-${w.amount}`}>
                       <CardHeader className="pb-2">
@@ -568,6 +740,28 @@ export default function WalletWithdrawalsPage() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-0 space-y-2 border-t">
+                        {(meta.utr || meta.paidAt || meta.remark) && (
+                          <div className="rounded-md border bg-muted/30 p-2 space-y-1">
+                            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                              Payment Details
+                            </div>
+                            <div className="text-xs">
+                              <span className="text-muted-foreground">UTR: </span>
+                              <span className="font-mono break-all">{meta.utr || "—"}</span>
+                            </div>
+                            <div className="text-xs">
+                              <span className="text-muted-foreground">Paid at: </span>
+                              <span>{meta.paidAt ? formatDate(meta.paidAt) : "—"}</span>
+                            </div>
+                            {meta.remark && (
+                              <div className="text-xs">
+                                <span className="text-muted-foreground">Remark: </span>
+                                <span className="break-words">{meta.remark}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {meta.utr && <div className="text-[11px] text-muted-foreground">UTR: {meta.utr}</div>}
                         <Label htmlFor={`note-m-${id}`} className="text-xs font-medium">
                           Notes
                         </Label>
@@ -584,6 +778,7 @@ export default function WalletWithdrawalsPage() {
                               [id]: e.target.value.slice(0, NOTE_MAX),
                             }))
                           }
+                          onBlur={() => handleNoteBlur(id)}
                         />
                         <Button
                           type="button"
@@ -604,9 +799,18 @@ export default function WalletWithdrawalsPage() {
                         <CardContent className="pt-0 flex gap-2 border-t">
                           <Button
                             size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            disabled={actionLoading === id}
+                            onClick={() => updateStatus(w, "in_process")}
+                          >
+                            In Process
+                          </Button>
+                          <Button
+                            size="sm"
                             className="flex-1 bg-emerald-600 hover:bg-emerald-700"
                             disabled={actionLoading === id}
-                            onClick={() => updateStatus(w, "completed")}
+                            onClick={() => openMarkPaid(w)}
                           >
                             {actionLoading === id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
