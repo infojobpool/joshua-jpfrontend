@@ -17,7 +17,7 @@ export interface PromoSlide {
 
 const DEFAULT_SLIDES: PromoSlide[] = [
   {
-    src: "/images/promo-join-earn-banner.png",
+    src: "/images/promopopup.JPG",
     alt: "JobPool — join us and earn. Download the app.",
     panelClass: "bg-[#0d2f66]",
   },
