@@ -267,6 +267,14 @@ select {
   forced-color-adjust: none;
 }
 
+input:not([type="checkbox"]):not([type="radio"]),
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="tel"],
+textarea,
+select,
 input:not([type="checkbox"]):not([type="radio"]):not(:placeholder-shown),
 input[type="text"]:not(:placeholder-shown),
 input[type="email"]:not(:placeholder-shown),
@@ -278,6 +286,7 @@ textarea:not(:placeholder-shown) {
   caret-color: #000000 !important;
   font-weight: 600 !important;
   background-color: #ffffff !important;
+  border-color: #d1d5db !important;
 }
 /* All inputs: caret + pure black when typing */
 input:not([type="checkbox"]):not([type="radio"]), input[type="text"], input[type="email"], input[type="password"], input[type="search"], textarea {
@@ -301,14 +310,4 @@ input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:foc
   -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
   box-shadow: 0 0 0 1000px #ffffff inset !important;
   transition: background-color 5000s ease-in-out 0s !important;
-}
-.dark input, .dark input[type="text"], .dark input[type="email"], .dark input[type="password"], .dark textarea {
-  color: #f1f5f9 !important;
-  -webkit-text-fill-color: #f1f5f9 !important;
-  text-shadow: 0 0 0 #f1f5f9 !important;
-}
-.dark input:-webkit-autofill {
-  -webkit-text-fill-color: #f1f5f9 !important;
-  text-shadow: 0 0 0 #f1f5f9 !important;
-  -webkit-box-shadow: 0 0 0px 1000px #1e293b inset !important;
 }
