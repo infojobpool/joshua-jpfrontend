@@ -45,6 +45,7 @@
 }
 
 :root {
+  color-scheme: light;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -111,6 +112,14 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* On mobile browsers, prevent UA/system auto-dark form rendering variance. */
+@media (max-width: 1024px) {
+  html,
+  body {
+    color-scheme: light !important;
+  }
 }
 
 @layer base {
