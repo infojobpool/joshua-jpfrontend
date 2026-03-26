@@ -249,6 +249,15 @@
 .dashboard-card-stagger > *:nth-child(9) { animation-delay: 0.27s; }
 
 /* Fix invisible/light text on Android PWA/WebView - force pure black, bold */
+/* Keep native form controls in light scheme on Android/WebView to prevent
+   device-level force-dark from turning inputs into dark blocks. */
+input,
+textarea,
+select {
+  color-scheme: light !important;
+  forced-color-adjust: none;
+}
+
 input:not([type="checkbox"]):not([type="radio"]):not(:placeholder-shown),
 input[type="text"]:not(:placeholder-shown),
 input[type="email"]:not(:placeholder-shown),
