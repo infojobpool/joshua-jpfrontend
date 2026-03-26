@@ -22,6 +22,15 @@ function normalizeApiBase(): string {
 
   try {
     const u = new URL(raw);
+    // Production admin must hit the canonical API domain to avoid CORS issues
+    // when env accidentally points to the raw Render host.
+    if (
+      typeof window !== "undefined" &&
+      window.location.hostname === "admin.jobpool.in" &&
+      u.hostname.includes("onrender.com")
+    ) {
+      return DEFAULT_API_BASE;
+    }
     const segments = u.pathname
       .replace(/^\/|\/$/g, "")
       .split("/")

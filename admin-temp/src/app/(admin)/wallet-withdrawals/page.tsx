@@ -53,6 +53,19 @@ type StatusFilter = "all" | "pending" | "in_process" | "completed" | "failed";
 
 const NOTE_MAX = 500;
 
+function normalizeStatus(statusRaw?: string): StatusFilter {
+  const s = (statusRaw || "pending")
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_")
+    .trim();
+  if (s === "in_process" || s === "processing" || s === "processed") return "in_process";
+  if (s === "completed" || s === "complete" || s === "success" || s === "paid" || s === "done") {
+    return "completed";
+  }
+  if (s === "failed" || s === "failure" || s === "rejected" || s === "cancelled") return "failed";
+  return "pending";
+}
+
 function normalizeWithdrawal(raw: Record<string, unknown>): Withdrawal | null {
   if (!raw || typeof raw !== "object") return null;
   const amountRaw = raw.amount ?? raw.withdrawal_amount;
@@ -219,8 +232,7 @@ export default function WalletWithdrawalsPage() {
     if (statusFilter === "all") return withdrawals;
     return withdrawals.filter(
       (w) => {
-        const s = (w.status || "pending").toLowerCase();
-        if (statusFilter === "in_process") return s === "in_process" || s === "processing";
+        const s = normalizeStatus(w.status);
         return s === statusFilter;
       }
     );
@@ -228,14 +240,15 @@ export default function WalletWithdrawalsPage() {
 
   const counts = useMemo(() => {
     const c = { all: withdrawals.length, pending: 0, in_process: 0, completed: 0, failed: 0 };
+    const amount = { all: 0, pending: 0, in_process: 0, completed: 0, failed: 0 };
     for (const w of withdrawals) {
-      const s = (w.status || "pending").toLowerCase();
-      if (s === "pending") c.pending += 1;
-      else if (s === "in_process" || s === "processing") c.in_process += 1;
-      else if (s === "completed" || s === "success" || s === "paid") c.completed += 1;
-      else if (s === "failed" || s === "rejected" || s === "cancelled") c.failed += 1;
+      const s = normalizeStatus(w.status);
+      const v = Number.isFinite(w.amount) ? w.amount : 0;
+      amount.all += v;
+      amount[s] += v;
+      c[s] += 1;
     }
-    return c;
+    return { count: c, amount };
   }, [withdrawals]);
 
   const serverNotesById = useMemo(() => {
@@ -345,18 +358,18 @@ export default function WalletWithdrawalsPage() {
   };
 
   const statusBadge = (statusRaw?: string) => {
-    const s = (statusRaw || "pending").toLowerCase();
-    if (s === "completed" || s === "success" || s === "paid") {
+    const s = normalizeStatus(statusRaw);
+    if (s === "completed") {
       return (
         <Badge className="bg-emerald-600 hover:bg-emerald-600/90 text-white border-0">
           Completed
         </Badge>
       );
     }
-    if (s === "failed" || s === "rejected" || s === "cancelled") {
+    if (s === "failed") {
       return <Badge variant="destructive">Failed</Badge>;
     }
-    if (s === "in_process" || s === "processing") {
+    if (s === "in_process") {
       return (
         <Badge variant="outline" className="bg-blue-50 text-blue-900 border-blue-200">
           In Process
@@ -370,12 +383,20 @@ export default function WalletWithdrawalsPage() {
     );
   };
 
+  const formatInr = (value: number) => `₹${Math.round(value || 0).toLocaleString("en-IN")}`;
+
   const filterTabs: { key: StatusFilter; label: string }[] = [
-    { key: "all", label: `All (${counts.all})` },
-    { key: "pending", label: `Pending (${counts.pending})` },
-    { key: "in_process", label: `In Process (${counts.in_process})` },
-    { key: "completed", label: `Completed (${counts.completed})` },
-    { key: "failed", label: `Failed (${counts.failed})` },
+    { key: "all", label: `All (${counts.count.all}) • ${formatInr(counts.amount.all)}` },
+    { key: "pending", label: `Pending (${counts.count.pending}) • ${formatInr(counts.amount.pending)}` },
+    {
+      key: "in_process",
+      label: `In Process (${counts.count.in_process}) • ${formatInr(counts.amount.in_process)}`,
+    },
+    {
+      key: "completed",
+      label: `Completed (${counts.count.completed}) • ${formatInr(counts.amount.completed)}`,
+    },
+    { key: "failed", label: `Failed (${counts.count.failed}) • ${formatInr(counts.amount.failed)}` },
   ];
 
   return (
@@ -547,8 +568,8 @@ export default function WalletWithdrawalsPage() {
                     <tbody>
                       {filteredWithdrawals.map((w) => {
                         const id = getTxId(w);
-                        const status = (w.status || "pending").toLowerCase();
-                        const pending = status === "pending" || status === "in_process" || status === "processing";
+                        const status = normalizeStatus(w.status);
+                        const pending = status === "pending" || status === "in_process";
                         const meta = payoutDetails(w, noteDrafts[id] ?? serverNotesById[id] ?? "");
                         return (
                           <tr key={id || `${w.created_at}-${w.amount}`} className="border-b last:border-0">
@@ -704,8 +725,8 @@ export default function WalletWithdrawalsPage() {
               <div className="md:hidden space-y-4">
                 {filteredWithdrawals.map((w) => {
                   const id = getTxId(w);
-                  const status = (w.status || "pending").toLowerCase();
-                  const pending = status === "pending" || status === "in_process" || status === "processing";
+                  const status = normalizeStatus(w.status);
+                  const pending = status === "pending" || status === "in_process";
                   const meta = payoutDetails(w, noteDrafts[id] ?? serverNotesById[id] ?? "");
                   return (
                     <Card key={id || `${w.created_at}-${w.amount}`}>
