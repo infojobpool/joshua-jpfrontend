@@ -158,6 +158,14 @@ function extractWithdrawalsList(payload: unknown): Withdrawal[] {
   return [];
 }
 
+function csvEscape(value: unknown): string {
+  const text = String(value ?? "");
+  if (/[",\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
 export default function WalletWithdrawalsPage() {
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -359,6 +367,57 @@ export default function WalletWithdrawalsPage() {
     }
   };
 
+  const downloadCsv = (rows: Withdrawal[], scope: string) => {
+    const header = [
+      "transaction_id",
+      "amount",
+      "status",
+      "user_name",
+      "user_email",
+      "upi_vpa",
+      "requested_at",
+      "updated_at",
+      "utr_reference",
+      "paid_at",
+      "payment_remark",
+      "note",
+      "admin_note",
+    ];
+    const lines = [header.join(",")];
+    for (const w of rows) {
+      lines.push(
+        [
+          getTxId(w),
+          w.amount,
+          normalizeStatus(w.status),
+          w.user_name ?? w.user_id ?? "",
+          w.user_email ?? "",
+          w.upi_vpa ?? "",
+          w.created_at ?? "",
+          w.updated_at ?? "",
+          w.utr_reference ?? "",
+          w.paid_at ?? "",
+          w.payment_remark ?? "",
+          w.note ?? "",
+          w.admin_note ?? "",
+        ]
+          .map(csvEscape)
+          .join(",")
+      );
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    a.href = url;
+    a.download = `wallet-withdrawals-${scope}-${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Downloaded ${rows.length} rows`);
+  };
+
   const statusBadge = (statusRaw?: string) => {
     const s = normalizeStatus(statusRaw);
     if (s === "completed") {
@@ -537,6 +596,22 @@ export default function WalletWithdrawalsPage() {
             ))}
             <Button type="button" variant="ghost" size="sm" onClick={() => fetchWithdrawals()}>
               Refresh
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => downloadCsv(filteredWithdrawals, statusFilter)}
+            >
+              Download CSV
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => downloadCsv(withdrawals, "all-tabs")}
+            >
+              Download All
             </Button>
           </div>
 
