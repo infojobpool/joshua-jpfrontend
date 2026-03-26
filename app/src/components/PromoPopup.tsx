@@ -19,12 +19,7 @@ const DEFAULT_SLIDES: PromoSlide[] = [
   {
     src: "/images/promo-join-earn-banner.png",
     alt: "JobPool — join us and earn. Download the app.",
-    panelClass: "bg-[#f5f4f2]",
-  },
-  {
-    src: "/images/promo-popup.png",
-    alt: "JobPool — launch rewards and early user benefits.",
-    panelClass: "bg-[#0a0f1c]",
+    panelClass: "bg-[#0d2f66]",
   },
 ];
 
