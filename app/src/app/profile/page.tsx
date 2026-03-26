@@ -548,7 +548,7 @@ export default function ProfilePage() {
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 via-slate-100/30 to-white">
       <Header user={{ ...profileuser, avatar: resolveAvatarUrl(profileuser.avatar) || profileuser.avatar }} onSignOut={handleSignOut} />
-      <main className="flex-1 container mx-auto max-w-6xl py-6 md:py-10 px-4 md:px-6">
+      <main className="flex-1 container mx-auto max-w-6xl py-6 md:py-10 px-4 md:px-6 pb-28 md:pb-10">
         <Link
           href="/dashboard"
           className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-emerald-600 transition-colors mb-6 font-medium"
@@ -680,14 +680,14 @@ export default function ProfilePage() {
                         <Calendar className="h-5 w-5 text-emerald-600" />
                       </div>
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Member since</p>
-                      <p className="text-sm font-bold text-slate-800 mt-1">{profileuser.joinDate || "—"}</p>
+                      <p className="text-sm font-bold text-slate-800 mt-1 break-words">{profileuser.joinDate || "—"}</p>
                     </div>
                     <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50/80 p-4 text-center border border-emerald-100 shadow-sm">
                       <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-200/60">
                         <CheckCircle className="h-5 w-5 text-emerald-700" />
                       </div>
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Verification</p>
-                      <p className={`text-sm font-bold mt-1 ${verificationStatus.bank.completed ? "text-emerald-700" : "text-slate-600"}`}>
+                      <p className={`text-sm font-bold mt-1 break-words ${verificationStatus.bank.completed ? "text-emerald-700" : "text-slate-600"}`}>
                         {verificationStatus.bank.completed ? "Verified" : verificationStatus.aadhar.completed ? "Aadhar" : verificationStatus.pan.completed ? "PAN" : "Pending"}
                       </p>
                     </div>
@@ -696,7 +696,7 @@ export default function ProfilePage() {
                         <Phone className="h-5 w-5 text-emerald-600" />
                       </div>
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Contact</p>
-                      <p className="text-sm font-bold text-slate-800 mt-1">{profileuser.phone || "—"}</p>
+                      <p className="text-sm font-bold text-slate-800 mt-1 break-all">{profileuser.phone || "—"}</p>
                     </div>
                   </div>
                   <TrustBadges
