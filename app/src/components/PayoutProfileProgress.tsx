@@ -73,7 +73,7 @@ export function PayoutProfileProgress({
         ) : (
           <> · All set for withdrawals</>
         )}
-      </div>
+      </p>
       {variant === "dashboard" && remaining > 0 && (
         <Link
           href="/wallet"
