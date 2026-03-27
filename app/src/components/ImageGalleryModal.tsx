@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 interface Image {
@@ -18,8 +19,8 @@ interface ImageGalleryModalProps {
 }
 
 /**
- * Full-screen lightbox: image uses the main viewport (not vertically centered as one block with caption),
- * so on mobile the photo sits in the visible area instead of feeling “pushed down”.
+ * Full-screen lightbox centered in the visible viewport. Uses explicit dvh-based max-height
+ * so mobile WebViews don’t resolve % heights into a tall scroll area with the image at the bottom.
  */
 export function ImageGalleryModal({
   show,
@@ -29,11 +30,20 @@ export function ImageGalleryModal({
   nextImage,
   prevImage,
 }: ImageGalleryModalProps) {
+  useEffect(() => {
+    if (!show) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [show]);
+
   if (!show || images.length === 0) return null;
 
   return (
     <div
-      className="fixed inset-0 z-[10050] flex flex-col bg-black/95"
+      className="fixed inset-0 z-[10050] flex h-dvh max-h-dvh w-full flex-col overflow-hidden bg-black/95"
       role="dialog"
       aria-modal="true"
       aria-label="Task images"
@@ -53,16 +63,17 @@ export function ImageGalleryModal({
         </button>
       </div>
 
+      {/* flex-1 + min-h-0 + overflow-hidden: bounded strip for the photo; no document-height scroll */}
       <div
-        className="relative flex min-h-0 flex-1 items-center justify-center px-2 sm:px-4"
+        className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-2 sm:px-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative flex h-full max-h-[min(78dvh,100%)] w-full max-w-4xl items-center justify-center">
+        <div className="relative flex w-full max-w-4xl items-center justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={images[currentIndex].url}
             alt={images[currentIndex].alt}
-            className="max-h-full max-w-full object-contain"
+            className="mx-auto h-auto max-h-[calc(100dvh-9.5rem)] w-auto max-w-full object-contain"
           />
           {images.length > 1 && (
             <>
