@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +20,10 @@ import {
   Eye,
   EyeOff,
   Pencil,
+  AlertCircle,
+  ChevronRight,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -36,12 +39,83 @@ import { toast } from "sonner";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 
 interface Transaction {
-  id: string;
+  id: string | number;
   amount: number;
   type: string;
   reference?: string;
   created_at: string;
   status?: string;
+  transaction_status?: string;
+  payment_status?: string;
+}
+
+type TxStatusKind = "completed" | "processing" | "failed" | "unknown";
+
+function pickRawTxStatus(tx: Transaction): string {
+  const s =
+    tx.status ??
+    tx.transaction_status ??
+    tx.payment_status ??
+    (tx as { transactionStatus?: string }).transactionStatus ??
+    "";
+  return String(s).trim().toLowerCase();
+}
+
+function resolveTxStatusKind(tx: Transaction): TxStatusKind {
+  const raw = pickRawTxStatus(tx);
+  if (raw) {
+    if (["completed", "complete", "success", "paid", "done", "credited"].includes(raw)) {
+      return "completed";
+    }
+    if (["failed", "rejected", "cancelled", "canceled"].includes(raw)) {
+      return "failed";
+    }
+    if (
+      ["pending", "processing", "in_process", "in process", "approved", "in_progress"].includes(raw)
+    ) {
+      return "processing";
+    }
+    return "unknown";
+  }
+  const t = (tx.type || "").toLowerCase();
+  const ref = (tx.reference || "").toLowerCase();
+  const isWithdraw = t.includes("debit") || t.includes("withdraw") || ref.includes("withdraw");
+  if (isWithdraw) return "processing";
+  if (t.includes("credit") || t.includes("deposit") || ref.includes("bonus")) return "completed";
+  return "unknown";
+}
+
+function txStatusLabel(kind: TxStatusKind): string {
+  switch (kind) {
+    case "completed":
+      return "Completed";
+    case "processing":
+      return "Processing";
+    case "failed":
+      return "Failed";
+    default:
+      return "—";
+  }
+}
+
+function statusBadgeClass(kind: TxStatusKind): string {
+  switch (kind) {
+    case "completed":
+      return "bg-emerald-500/15 text-emerald-800 border-emerald-700/25";
+    case "processing":
+      return "bg-amber-500/15 text-amber-800 border-amber-700/25";
+    case "failed":
+      return "bg-red-500/15 text-red-800 border-red-700/25";
+    default:
+      return "bg-slate-100 text-slate-600 border-slate-200";
+  }
+}
+
+function hasRealProfilePhoto(url: string | undefined | null): boolean {
+  if (!url || !String(url).trim()) return false;
+  const lower = String(url).toLowerCase();
+  if (lower.includes("placeholder")) return false;
+  return true;
 }
 
 interface WalletData {
@@ -68,6 +142,82 @@ export default function WalletPage() {
   const [withdrawDialogUpi, setWithdrawDialogUpi] = useState("");
   const [upiEditing, setUpiEditing] = useState(false);
   const [upiInline, setUpiInline] = useState("");
+  const [eligibilityVs, setEligibilityVs] = useState<number | null>(null);
+  const [profileImgHint, setProfileImgHint] = useState("");
+  const [hasAddressOnProfile, setHasAddressOnProfile] = useState<boolean>(true);
+  const [withdrawSuccessOpen, setWithdrawSuccessOpen] = useState(false);
+  const [withdrawSuccessAmount, setWithdrawSuccessAmount] = useState(0);
+
+  const fetchProfileEligibility = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const res = await axiosInstance.get(`/profile?user_id=${userId}`);
+      const payload = res.data?.data ?? res.data;
+      const raw = payload?.verification_status ?? payload?.verificationStatus;
+      if (raw !== null && raw !== undefined) {
+        const num = typeof raw === "string" ? parseInt(raw, 10) : Number(raw);
+        if (!isNaN(num)) {
+          setEligibilityVs(num);
+          try {
+            const local = localStorage.getItem("user");
+            if (local) {
+              const parsed = JSON.parse(local);
+              parsed.verification_status = num;
+              localStorage.setItem("user", JSON.stringify(parsed));
+              useStore.setState({ user: { ...parsed, verification_status: num } });
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      const img = payload?.profile_img ?? payload?.profile_image ?? "";
+      setProfileImgHint(typeof img === "string" ? img : "");
+
+      const addresses = Array.isArray(payload?.addresses) ? payload.addresses : [];
+      const hasAddressFromList = addresses.some((a) => {
+        if (!a) return false;
+        if (typeof a === "string") return a.trim().length > 0;
+        if (typeof a === "object") {
+          const addr = (a as { address?: unknown }).address;
+          return typeof addr === "string" && addr.trim().length > 0;
+        }
+        return false;
+      });
+      const fallbackAddress = payload?.address;
+      const hasFallbackAddress =
+        typeof fallbackAddress === "string" && fallbackAddress.trim().length > 0;
+      setHasAddressOnProfile(hasAddressFromList || hasFallbackAddress);
+    } catch {
+      /* optional */
+    }
+  }, [userId]);
+
+  const verificationLevel = Math.max(
+    Number(user?.verification_status ?? 0),
+    eligibilityVs ?? 0
+  );
+  const hasProfilePhoto = hasRealProfilePhoto(profileImgHint || user?.profile_image);
+
+  const missingEligibility = useMemo(() => {
+    if (!wallet) return [];
+    const items: { id: string; label: string; href: string }[] = [];
+    const v = verificationLevel;
+    if (v < 1) items.push({ id: "pan", label: "Verify PAN card", href: "/verification" });
+    else if (v < 2) items.push({ id: "aadhaar", label: "Verify Aadhaar (UID)", href: "/verification" });
+    else if (v < 3) items.push({ id: "bank", label: "Add bank account details", href: "/verification" });
+    if (!hasProfilePhoto) {
+      items.push({ id: "photo", label: "Add a profile photo", href: "/profile" });
+    }
+    if (!hasAddressOnProfile) {
+      items.push({ id: "address", label: "Add your address in profile", href: "/profile" });
+    }
+    if (!wallet.upi_vpa?.trim()) {
+      items.push({ id: "upi", label: "Add UPI ID for withdrawals", href: "#wallet-upi" });
+    }
+    return items;
+  }, [wallet, verificationLevel, hasProfilePhoto, hasAddressOnProfile]);
+  const isWithdrawEligible = missingEligibility.length === 0;
 
   const maskUpi = (upi: string) => {
     if (!upi || upi.length < 5) return upi;
@@ -117,7 +267,8 @@ export default function WalletPage() {
   useEffect(() => {
     if (!authReady || !userId) return;
     fetchWallet();
-  }, [authReady, userId]);
+    void fetchProfileEligibility();
+  }, [authReady, userId, fetchProfileEligibility]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -162,6 +313,11 @@ export default function WalletPage() {
 
   const handleWithdrawForm = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isWithdrawEligible) {
+      const missing = missingEligibility.map((m) => m.label).join(", ");
+      toast.error(`Complete required details first: ${missing}`);
+      return;
+    }
     const amount = parseFloat(withdrawAmount);
     if (isNaN(amount) || amount <= 0) {
       toast.error("Please enter a valid amount");
@@ -196,10 +352,13 @@ export default function WalletPage() {
         );
       }
       await axiosInstance.post(`/wallet/withdraw?user_id=${userId}&amount=${amount}`);
-      toast.success("Withdrawal request submitted");
+      setWithdrawSuccessAmount(amount);
       setWithdrawDialogOpen(false);
       setWithdrawAmount("");
-      fetchWallet();
+      toast.success("Withdrawal submitted — amount debited from your wallet.");
+      setWithdrawSuccessOpen(true);
+      void fetchWallet();
+      void fetchProfileEligibility();
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -279,9 +438,43 @@ export default function WalletPage() {
               </CardHeader>
             </Card>
 
+            {missingEligibility.length > 0 && (
+              <Card className="border border-amber-200/80 shadow-md rounded-2xl bg-gradient-to-br from-amber-50/95 to-orange-50/40 ring-1 ring-amber-100">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2 text-amber-950">
+                    <AlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
+                    Finish these to get paid faster
+                  </CardTitle>
+                  <CardDescription className="text-amber-900/80">
+                    Only showing what is still missing — tap to complete.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <ul className="space-y-1.5">
+                    {missingEligibility.map((item) => (
+                      <li key={item.id}>
+                        <Link
+                          href={item.href}
+                          className="flex items-center justify-between gap-2 rounded-xl border border-amber-200/60 bg-white/80 px-3 py-2.5 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-white hover:border-amber-300"
+                        >
+                          <span className="flex items-center gap-2 min-w-0">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 text-xs font-bold">
+                              !
+                            </span>
+                            <span className="truncate">{item.label}</span>
+                          </span>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-amber-700/80" />
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
             {/* UPI ID display - shown when UPI is set */}
             {wallet.upi_vpa && wallet.upi_vpa.trim() && (
-              <Card className="border-0 shadow-lg rounded-2xl bg-white ring-1 ring-slate-200/50">
+              <Card id="wallet-upi" className="border-0 shadow-lg rounded-2xl bg-white ring-1 ring-slate-200/50 scroll-mt-24">
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -375,7 +568,7 @@ export default function WalletPage() {
 
             {/* Add UPI form - shown when UPI is missing or empty */}
             {(!wallet.upi_vpa || !wallet.upi_vpa.trim()) && (
-              <Card className="border-0 shadow-lg rounded-2xl bg-white ring-1 ring-slate-200/50">
+              <Card id="wallet-upi" className="border-0 shadow-lg rounded-2xl bg-white ring-1 ring-slate-200/50 scroll-mt-24">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Plus className="h-5 w-5 text-emerald-600" />
@@ -418,11 +611,17 @@ export default function WalletPage() {
                   Withdraw
                 </CardTitle>
                 <CardDescription>
-                  Withdraw funds to your UPI. {wallet.upi_vpa ? `Current UPI: ${wallet.upi_vpa}` : "Add UPI first."}
+                  Withdraw funds to your UPI. Money is usually credited within{" "}
+                  <strong>24 hours</strong> after approval. {wallet.upi_vpa ? `Current UPI: ${wallet.upi_vpa}` : "Add UPI first."}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleWithdrawForm} className="space-y-4">
+                  {!isWithdrawEligible && (
+                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                      Withdrawals are locked until all required details are completed.
+                    </p>
+                  )}
                   <div>
                     <Label htmlFor="amount">Amount (₹)</Label>
                     <Input
@@ -440,6 +639,7 @@ export default function WalletPage() {
                     type="submit"
                     disabled={
                       withdrawLoading ||
+                      !isWithdrawEligible ||
                       !wallet.upi_vpa ||
                       parseFloat(withdrawAmount || "0") <= 0 ||
                       parseFloat(withdrawAmount || "0") > wallet.balance
@@ -468,28 +668,43 @@ export default function WalletPage() {
                   <div className="space-y-3">
                     {wallet.transactions.map((tx) => {
                       const isCredit = ["credit", "deposit"].includes((tx.type || "").toLowerCase());
+                      const statusKind = resolveTxStatusKind(tx);
+                      const statusLabel =
+                        statusKind === "unknown" ? null : txStatusLabel(statusKind);
                       return (
                         <div
-                          key={tx.id}
-                          className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
+                          key={String(tx.id)}
+                          className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className={`rounded-full p-2 ${isCredit ? "bg-emerald-100" : "bg-amber-100"}`}>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`rounded-full p-2 shrink-0 ${isCredit ? "bg-emerald-100" : "bg-amber-100"}`}>
                               {isCredit ? (
                                 <ArrowDownLeft className="h-4 w-4 text-emerald-600" />
                               ) : (
                                 <ArrowUpRight className="h-4 w-4 text-amber-600" />
                               )}
                             </div>
-                            <div>
-                              <p className="font-medium text-slate-800 capitalize">{tx.type || "Transaction"}</p>
-                              <p className="text-xs text-slate-500">
-                                {tx.reference || tx.id} • {formatDate(tx.created_at)}
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2 gap-y-1">
+                                <p className="font-medium text-slate-800 capitalize">
+                                  {tx.type || "Transaction"}
+                                </p>
+                                {statusLabel && (
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[10px] font-semibold uppercase tracking-wide ${statusBadgeClass(statusKind)}`}
+                                  >
+                                    {statusLabel}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-500 truncate">
+                                {tx.reference || String(tx.id)} • {formatDate(tx.created_at)}
                               </p>
                             </div>
                           </div>
                           <span
-                            className={`font-semibold ${isCredit ? "text-emerald-700" : "text-slate-700"}`}
+                            className={`font-semibold shrink-0 tabular-nums ${isCredit ? "text-emerald-700" : "text-slate-700"}`}
                           >
                             {formatAmount(tx.amount, tx.type)}
                           </span>
@@ -562,6 +777,40 @@ export default function WalletPage() {
                 ) : (
                   "Yes, withdraw"
                 )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={withdrawSuccessOpen} onOpenChange={setWithdrawSuccessOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-emerald-800">
+                <Wallet className="h-5 w-5 text-emerald-600" />
+                Withdrawal submitted
+              </DialogTitle>
+              <DialogDescription className="text-left text-slate-600 pt-1 space-y-3">
+                <p>
+                  <strong className="text-slate-800">₹{withdrawSuccessAmount.toLocaleString("en-IN")}</strong> has
+                  been debited from your JobPool wallet.
+                </p>
+                <p>
+                  The amount will be sent to your linked UPI ID after admin processing. You should see it in your bank
+                  / UPI app within about <strong>24 hours</strong> in most cases.
+                </p>
+                <p className="text-sm rounded-lg bg-slate-50 border border-slate-200 px-3 py-2">
+                  When the transfer is completed in the admin panel, you will see{" "}
+                  <strong>Completed</strong> on this withdrawal in the list below.
+                </p>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                type="button"
+                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700"
+                onClick={() => setWithdrawSuccessOpen(false)}
+              >
+                Done
               </Button>
             </DialogFooter>
           </DialogContent>
