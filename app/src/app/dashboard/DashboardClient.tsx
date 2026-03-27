@@ -3129,31 +3129,95 @@ export default function Dashboard() {
         headers["Authorization"] = `Bearer ${token}`;
         headers["X-Access-Token"] = token;
       }
-      if (completeReviewAsTaskmaster) {
-        await axiosInstance.put(`/mark-complete-by-taskmaster/${jobId}/`, reviewBody, { headers });
-      } else {
-        await axiosInstance.put(`/mark-complete/${jobId}/`, reviewBody, { headers });
-      }
-      toast.success("Task marked complete and review submitted!");
+      const resp = completeReviewAsTaskmaster
+        ? await axiosInstance.put(`/mark-complete-by-taskmaster/${jobId}/`, reviewBody, { headers })
+        : await axiosInstance.put(`/mark-complete/${jobId}/`, reviewBody, { headers });
+      const payload = (resp?.data as any)?.data ?? resp?.data ?? {};
+      const fullyCompleted =
+        payload?.job_completion_status === 1 || payload?.job_completion_status === "1";
+      const updatedTaskerCompleted =
+        payload?.tasker_completed !== undefined
+          ? payload.tasker_completed
+          : !completeReviewAsTaskmaster;
+      const updatedTaskmasterCompleted =
+        payload?.taskmaster_completed !== undefined
+          ? payload.taskmaster_completed
+          : completeReviewAsTaskmaster;
+
+      toast.success(
+        fullyCompleted
+          ? "Task marked complete and review submitted!"
+          : completeReviewAsTaskmaster
+          ? "Your confirmation was saved. Waiting for tasker to mark complete."
+          : "Your completion was saved. Waiting for task owner confirmation."
+      );
       setCompleteReviewTask(null);
       if (completeReviewAsTaskmaster) {
-        const payload = { job_completion_status: 1, tasker_completed: true, taskmaster_completed: true };
         const completedTask = postedTasks.find((t) => t.id === jobId);
         if (completedTask) {
-          const updated = { ...completedTask, ...payload, status: "completed", postedAtSortValue: completedTask.postedAtSortValue ?? Date.now() } as Task;
-          setCompletedTasks((prev) => [...prev.filter((t) => String(t.id) !== String(jobId)), updated]);
+          const updated = {
+            ...completedTask,
+            tasker_completed: updatedTaskerCompleted,
+            taskmaster_completed: updatedTaskmasterCompleted,
+            job_completion_status:
+              payload?.job_completion_status ?? completedTask.job_completion_status,
+            status: fullyCompleted ? "completed" : completedTask.status,
+            postedAtSortValue: completedTask.postedAtSortValue ?? Date.now(),
+          } as Task;
+          if (fullyCompleted) {
+            setCompletedTasks((prev) => [
+              ...prev.filter((t) => String(t.id) !== String(jobId)),
+              updated,
+            ]);
+          }
         }
         setPostedTasks((prev) =>
           prev.map((t) =>
-            t.id === jobId ? { ...t, ...payload, status: "completed" as const } : t
+            t.id === jobId
+              ? {
+                  ...t,
+                  tasker_completed: updatedTaskerCompleted,
+                  taskmaster_completed: updatedTaskmasterCompleted,
+                  job_completion_status:
+                    payload?.job_completion_status ?? t.job_completion_status,
+                  status: fullyCompleted ? ("completed" as const) : t.status,
+                }
+              : t
           )
         );
       } else {
         const completedTask = assignedTasks.find((t) => t.id === jobId);
         if (completedTask) {
-          setAssignedTasks((prev) => prev.filter((t) => String(t.id) !== String(jobId)));
-          setCompletedTasks((prev) => [...prev, { ...completedTask, status: "completed", postedAtSortValue: completedTask.postedAtSortValue ?? Date.now() } as Task]);
-          setActiveTab("completed");
+          if (fullyCompleted) {
+            setAssignedTasks((prev) => prev.filter((t) => String(t.id) !== String(jobId)));
+            setCompletedTasks((prev) => [
+              ...prev,
+              {
+                ...completedTask,
+                status: "completed",
+                postedAtSortValue: completedTask.postedAtSortValue ?? Date.now(),
+                tasker_completed: updatedTaskerCompleted,
+                taskmaster_completed: updatedTaskmasterCompleted,
+                job_completion_status:
+                  payload?.job_completion_status ?? completedTask.job_completion_status,
+              } as Task,
+            ]);
+            setActiveTab("completed");
+          } else {
+            setAssignedTasks((prev) =>
+              prev.map((t) =>
+                String(t.id) === String(jobId)
+                  ? {
+                      ...t,
+                      tasker_completed: updatedTaskerCompleted,
+                      taskmaster_completed: updatedTaskmasterCompleted,
+                      job_completion_status:
+                        payload?.job_completion_status ?? t.job_completion_status,
+                    }
+                  : t
+              )
+            );
+          }
         }
       }
       setTimeout(() => {
@@ -4404,16 +4468,16 @@ export default function Dashboard() {
                         task.deletion_status || task.cancel_status ? "opacity-60 cursor-not-allowed" : ""
                       }`}
                     >
-                      {/* In Progress Task Banner */}
+                      {/* In Progress Task Banner (kept inside card, not edge-to-edge) */}
                       {task.status === "in_progress" && !task.cancel_status && (
-                        <div className={`w-full text-white text-center py-1.5 px-3 font-semibold text-xs ${
+                        <div className={`mx-3 mt-3 md:mx-4 md:mt-4 rounded-xl text-white text-center py-1.5 px-3 font-semibold text-xs ${
                           task.taskmaster_completed && !task.tasker_completed && task.job_completion_status !== 1 && task.job_completion_status !== "1"
                             ? "bg-amber-600"
                             : "bg-emerald-600"
                         }`}>
                           {task.taskmaster_completed && !task.tasker_completed && task.job_completion_status !== 1 && task.job_completion_status !== "1"
-                            ? "✓ You've confirmed — Waiting for tasker to mark work done"
-                            : "🚀 In Progress — Bid Accepted"}
+                            ? "✓ Confirmed by you · waiting for tasker"
+                            : "🚀 In progress · bid accepted"}
                         </div>
                       )}
                       
