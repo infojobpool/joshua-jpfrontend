@@ -146,7 +146,11 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { Facebook, Twitter, Instagram, Linkedin } from "lucide-react";
-import { Badge } from "../ui/badge";
+import { analytics } from "@/lib/analytics";
+
+const PLAY_STORE_URL =
+  "https://play.google.com/store/apps/details?id=in.jobpool.www.twa&hl=en_IN";
+const APP_STORE_URL = "https://apps.apple.com/in/app/jobpool-official/id6757442431";
 
 export function Footer() {
   const footerLinks = [
@@ -259,17 +263,38 @@ export function Footer() {
           ))}
 
           <div className="flex flex-col">
-            <h3 className="font-semibold text-lg mb-4">
-              Get the App <Badge>Coming Soon</Badge>
-            </h3>
-            <div className="relative">
-              <Image
-                src="/images/mobileapp.png"
-                alt="Download JobPool mobile app"
-                width={150}
-                height={50}
-                className="object-contain"
-              />
+            <h3 className="font-semibold text-lg mb-4">Get the app</h3>
+            <div className="flex flex-wrap items-center gap-3">
+              <a
+                href={PLAY_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => analytics.appDownloadClick("play_store")}
+                className="inline-block rounded-lg ring-1 ring-white/10 transition hover:opacity-90"
+              >
+                <Image
+                  src="/images/store/footer-google-play.png"
+                  alt="Get it on Google Play"
+                  width={512}
+                  height={284}
+                  className="h-11 w-auto md:h-12 object-contain"
+                />
+              </a>
+              <a
+                href={APP_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => analytics.appDownloadClick("app_store")}
+                className="inline-block rounded-lg ring-1 ring-white/10 transition hover:opacity-90"
+              >
+                <Image
+                  src="/images/store/footer-app-store.png"
+                  alt="Download on the App Store"
+                  width={512}
+                  height={284}
+                  className="h-11 w-auto md:h-12 object-contain"
+                />
+              </a>
             </div>
           </div>
         </div>

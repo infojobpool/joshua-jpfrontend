@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { analytics } from "@/lib/analytics";
 import {
   Facebook,
@@ -9,8 +10,6 @@ import {
   Instagram,
   Linkedin,
   Mail,
-  Apple,
-  Play,
 } from "lucide-react";
 
 const APP_STORE_URL = "https://apps.apple.com/in/app/jobpool-official/id6757442431";
@@ -163,34 +162,36 @@ const Footer: React.FC = () => {
               <h3 className="text-sm font-semibold uppercase tracking-wider text-white">
                 Get the app
               </h3>
-              <div className="mt-4 flex flex-col sm:flex-row gap-3">
+              <div className="mt-4 flex flex-wrap items-center gap-3">
                 <a
                   href={PLAY_STORE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => analytics.appDownloadClick("play_store")}
-                  className="inline-flex items-center gap-3 rounded-lg border border-slate-500 bg-slate-800/80 px-4 py-3 text-white transition hover:bg-slate-700 hover:border-slate-400"
+                  className="inline-block rounded-lg ring-1 ring-white/10 transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
                 >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center [&>svg]:fill-current">
-                    <Play className="h-6 w-6" strokeWidth={2} />
-                  </div>
-                  <div className="flex flex-col items-start leading-tight">
-                    <span className="text-[10px] font-medium uppercase tracking-wide text-slate-300">Get it on</span>
-                    <span className="text-sm font-bold">Google Play</span>
-                  </div>
+                  <Image
+                    src="/images/store/footer-google-play.png"
+                    alt="Get it on Google Play"
+                    width={512}
+                    height={284}
+                    className="h-11 w-auto md:h-12 object-contain"
+                  />
                 </a>
                 <a
                   href={APP_STORE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => analytics.appDownloadClick("app_store")}
-                  className="inline-flex items-center gap-3 rounded-lg border border-slate-500 bg-slate-800/80 px-4 py-3 text-white transition hover:bg-slate-700 hover:border-slate-400"
+                  className="inline-block rounded-lg ring-1 ring-white/10 transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
                 >
-                  <Apple className="h-8 w-8 shrink-0 text-white" />
-                  <div className="flex flex-col items-start leading-tight">
-                    <span className="text-[10px] font-medium uppercase tracking-wide text-slate-300">Download on the</span>
-                    <span className="text-sm font-bold">App Store</span>
-                  </div>
+                  <Image
+                    src="/images/store/footer-app-store.png"
+                    alt="Download on the App Store"
+                    width={512}
+                    height={284}
+                    className="h-11 w-auto md:h-12 object-contain"
+                  />
                 </a>
               </div>
             </div>

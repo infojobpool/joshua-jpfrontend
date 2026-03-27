@@ -20,7 +20,9 @@ export function RemainingPayoutStepsList({
     >
       <div className="border-b border-amber-200/60 px-4 py-3">
         <p className="text-sm font-semibold text-amber-950">Still to do</p>
-        <p className="text-xs text-amber-900/80 mt-0.5">Tap an item to finish it (same checklist as Wallet).</p>
+        <p className="text-xs text-amber-900/80 mt-1 leading-relaxed">
+          Complete these steps to earn the ₹100 welcome bonus and access all features. Tap an item to continue.
+        </p>
       </div>
       <ul className="p-3 space-y-1.5">
         {items.map((item) => (
