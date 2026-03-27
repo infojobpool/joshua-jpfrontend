@@ -275,9 +275,9 @@ export function Footer() {
                 <Image
                   src="/images/store/footer-google-play.png"
                   alt="Get it on Google Play"
-                  width={487}
-                  height={134}
-                  className="h-12 w-auto sm:h-14 md:h-16 object-contain drop-shadow-lg"
+                  width={536}
+                  height={160}
+                  className="h-12 w-auto sm:h-14 md:h-16 object-contain drop-shadow-lg opacity-90 saturate-75"
                 />
               </a>
               <a
@@ -290,9 +290,9 @@ export function Footer() {
                 <Image
                   src="/images/store/footer-app-store.png"
                   alt="Download on the App Store"
-                  width={487}
-                  height={134}
-                  className="h-12 w-auto sm:h-14 md:h-16 object-contain drop-shadow-lg"
+                  width={510}
+                  height={160}
+                  className="h-12 w-auto sm:h-14 md:h-16 object-contain drop-shadow-lg opacity-90 saturate-75"
                 />
               </a>
             </div>

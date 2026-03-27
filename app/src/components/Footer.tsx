@@ -37,20 +37,20 @@ function AppShellFooter() {
           >
             <img src="/images/new-logo.png" alt="JobPool" className="h-9 w-auto" />
           </Link>
-          <div className="mt-8 w-full space-y-3">
+          <div className="mt-8 flex w-full items-center justify-center gap-2">
             <a
               href={PLAY_STORE_URL}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => analytics.appDownloadClick("play_store")}
-              className="mx-auto block w-fit rounded-lg transition hover:opacity-95"
+              className="block w-[48%] max-w-[172px] rounded-lg transition hover:opacity-95"
             >
               <Image
                 src="/images/store/footer-google-play.png"
                 alt="Get it on Google Play"
-                width={487}
-                height={134}
-                className="h-12 w-auto object-contain"
+                width={536}
+                height={160}
+                className="h-auto w-full object-contain opacity-90 saturate-75"
               />
             </a>
             <a
@@ -58,14 +58,14 @@ function AppShellFooter() {
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => analytics.appDownloadClick("app_store")}
-              className="mx-auto block w-fit rounded-lg transition hover:opacity-95"
+              className="block w-[48%] max-w-[172px] rounded-lg transition hover:opacity-95"
             >
               <Image
                 src="/images/store/footer-app-store.png"
                 alt="Download on the App Store"
-                width={487}
-                height={134}
-                className="h-12 w-auto object-contain"
+                width={510}
+                height={160}
+                className="h-auto w-full object-contain opacity-90 saturate-75"
               />
             </a>
           </div>
@@ -260,9 +260,9 @@ const Footer: React.FC = () => {
                   <Image
                     src="/images/store/footer-google-play.png"
                     alt="Get it on Google Play"
-                    width={487}
-                    height={134}
-                    className="h-12 w-auto sm:h-14 md:h-16 object-contain drop-shadow-lg"
+                    width={536}
+                    height={160}
+                    className="h-12 w-auto sm:h-14 md:h-16 object-contain drop-shadow-lg opacity-90 saturate-75"
                   />
                 </a>
                 <a
@@ -275,9 +275,9 @@ const Footer: React.FC = () => {
                   <Image
                     src="/images/store/footer-app-store.png"
                     alt="Download on the App Store"
-                    width={487}
-                    height={134}
-                    className="h-12 w-auto sm:h-14 md:h-16 object-contain drop-shadow-lg"
+                    width={510}
+                    height={160}
+                    className="h-12 w-auto sm:h-14 md:h-16 object-contain drop-shadow-lg opacity-90 saturate-75"
                   />
                 </a>
               </div>
