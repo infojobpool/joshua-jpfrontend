@@ -1,63 +1,24 @@
 // lib/axiosInstance.ts
 
 import axios from "axios";
+import { API_BASE } from "./apiBase";
+import { notifyTokenUpdated, parseRefreshTokenBody } from "./tokenRefresh";
 
-const DEFAULT_API_BASE = "https://api.jobpool.in/api/v1";
-
-/** Ensures admin calls hit the FastAPI host, not the Vercel admin origin (which 404s on /admin-login/). */
-function normalizeApiBase(): string {
-  let raw =
-    (typeof process !== "undefined" &&
-      process.env.NEXT_PUBLIC_API_BASE_URL?.trim()) ||
-    DEFAULT_API_BASE;
-  raw = raw.replace(/\/+$/, "");
-
-  // Relative values like "/api/v1" resolve against the admin site's origin → 404. Force absolute API URL.
+function shouldSkip401Refresh(url: string): boolean {
+  const u = url.toLowerCase();
+  if (u.includes("refresh-token")) return true;
+  if (u.includes("signin") || u.includes("login")) return true;
   if (
-    raw.startsWith("/") ||
-    (!raw.startsWith("http://") && !raw.startsWith("https://"))
+    u.includes("sign-up") ||
+    u.includes("signup") ||
+    u.includes("registration") ||
+    u.includes("user-registration")
   ) {
-    return DEFAULT_API_BASE;
+    return true;
   }
-
-  try {
-    const u = new URL(raw);
-    // Production admin must hit the canonical API domain to avoid CORS issues
-    // when env accidentally points to the raw Render host.
-    if (
-      typeof window !== "undefined" &&
-      window.location.hostname === "admin.jobpool.in" &&
-      u.hostname.includes("onrender.com")
-    ) {
-      return DEFAULT_API_BASE;
-    }
-    const segments = u.pathname
-      .replace(/^\/|\/$/g, "")
-      .split("/")
-      .filter(Boolean);
-    const hasApiVersion =
-      segments[0] === "api" && segments[1] != null && /^v\d+$/.test(segments[1]);
-    // FastAPI routes live under /api/v1/... — bare host (e.g. jobpoolbackend.onrender.com) or
-    // https://api.jobpool.in without /api/v1 would POST /admin-login/ at root → 404.
-    if (!hasApiVersion) {
-      if (segments.length === 0) {
-        u.pathname = "/api/v1";
-        return u.toString().replace(/\/+$/, "");
-      }
-      if (segments.length === 1 && segments[0] === "api") {
-        u.pathname = "/api/v1";
-        return u.toString().replace(/\/+$/, "");
-      }
-    }
-  } catch {
-    return DEFAULT_API_BASE;
-  }
-
-  return raw;
+  if (u.includes("forgot-password") || u.includes("reset-password")) return true;
+  return false;
 }
-
-// Must match the backend that serves /api/v1 (set NEXT_PUBLIC_API_BASE_URL in Vercel / .env)
-export const API_BASE = normalizeApiBase();
 
 const axiosInstance = axios.create({
   baseURL: API_BASE,
@@ -68,20 +29,6 @@ const axiosInstance = axios.create({
   timeout: 30000,
   maxRedirects: 0,
 });
-
-function extractRefreshToken(body: unknown): string | undefined {
-  if (!body || typeof body !== "object") return undefined;
-  const b = body as Record<string, unknown>;
-  const data = b.data;
-  if (data && typeof data === "object") {
-    const d = data as Record<string, unknown>;
-    if (typeof d.token === "string") return d.token;
-    if (typeof d.access_token === "string") return d.access_token;
-  }
-  if (typeof b.token === "string") return b.token;
-  if (typeof b.access_token === "string") return b.access_token;
-  return undefined;
-}
 
 // Add a request interceptor to include JWT in headers
 axiosInstance.interceptors.request.use(
@@ -115,7 +62,7 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// On 401: POST refresh-token with same Authorization; prefer data.token per backend contract
+// On 401: POST refresh-token with same Authorization; parse token same as proactive refresh
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -134,22 +81,32 @@ axiosInstance.interceptors.response.use(
     }
 
     const status = error?.response?.status;
-    const url = (error?.config?.url || "").toLowerCase();
-    const isLogin = url.includes("admin-login");
-    const isRefresh = url.includes("refresh-token");
+    const url = error?.config?.url || "";
+    const skipRefresh = shouldSkip401Refresh(url);
 
     if (status !== 401) {
       return Promise.reject(error);
     }
-    if (isLogin || isRefresh) {
+    if (skipRefresh) {
       return Promise.reject(error);
     }
 
     const token =
       typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (!token) {
+    if (!token || !error.config) {
       return Promise.reject(error);
     }
+
+    const cfg = error.config as typeof error.config & { _retry?: boolean };
+    if (cfg._retry) {
+      try {
+        localStorage.removeItem("token");
+      } catch {
+        /* ignore */
+      }
+      return Promise.reject(error);
+    }
+    cfg._retry = true;
 
     try {
       const refreshResponse = await axios.post(
@@ -163,11 +120,16 @@ axiosInstance.interceptors.response.use(
           },
         }
       );
-      const newToken = extractRefreshToken(refreshResponse.data);
-      if (newToken && error.config) {
+      const newToken = parseRefreshTokenBody(refreshResponse.data);
+      if (newToken) {
         localStorage.setItem("token", newToken);
-        error.config.headers["Authorization"] = `Bearer ${newToken}`;
-        return axiosInstance(error.config);
+        if (typeof window !== "undefined") {
+          notifyTokenUpdated();
+        }
+        if (cfg.headers) {
+          cfg.headers["Authorization"] = `Bearer ${newToken}`;
+        }
+        return axiosInstance(cfg);
       }
       localStorage.removeItem("token");
     } catch {
@@ -179,4 +141,5 @@ axiosInstance.interceptors.response.use(
   }
 );
 
+export { API_BASE };
 export default axiosInstance;

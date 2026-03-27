@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import jwt from "jsonwebtoken";
 import { playNotificationSound } from "./notificationSound";
+import { notifyTokenUpdated, stopTokenRefreshCycle } from "./tokenRefresh";
 
 // 🔹 Types
 interface UserData {
@@ -135,6 +136,7 @@ const useStore = create<StoreState>((set) => ({
         if (typeof window !== "undefined") {
           localStorage.setItem("token", token);
           localStorage.setItem("user", JSON.stringify(user));
+          notifyTokenUpdated();
         }
       } else {
         console.error("Invalid token payload", decoded);
@@ -162,6 +164,9 @@ const useStore = create<StoreState>((set) => ({
   },
 
   logout: () => {
+    if (typeof window !== "undefined") {
+      stopTokenRefreshCycle();
+    }
     set({
       userId: null,
       exp: null,
@@ -198,6 +203,7 @@ const useStore = create<StoreState>((set) => ({
   // Clear all localStorage data (useful for debugging or forcing fresh data)
   clearAllStorage: () => {
     if (typeof window !== "undefined") {
+      stopTokenRefreshCycle();
       localStorage.clear();
       sessionStorage.clear();
       set({
@@ -245,6 +251,7 @@ const useStore = create<StoreState>((set) => ({
               },
             });
           }
+          notifyTokenUpdated();
         } else {
           // Only clear if not already cleared
           const currentState = useStore.getState();

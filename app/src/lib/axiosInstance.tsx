@@ -1,6 +1,24 @@
 // lib/axiosInstance.ts
 
 import axios from 'axios';
+import { notifyTokenUpdated, parseRefreshTokenBody } from './tokenRefresh';
+
+function shouldSkip401Refresh(url: string): boolean {
+  const u = url.toLowerCase();
+  if (u.includes('refresh-token')) return true;
+  if (u.includes('signin') || u.includes('login')) return true;
+  if (
+    u.includes('sign-up') ||
+    u.includes('signup') ||
+    u.includes('registration') ||
+    u.includes('user-registration')
+  ) {
+    return true;
+  }
+  if (u.includes('forgot-password') || u.includes('reset-password')) return true;
+  if (u.includes('admin-login')) return true;
+  return false;
+}
 
 // Environment flag
 const isDev = process.env.NODE_ENV !== 'production';
@@ -126,13 +144,12 @@ axiosInstance.interceptors.response.use(
     }
 
     const config = error.config;
-    const url = (config?.url || '').toLowerCase();
-    const isRefreshRequest = url.includes('refresh-token');
-    const isAuthEndpoint = url.includes('signin') || url.includes('login');
+    const url = config?.url || '';
+    const skipRefresh = shouldSkip401Refresh(url);
     const hasToken = typeof window !== 'undefined' && (localStorage.getItem('token') || sessionStorage.getItem('token'));
 
     // Use optional chaining so network errors (error.response undefined) don't crash
-    if (error.response?.status === 401 && !isRefreshRequest && !isAuthEndpoint && hasToken) {
+    if (error.response?.status === 401 && !skipRefresh && hasToken) {
       // Avoid infinite retry loop
       if (config._retry) {
         try {
@@ -159,10 +176,13 @@ axiosInstance.interceptors.response.use(
             withCredentials: true,
           }
         );
-        const newToken = refreshResponse.data?.data?.token || refreshResponse.data?.token;
+        const newToken = parseRefreshTokenBody(refreshResponse.data);
         if (newToken) {
           localStorage.setItem('token', newToken);
           try { sessionStorage.setItem('token', newToken); } catch {}
+          if (typeof window !== 'undefined') {
+            notifyTokenUpdated();
+          }
           if (config.headers) {
             config.headers['Authorization'] = `Bearer ${newToken}`;
             config.headers['X-Access-Token'] = newToken;

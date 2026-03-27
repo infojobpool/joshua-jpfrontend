@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import jwt from "jsonwebtoken";
+import { notifyTokenUpdated, stopTokenRefreshCycle } from "./tokenRefresh";
 
 // 🔹 Interfaces
 interface ThemeColors {
@@ -109,6 +110,7 @@ const useStore = create<StoreState>((set) => ({
         if (typeof window !== "undefined") {
           localStorage.setItem("token", token);
           localStorage.setItem("user", JSON.stringify(user));
+          notifyTokenUpdated();
         }
       } else {
         console.error("Invalid token payload", decoded);
@@ -119,6 +121,9 @@ const useStore = create<StoreState>((set) => ({
   },
 
   logout: () => {
+    if (typeof window !== "undefined") {
+      stopTokenRefreshCycle();
+    }
     set({
       userId: null,
       role: null,
@@ -152,12 +157,15 @@ const useStore = create<StoreState>((set) => ({
               email: parsedUser.user_email,
             },
           });
+          notifyTokenUpdated();
         } else {
+          stopTokenRefreshCycle();
           localStorage.removeItem("token");
           localStorage.removeItem("user");
         }
       } catch (error) {
         console.error("Token or user data decode failed:", error);
+        stopTokenRefreshCycle();
         localStorage.removeItem("token");
         localStorage.removeItem("user");
       }
