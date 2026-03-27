@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { analytics } from "@/lib/analytics";
+import { useCompactAppFooter } from "@/hooks/useCompactAppFooter";
 import {
   Facebook,
   Twitter,
@@ -24,7 +25,47 @@ const socialLinks = [
   { name: "LinkedIn", href: "https://www.linkedin.com/company/job-pool/posts/?feedView=all", icon: Linkedin },
 ];
 
+/** Minimal footer for native iOS/Android shell — legal, support, brand only. */
+function AppShellFooter() {
+  return (
+    <footer className="border-t border-white/[0.06] bg-gradient-to-b from-slate-900 to-slate-950 text-white">
+      <div className="mx-auto max-w-md px-6 py-10 sm:py-12">
+        <div className="flex flex-col items-center text-center">
+          <Link
+            href="/"
+            className="inline-flex rounded-xl bg-white/95 p-2 shadow-sm ring-1 ring-white/10 transition hover:bg-white"
+          >
+            <img src="/images/new-logo.png" alt="JobPool" className="h-9 w-auto" />
+          </Link>
+          <nav
+            className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[13px] font-medium tracking-wide text-slate-400"
+            aria-label="Legal and support"
+          >
+            <Link href="/privacy-policy" className="transition hover:text-white">
+              Privacy
+            </Link>
+            <Link href="/termsandconditions" className="transition hover:text-white">
+              Terms
+            </Link>
+            <Link href="/support" className="transition hover:text-white">
+              Support
+            </Link>
+          </nav>
+          <p className="mt-10 text-[11px] font-medium uppercase tracking-[0.2em] text-slate-600">
+            © {new Date().getFullYear()} Klughire Pvt Limited
+          </p>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
 const Footer: React.FC = () => {
+  const compact = useCompactAppFooter();
+  if (compact) {
+    return <AppShellFooter />;
+  }
+
   return (
     <footer className="bg-slate-900 text-white">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
@@ -173,8 +214,8 @@ const Footer: React.FC = () => {
                   <Image
                     src="/images/store/footer-google-play.png"
                     alt="Get it on Google Play"
-                    width={364}
-                    height={114}
+                    width={363}
+                    height={107}
                     className="h-12 w-auto sm:h-14 md:h-16 object-contain drop-shadow-lg"
                   />
                 </a>
@@ -188,8 +229,8 @@ const Footer: React.FC = () => {
                   <Image
                     src="/images/store/footer-app-store.png"
                     alt="Download on the App Store"
-                    width={364}
-                    height={112}
+                    width={362}
+                    height={107}
                     className="h-12 w-auto sm:h-14 md:h-16 object-contain drop-shadow-lg"
                   />
                 </a>
