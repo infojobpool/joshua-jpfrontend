@@ -264,20 +264,20 @@ export function Footer() {
 
           <div className="flex flex-col">
             <h3 className="font-semibold text-lg mb-4">Get the app</h3>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-4">
               <a
                 href={PLAY_STORE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => analytics.appDownloadClick("play_store")}
-                className="inline-block rounded-lg ring-1 ring-white/10 transition hover:opacity-90"
+                className="inline-block rounded-lg transition hover:opacity-95"
               >
                 <Image
                   src="/images/store/footer-google-play.png"
                   alt="Get it on Google Play"
-                  width={512}
-                  height={284}
-                  className="h-11 w-auto md:h-12 object-contain"
+                  width={364}
+                  height={114}
+                  className="h-12 w-auto sm:h-14 md:h-16 object-contain drop-shadow-lg"
                 />
               </a>
               <a
@@ -285,14 +285,14 @@ export function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => analytics.appDownloadClick("app_store")}
-                className="inline-block rounded-lg ring-1 ring-white/10 transition hover:opacity-90"
+                className="inline-block rounded-lg transition hover:opacity-95"
               >
                 <Image
                   src="/images/store/footer-app-store.png"
                   alt="Download on the App Store"
-                  width={512}
-                  height={284}
-                  className="h-11 w-auto md:h-12 object-contain"
+                  width={364}
+                  height={112}
+                  className="h-12 w-auto sm:h-14 md:h-16 object-contain drop-shadow-lg"
                 />
               </a>
             </div>
