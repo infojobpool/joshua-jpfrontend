@@ -557,7 +557,7 @@ export default function VerificationFlow() {
                 <TrustBadges
                   heading="Your details are safe"
                   subtext="Encrypted, compliant & protected"
-                  variant="compact"
+                  variant="strip"
                 />
               </div>
               <div className="w-full md:w-2/3">

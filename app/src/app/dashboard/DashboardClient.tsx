@@ -4124,7 +4124,7 @@ export default function Dashboard() {
             <TrustBadges
               heading="Your details are safe"
               subtext="Encrypted, compliant & protected"
-              variant="compact"
+              variant="strip"
             />
           </div>
         )}

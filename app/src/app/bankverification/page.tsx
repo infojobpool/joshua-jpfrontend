@@ -111,7 +111,7 @@ export default function BankVerificationPage() {
           <TrustBadges
             heading="Your details are safe"
             subtext="Encrypted, compliant & protected"
-            variant="compact"
+            variant="strip"
           />
         </CardContent>
         <CardFooter className="flex justify-between">

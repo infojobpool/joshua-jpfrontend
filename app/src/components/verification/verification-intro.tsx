@@ -23,7 +23,7 @@ export default function VerificationIntro({ onStart }: VerificationIntroProps) {
       <TrustBadges
         heading="Your details are safe with us"
         subtext="We use industry-standard security to protect your information"
-        variant="default"
+        variant="strip"
       />
 
       <div className="grid gap-4 md:grid-cols-2">
