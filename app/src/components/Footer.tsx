@@ -37,8 +37,54 @@ function AppShellFooter() {
           >
             <img src="/images/new-logo.png" alt="JobPool" className="h-9 w-auto" />
           </Link>
+          <div className="mt-8 w-full space-y-3">
+            <a
+              href={PLAY_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => analytics.appDownloadClick("play_store")}
+              className="mx-auto block w-fit rounded-lg transition hover:opacity-95"
+            >
+              <Image
+                src="/images/store/footer-google-play.png"
+                alt="Get it on Google Play"
+                width={487}
+                height={134}
+                className="h-12 w-auto object-contain"
+              />
+            </a>
+            <a
+              href={APP_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => analytics.appDownloadClick("app_store")}
+              className="mx-auto block w-fit rounded-lg transition hover:opacity-95"
+            >
+              <Image
+                src="/images/store/footer-app-store.png"
+                alt="Download on the App Store"
+                width={487}
+                height={134}
+                className="h-12 w-auto object-contain"
+              />
+            </a>
+          </div>
+          <div className="mt-7 flex items-center gap-3">
+            {socialLinks.map(({ name, href, icon: Icon }) => (
+              <a
+                key={name}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-slate-300 ring-1 ring-white/10 transition hover:bg-blue-600 hover:text-white"
+                aria-label={name}
+              >
+                <Icon className="h-4 w-4" />
+              </a>
+            ))}
+          </div>
           <nav
-            className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[13px] font-medium tracking-wide text-slate-400"
+            className="mt-7 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[13px] font-medium tracking-wide text-slate-400"
             aria-label="Legal and support"
           >
             <Link href="/privacy-policy" className="transition hover:text-white">
@@ -214,8 +260,8 @@ const Footer: React.FC = () => {
                   <Image
                     src="/images/store/footer-google-play.png"
                     alt="Get it on Google Play"
-                    width={363}
-                    height={107}
+                    width={487}
+                    height={134}
                     className="h-12 w-auto sm:h-14 md:h-16 object-contain drop-shadow-lg"
                   />
                 </a>
@@ -229,8 +275,8 @@ const Footer: React.FC = () => {
                   <Image
                     src="/images/store/footer-app-store.png"
                     alt="Download on the App Store"
-                    width={362}
-                    height={107}
+                    width={487}
+                    height={134}
                     className="h-12 w-auto sm:h-14 md:h-16 object-contain drop-shadow-lg"
                   />
                 </a>
