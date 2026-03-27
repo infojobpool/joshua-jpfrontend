@@ -260,8 +260,7 @@
 
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState, useCallback } from "react"
 import {
   Card,
   CardContent,
@@ -281,9 +280,14 @@ import axiosInstance from "../../lib/axiosInstance"
 import useStore from "../../lib/Zustand"
 import { CheckCircle } from "lucide-react"
 import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint"
+import {
+  getMissingPayoutEligibilityItems,
+  getPayoutCompletionStats,
+  hasRealProfilePhotoUrl,
+  type PayoutEligibilityItem,
+} from "@/lib/payoutProfileCompletion"
 
 export default function VerificationFlow() {
-  const router = useRouter()
   const { userId } = useStore()
   const [currentStep, setCurrentStep] = useState(0)
   const [isWaiting, setIsWaiting] = useState(false)
@@ -293,8 +297,61 @@ export default function VerificationFlow() {
     pan: { completed: false, skipped: false },
     aadhar: { completed: false, skipped: false },
   })
+  const [payoutPreview, setPayoutPreview] = useState<{
+    percent: number;
+    completed: number;
+    total: number;
+    remaining: number;
+    missing: PayoutEligibilityItem[];
+  } | null>(null)
 
   const totalSteps = 4 // Intro, PAN, Aadhar, Complete
+
+  const loadPayoutPreview = useCallback(async (effectiveUserId: string) => {
+    try {
+      const cacheBuster = `?user_id=${effectiveUserId}&_t=${Date.now()}`;
+      const [response, walletRes] = await Promise.all([
+        axiosInstance.get(`/profile${cacheBuster}`),
+        axiosInstance.get(`/wallet?user_id=${effectiveUserId}&limit=1`),
+      ]);
+      const data = response.data;
+      const payload = data?.data ?? data;
+      const wd = walletRes.data?.data ?? walletRes.data;
+      const rawV = payload?.verification_status ?? payload?.verificationStatus;
+      let v = 0;
+      if (rawV !== null && rawV !== undefined) {
+        const n = typeof rawV === "string" ? parseInt(rawV, 10) : Number(rawV);
+        if (!isNaN(n)) v = n;
+      }
+      const img = payload?.profile_img ?? payload?.profile_image ?? "";
+      const hasPhoto = hasRealProfilePhotoUrl(img);
+      const addresses = Array.isArray(payload?.addresses) ? payload.addresses : [];
+      const hasAddressFromList = addresses.some((a: unknown) => {
+        if (!a) return false;
+        if (typeof a === "string") return a.trim().length > 0;
+        if (typeof a === "object" && a !== null) {
+          const addr = (a as { address?: unknown }).address;
+          return typeof addr === "string" && addr.trim().length > 0;
+        }
+        return false;
+      });
+      const fallbackAddress = payload?.address;
+      const hasFallbackAddress =
+        typeof fallbackAddress === "string" && fallbackAddress.trim().length > 0;
+      const hasAddress = hasAddressFromList || hasFallbackAddress;
+      const upiVpa = String(wd?.upi_vpa ?? wd?.upi ?? "").trim();
+      const missing = getMissingPayoutEligibilityItems({
+        verificationLevel: v,
+        hasProfilePhoto: hasPhoto,
+        hasAddressOnProfile: hasAddress,
+        upiVpa: upiVpa || undefined,
+      });
+      const stats = getPayoutCompletionStats(missing.length);
+      setPayoutPreview({ ...stats, missing });
+    } catch {
+      setPayoutPreview(null);
+    }
+  }, []);
 
   // Fetch verification status on mount
   useEffect(() => {
@@ -317,15 +374,19 @@ export default function VerificationFlow() {
       }
 
       try {
-        // Fetch profile to get verification status
         const cacheBuster = `?user_id=${effectiveUserId}&_t=${Date.now()}`;
         const response = await axiosInstance.get(`/profile${cacheBuster}`);
         const data = response.data;
-        
+        const payload = data?.data ?? data;
+
+        await loadPayoutPreview(effectiveUserId);
+
         // Check verification status from API
-        const apiVerificationStatus = 
-          data.verification_status ?? 
-          data.verificationStatus ?? 
+        const apiVerificationStatus =
+          payload?.verification_status ??
+          payload?.verificationStatus ??
+          data.verification_status ??
+          data.verificationStatus ??
           data.data?.verification_status ??
           null;
         
@@ -352,8 +413,22 @@ export default function VerificationFlow() {
           }
         } else {
           // Check explicit verification flags if verification_status is not available
-          const panVerified = data.pan_verified === true || data.pan_status === 'verified' || data.pan_status === 'approved';
-          const aadharVerified = data.aadhar_verified === true || data.aadhaar_verified === true || data.aadhar_status === 'verified' || data.aadhar_status === 'approved';
+          const panVerified =
+            (payload as { pan_verified?: boolean; pan_status?: string })?.pan_verified === true ||
+            data.pan_verified === true ||
+            (payload as { pan_status?: string })?.pan_status === "verified" ||
+            (payload as { pan_status?: string })?.pan_status === "approved" ||
+            data.pan_status === "verified" ||
+            data.pan_status === "approved";
+          const aadharVerified =
+            (payload as { aadhar_verified?: boolean; aadhaar_verified?: boolean })?.aadhar_verified === true ||
+            (payload as { aadhaar_verified?: boolean })?.aadhaar_verified === true ||
+            data.aadhar_verified === true ||
+            data.aadhaar_verified === true ||
+            (payload as { aadhar_status?: string })?.aadhar_status === "verified" ||
+            (payload as { aadhar_status?: string })?.aadhar_status === "approved" ||
+            data.aadhar_status === "verified" ||
+            data.aadhar_status === "approved";
           
           if (panVerified || aadharVerified) {
             setVerificationStatus({
@@ -377,7 +452,23 @@ export default function VerificationFlow() {
     };
 
     fetchVerificationStatus();
-  }, [userId])
+  }, [userId, loadPayoutPreview]);
+
+  useEffect(() => {
+    if (currentStep !== 3) return;
+    let uid = userId as string | undefined;
+    if (!uid) {
+      try {
+        const local = localStorage.getItem("user");
+        if (local) {
+          const parsed = JSON.parse(local);
+          uid = parsed?.id || parsed?.userId || parsed?.user_id;
+        }
+      } catch {}
+    }
+    if (!uid) return;
+    void loadPayoutPreview(String(uid));
+  }, [currentStep, userId, loadPayoutPreview]);
 
   const handleNext = () => {
     if (currentStep < totalSteps - 1) {
@@ -533,14 +624,20 @@ export default function VerificationFlow() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4 pb-28 md:pb-8">
       <Card className={`w-full ${currentStep === 3 ? "max-w-2xl" : "max-w-4xl"}`}>
         <CardHeader>
           <CardTitle className="text-2xl font-bold">Account Verification</CardTitle>
           <CardDescription>
             Please complete the verification process to access all features
           </CardDescription>
-          <WelcomeBonusProcessHint variant="flow" className="mt-4" />
+          {payoutPreview && payoutPreview.remaining > 0 && (
+            <WelcomeBonusProcessHint
+              percent={payoutPreview.percent}
+              label={`${payoutPreview.completed} of ${payoutPreview.total} steps toward ₹100 bonus · ${payoutPreview.remaining} left`}
+              className="mt-4 pr-14 md:pr-3"
+            />
+          )}
         </CardHeader>
         <CardContent>
           {isWaiting ? (
@@ -549,7 +646,10 @@ export default function VerificationFlow() {
               <p className="text-muted-foreground text-sm">Continuing in {timer} seconds...</p>
             </div>
           ) : currentStep === 3 ? (
-            <VerificationComplete verificationStatus={verificationStatus} />
+            <VerificationComplete
+              verificationStatus={verificationStatus}
+              missingPayoutItems={payoutPreview?.missing ?? []}
+            />
           ) : (
             <div className="flex flex-col gap-6 md:flex-row">
               <div className="w-full md:w-1/3 space-y-4">

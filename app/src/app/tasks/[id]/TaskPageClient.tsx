@@ -9,6 +9,7 @@ import { SafetyTips } from "@/components/SafetyTips";
 import { TaskInfo } from "@/components/TaskInfo";
 import { Toaster } from "@/components/ui/sonner";
 import axiosInstance from "@/lib/axiosInstance";
+import { jobIdVariants } from "@/lib/jobIdVariants";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 import { isProfileComplete, getProfileImageFromUser } from "@/lib/profileUtils";
 import { storeBidsInCache } from "@/lib/taskNavCache";
@@ -1487,21 +1488,24 @@ export default function TaskDetailPage() {
         headers["X-Access-Token"] = token;
       }
 
-      const tryIds = [task.id, task.id.startsWith("task_") ? task.id.replace(/^task_/, "") : `task_${task.id}`].filter((x, i, arr) => arr.indexOf(x) === i);
+      const tryIds = jobIdVariants(task.id);
       let resp: any = null;
       let lastErr: any = null;
 
-      for (const jobId of tryIds) {
+      for (let i = 0; i < tryIds.length; i++) {
+        const jid = tryIds[i];
         try {
           if (completeReviewAsTaskmaster) {
-            resp = await axiosInstance.put(`/mark-complete-by-taskmaster/${jobId}/`, reviewBody, { headers });
+            resp = await axiosInstance.put(`/mark-complete-by-taskmaster/${jid}/`, reviewBody, { headers });
           } else {
-            resp = await axiosInstance.put(`/mark-complete/${jobId}/`, reviewBody, { headers });
+            resp = await axiosInstance.put(`/mark-complete/${jid}/`, reviewBody, { headers });
           }
           break;
         } catch (e: any) {
           lastErr = e;
-          if (e?.response?.status === 404 && jobId !== tryIds[tryIds.length - 1]) continue;
+          const st = e?.response?.status;
+          const more = i < tryIds.length - 1;
+          if (more && (st === 404 || st === 500)) continue;
           throw e;
         }
       }

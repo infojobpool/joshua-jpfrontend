@@ -4,16 +4,23 @@ import { Gift } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * Consistent copy: full journey (signup → email → verification → profile) for ₹100 wallet bonus.
+ * ₹100 wallet bonus journey. Prefer `percent` + `label` from payout stats when available;
+ * otherwise `variant` supplies rough placeholders.
  */
 export function WelcomeBonusProcessHint({
   variant = "signup",
   className,
+  percent: percentProp,
+  label: labelProp,
 }: {
   variant?: "signup" | "flow" | "step" | "profile" | "compact";
   className?: string;
+  /** Real completion % (e.g. from getPayoutCompletionStats) — overrides variant */
+  percent?: number;
+  /** Short line under the bar — overrides variant */
+  label?: string;
 }) {
-  const meta =
+  const fallback =
     variant === "signup"
       ? { percent: 15, label: "Start your wallet journey" }
       : variant === "flow"
@@ -23,6 +30,19 @@ export function WelcomeBonusProcessHint({
       : variant === "profile"
       ? { percent: 85, label: "Profile finishing step" }
       : { percent: 70, label: "Keep going to unlock bonus" };
+
+  const pct =
+    typeof percentProp === "number" && !Number.isNaN(percentProp)
+      ? Math.min(100, Math.max(0, Math.round(percentProp)))
+      : fallback.percent;
+  const meta = {
+    percent: pct,
+    label: (labelProp != null && String(labelProp).trim() !== "" ? labelProp : fallback.label) as string,
+  };
+
+  if (meta.percent >= 100) {
+    return null;
+  }
 
   return (
     <div

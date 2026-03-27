@@ -299,17 +299,20 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { CheckCircle2, Award, ArrowRight, User } from "lucide-react"
+import { CheckCircle2, Award, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint"
+import { RemainingPayoutStepsList } from "@/components/RemainingPayoutStepsList"
+import type { PayoutEligibilityItem } from "@/lib/payoutProfileCompletion"
 
 interface VerificationCompleteProps {
   verificationStatus: {
     pan: { completed: boolean; skipped: boolean }
     aadhar: { completed: boolean; skipped: boolean }
   }
+  /** Same checklist as Wallet — what’s left for ₹100 / withdrawals */
+  missingPayoutItems?: PayoutEligibilityItem[]
 }
 
 interface User {
@@ -320,7 +323,10 @@ interface User {
   isLoggedIn: boolean;
 }
 
-export default function VerificationComplete({ verificationStatus }: VerificationCompleteProps) {
+export default function VerificationComplete({
+  verificationStatus,
+  missingPayoutItems = [],
+}: VerificationCompleteProps) {
   const [user, setUser] = useState<User | null>(null);
 
   // Check authentication
@@ -380,7 +386,7 @@ export default function VerificationComplete({ verificationStatus }: Verificatio
 
   return (
     <motion.div
-      className="flex flex-col items-center justify-center space-y-6 py-6"
+      className="flex flex-col items-center justify-center space-y-6 py-6 pb-10 w-full max-w-lg mx-auto"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
@@ -403,7 +409,6 @@ export default function VerificationComplete({ verificationStatus }: Verificatio
             <p className="mt-1 text-gray-600">
               Your account is now fully verified and you have access to all features.
             </p>
-            <WelcomeBonusProcessHint variant="compact" className="mt-4 max-w-md mx-auto text-center" />
           </motion.div>
 
           <motion.div className="w-full max-w-md space-y-3" variants={itemVariants}>
@@ -432,30 +437,16 @@ export default function VerificationComplete({ verificationStatus }: Verificatio
             </div>
           </motion.div>
 
-          {/* Soft profile completion prompt */}
-          <motion.div variants={itemVariants} className="w-full max-w-md mt-4">
-            <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
-              <div className="flex items-start gap-3">
-                <div className="rounded-full bg-blue-100 p-2 shrink-0">
-                  <User className="h-5 w-5 text-blue-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-800">Complete your profile — unlock ₹100 bonus</p>
-                  <p className="text-xs text-gray-600 mt-0.5">
-                    Finish your profile in the app (photo, details, UPI for wallet) so your ₹100 welcome bonus can be
-                    credited when all signup and verification steps are complete. T&amp;Cs apply.
-                  </p>
-                  <div className="flex gap-3 mt-3">
-                    <Button asChild variant="outline" size="sm">
-                      <Link href="/profile">Complete profile</Link>
-                    </Button>
-                    <Button asChild size="sm" className="gap-1.5">
-                      <Link href="/dashboard">Go to Dashboard <ArrowRight className="h-4 w-4" /></Link>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
+          {missingPayoutItems.length > 0 && (
+            <motion.div variants={itemVariants} className="w-full">
+              <RemainingPayoutStepsList items={missingPayoutItems} />
+            </motion.div>
+          )}
+
+          <motion.div variants={itemVariants} className="w-full flex flex-col sm:flex-row gap-3 justify-center">
+            <Button asChild className="w-full sm:w-auto">
+              <Link href="/dashboard">Continue to Dashboard <ArrowRight className="h-4 w-4 ml-1 inline" /></Link>
+            </Button>
           </motion.div>
         </>
       )}
@@ -470,7 +461,6 @@ export default function VerificationComplete({ verificationStatus }: Verificatio
             <h3 className="text-2xl font-bold text-amber-700">Almost There, {user?.name}!</h3>
             <p className="mt-2 text-lg text-gray-700">You've completed some verification steps.</p>
             <p className="mt-1 text-gray-600">Complete the remaining steps to access all features.</p>
-            <WelcomeBonusProcessHint variant="compact" className="mt-4 max-w-md mx-auto text-center" />
           </motion.div>
 
           <motion.div className="w-full max-w-md space-y-3" variants={itemVariants}>
@@ -533,37 +523,17 @@ export default function VerificationComplete({ verificationStatus }: Verificatio
             )}
           </motion.div>
 
-          {/* Soft profile completion prompt */}
-          <motion.div variants={itemVariants} className="w-full max-w-md mt-2">
-            <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
-              <div className="flex items-start gap-3">
-                <div className="rounded-full bg-blue-100 p-2 shrink-0">
-                  <User className="h-5 w-5 text-blue-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-800">Complete your profile — ₹100 welcome bonus</p>
-                  <p className="text-xs text-gray-600 mt-0.5">
-                    After verification, finish your profile so your wallet can receive the bonus when eligible. T&amp;Cs
-                    apply.
-                  </p>
-                  <div className="flex gap-3 mt-3">
-                    <Button asChild variant="outline" size="sm">
-                      <Link href="/profile">Complete profile</Link>
-                    </Button>
-                    <Button asChild size="sm" className="gap-1.5">
-                      <Link href="/dashboard">Go to Dashboard <ArrowRight className="h-4 w-4" /></Link>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
+          {missingPayoutItems.length > 0 && (
+            <motion.div variants={itemVariants} className="w-full">
+              <RemainingPayoutStepsList items={missingPayoutItems} />
+            </motion.div>
+          )}
 
-          <motion.div variants={itemVariants} className="flex gap-4">
-            <Button variant="outline" asChild>
+          <motion.div variants={itemVariants} className="flex w-full max-w-md flex-col gap-3 sm:flex-row sm:justify-center">
+            <Button variant="outline" asChild className="w-full sm:w-auto">
               <Link href="/verification">Complete Verification</Link>
             </Button>
-            <Button asChild>
+            <Button asChild className="w-full sm:w-auto">
               <Link href="/dashboard">Continue to Dashboard</Link>
             </Button>
           </motion.div>
@@ -580,43 +550,22 @@ export default function VerificationComplete({ verificationStatus }: Verificatio
             <h3 className="text-2xl font-bold text-amber-700">Welcome, {user?.name}!</h3>
             <p className="mt-2 text-lg text-gray-700">You've skipped all verification steps for now.</p>
             <p className="mt-1 text-gray-600">You can complete verification later, but some features may be limited.</p>
-            <WelcomeBonusProcessHint variant="compact" className="mt-4 max-w-md mx-auto text-center" />
             <p className="text-xs text-amber-800/90 mt-2 max-w-md mx-auto">
-              Skipping verification may delay or prevent your ₹100 welcome bonus until you finish the full process.
+              Skipping steps may delay the ₹100 welcome bonus until your wallet checklist is complete. T&amp;Cs apply.
             </p>
           </motion.div>
 
-          {/* Soft profile completion prompt */}
-          <motion.div variants={itemVariants} className="w-full max-w-md mt-2">
-            <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
-              <div className="flex items-start gap-3">
-                <div className="rounded-full bg-blue-100 p-2 shrink-0">
-                  <User className="h-5 w-5 text-blue-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-800">Complete profile &amp; bonus</p>
-                  <p className="text-xs text-gray-600 mt-0.5">
-                    When you complete verification and your profile, you can qualify for the ₹100 wallet bonus. T&amp;Cs
-                    apply.
-                  </p>
-                  <div className="flex gap-3 mt-3">
-                    <Button asChild variant="outline" size="sm">
-                      <Link href="/profile">Complete profile</Link>
-                    </Button>
-                    <Button asChild size="sm" className="gap-1.5">
-                      <Link href="/dashboard">Go to Dashboard <ArrowRight className="h-4 w-4" /></Link>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
+          {missingPayoutItems.length > 0 && (
+            <motion.div variants={itemVariants} className="w-full">
+              <RemainingPayoutStepsList items={missingPayoutItems} />
+            </motion.div>
+          )}
 
-          <motion.div variants={itemVariants} className="flex gap-4">
-            <Button variant="outline" asChild>
+          <motion.div variants={itemVariants} className="flex w-full max-w-md flex-col gap-3 sm:flex-row sm:justify-center">
+            <Button variant="outline" asChild className="w-full sm:w-auto">
               <Link href="/verification">Complete Verification</Link>
             </Button>
-            <Button asChild>
+            <Button asChild className="w-full sm:w-auto">
               <Link href="/dashboard">Continue to Dashboard</Link>
             </Button>
           </motion.div>

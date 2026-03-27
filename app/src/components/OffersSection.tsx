@@ -302,6 +302,7 @@ import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import axiosInstance from "../lib/axiosInstance";
+import { jobIdVariants } from "../lib/jobIdVariants";
 import { toast } from "sonner";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
@@ -724,11 +725,28 @@ export function OffersSection({
         headers["Authorization"] = `Bearer ${token}`;
         headers["X-Access-Token"] = token;
       }
-      await axiosInstance.put(
-        `/mark-complete-by-taskmaster/${task.id}/`,
-        { rating: reviewRating, comment: reviewComment },
-        { headers }
-      );
+      const reviewBody = { rating: reviewRating, comment: reviewComment };
+      const tryIds = jobIdVariants(task.id);
+      let lastErr: unknown = null;
+      for (let i = 0; i < tryIds.length; i++) {
+        const jid = tryIds[i];
+        try {
+          await axiosInstance.put(
+            `/mark-complete-by-taskmaster/${jid}/`,
+            reviewBody,
+            { headers }
+          );
+          lastErr = null;
+          break;
+        } catch (e: unknown) {
+          lastErr = e;
+          const st = (e as { response?: { status?: number } })?.response?.status;
+          const more = i < tryIds.length - 1;
+          if (more && (st === 404 || st === 500)) continue;
+          throw e;
+        }
+      }
+      if (lastErr) throw lastErr;
       toast.success("Task marked complete and review submitted");
       setCompleteOpen(false);
       setReviewComment("");

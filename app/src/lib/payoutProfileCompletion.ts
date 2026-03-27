@@ -29,7 +29,7 @@ export function getMissingPayoutEligibilityItems(input: {
     items.push({ id: "address", label: "Add your address in profile", href: "/profile" });
   }
   if (!input.upiVpa?.trim()) {
-    items.push({ id: "upi", label: "Add UPI ID for withdrawals", href: "#wallet-upi" });
+    items.push({ id: "upi", label: "Add UPI ID for withdrawals", href: "/wallet#wallet-upi" });
   }
   return items;
 }
