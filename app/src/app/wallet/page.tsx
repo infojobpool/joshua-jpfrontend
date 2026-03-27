@@ -37,6 +37,12 @@ import axiosInstance from "@/lib/axiosInstance";
 import Header from "@/components/Header";
 import { toast } from "sonner";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
+import {
+  getMissingPayoutEligibilityItems,
+  getPayoutCompletionStats,
+  hasRealProfilePhotoUrl,
+} from "@/lib/payoutProfileCompletion";
+import { PayoutProfileProgress } from "@/components/PayoutProfileProgress";
 
 interface Transaction {
   id: string | number;
@@ -109,13 +115,6 @@ function statusBadgeClass(kind: TxStatusKind): string {
     default:
       return "bg-slate-100 text-slate-600 border-slate-200";
   }
-}
-
-function hasRealProfilePhoto(url: string | undefined | null): boolean {
-  if (!url || !String(url).trim()) return false;
-  const lower = String(url).toLowerCase();
-  if (lower.includes("placeholder")) return false;
-  return true;
 }
 
 interface WalletData {
@@ -197,27 +196,22 @@ export default function WalletPage() {
     Number(user?.verification_status ?? 0),
     eligibilityVs ?? 0
   );
-  const hasProfilePhoto = hasRealProfilePhoto(profileImgHint || user?.profile_image);
+  const hasProfilePhoto = hasRealProfilePhotoUrl(profileImgHint || user?.profile_image);
 
   const missingEligibility = useMemo(() => {
     if (!wallet) return [];
-    const items: { id: string; label: string; href: string }[] = [];
-    const v = verificationLevel;
-    if (v < 1) items.push({ id: "pan", label: "Verify PAN card", href: "/verification" });
-    else if (v < 2) items.push({ id: "aadhaar", label: "Verify Aadhaar (UID)", href: "/verification" });
-    else if (v < 3) items.push({ id: "bank", label: "Add bank account details", href: "/verification" });
-    if (!hasProfilePhoto) {
-      items.push({ id: "photo", label: "Add a profile photo", href: "/profile" });
-    }
-    if (!hasAddressOnProfile) {
-      items.push({ id: "address", label: "Add your address in profile", href: "/profile" });
-    }
-    if (!wallet.upi_vpa?.trim()) {
-      items.push({ id: "upi", label: "Add UPI ID for withdrawals", href: "#wallet-upi" });
-    }
-    return items;
+    return getMissingPayoutEligibilityItems({
+      verificationLevel,
+      hasProfilePhoto,
+      hasAddressOnProfile,
+      upiVpa: wallet.upi_vpa,
+    });
   }, [wallet, verificationLevel, hasProfilePhoto, hasAddressOnProfile]);
   const isWithdrawEligible = missingEligibility.length === 0;
+  const payoutStats = useMemo(
+    () => getPayoutCompletionStats(missingEligibility.length),
+    [missingEligibility.length]
+  );
 
   const maskUpi = (upi: string) => {
     if (!upi || upi.length < 5) return upi;
@@ -438,15 +432,23 @@ export default function WalletPage() {
               </CardHeader>
             </Card>
 
+            <PayoutProfileProgress
+              variant="wallet"
+              percent={payoutStats.percent}
+              completed={payoutStats.completed}
+              total={payoutStats.total}
+              remaining={payoutStats.remaining}
+            />
+
             {missingEligibility.length > 0 && (
               <Card className="border border-amber-200/80 shadow-md rounded-2xl bg-gradient-to-br from-amber-50/95 to-orange-50/40 ring-1 ring-amber-100">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2 text-amber-950">
                     <AlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
-                    Finish these to get paid faster
+                    Next steps
                   </CardTitle>
                   <CardDescription className="text-amber-900/80">
-                    Only showing what is still missing — tap to complete.
+                    Tap an item to complete it.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-0">

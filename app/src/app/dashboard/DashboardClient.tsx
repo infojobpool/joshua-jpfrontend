@@ -59,6 +59,12 @@ import { ShareTaskButton } from "@/components/ShareTaskButton";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { TrustBadges } from "@/components/TrustBadges";
 import { analytics } from "@/lib/analytics";
+import {
+  getMissingPayoutEligibilityItems,
+  getPayoutCompletionStats,
+  hasRealProfilePhotoUrl,
+} from "@/lib/payoutProfileCompletion";
+import { PayoutProfileProgress } from "@/components/PayoutProfileProgress";
 
 // Load Leaflet map client-only to avoid mobile crashes
 const TaskLocationMap = dynamic(
@@ -599,6 +605,9 @@ export default function Dashboard() {
   const [posterProfileCache, setPosterProfileCache] = useState<Record<string, string>>({});
   const fetchedPosterIds = useRef<Set<string>>(new Set());
   const [profileBannerDismissed, setProfileBannerDismissed] = useState(false);
+  const [payoutSetupStats, setPayoutSetupStats] = useState<ReturnType<
+    typeof getPayoutCompletionStats
+  > | null>(null);
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
   const [completeReviewTask, setCompleteReviewTask] = useState<Task | null>(null);
   const [completeReviewAsTaskmaster, setCompleteReviewAsTaskmaster] = useState(false);
@@ -758,6 +767,58 @@ export default function Dashboard() {
     })();
     return () => controller.abort();
   }, [effectiveUserId, updateUserProfileImage]);
+
+  // Wallet / payout readiness (same rules as Wallet page)
+  useEffect(() => {
+    if (!effectiveUserId) {
+      setPayoutSetupStats(null);
+      return;
+    }
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const [profRes, walRes] = await Promise.all([
+          axiosInstance.get(`/profile?user_id=${effectiveUserId}`, { signal: controller.signal }),
+          axiosInstance.get(`/wallet?user_id=${effectiveUserId}&limit=1`, { signal: controller.signal }),
+        ]);
+        const payload = profRes.data?.data ?? profRes.data;
+        const wd = walRes.data?.data ?? walRes.data;
+        const raw = payload?.verification_status ?? payload?.verificationStatus;
+        let v = Number(user?.verification_status ?? 0);
+        if (raw !== null && raw !== undefined) {
+          const n = typeof raw === "string" ? parseInt(raw, 10) : Number(raw);
+          if (!isNaN(n)) v = Math.max(v, n);
+        }
+        const img = payload?.profile_img ?? payload?.profile_image ?? "";
+        const hasPhoto = hasRealProfilePhotoUrl(img || (user as { profile_image?: string })?.profile_image);
+        const addresses = Array.isArray(payload?.addresses) ? payload.addresses : [];
+        const hasAddressFromList = addresses.some((a: unknown) => {
+          if (!a) return false;
+          if (typeof a === "string") return a.trim().length > 0;
+          if (typeof a === "object" && a !== null) {
+            const addr = (a as { address?: unknown }).address;
+            return typeof addr === "string" && addr.trim().length > 0;
+          }
+          return false;
+        });
+        const fallbackAddress = payload?.address;
+        const hasFallbackAddress =
+          typeof fallbackAddress === "string" && fallbackAddress.trim().length > 0;
+        const hasAddress = hasAddressFromList || hasFallbackAddress;
+        const upiVpa = String(wd?.upi_vpa ?? wd?.upi ?? "").trim();
+        const missing = getMissingPayoutEligibilityItems({
+          verificationLevel: v,
+          hasProfilePhoto: hasPhoto,
+          hasAddressOnProfile: hasAddress,
+          upiVpa: upiVpa || undefined,
+        });
+        setPayoutSetupStats(getPayoutCompletionStats(missing.length));
+      } catch {
+        setPayoutSetupStats(null);
+      }
+    })();
+    return () => controller.abort();
+  }, [effectiveUserId, user?.verification_status, user?.profile_image]);
 
   // Fetch poster profile images when get-all-jobs API doesn't return them
   useEffect(() => {
@@ -4001,6 +4062,12 @@ export default function Dashboard() {
               subtext="Encrypted, compliant & protected"
               variant="compact"
             />
+          </div>
+        )}
+
+        {payoutSetupStats && (
+          <div className="mb-4 max-w-md">
+            <PayoutProfileProgress variant="dashboard" {...payoutSetupStats} />
           </div>
         )}
 
