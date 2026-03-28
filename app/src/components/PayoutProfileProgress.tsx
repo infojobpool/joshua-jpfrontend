@@ -19,15 +19,15 @@ export function PayoutProfileProgress({
   variant?: "dashboard" | "wallet";
   className?: string;
 }) {
-  const done = remaining === 0;
+  if (remaining === 0) {
+    return null;
+  }
 
   return (
     <div
       className={cn(
         "rounded-2xl border px-4 py-3.5 shadow-sm",
-        done
-          ? "border-emerald-200/70 bg-gradient-to-br from-emerald-50/90 to-white dark:from-emerald-950/25 dark:to-slate-900/40 dark:border-emerald-900/40"
-          : "border-slate-200/90 bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900/50 dark:to-slate-950/30 dark:border-slate-800",
+        "border-slate-200/90 bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900/50 dark:to-slate-950/30 dark:border-slate-800",
         className
       )}
     >
@@ -35,7 +35,7 @@ export function PayoutProfileProgress({
         <p
           className={cn(
             "text-[11px] font-semibold uppercase tracking-[0.14em]",
-            done ? "text-emerald-800/90 dark:text-emerald-300/90" : "text-slate-500 dark:text-slate-400"
+            "text-slate-500 dark:text-slate-400"
           )}
         >
           {variant === "wallet" ? "Payout setup" : "Wallet readiness"}
@@ -43,7 +43,7 @@ export function PayoutProfileProgress({
         <span
           className={cn(
             "text-sm font-semibold tabular-nums",
-            done ? "text-emerald-800 dark:text-emerald-200" : "text-slate-900 dark:text-slate-100"
+            "text-slate-900 dark:text-slate-100"
           )}
         >
           {percent}%
@@ -53,9 +53,7 @@ export function PayoutProfileProgress({
         <div
           className={cn(
             "h-full rounded-full transition-[width] duration-500 ease-out",
-            done
-              ? "bg-gradient-to-r from-emerald-500 to-teal-500"
-              : "bg-gradient-to-r from-slate-700 via-emerald-600 to-teal-500 dark:from-slate-500 dark:via-emerald-500"
+            "bg-gradient-to-r from-slate-700 via-emerald-600 to-teal-500 dark:from-slate-500 dark:via-emerald-500"
           )}
           style={{ width: `${percent}%` }}
         />
@@ -65,16 +63,10 @@ export function PayoutProfileProgress({
           {completed} of {total}
         </span>{" "}
         complete
-        {remaining > 0 ? (
-          <>
-            {" "}
-            · <span className="text-slate-700 dark:text-slate-300">{remaining} left</span>
-          </>
-        ) : (
-          <> · All set for withdrawals</>
-        )}
+        {" "}
+        · <span className="text-slate-700 dark:text-slate-300">{remaining} left</span>
       </p>
-      {variant === "dashboard" && remaining > 0 && (
+      {variant === "dashboard" && (
         <Link
           href="/wallet"
           className="mt-3 inline-flex items-center gap-0.5 text-xs font-medium text-emerald-700 transition hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"

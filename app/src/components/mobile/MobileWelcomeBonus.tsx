@@ -4,11 +4,13 @@ import React, { useCallback, useEffect, useId, useState } from "react";
 import Image from "next/image";
 import { ChevronDown, Smartphone, UserCheck, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePayoutSetupIncomplete } from "@/hooks/usePayoutSetupIncomplete";
 
 /**
  * Mobile-only: minimal ₹100 welcome bonus card with expand/collapse (hash #welcome-bonus opens it).
  */
 export function MobileWelcomeBonus() {
+  const { ready, incomplete } = usePayoutSetupIncomplete();
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const headerId = useId();
@@ -23,6 +25,10 @@ export function MobileWelcomeBonus() {
     window.addEventListener("hashchange", syncHash);
     return () => window.removeEventListener("hashchange", syncHash);
   }, [syncHash]);
+
+  if (ready && !incomplete) {
+    return null;
+  }
 
   return (
     <section

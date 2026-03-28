@@ -34,6 +34,11 @@ import LocationDetector from "../../components/LocationDetector";
 import Header from "@/components/Header";
 import { TrustBadges } from "@/components/TrustBadges";
 import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint";
+import {
+  getMissingPayoutEligibilityItems,
+  getPayoutCompletionStats,
+  hasRealProfilePhotoUrl,
+} from "@/lib/payoutProfileCompletion";
 
 interface User {
   id: string;
@@ -108,6 +113,12 @@ export default function PostTaskPage() {
   const [error, setError] = useState("");
   const [customCategoryName, setCustomCategoryName] = useState("");
   const { userId } = useStore();
+  const [payoutBonusPreview, setPayoutBonusPreview] = useState<{
+    percent: number;
+    completed: number;
+    total: number;
+    remaining: number;
+  } | null>(null);
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
 
   useEffect(() => {
@@ -142,13 +153,60 @@ export default function PostTaskPage() {
       try {
         // Fetch verification in background (Submit stays disabled until this completes)
         const cacheBuster = `?user_id=${effectiveUserId}&_t=${Date.now()}`;
-        const response = await axiosInstance.get(`/profile${cacheBuster}`);
+        const [response, walletRes] = await Promise.all([
+          axiosInstance.get(`/profile${cacheBuster}`),
+          axiosInstance.get(`/wallet?user_id=${effectiveUserId}&limit=1`),
+        ]);
         const data = response.data;
-        
+        const payload = data?.data ?? data;
+        const wd = walletRes.data?.data ?? walletRes.data;
+
+        // ₹100 bonus progress — same rules as Wallet (avoid static 70% placeholder)
+        try {
+          const rawV =
+            payload?.verification_status ??
+            payload?.verificationStatus ??
+            data?.verification_status ??
+            data?.verificationStatus ??
+            null;
+          let vLevel = 0;
+          if (rawV !== null && rawV !== undefined) {
+            const n = typeof rawV === "string" ? parseInt(rawV, 10) : Number(rawV);
+            if (!isNaN(n)) vLevel = n;
+          }
+          const img = payload?.profile_img ?? payload?.profile_image ?? "";
+          const hasPhoto = hasRealProfilePhotoUrl(img);
+          const addresses = Array.isArray(payload?.addresses) ? payload.addresses : [];
+          const hasAddressFromList = addresses.some((a: unknown) => {
+            if (!a) return false;
+            if (typeof a === "string") return a.trim().length > 0;
+            if (typeof a === "object" && a !== null) {
+              const addr = (a as { address?: unknown }).address;
+              return typeof addr === "string" && addr.trim().length > 0;
+            }
+            return false;
+          });
+          const fallbackAddress = payload?.address;
+          const hasFallbackAddress =
+            typeof fallbackAddress === "string" && fallbackAddress.trim().length > 0;
+          const upiVpa = String(wd?.upi_vpa ?? wd?.upi ?? "").trim();
+          const missing = getMissingPayoutEligibilityItems({
+            verificationLevel: vLevel,
+            hasProfilePhoto: hasPhoto,
+            hasAddressOnProfile: hasAddressFromList || hasFallbackAddress,
+            upiVpa: upiVpa || undefined,
+          });
+          setPayoutBonusPreview(getPayoutCompletionStats(missing.length));
+        } catch {
+          setPayoutBonusPreview(null);
+        }
+
         // Check verification status from API
-        const apiVerificationStatus = 
-          data.verification_status ?? 
-          data.verificationStatus ?? 
+        const apiVerificationStatus =
+          payload?.verification_status ??
+          payload?.verificationStatus ??
+          data.verification_status ??
+          data.verificationStatus ??
           data.data?.verification_status ??
           null;
         
@@ -186,6 +244,7 @@ export default function PostTaskPage() {
           console.warn("Failed to update localStorage:", e);
         }
       } catch (error: any) {
+        setPayoutBonusPreview(null);
         console.error("Failed to check verification status:", error);
         // If API call fails, fall back to localStorage check
         const storedUser = localStorage.getItem("user");
@@ -489,7 +548,13 @@ export default function PostTaskPage() {
                 heading="Your data is safe with JobPool"
                 subtext="Encrypted, DPDP-ready — industry-standard protection"
               />
-              <WelcomeBonusProcessHint variant="compact" />
+              {payoutBonusPreview && payoutBonusPreview.remaining > 0 && (
+                <WelcomeBonusProcessHint
+                  variant="compact"
+                  percent={payoutBonusPreview.percent}
+                  label={`${payoutBonusPreview.completed} of ${payoutBonusPreview.total} steps toward ₹100 bonus · ${payoutBonusPreview.remaining} left`}
+                />
+              )}
             </div>
             {error && (
               <div className="flex items-center justify-between gap-3 text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded-md mb-4">

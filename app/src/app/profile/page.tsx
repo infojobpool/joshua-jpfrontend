@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useRouter } from "next/navigation";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import axiosInstance from "@/lib/axiosInstance";
 import { MobileProfile } from "@/components/mobile/MobileProfile";
@@ -38,6 +38,11 @@ import { resolveProfileImageUrl } from "@/lib/profileImage";
 import Header from "@/components/Header";
 import { TrustBadges } from "@/components/TrustBadges";
 import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint";
+import {
+  getMissingPayoutEligibilityItems,
+  getPayoutCompletionStats,
+  hasRealProfilePhotoUrl,
+} from "@/lib/payoutProfileCompletion";
 import { toast } from "sonner";
 
 /** Android WebView: force visible text in fields (avoids white-on-white). */
@@ -136,6 +141,27 @@ export default function ProfilePage() {
   });
 
   const [reviews, setReviews] = useState<Review[]>([]);
+  const payoutBonusPreview = useMemo(() => {
+    const v = Math.max(
+      Number(storeUser?.verification_status ?? 0),
+      Number(user?.verification_status ?? 0),
+    );
+    const verificationLevel = Number.isNaN(v) ? 0 : v;
+    const hasAddress = profileuser.addresses.some((a) => (a.address || "").trim().length > 0);
+    const missing = getMissingPayoutEligibilityItems({
+      verificationLevel,
+      hasProfilePhoto: hasRealProfilePhotoUrl(profileuser.avatar),
+      hasAddressOnProfile: hasAddress,
+      upiVpa: profileuser.upi_vpa?.trim() || undefined,
+    });
+    return getPayoutCompletionStats(missing.length);
+  }, [
+    storeUser?.verification_status,
+    user?.verification_status,
+    profileuser.avatar,
+    profileuser.upi_vpa,
+    profileuser.addresses,
+  ]);
   const fetchProfileRef = useRef(false);
   const fetchSuccessRef = useRef(false);
   const lastFetchTimeRef = useRef<number>(0);
@@ -704,7 +730,14 @@ export default function ProfilePage() {
                     heading="Your data is safe with JobPool"
                     subtext="Encrypted, DPDP-ready — industry-standard protection"
                   />
-                  <WelcomeBonusProcessHint variant="compact" className="mt-1" />
+                  {payoutBonusPreview.remaining > 0 && (
+                    <WelcomeBonusProcessHint
+                      variant="compact"
+                      className="mt-1"
+                      percent={payoutBonusPreview.percent}
+                      label={`${payoutBonusPreview.completed} of ${payoutBonusPreview.total} steps toward ₹100 bonus · ${payoutBonusPreview.remaining} left`}
+                    />
+                  )}
                 </>
               )}
               {profileuser.isEditing ? (
@@ -765,7 +798,13 @@ export default function ProfilePage() {
                       — used for withdrawals. Leave blank to keep your current wallet UPI unchanged.
                     </p>
                   </div>
-                  <WelcomeBonusProcessHint variant="compact" />
+                  {payoutBonusPreview.remaining > 0 && (
+                    <WelcomeBonusProcessHint
+                      variant="compact"
+                      percent={payoutBonusPreview.percent}
+                      label={`${payoutBonusPreview.completed} of ${payoutBonusPreview.total} steps toward ₹100 bonus · ${payoutBonusPreview.remaining} left`}
+                    />
+                  )}
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Addresses</label>
                     {profileuser.addresses.map((addr) => (

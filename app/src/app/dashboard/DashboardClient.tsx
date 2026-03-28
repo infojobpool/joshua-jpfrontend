@@ -4146,7 +4146,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {payoutSetupStats && (
+        {payoutSetupStats && payoutSetupStats.remaining > 0 && (
           <div className="mb-4 max-w-md">
             <PayoutProfileProgress variant="dashboard" {...payoutSetupStats} />
           </div>

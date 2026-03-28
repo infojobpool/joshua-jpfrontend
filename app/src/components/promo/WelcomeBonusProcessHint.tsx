@@ -4,8 +4,8 @@ import { Gift } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * ₹100 wallet bonus journey. Prefer `percent` + `label` from payout stats when available;
- * otherwise `variant` supplies rough placeholders.
+ * ₹100 wallet bonus journey. On logged-in screens pass real `percent` from getPayoutCompletionStats;
+ * when percent reaches 100, renders nothing. `variant` fallbacks are for marketing (e.g. signup) only.
  */
 export function WelcomeBonusProcessHint({
   variant = "signup",
