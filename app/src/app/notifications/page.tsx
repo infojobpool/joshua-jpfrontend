@@ -145,6 +145,7 @@ export default function NotificationsPage() {
             {allNotifications.length > 10 && (
               <Button
                 variant="outline"
+                title="Keeps the 10 newest on this device only. Older items stay hidden until you close the app — nothing is deleted on the server."
                 onClick={() => clearOldKeepLatest(10)}
                 className="flex items-center gap-2 border-gray-300"
               >

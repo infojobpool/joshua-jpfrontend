@@ -563,10 +563,7 @@ export default function PostTaskPage() {
                   type="button"
                   onClick={() => {
                     setError("");
-                    // Re-run categories effect by temporary forcing state change
-                    setCategories([]);
-                    // Manually refetch by calling the effect function via a state flip
-                    // Simply trigger a rerender; the effect depends on apiBase and will run
+                    void fetchCategories();
                   }}
                   className="px-2 py-1 text-xs font-medium bg-red-600 text-white rounded"
                 >

@@ -421,6 +421,10 @@ export default function Dashboard() {
   const router = useRouter();
   const { user, userId, isAuthenticated, logout, addNotifications, updateUserProfileImage, checkAuth } = useStore();
   const { items: notificationItems, unreadCount, markAsRead, clearOldKeepLatest, bellAnimating } = useNotifications(!!isAuthenticated);
+  const bellUnreadItems = useMemo(
+    () => notificationItems.filter((n) => !n.read),
+    [notificationItems]
+  );
   // Inline mobile detection to avoid useIsMobile (potential React #310 cause on desktop)
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -4165,10 +4169,12 @@ export default function Dashboard() {
               </button>
             </div>
             <div className="max-h-[60vh] overflow-auto">
-              {notificationItems.length === 0 ? (
-                <div className="px-4 py-8 text-center text-gray-500 dark:text-slate-400 text-sm">No notifications yet</div>
+              {bellUnreadItems.length === 0 ? (
+                <div className="px-4 py-8 text-center text-gray-500 dark:text-slate-400 text-sm">
+                  {notificationItems.length > 0 ? "You're all caught up" : "No notifications yet"}
+                </div>
               ) : (
-                notificationItems.map((n) => {
+                bellUnreadItems.map((n) => {
                   const href = n.link || "/notifications";
                   const Icon = n.type === "bid" ? Gavel : n.type === "message" ? MessageSquare : Bell;
                   const iconBg = n.type === "bid" ? "bg-amber-500" : n.type === "message" ? "bg-blue-500" : "bg-purple-500";
@@ -4206,11 +4212,21 @@ export default function Dashboard() {
               )}
             </div>
             <div className="px-4 py-3 border-t bg-gray-50 flex flex-wrap gap-2">
-              <Button variant="outline" className="h-9 px-3 border-gray-300" onClick={() => { markAsRead(null); setShowNotifications(false); }}>
-                Mark all read
-              </Button>
+              {unreadCount > 0 && (
+                <Button variant="outline" className="h-9 px-3 border-gray-300" onClick={() => { markAsRead(null); setShowNotifications(false); }}>
+                  Mark all read
+                </Button>
+              )}
               {notificationItems.length > 10 && (
-                <Button variant="outline" className="h-9 px-3 border-gray-300" onClick={() => { clearOldKeepLatest(); setShowNotifications(false); }}>
+                <Button
+                  variant="outline"
+                  className="h-9 px-3 border-gray-300"
+                  title="Keeps the 10 newest on this device only. Older items stay hidden until you close the app — nothing is deleted on the server."
+                  onClick={() => {
+                    clearOldKeepLatest();
+                    setShowNotifications(false);
+                  }}
+                >
                   Clear old
                 </Button>
               )}
