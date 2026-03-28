@@ -1,46 +1,21 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Bell, 
-  Check, 
-  MessageSquare, 
-  Gavel, 
+import {
+  Bell,
+  MessageSquare,
+  Gavel,
   ArrowLeft,
   CheckCircle,
   Clock,
-  User
 } from "lucide-react";
 import useStore from "@/lib/Zustand";
-import { shallow } from "zustand/shallow";
 import axiosInstance from "@/lib/axiosInstance";
-
-interface ApiListResponse<T> {
-  status_code: number;
-  message: string;
-  data: T;
-}
-
-interface MessageItem {
-  id: string;
-  task_id: string;
-  task_title?: string;
-  content?: string;
-  created_at: string;
-}
-
-interface BidRequestItem {
-  bid_id: string;
-  task_id: string;
-  task_title?: string;
-  bid_amount?: number;
-  created_at: string;
-}
 
 export default function NotificationsPage() {
   const router = useRouter();
@@ -48,17 +23,11 @@ export default function NotificationsPage() {
   const checkAuth = useStore((s) => s.checkAuth);
   const unreadCount = useStore((s) => s.unreadCount);
   const items = useStore((s) => s.items);
-  const addNotifications = useStore((s) => s.addNotifications);
   const markAllRead = useStore((s) => s.markAllRead);
   const clearOldKeepLatest = useStore((s) => s.clearOldKeepLatest);
   const [loading, setLoading] = useState(true);
   const [allNotifications, setAllNotifications] = useState<any[]>([]);
   const [authReady, setAuthReady] = useState(false);
-  const [fcmToken, setFcmToken] = useState<string | null>(null);
-  const [tokenCopied, setTokenCopied] = useState(false);
-  const [registerPushStatus, setRegisterPushStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [lastTokenEventAt, setLastTokenEventAt] = useState<string | null>(null);
-
   // Sort notifications by creation date (newest first)
   const sortedNotifications = useMemo(() => {
     return [...items].sort((a, b) => 
@@ -86,71 +55,15 @@ export default function NotificationsPage() {
     setLoading(false);
   }, [authReady, userId, router, sortedNotifications]);
 
-  // Listen for FCM token (from PWA Builder app) so user can copy it for Firebase "Send test message"
-  useEffect(() => {
-    const stored = (window as unknown as { __FCM_TOKEN?: string }).__FCM_TOKEN;
-    if (stored) setFcmToken(stored);
-    const onToken = (e: Event) => {
-      setFcmToken((e as CustomEvent<string>).detail);
-      setLastTokenEventAt(new Date().toISOString());
-    };
-    window.addEventListener("fcm-token-available", onToken);
-    return () => window.removeEventListener("fcm-token-available", onToken);
-  }, []);
-
-  // Re-register push token when visiting this page (fixes 401 when token wasn't ready earlier)
-  const registerPushWithBackend = useCallback(async () => {
-    const token = (window as unknown as { __FCM_TOKEN?: string }).__FCM_TOKEN;
-    const jwt = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (!token || !jwt) {
-      setRegisterPushStatus("error");
-      return;
-    }
-    setRegisterPushStatus("loading");
+  const handleMarkAllRead = async () => {
     try {
-      const ua = navigator.userAgent.toLowerCase();
-      const platform = /android/.test(ua) ? "android" : /iphone|ipad|ipod/.test(ua) ? "ios" : "web";
-      await axiosInstance.post(
-        "register-push/",
-        { fcm_token: token, platform },
-        {
-          // Explicit auth header to avoid interceptor timing issues
-          headers: { Authorization: `Bearer ${jwt}` },
-        }
-      );
-      setRegisterPushStatus("success");
+      await axiosInstance.patch("/notifications/mark-read/", {
+        notification_id: null,
+      });
     } catch {
-      setRegisterPushStatus("error");
+      /* still update local UI */
     }
-  }, []);
-
-  useEffect(() => {
-    if (fcmToken && userId) registerPushWithBackend();
-  }, [fcmToken, userId, registerPushWithBackend]);
-
-  const handleMarkAllRead = () => {
     markAllRead();
-  };
-
-  const handleCopyFcmToken = () => {
-    if (fcmToken) {
-      navigator.clipboard.writeText(fcmToken);
-      setTokenCopied(true);
-      setTimeout(() => setTokenCopied(false), 2000);
-    }
-  };
-
-  // Test in-app notification (simulates push from PWA Builder / FCM) — for checking web & Android
-  const handleTestInAppNotification = () => {
-    const payload = {
-      title: "Test notification",
-      body: "If you see this, in-app notifications are working.",
-      type: "system",
-      url: "/notifications",
-    };
-    window.dispatchEvent(
-      new CustomEvent("push-notification", { detail: JSON.stringify(payload) })
-    );
   };
 
   const getNotificationIcon = (type: string) => {
@@ -242,83 +155,6 @@ export default function NotificationsPage() {
           </div>
         </div>
 
-        {/* Debug banner for FCM token status (temporary) */}
-        <div className="mb-6 rounded-lg border p-4 bg-white/80">
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge className={fcmToken ? "bg-green-600" : "bg-red-600"}>
-              {fcmToken ? "FCM Token: Present" : "FCM Token: Missing"}
-            </Badge>
-            <span className="text-sm text-gray-600">
-              Register push: {registerPushStatus}
-            </span>
-            {lastTokenEventAt && (
-              <span className="text-sm text-gray-500">
-                Token event: {new Date(lastTokenEventAt).toLocaleString()}
-              </span>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopyFcmToken}
-              disabled={!fcmToken}
-            >
-              {tokenCopied ? "Copied" : "Copy FCM token"}
-            </Button>
-          </div>
-          {!fcmToken && (
-            <p className="mt-2 text-sm text-gray-500">
-              Token missing in iOS app means the native wrapper did not register for push.
-              Check iOS build (Push Notifications capability, Background Modes, and GoogleService-Info.plist).
-            </p>
-          )}
-        </div>
-
-        {/* Test in-app notification & FCM token (for Firebase "Send test message") */}
-        <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
-          {fcmToken && (
-            <Card className="flex-1 min-w-0 max-w-2xl">
-              <CardContent className="p-3">
-                <p className="text-xs font-medium text-gray-600 mb-1">
-                  FCM token (paste into Firebase → Send test message):
-                </p>
-                <div className="flex flex-wrap gap-2 items-center">
-                  <code className="flex-1 min-w-0 truncate text-xs bg-gray-100 px-2 py-1 rounded">
-                    {fcmToken}
-                  </code>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCopyFcmToken}
-                    className="shrink-0"
-                  >
-                    {tokenCopied ? "Copied!" : "Copy"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={registerPushWithBackend}
-                    disabled={registerPushStatus === "loading"}
-                    className="shrink-0"
-                  >
-                    {registerPushStatus === "loading" ? "..." : registerPushStatus === "success" ? "✓ Registered" : "Retry register"}
-                  </Button>
-                </div>
-                {registerPushStatus === "error" && (
-                  <p className="text-xs text-red-600 mt-1">Sign in again and retry, or check backend.</p>
-                )}
-              </CardContent>
-            </Card>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleTestInAppNotification}
-            className="text-gray-600 border-gray-300"
-          >
-            Test in-app notification
-          </Button>
-        </div>
-
         {/* Notifications List */}
         <div className="space-y-4">
           {allNotifications.length === 0 ? (
@@ -329,9 +165,6 @@ export default function NotificationsPage() {
                 <p className="text-gray-500 mb-4">
                   You'll see notifications for new bids, messages, and updates here.
                 </p>
-                <Button variant="outline" onClick={handleTestInAppNotification}>
-                  Test in-app notification
-                </Button>
               </CardContent>
             </Card>
           ) : (
