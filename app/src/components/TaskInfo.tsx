@@ -398,6 +398,9 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
     .map((image, index) => ({ image, index }))
     .filter(({ image }) => isRealTaskImage(image));
 
+  const photoThumbRing =
+    "ring-2 ring-slate-200/90 hover:ring-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-shadow shadow-sm";
+
   return (
     <Card className="bg-white/95 backdrop-blur-sm border border-slate-200/60 shadow-sm rounded-2xl overflow-hidden">
       <CardHeader className="border-b border-slate-100 bg-gradient-to-b from-slate-50/90 to-white p-4 md:p-5">
@@ -434,6 +437,7 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
 
         <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 rounded-xl border border-slate-200/70 bg-white p-3.5 shadow-sm space-y-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Poster</p>
             <div className="flex gap-3">
               {task.poster?.id ? (
                 <Link
@@ -456,7 +460,6 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Posted by</p>
                 {task.poster?.id ? (
                   <Link
                     href={`/profilepage/${task.poster.id}`}
@@ -524,7 +527,7 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
               </div>
               <div className="min-w-0 flex-1 flex flex-wrap items-baseline justify-between gap-2">
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">To be done</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">To be done</p>
                   <p className="text-sm font-semibold text-slate-900">{task.dueDate || "Flexible"}</p>
                 </div>
                 {(() => {
@@ -550,8 +553,8 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
           </div>
 
           {!isEditing && (
-            <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 shrink-0 w-full sm:w-auto justify-between sm:justify-start">
-              <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-col gap-4 w-full sm:w-auto sm:max-w-[220px] sm:shrink-0 sm:items-end">
+              <div className="flex flex-col items-start gap-2 sm:items-end w-full">
                 <Badge
                   variant={displayStatus === "in_progress" ? "default" : "outline"}
                   className={`px-2.5 py-1 text-xs font-semibold rounded-full border-0 ${
@@ -589,7 +592,7 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
                     variant="outline"
                     size="sm"
                     onClick={() => router.push("/payments")}
-                    className="h-7 px-2.5 text-[11px] bg-amber-50 border-amber-200 hover:bg-amber-100 text-amber-900 font-medium"
+                    className="h-7 px-2.5 text-[11px] bg-amber-50 border-amber-200 hover:bg-amber-100 text-amber-900 font-medium sm:self-end"
                   >
                     Complete payment
                   </Button>
@@ -597,27 +600,67 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
               </div>
 
               {realImageEntries.length > 0 ? (
-                <div className="flex flex-col items-end gap-1.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700/90">Photos</p>
-                  <div className="grid grid-cols-2 gap-1.5 w-[104px] sm:w-[112px]">
-                    {realImageEntries.slice(0, 4).map(({ image, index }) => (
-                      <button
-                        key={image.id}
-                        type="button"
-                        onClick={() => openImageGallery(index)}
-                        className="relative aspect-square rounded-lg overflow-hidden ring-2 ring-emerald-200/90 hover:ring-emerald-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-shadow shadow-sm"
-                        aria-label={`Open photo ${index + 1}`}
-                      >
-                        <Image
-                          src={image.url}
-                          alt={image.alt}
-                          fill
-                          sizes="56px"
-                          className="object-cover"
-                        />
-                      </button>
-                    ))}
-                  </div>
+                <div className="flex flex-col gap-1.5 w-full sm:items-end sm:w-auto">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 sm:text-right">
+                    Photos
+                  </p>
+                  {realImageEntries.length === 1 ? (
+                    <button
+                      key={realImageEntries[0].image.id}
+                      type="button"
+                      onClick={() => openImageGallery(realImageEntries[0].index)}
+                      className={`relative w-full max-w-[min(100%,260px)] aspect-[4/3] overflow-hidden rounded-xl ${photoThumbRing} sm:max-w-[200px] sm:self-end`}
+                      aria-label="Open photo 1"
+                    >
+                      <Image
+                        src={realImageEntries[0].image.url}
+                        alt={realImageEntries[0].image.alt}
+                        fill
+                        sizes="(max-width:640px) 260px, 200px"
+                        className="object-cover"
+                      />
+                    </button>
+                  ) : realImageEntries.length === 2 ? (
+                    <div className="flex gap-1.5 w-full max-w-[min(100%,260px)] sm:w-[112px] sm:max-w-none sm:self-end">
+                      {realImageEntries.slice(0, 2).map(({ image, index }) => (
+                        <button
+                          key={image.id}
+                          type="button"
+                          onClick={() => openImageGallery(index)}
+                          className={`relative flex-1 aspect-square min-w-0 overflow-hidden rounded-lg ${photoThumbRing}`}
+                          aria-label={`Open photo ${index + 1}`}
+                        >
+                          <Image
+                            src={image.url}
+                            alt={image.alt}
+                            fill
+                            sizes="(max-width:640px) 130px, 56px"
+                            className="object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-1.5 w-full max-w-[min(100%,260px)] sm:w-[112px] sm:max-w-none sm:self-end">
+                      {realImageEntries.slice(0, 4).map(({ image, index }) => (
+                        <button
+                          key={image.id}
+                          type="button"
+                          onClick={() => openImageGallery(index)}
+                          className={`relative aspect-square overflow-hidden rounded-lg ${photoThumbRing}`}
+                          aria-label={`Open photo ${index + 1}`}
+                        >
+                          <Image
+                            src={image.url}
+                            alt={image.alt}
+                            fill
+                            sizes="56px"
+                            className="object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ) : null}
             </div>
