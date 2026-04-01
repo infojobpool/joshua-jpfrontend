@@ -137,10 +137,11 @@
 
 
 "use client";
+import type { ReactNode } from "react";
 import { Calendar, IndianRupee, MapPin, SquarePen } from "lucide-react";
-import { TaskLocationMap } from "@/components/TaskLocationMap";
+import Image from "next/image";
 import { Button } from "./ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
@@ -201,6 +202,8 @@ interface TaskInfoProps {
   /** From parent - avoids flicker; only show payment pending after async API check */
   isPaymentPending?: boolean;
   paymentCheckDone?: boolean;
+  /** Rendered directly under the description (e.g. offers section). */
+  afterDescription?: ReactNode;
 }
 
 function formatPostedAgo(iso: string | undefined, fallback: string): string {
@@ -234,7 +237,7 @@ function isRealTaskImage(img: Image | undefined): boolean {
   );
 }
 
-export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPoster, isEditing = false, setIsEditing, isPaymentPending: parentPaymentPending, paymentCheckDone }: TaskInfoProps) {
+export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPoster, isEditing = false, setIsEditing, isPaymentPending: parentPaymentPending, paymentCheckDone, afterDescription }: TaskInfoProps) {
   const router = useRouter();
   const [formData, setFormData] = useState({
     title: task.title,
@@ -357,119 +360,158 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
     setImages([]);
   };
 
+  const realImageEntries = task.images
+    .map((image, index) => ({ image, index }))
+    .filter(({ image }) => isRealTaskImage(image));
+
   return (
-    <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 rounded-xl overflow-hidden">
-      <CardHeader className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b border-gray-100/50 p-4">
-        <div className="flex justify-between items-start">
-          <div className="space-y-2">
+    <Card className="bg-white/95 backdrop-blur-sm border border-slate-200/60 shadow-sm rounded-2xl overflow-hidden">
+      <CardHeader className="border-b border-slate-100 bg-gradient-to-b from-slate-50/90 to-white p-4 md:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
             {isEditing && isTaskPoster ? (
               <Input
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
                 placeholder="Task Title"
-                className="text-xl font-bold bg-white/80 border-2 border-blue-200 focus:border-blue-400 rounded-lg px-3 py-2"
+                className="text-xl font-bold bg-white border border-slate-200 focus:border-emerald-400 rounded-xl px-3 py-2"
               />
             ) : (
-              <CardTitle className="task-title text-2xl md:text-3xl lg:text-4xl text-slate-900 leading-tight">
+              <CardTitle className="task-title text-xl sm:text-2xl md:text-3xl text-slate-900 leading-snug font-semibold tracking-tight pr-1">
                 {task.title}
               </CardTitle>
             )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {isTaskPoster && !isEditing && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleEditClick}
+                className="text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg p-2"
+                aria-label="Edit task"
+              >
+                <SquarePen className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
 
-            <div className="mt-3 rounded-xl border border-slate-200/80 bg-slate-50/90 p-3 space-y-3">
-              <div className="flex gap-3">
-                <div className="h-10 w-10 shrink-0 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm">
-                  {task.poster?.avatar ? (
-                    <img src={task.poster.avatar} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-sm font-semibold text-slate-600">{task.poster?.name?.charAt(0) || "?"}</span>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Posted by</p>
-                  <p className="text-sm font-semibold text-slate-900 truncate">{task.poster?.name || "Unknown"}</p>
-                  <p className="text-xs text-slate-600 mt-1">
-                    <span className="text-slate-500 font-medium">Posted on</span>{" "}
-                    {formatCalendarDateFromIso((task as { postedAtISO?: string }).postedAtISO, task.postedAt)}
-                    {(() => {
-                      const iso = (task as { postedAtISO?: string }).postedAtISO;
-                      if (!iso) return null;
-                      const diff = Date.now() - new Date(iso).getTime();
-                      if (diff < 0 || diff >= 604800000) return null;
-                      const rel = formatPostedAgo(iso, "");
-                      return rel ? <span className="text-slate-400"> · {rel}</span> : null;
-                    })()}
-                  </p>
-                </div>
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1 rounded-xl border border-slate-200/70 bg-white p-3.5 shadow-sm space-y-3">
+            <div className="flex gap-3">
+              <div className="h-11 w-11 shrink-0 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm">
+                {task.poster?.avatar ? (
+                  <img src={task.poster.avatar} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-sm font-semibold text-slate-600">{task.poster?.name?.charAt(0) || "?"}</span>
+                )}
               </div>
-              <div className="flex gap-3 pt-2 border-t border-slate-200/70">
-                <div className="h-10 w-10 shrink-0 rounded-lg bg-white border border-slate-200/80 flex items-center justify-center">
-                  <Calendar className="h-5 w-5 text-slate-500" aria-hidden />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">To be done</p>
-                  <p className="text-sm font-semibold text-slate-900">{task.dueDate || "Flexible"}</p>
-                </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Posted by</p>
+                <p className="text-sm font-semibold text-slate-900 truncate">{task.poster?.name || "Unknown"}</p>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  <span className="text-slate-500">Posted on</span>{" "}
+                  {formatCalendarDateFromIso((task as { postedAtISO?: string }).postedAtISO, task.postedAt)}
+                  {(() => {
+                    const iso = (task as { postedAtISO?: string }).postedAtISO;
+                    if (!iso) return null;
+                    const diff = Date.now() - new Date(iso).getTime();
+                    if (diff < 0 || diff >= 604800000) return null;
+                    const rel = formatPostedAgo(iso, "");
+                    return rel ? <span className="text-slate-400"> · {rel}</span> : null;
+                  })()}
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 flex-wrap min-h-[32px] mt-2">
-              <Badge 
-                variant={displayStatus === "in_progress" ? "default" : "outline"}
-                className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                  displayStatus === "pending_payment"
-                    ? "bg-gradient-to-r from-yellow-400 to-amber-500 text-white shadow-md border border-yellow-300"
-                    : displayStatus === "in_progress"
-                    ? "bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md"
-                    : displayStatus === "completed"
-                    ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md"
-                    : displayStatus === "deleted"
-                    ? "bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md"
-                    : displayStatus === "canceled"
-                    ? "bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-md"
-                    : displayStatus === "requested"
-                    ? "bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-md"
-                    : "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border-blue-200"
-                }`}
-              >
-                {displayStatus === "pending_payment"
-                  ? "⏳ Pending Payment"
-                  : displayStatus === "in_progress" 
-                  ? "🚀 In Progress" 
-                  : displayStatus === "completed"
-                  ? "✅ Completed"
-                  : displayStatus === "deleted"
-                  ? "🗑️ Deleted"
-                  : displayStatus === "canceled"
-                  ? "❌ Canceled"
-                  : displayStatus === "requested"
-                  ? "📝 Requested"
-                  : "📋 Open"}
-              </Badge>
-              {isPaymentPending && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => router.push("/payments")}
-                  className="h-6 px-3 text-xs bg-yellow-50 border-yellow-300 hover:bg-yellow-100 text-yellow-700 font-semibold"
-                >
-                  💳 Complete Payment
-                </Button>
-              )}
+            <div className="flex gap-3 pt-2 border-t border-slate-100">
+              <div className="h-9 w-9 shrink-0 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                <Calendar className="h-4 w-4 text-emerald-700" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">To be done</p>
+                <p className="text-sm font-semibold text-slate-900">{task.dueDate || "Flexible"}</p>
+              </div>
             </div>
           </div>
-          {isTaskPoster && !isEditing && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleEditClick}
-              className="text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg p-2 transition-all duration-200"
-            >
-              <SquarePen className="h-4 w-4" />
-            </Button>
+
+          {!isEditing && (
+            <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 shrink-0 w-full sm:w-auto justify-between sm:justify-start">
+              <div className="flex flex-col items-end gap-2">
+                <Badge
+                  variant={displayStatus === "in_progress" ? "default" : "outline"}
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-full border-0 ${
+                    displayStatus === "pending_payment"
+                      ? "bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-sm"
+                      : displayStatus === "in_progress"
+                        ? "bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-sm"
+                        : displayStatus === "completed"
+                          ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-sm"
+                          : displayStatus === "deleted"
+                            ? "bg-red-600 text-white shadow-sm"
+                            : displayStatus === "canceled"
+                              ? "bg-orange-500 text-white shadow-sm"
+                              : displayStatus === "requested"
+                                ? "bg-violet-600 text-white shadow-sm"
+                                : "bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-200/80"
+                  }`}
+                >
+                  {displayStatus === "pending_payment"
+                    ? "Pending payment"
+                    : displayStatus === "in_progress"
+                      ? "In progress"
+                      : displayStatus === "completed"
+                        ? "Completed"
+                        : displayStatus === "deleted"
+                          ? "Deleted"
+                          : displayStatus === "canceled"
+                            ? "Canceled"
+                            : displayStatus === "requested"
+                              ? "Requested"
+                              : "Open"}
+                </Badge>
+                {isPaymentPending && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push("/payments")}
+                    className="h-7 px-2.5 text-[11px] bg-amber-50 border-amber-200 hover:bg-amber-100 text-amber-900 font-medium"
+                  >
+                    Complete payment
+                  </Button>
+                )}
+              </div>
+
+              {realImageEntries.length > 0 ? (
+                <div className="flex flex-col items-end gap-1.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700/90">Photos</p>
+                  <div className="grid grid-cols-2 gap-1.5 w-[104px] sm:w-[112px]">
+                    {realImageEntries.slice(0, 4).map(({ image, index }) => (
+                      <button
+                        key={image.id}
+                        type="button"
+                        onClick={() => openImageGallery(index)}
+                        className="relative aspect-square rounded-lg overflow-hidden ring-2 ring-emerald-200/90 hover:ring-emerald-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-shadow shadow-sm"
+                        aria-label={`Open photo ${index + 1}`}
+                      >
+                        <Image
+                          src={image.url}
+                          alt={image.alt}
+                          fill
+                          sizes="56px"
+                          className="object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
           )}
         </div>
       </CardHeader>
-      <CardContent className="p-4 space-y-4">
+      <CardContent className="p-4 md:p-5 space-y-4">
         {/* Image upload when editing */}
         {isEditing && isTaskPoster && (
           <div className="bg-blue-50/80 rounded-lg p-2 border border-blue-200/50">
@@ -489,45 +531,32 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
 
         {/* Description Section */}
         <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-            <div className="p-1 rounded bg-blue-100">
-              <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-            </div>
+            </span>
             Description
           </h3>
-          <div className="bg-gray-50/80 rounded-lg p-3 border border-gray-200/50">
+          <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3.5 md:p-4">
             {isEditing && isTaskPoster ? (
               <Textarea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
                 placeholder="Task Description"
-                className="min-h-[80px] border-blue-200 focus:border-blue-400 bg-white/80 text-sm"
+                className="min-h-[80px] border-slate-200 focus:border-emerald-400 bg-white text-sm rounded-lg"
               />
             ) : (
-              <p className="text-gray-700 leading-relaxed text-sm">{task.description}</p>
+              <p className="text-slate-700 leading-relaxed text-sm">{task.description}</p>
             )}
           </div>
-          {!isEditing && task.images.some(isRealTaskImage) ? (
-            <button
-              type="button"
-              onClick={() => {
-                const i = task.images.findIndex(isRealTaskImage);
-                if (i >= 0) openImageGallery(i);
-              }}
-              className="text-sm font-medium text-blue-600 hover:text-blue-700 underline-offset-2 hover:underline"
-            >
-              View{" "}
-              {task.images.filter(isRealTaskImage).length === 1
-                ? "photo"
-                : `${task.images.filter(isRealTaskImage).length} photos`}
-            </button>
-          ) : null}
         </div>
 
-        {/* Task Details Grid - Due date lives in header when viewing; keep due input here only while editing */}
+        {afterDescription ? <div className="space-y-2">{afterDescription}</div> : null}
+
+        {/* Task details — category (due date in header when viewing) */}
         <div className="grid grid-cols-2 gap-3">
           {/* Budget - only when editing; otherwise shown in OffersSection */}
           {isEditing && isTaskPoster && (
@@ -612,20 +641,6 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
             )}
           </div>
         </div>
-
-        {/* Task location map - full-width, prominent, no auto-open */}
-        {!isEditing && task.latitude != null && task.longitude != null && (
-          <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-slate-600">
-            <TaskLocationMap
-              latitude={task.latitude}
-              longitude={task.longitude}
-              location={task.location}
-              height={220}
-              variant="detail"
-              className="w-full"
-            />
-          </div>
-        )}
       </CardContent>
       {isEditing && isTaskPoster && (
         <CardFooter className="bg-gradient-to-r from-gray-50 to-blue-50/50 border-t border-gray-200/50 p-3">

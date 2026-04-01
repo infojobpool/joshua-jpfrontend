@@ -136,15 +136,16 @@ export function PosterInfo({ poster, isTaskPoster, handleMessageUser, isPaymentP
   return (
     <div className="bg-white/90 backdrop-blur-sm border-0 shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border-b border-gray-100/50 p-3">
-        <h2 className="text-sm font-bold bg-gradient-to-r from-gray-900 via-indigo-900 to-purple-900 bg-clip-text text-transparent flex items-center gap-1.5">
-          <div className="p-1 rounded bg-indigo-100">
-            <svg className="w-3 h-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="bg-gradient-to-r from-slate-50 to-emerald-50/40 border-b border-slate-100 p-3">
+        <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+          <div className="p-1 rounded-md bg-emerald-100">
+            <svg className="w-3 h-3 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           </div>
-          Posted By
+          Profile & contact
         </h2>
+        <p className="text-[11px] text-slate-500 mt-1 pl-0.5">Ratings, activity, and message</p>
       </div>
 
       {/* Content */}

@@ -7,6 +7,7 @@ import { PosterInfo } from "@/components/PosterInfo";
 import { CompletionReviewModal } from "@/components/CompletionReviewModal";
 import { SafetyTips } from "@/components/SafetyTips";
 import { TaskInfo } from "@/components/TaskInfo";
+import { TaskLocationMap } from "@/components/TaskLocationMap";
 import { Toaster } from "@/components/ui/sonner";
 import axiosInstance from "@/lib/axiosInstance";
 import { jobIdVariants } from "@/lib/jobIdVariants";
@@ -1976,6 +1977,28 @@ export default function TaskDetailPage() {
               setIsEditing={setIsEditing}
               isPaymentPending={isPaymentPending}
               paymentCheckDone={paymentCheckDone}
+              afterDescription={
+                <OffersSection
+                  task={task}
+                  offers={offers}
+                  isTaskPoster={isTaskPoster}
+                  hasSubmittedOffer={hasSubmittedOffer}
+                  handleSubmitOffer={handleSubmitOffer}
+                  handleMessageUser={handleMessageUser}
+                  offerAmount={offerAmount}
+                  setOfferAmount={setOfferAmount}
+                  offerMessage={offerMessage}
+                  setOfferMessage={setOfferMessage}
+                  isSubmitting={isSubmitting}
+                  currentUserId={userId}
+                  blockSubmitInitial={!isTaskPoster && (task.status === "in_progress" || !!task.assignedTasker)}
+                  isVerified={isVerified}
+                  verificationChecked={verificationChecked}
+                  isPaymentPending={isPaymentPending}
+                  paymentCheckDone={paymentCheckDone}
+                  bidsLoading={bidsLoading}
+                />
+              }
             />
             {/* Completion controls — backend must set job_completion_status = 1 only when BOTH tasker_completed and taskmaster_completed are true */}
             <div className="mt-4 space-y-2">
@@ -2032,28 +2055,8 @@ export default function TaskDetailPage() {
                 </Button>
               </div>
             )}
-            <OffersSection
-              task={task}
-              offers={offers}
-              isTaskPoster={isTaskPoster}
-              hasSubmittedOffer={hasSubmittedOffer}
-              handleSubmitOffer={handleSubmitOffer}
-              handleMessageUser={handleMessageUser}
-              offerAmount={offerAmount}
-              setOfferAmount={setOfferAmount}
-              offerMessage={offerMessage}
-              setOfferMessage={setOfferMessage}
-              isSubmitting={isSubmitting}
-              currentUserId={userId}
-              blockSubmitInitial={!isTaskPoster && (task.status === "in_progress" || !!task.assignedTasker)}
-              isVerified={isVerified}
-              verificationChecked={verificationChecked}
-              isPaymentPending={isPaymentPending}
-              paymentCheckDone={paymentCheckDone}
-              bidsLoading={bidsLoading}
-            />
           </div>
-          
+
           {/* Sidebar - Right Column */}
           <div className="space-y-6">
             <PosterInfo
@@ -2065,6 +2068,19 @@ export default function TaskDetailPage() {
             <SafetyTips />
           </div>
         </div>
+
+        {!isEditing && task.latitude != null && task.longitude != null && (
+          <div className="mt-6 rounded-2xl border border-slate-200/70 bg-white/95 shadow-sm overflow-hidden">
+            <TaskLocationMap
+              latitude={task.latitude}
+              longitude={task.longitude}
+              location={task.location}
+              height={260}
+              variant="detail"
+              className="w-full"
+            />
+          </div>
+        )}
       </main>
 
       <PaymentModal
