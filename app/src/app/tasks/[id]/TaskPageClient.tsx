@@ -3,11 +3,10 @@
 import { ImageGalleryModal } from "@/components/ImageGalleryModal";
 import { OffersSection } from "@/components/OffersSection";
 import { PaymentModal } from "@/components/PaymentModal";
-import { PosterInfo } from "@/components/PosterInfo";
 import { CompletionReviewModal } from "@/components/CompletionReviewModal";
 import { SafetyTips } from "@/components/SafetyTips";
 import { TaskInfo } from "@/components/TaskInfo";
-import { TaskLocationMap } from "@/components/TaskLocationMap";
+import { ExpandableTaskLocationSection } from "@/components/TaskLocationMap";
 import { Toaster } from "@/components/ui/sonner";
 import axiosInstance from "@/lib/axiosInstance";
 import { jobIdVariants } from "@/lib/jobIdVariants";
@@ -2057,29 +2056,19 @@ export default function TaskDetailPage() {
             )}
           </div>
 
-          {/* Sidebar - Right Column */}
+          {/* Sidebar: safety only — poster stats & message live in TaskInfo */}
           <div className="space-y-6">
-            <PosterInfo
-              poster={task.poster}
-              isTaskPoster={isTaskPoster}
-              handleMessageUser={handleMessageUser}
-              isPaymentPending={isPaymentPending}
-            />
             <SafetyTips />
           </div>
         </div>
 
         {!isEditing && task.latitude != null && task.longitude != null && (
-          <div className="mt-6 rounded-2xl border border-slate-200/70 bg-white/95 shadow-sm overflow-hidden">
-            <TaskLocationMap
-              latitude={task.latitude}
-              longitude={task.longitude}
-              location={task.location}
-              height={260}
-              variant="detail"
-              className="w-full"
-            />
-          </div>
+          <ExpandableTaskLocationSection
+            className="mt-6 w-full"
+            latitude={task.latitude}
+            longitude={task.longitude}
+            location={task.location}
+          />
         )}
       </main>
 

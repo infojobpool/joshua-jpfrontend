@@ -763,12 +763,12 @@ export function OffersSection({
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="border border-slate-200/80 shadow-sm rounded-2xl bg-white/95 overflow-hidden">
+      <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-emerald-50/20 pb-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <CardTitle>Offers ({offers.length})</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-lg font-semibold text-slate-900">Offers ({offers.length})</CardTitle>
+            <CardDescription className="text-slate-600 text-sm mt-1">
           {isTaskPoster
             ? "Choose the best offer for your task"
             : hasSubmittedOffer
@@ -778,7 +778,7 @@ export function OffersSection({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 pt-5">
         {visibleOffers.length === 0 ? (
           bidsLoading ? (
             <div className="space-y-3 py-4">
@@ -809,45 +809,45 @@ export function OffersSection({
           )
         ) : (
           visibleOffers.map((offer) => (
-            <div key={offer.id} className="rounded-2xl border-0 shadow-sm hover:shadow-md transition-all duration-200 p-4 md:p-5 bg-white">
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-3">
+            <div key={offer.id} className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden hover:border-slate-300/80 transition-colors">
+              <div className="p-4 md:p-5 space-y-4">
+              <div className="flex justify-between items-start gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <Link
                     href={`/profilepage/${offer.tasker.id}`}
-                    className="flex items-center gap-3 hover:underline"
+                    className="flex items-center gap-3 min-w-0 hover:opacity-90"
                   >
-                    <Avatar className="h-9 w-9">
-                      <AvatarFallback>
+                    <Avatar className="h-10 w-10 shrink-0 ring-2 ring-slate-100">
+                      <AvatarFallback className="text-sm font-semibold">
                         {offer.tasker.name.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <p className="font-medium leading-none">{offer.tasker.name}</p>
-                      <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                        <span>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900 leading-tight truncate">{offer.tasker.name}</p>
+                      <div className="mt-1 flex items-center gap-1 text-xs text-slate-500">
+                        <Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0" />
+                        <span className="truncate">
                           {taskerReviewStats[offer.tasker.id]?.count != null && taskerReviewStats[offer.tasker.id].count > 0
                             ? `${taskerReviewStats[offer.tasker.id].average.toFixed(1)} ★ (${taskerReviewStats[offer.tasker.id].count} reviews)`
                             : (offer.tasker.rating != null && offer.tasker.rating > 0)
                               ? `${offer.tasker.rating} ★`
-                              : "New User"}
+                              : "New user"}
                           {offer.tasker.taskCount != null && offer.tasker.taskCount > 0 && (
-                            <> • {offer.tasker.taskCount} tasks</>
+                            <> · {offer.tasker.taskCount} tasks</>
                           )}
                         </span>
                       </div>
                     </div>
                   </Link>
                 </div>
-                <div className="text-right">
-                  {/* Show amount only for task poster or if it's the current user's offer */}
+                <div className="text-right shrink-0">
                   {(isTaskPoster || (currentUserId && offer.tasker.id === currentUserId)) && (
-                    <p className="font-bold text-gray-900">
-                      <IndianRupee className="w-4 h-4 inline" />{" "}
+                    <p className="font-bold text-slate-900 text-base tabular-nums">
+                      <IndianRupee className="w-4 h-4 inline opacity-70" />{" "}
                       {offer.amount.toFixed(2)}
                     </p>
                   )}
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[11px] text-slate-400 mt-0.5">
                     {(() => {
                       try {
                         return new Date(offer.createdAt).toLocaleString("en-GB", {
@@ -864,30 +864,32 @@ export function OffersSection({
                   </p>
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-700">{offer.message}</p>
-                {(offer.status === "accepted" || (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) || (selectedFromSession && selectedFromSession === offer.tasker.id)) && (
-                  <div className="flex items-center gap-2">
+              <div className="rounded-xl border border-slate-200/80 bg-gradient-to-b from-slate-50/95 to-white px-4 py-3.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">What they said</p>
+                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words">{offer.message}</p>
+              </div>
+              {(offer.status === "accepted" || (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) || (selectedFromSession && selectedFromSession === offer.tasker.id)) && (
+                <div className="flex flex-wrap items-center justify-end gap-2">
                     {isPaymentPending && selectedFromSession === offer.tasker.id ? (
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="rounded-full bg-yellow-100 text-yellow-700 px-3 py-1 text-xs font-medium border border-yellow-300">
-                          ⏳ Pending Payment
+                      <div className="flex flex-col items-end gap-1 w-full sm:w-auto">
+                        <span className="rounded-full bg-amber-50 text-amber-800 px-3 py-1.5 text-xs font-semibold ring-1 ring-amber-200">
+                          Pending payment
                         </span>
                         <button
+                          type="button"
                           onClick={() => router.push("/payments")}
-                          className="text-xs text-blue-600 hover:text-blue-800 underline"
+                          className="text-xs font-medium text-emerald-700 hover:underline"
                         >
-                          Complete Payment
+                          Complete payment
                         </button>
                       </div>
                     ) : (
-                      <span className="rounded-full bg-green-100 text-green-700 px-3 py-1 text-xs font-medium">✓ Selected</span>
+                      <span className="rounded-full bg-emerald-50 text-emerald-800 px-3 py-1.5 text-xs font-semibold ring-1 ring-emerald-100">Selected</span>
                     )}
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
               {isTaskPoster && (
-                <div className="w-full flex flex-col sm:flex-row gap-2 mt-3">
+                <div className="w-full flex flex-col sm:flex-row gap-2">
                   {task.status !== "completed" && task.status !== "in_progress" && 
                    !((task.status === "in_progress" && isTaskPoster) || offer.status === "accepted" || 
                      (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) || 
@@ -913,6 +915,7 @@ export function OffersSection({
                   </Button>
                 </div>
               )}
+              </div>
             </div>
           ))
         )}
@@ -1036,42 +1039,46 @@ export function OffersSection({
               </Button>
             </div>
           ) : (
-            <form onSubmit={handleSubmitOffer} className="w-full space-y-4">
+            <form onSubmit={handleSubmitOffer} className="w-full space-y-5">
               <div className="space-y-2">
                 <label
                   htmlFor="offerAmount"
-                  className="flex items-center space-x-1"
+                  className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1"
                 >
-                  <span>Your Offer</span>
+                  <span>Your offer</span>
                   <IndianRupee className="w-3 h-3" />
                 </label>
                 <Input
                   id="offerAmount"
                   type="number"
-                  placeholder="e.g., 50"
+                  placeholder="e.g., 500"
                   value={offerAmount}
                   onChange={(e) => setOfferAmount(e.target.value)}
                   required
                   min="1"
                   disabled={!verificationChecked || !isVerified || isSubmitting}
+                  className="h-11 rounded-xl border-slate-200 text-base"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="offerMessage">Message</label>
+                <label htmlFor="offerMessage" className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Your message
+                </label>
                 <Textarea
                   id="offerMessage"
-                  placeholder="Introduce yourself and explain why you're a good fit for this task..."
+                  placeholder="Introduce yourself and why you’re a good fit — keep it friendly and clear."
                   value={offerMessage}
                   onChange={handleChange}
-                  rows={4}
+                  rows={5}
                   required
                   disabled={!verificationChecked || !isVerified || isSubmitting}
+                  className="min-h-[140px] rounded-xl border-slate-200 bg-slate-50/50 text-sm leading-relaxed resize-y focus:bg-white transition-colors"
                 />
-                {error && <p className="text-red-500 text-sm">{error}</p>}
+                {error && <p className="text-red-600 text-sm font-medium">{error}</p>}
               </div>
               <Button 
                 type="submit" 
-                className="w-full font-bold" 
+                className="w-full h-11 rounded-xl font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" 
                 disabled={!verificationChecked || !isVerified || isSubmitting}
               >
                 {isSubmitting ? "Submitting..." : !verificationChecked ? "Verifying..." : verificationChecked && !isVerified ? "Verification Required" : "Make an offer"}

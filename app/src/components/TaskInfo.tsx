@@ -138,7 +138,8 @@
 
 "use client";
 import type { ReactNode } from "react";
-import { Calendar, IndianRupee, MapPin, SquarePen } from "lucide-react";
+import Link from "next/link";
+import { Calendar, IndianRupee, MapPin, MessageSquare, SquarePen, Star } from "lucide-react";
 import Image from "next/image";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card";
@@ -190,6 +191,9 @@ interface User {
   rating: number;
   taskCount: number;
   joinedDate: string;
+  avatar?: string;
+  taskmasterAverageRating?: number | null;
+  taskmasterReviewCount?: number | null;
 }
 
 interface TaskInfoProps {
@@ -235,6 +239,36 @@ function isRealTaskImage(img: Image | undefined): boolean {
       !String(img.url).includes("placeholder.svg") &&
       !String(img.url).includes("placeholder.com")
   );
+}
+
+/** Parse task due label (e.g. DD/MM/YYYY) to local calendar date, or null if flexible / invalid. */
+function parseDueDateEndOfDay(due: string): Date | null {
+  const t = due?.trim();
+  if (!t || t === "Flexible" || t === "N/A") return null;
+  const m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) {
+    const d = parseInt(m[1], 10);
+    const mo = parseInt(m[2], 10) - 1;
+    const y = parseInt(m[3], 10);
+    const dt = new Date(y, mo, d);
+    return isNaN(dt.getTime()) ? null : dt;
+  }
+  const parsed = Date.parse(t);
+  if (!isNaN(parsed)) return new Date(parsed);
+  return null;
+}
+
+function daysLeftLabel(due: string): string | null {
+  const end = parseDueDateEndOfDay(due);
+  if (!end) return null;
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  const diff = Math.round((end.getTime() - start.getTime()) / 86400000);
+  if (diff < 0) return "Past due";
+  if (diff === 0) return "Due today";
+  if (diff === 1) return "1 day left";
+  return `${diff} days left`;
 }
 
 export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPoster, isEditing = false, setIsEditing, isPaymentPending: parentPaymentPending, paymentCheckDone, afterDescription }: TaskInfoProps) {
@@ -401,17 +435,51 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
         <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 rounded-xl border border-slate-200/70 bg-white p-3.5 shadow-sm space-y-3">
             <div className="flex gap-3">
-              <div className="h-11 w-11 shrink-0 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm">
-                {task.poster?.avatar ? (
-                  <img src={task.poster.avatar} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="text-sm font-semibold text-slate-600">{task.poster?.name?.charAt(0) || "?"}</span>
-                )}
-              </div>
+              {task.poster?.id ? (
+                <Link
+                  href={`/profilepage/${task.poster.id}`}
+                  className="h-11 w-11 shrink-0 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm hover:ring-emerald-200 transition-shadow"
+                >
+                  {task.poster?.avatar ? (
+                    <img src={task.poster.avatar} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-sm font-semibold text-slate-600">{task.poster?.name?.charAt(0) || "?"}</span>
+                  )}
+                </Link>
+              ) : (
+                <div className="h-11 w-11 shrink-0 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm">
+                  {task.poster?.avatar ? (
+                    <img src={task.poster.avatar} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-sm font-semibold text-slate-600">{task.poster?.name?.charAt(0) || "?"}</span>
+                  )}
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Posted by</p>
-                <p className="text-sm font-semibold text-slate-900 truncate">{task.poster?.name || "Unknown"}</p>
-                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                {task.poster?.id ? (
+                  <Link
+                    href={`/profilepage/${task.poster.id}`}
+                    className="text-sm font-semibold text-slate-900 truncate block hover:text-emerald-700"
+                  >
+                    {task.poster?.name || "Unknown"}
+                  </Link>
+                ) : (
+                  <p className="text-sm font-semibold text-slate-900 truncate">{task.poster?.name || "Unknown"}</p>
+                )}
+                <div className="mt-1 flex items-center gap-1 text-xs text-slate-600">
+                  <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" aria-hidden />
+                  <span>
+                    {task.poster?.taskmasterReviewCount != null &&
+                    task.poster.taskmasterReviewCount > 0 &&
+                    task.poster.taskmasterAverageRating != null
+                      ? `${Number(task.poster.taskmasterAverageRating).toFixed(1)} ★ (${task.poster.taskmasterReviewCount})`
+                      : task.poster?.rating != null && task.poster.rating > 0
+                        ? `${task.poster.rating} ★`
+                        : "New user"}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
                   <span className="text-slate-500">Posted on</span>{" "}
                   {formatCalendarDateFromIso((task as { postedAtISO?: string }).postedAtISO, task.postedAt)}
                   {(() => {
@@ -423,15 +491,60 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
                     return rel ? <span className="text-slate-400"> · {rel}</span> : null;
                   })()}
                 </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {task.poster?.taskCount != null && task.poster.taskCount !== undefined && (
+                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-700">
+                      {task.poster.taskCount} tasks posted
+                    </span>
+                  )}
+                  {task.poster?.joinedDate && String(task.poster.joinedDate).trim() !== "" && (
+                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-800 ring-1 ring-emerald-100">
+                      Joined {task.poster.joinedDate}
+                    </span>
+                  )}
+                </div>
+                {!isTaskPoster && !isEditing && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="mt-3 w-full h-9 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                    onClick={() => handleMessageUser(task.poster?.id)}
+                    disabled={isPaymentPending}
+                    title={isPaymentPending ? "Complete payment to enable messaging" : undefined}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5 mr-2 shrink-0" />
+                    {isPaymentPending ? "Message (complete payment)" : "Message poster"}
+                  </Button>
+                )}
               </div>
             </div>
-            <div className="flex gap-3 pt-2 border-t border-slate-100">
+            <div className="flex gap-3 pt-2 border-t border-slate-100 items-start">
               <div className="h-9 w-9 shrink-0 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center">
                 <Calendar className="h-4 w-4 text-emerald-700" aria-hidden />
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">To be done</p>
-                <p className="text-sm font-semibold text-slate-900">{task.dueDate || "Flexible"}</p>
+              <div className="min-w-0 flex-1 flex flex-wrap items-baseline justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">To be done</p>
+                  <p className="text-sm font-semibold text-slate-900">{task.dueDate || "Flexible"}</p>
+                </div>
+                {(() => {
+                  const left = daysLeftLabel(task.dueDate);
+                  if (!left) return null;
+                  const past = left === "Past due";
+                  return (
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                        past
+                          ? "bg-red-50 text-red-700 ring-1 ring-red-100"
+                          : left === "Due today"
+                            ? "bg-amber-50 text-amber-800 ring-1 ring-amber-100"
+                            : "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100"
+                      }`}
+                    >
+                      {left}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -556,50 +669,43 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
 
         {afterDescription ? <div className="space-y-2">{afterDescription}</div> : null}
 
-        {/* Task details — category (due date in header when viewing) */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* Budget - only when editing; otherwise shown in OffersSection */}
-          {isEditing && isTaskPoster && (
-            <>
-              <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-lg p-3 border border-emerald-200/50">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="p-1 rounded bg-emerald-100">
-                    <IndianRupee className="h-3 w-3 text-emerald-600" />
-                  </div>
-                  <h4 className="text-xs font-semibold text-gray-800">Budget</h4>
+        {isEditing && isTaskPoster && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-lg p-3 border border-emerald-200/50">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="p-1 rounded bg-emerald-100">
+                  <IndianRupee className="h-3 w-3 text-emerald-600" />
                 </div>
-                <Input
-                  name="budget"
-                  type="number"
-                  value={formData.budget}
-                  onChange={handleChange}
-                  placeholder="Budget"
-                  className="border-emerald-200 focus:border-emerald-400 bg-white/80 text-sm"
-                />
+                <h4 className="text-xs font-semibold text-gray-800">Budget</h4>
               </div>
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200/50">
-                <div className="flex items-center gap-2 mb-1">
-                  <MapPin className="h-3 w-3 text-blue-600" />
-                  <h4 className="text-xs font-semibold text-gray-800">Location</h4>
-                </div>
-                <Input
-                  name="location"
-                  value={formData.location}
-                  onChange={handleChange}
-                  placeholder="Location"
-                  className="border-blue-200 focus:border-blue-400 bg-white/80 text-sm"
-                />
+              <Input
+                name="budget"
+                type="number"
+                value={formData.budget}
+                onChange={handleChange}
+                placeholder="Budget"
+                className="border-emerald-200 focus:border-emerald-400 bg-white/80 text-sm"
+              />
+            </div>
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200/50">
+              <div className="flex items-center gap-2 mb-1">
+                <MapPin className="h-3 w-3 text-blue-600" />
+                <h4 className="text-xs font-semibold text-gray-800">Location</h4>
               </div>
-            </>
-          )}
-
-          {isEditing && isTaskPoster && (
-            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-3 border border-purple-200/50">
+              <Input
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                placeholder="Location"
+                className="border-blue-200 focus:border-blue-400 bg-white/80 text-sm"
+              />
+            </div>
+            <div className="col-span-2 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-3 border border-purple-200/50">
               <div className="flex items-center gap-2 mb-1">
                 <div className="p-1 rounded bg-purple-100">
                   <Calendar className="h-3 w-3 text-purple-600" />
                 </div>
-                <h4 className="text-xs font-semibold text-gray-800">Due Date</h4>
+                <h4 className="text-xs font-semibold text-gray-800">Due date</h4>
               </div>
               <Input
                 id="dueDate"
@@ -611,36 +717,8 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
                 className="w-full border-purple-200 focus:border-purple-400 bg-white/80 text-sm"
               />
             </div>
-          )}
-
-          {/* Category */}
-          <div
-            className={`bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-3 border border-orange-200/50 ${
-              !isEditing ? "col-span-2" : ""
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <div className="p-1 rounded bg-orange-100">
-                <svg className="w-3 h-3 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                </svg>
-              </div>
-              <h4 className="text-xs font-semibold text-gray-800">Category</h4>
-            </div>
-            {isEditing && isTaskPoster ? (
-              <Input
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                placeholder="Category"
-                disabled
-                className="border-orange-200 bg-orange-50/50 text-sm"
-              />
-            ) : (
-              <p className="text-sm font-medium text-orange-700">{task.category}</p>
-            )}
           </div>
-        </div>
+        )}
       </CardContent>
       {isEditing && isTaskPoster && (
         <CardFooter className="bg-gradient-to-r from-gray-50 to-blue-50/50 border-t border-gray-200/50 p-3">
