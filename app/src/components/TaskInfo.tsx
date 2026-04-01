@@ -137,9 +137,8 @@
 
 
 "use client";
-import { Calendar, Clock, IndianRupee, MapPin, MessageSquare, SquarePen } from "lucide-react";
+import { Calendar, IndianRupee, MapPin, SquarePen } from "lucide-react";
 import { TaskLocationMap } from "@/components/TaskLocationMap";
-import Image from "next/image";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -213,6 +212,26 @@ function formatPostedAgo(iso: string | undefined, fallback: string): string {
   if (diff < 86400000) return `about ${Math.floor(diff / 3600000)}h ago`;
   if (diff < 604800000) return `about ${Math.floor(diff / 86400000)}d ago`;
   return fallback;
+}
+
+/** Calendar date from ISO for a clear "Posted" line (avoids a second mystery date on the row). */
+function formatCalendarDateFromIso(iso: string | undefined, fallback: string): string {
+  if (!iso) return fallback;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return fallback;
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function isRealTaskImage(img: Image | undefined): boolean {
+  return Boolean(
+    img?.url &&
+      !String(img.url).includes("placeholder.svg") &&
+      !String(img.url).includes("placeholder.com")
+  );
 }
 
 export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPoster, isEditing = false, setIsEditing, isPaymentPending: parentPaymentPending, paymentCheckDone }: TaskInfoProps) {
@@ -357,70 +376,39 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
               </CardTitle>
             )}
 
-            {/* Photos directly under title — centered; skip API placeholder-only entries */}
-            {task.images.some(
-              (img) =>
-                img?.url &&
-                !String(img.url).includes("placeholder.svg") &&
-                !String(img.url).includes("placeholder.com")
-            ) && (
-              <div className="space-y-2 pt-1 w-full">
-                <h3 className="text-xs font-semibold text-gray-600 flex items-center justify-center gap-1.5 uppercase tracking-wide">
-                  <div className="p-1 rounded bg-purple-100">
-                    <svg className="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  Images
-                </h3>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-w-lg mx-auto w-full justify-items-stretch">
-                  {task.images.map((image, index) => ({ image, index })).filter(({ image }) =>
-                    image?.url &&
-                    !String(image.url).includes("placeholder.svg") &&
-                    !String(image.url).includes("placeholder.com")
-                  ).map(({ image, index }) => (
-                    <div
-                      key={image.id}
-                      className="aspect-square rounded-lg overflow-hidden border border-gray-200/50 cursor-pointer relative group hover:border-blue-300 transition-all duration-200 hover:shadow-md"
-                      onClick={() => openImageGallery(index)}
-                    >
-                      <Image
-                        src={image.url}
-                        alt={image.alt}
-                        fill
-                        sizes="(max-width: 768px) 33vw, 180px"
-                        className="object-cover object-center group-hover:scale-105 transition-transform duration-200"
-                      />
-                    </div>
-                  ))}
+            <div className="mt-3 rounded-xl border border-slate-200/80 bg-slate-50/90 p-3 space-y-3">
+              <div className="flex gap-3">
+                <div className="h-10 w-10 shrink-0 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm">
+                  {task.poster?.avatar ? (
+                    <img src={task.poster.avatar} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-sm font-semibold text-slate-600">{task.poster?.name?.charAt(0) || "?"}</span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Posted by</p>
+                  <p className="text-sm font-semibold text-slate-900 truncate">{task.poster?.name || "Unknown"}</p>
+                  <p className="text-xs text-slate-600 mt-1">
+                    <span className="text-slate-500 font-medium">Posted on</span>{" "}
+                    {formatCalendarDateFromIso((task as { postedAtISO?: string }).postedAtISO, task.postedAt)}
+                    {(() => {
+                      const iso = (task as { postedAtISO?: string }).postedAtISO;
+                      if (!iso) return null;
+                      const diff = Date.now() - new Date(iso).getTime();
+                      if (diff < 0 || diff >= 604800000) return null;
+                      const rel = formatPostedAgo(iso, "");
+                      return rel ? <span className="text-slate-400"> · {rel}</span> : null;
+                    })()}
+                  </p>
                 </div>
               </div>
-            )}
-
-            <div className="flex flex-col gap-2 mt-2">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 shrink-0">
-                  <div className="h-6 w-6 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden">
-                    {task.poster?.avatar ? (
-                      <img src={task.poster.avatar} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <span className="text-xs font-semibold text-slate-600">{task.poster?.name?.charAt(0) || "?"}</span>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Posted by</p>
-                    <p className="text-sm font-medium text-slate-900">{task.poster?.name || "Unknown"}</p>
-                  </div>
+              <div className="flex gap-3 pt-2 border-t border-slate-200/70">
+                <div className="h-10 w-10 shrink-0 rounded-lg bg-white border border-slate-200/80 flex items-center justify-center">
+                  <Calendar className="h-5 w-5 text-slate-500" aria-hidden />
                 </div>
-                <span className="text-xs text-gray-500 ml-auto">
-                  {formatPostedAgo((task as any).postedAtISO, task.postedAt)}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-slate-500 shrink-0" />
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">To be done on</p>
-                  <p className="text-sm font-medium text-slate-900">{task.dueDate || "Flexible"}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">To be done</p>
+                  <p className="text-sm font-semibold text-slate-900">{task.dueDate || "Flexible"}</p>
                 </div>
               </div>
             </div>
@@ -482,7 +470,7 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
         </div>
       </CardHeader>
       <CardContent className="p-4 space-y-4">
-        {/* Image upload when editing (thumbnails when present stay in header) */}
+        {/* Image upload when editing */}
         {isEditing && isTaskPoster && (
           <div className="bg-blue-50/80 rounded-lg p-2 border border-blue-200/50">
             <Label htmlFor="images" className="text-xs font-medium text-blue-800">
@@ -522,9 +510,24 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
               <p className="text-gray-700 leading-relaxed text-sm">{task.description}</p>
             )}
           </div>
+          {!isEditing && task.images.some(isRealTaskImage) ? (
+            <button
+              type="button"
+              onClick={() => {
+                const i = task.images.findIndex(isRealTaskImage);
+                if (i >= 0) openImageGallery(i);
+              }}
+              className="text-sm font-medium text-blue-600 hover:text-blue-700 underline-offset-2 hover:underline"
+            >
+              View{" "}
+              {task.images.filter(isRealTaskImage).length === 1
+                ? "photo"
+                : `${task.images.filter(isRealTaskImage).length} photos`}
+            </button>
+          ) : null}
         </div>
 
-        {/* Task Details Grid - Location removed (shown in header/filter) */}
+        {/* Task Details Grid - Due date lives in header when viewing; keep due input here only while editing */}
         <div className="grid grid-cols-2 gap-3">
           {/* Budget - only when editing; otherwise shown in OffersSection */}
           {isEditing && isTaskPoster && (
@@ -561,15 +564,14 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
             </>
           )}
 
-          {/* Due Date */}
-          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-3 border border-purple-200/50">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="p-1 rounded bg-purple-100">
-                <Calendar className="h-3 w-3 text-purple-600" />
+          {isEditing && isTaskPoster && (
+            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-3 border border-purple-200/50">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="p-1 rounded bg-purple-100">
+                  <Calendar className="h-3 w-3 text-purple-600" />
+                </div>
+                <h4 className="text-xs font-semibold text-gray-800">Due Date</h4>
               </div>
-              <h4 className="text-xs font-semibold text-gray-800">Due Date</h4>
-            </div>
-            {isEditing && isTaskPoster ? (
               <Input
                 id="dueDate"
                 name="dueDate"
@@ -579,13 +581,15 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
                 onChange={handleChange}
                 className="w-full border-purple-200 focus:border-purple-400 bg-white/80 text-sm"
               />
-            ) : (
-              <p className="text-sm font-medium text-purple-700">{task.dueDate}</p>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Category */}
-          <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-3 border border-orange-200/50">
+          <div
+            className={`bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-3 border border-orange-200/50 ${
+              !isEditing ? "col-span-2" : ""
+            }`}
+          >
             <div className="flex items-center gap-2 mb-1">
               <div className="p-1 rounded bg-orange-100">
                 <svg className="w-3 h-3 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
