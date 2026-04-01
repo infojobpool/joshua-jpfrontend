@@ -1,8 +1,10 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import Link from "next/link"
 import { Loader2, Save, Mail, Phone, MapPin, Building, Calendar } from "lucide-react"
+import useStore from "@/lib/Zustand"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -37,7 +39,12 @@ interface Notifications {
 }
 
 export default function AdminProfilePage() {
+  const checkAuth = useStore((s) => s.checkAuth)
+  const storeUser = useStore((s) => s.user)
+  const role = useStore((s) => s.role)
+
   const [admin, setAdmin] = useState<Admin | null>(null)
+  const [profileReady, setProfileReady] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string>("")
   const [notifications, setNotifications] = useState<Notifications>({
@@ -48,6 +55,60 @@ export default function AdminProfilePage() {
     systemAlerts: true,
     marketingEmails: false,
   })
+
+  useEffect(() => {
+    checkAuth()
+  }, [checkAuth])
+
+  useEffect(() => {
+    const name = storeUser?.name?.trim()
+    const email = storeUser?.email?.trim()
+    if (name || email) {
+      setAdmin({
+        id: 0,
+        name: name || "Admin",
+        email: email || "",
+        phone: "",
+        role: role?.trim() || "Admin",
+        avatar: "/images/placeholder.svg",
+        joinDate: new Date().toISOString().slice(0, 10),
+        address: "",
+        company: "",
+        bio: "",
+      })
+      setProfileReady(true)
+      return
+    }
+    if (typeof window === "undefined") return
+    try {
+      const raw = localStorage.getItem("user")
+      if (raw) {
+        const u = JSON.parse(raw) as {
+          user_fullname?: string
+          user_email?: string
+        }
+        const n = u.user_fullname?.trim()
+        const em = u.user_email?.trim()
+        if (n || em) {
+          setAdmin({
+            id: 0,
+            name: n || "Admin",
+            email: em || "",
+            phone: "",
+            role: role?.trim() || "Admin",
+            avatar: "/images/placeholder.svg",
+            joinDate: new Date().toISOString().slice(0, 10),
+            address: "",
+            company: "",
+            bio: "",
+          })
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    setProfileReady(true)
+  }, [storeUser, role])
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -112,10 +173,21 @@ export default function AdminProfilePage() {
     }
   }
 
+  if (!profileReady) {
+    return (
+      <div className="flex items-center justify-center h-full min-h-[200px]">
+        <p className="text-muted-foreground">Loading profile…</p>
+      </div>
+    )
+  }
+
   if (!admin) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">Loading profile data...</p>
+      <div className="flex flex-col items-center justify-center gap-3 h-full min-h-[200px] text-center px-4">
+        <p className="text-muted-foreground">Could not load your profile. Try signing in again.</p>
+        <Button asChild variant="outline">
+          <Link href="/">Back to login</Link>
+        </Button>
       </div>
     )
   }

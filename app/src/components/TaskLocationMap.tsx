@@ -92,6 +92,25 @@ export function TaskLocationMap({
     const el = mapRef.current;
     if (!el) return; // Div not mounted yet (we return early from render when no coords)
 
+    let cancelled = false;
+    let resizeTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const scheduleInvalidate = (map: import("leaflet").Map) => {
+      map.invalidateSize();
+      requestAnimationFrame(() => {
+        if (cancelled) return;
+        map.invalidateSize();
+        requestAnimationFrame(() => {
+          if (cancelled) return;
+          map.invalidateSize();
+        });
+      });
+      resizeTimer = window.setTimeout(() => {
+        if (cancelled) return;
+        map.invalidateSize();
+      }, 320);
+    };
+
     const initMap = async () => {
       if (!mapRef.current) return; // Re-check after async import
       try {
@@ -135,9 +154,13 @@ export function TaskLocationMap({
         // Add zoom control in a corner
         L.control.zoom({ position: "bottomright" }).addTo(map);
 
-        // Ensure map tiles render after container is measured
-        map.invalidateSize();
+        // Tiles/layout after expand or async mount (esp. mobile accordions)
+        scheduleInvalidate(map);
 
+        if (cancelled) {
+          map.remove();
+          return;
+        }
         mapInstanceRef.current = map;
       } catch (err) {
         console.warn("Map failed to load:", err);
@@ -147,6 +170,8 @@ export function TaskLocationMap({
 
     initMap();
     return () => {
+      cancelled = true;
+      if (resizeTimer !== undefined) window.clearTimeout(resizeTimer);
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
