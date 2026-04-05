@@ -147,9 +147,9 @@ function getPhotonDisplayName(feature) {
   return [...new Set(parts)].join(", ") || "Unknown location";
 }
 
-const LocationDetector = ({ onLocationChange }) => {
+const LocationDetector = ({ onLocationChange, initialLine = "" }) => {
   const [location, setLocation] = useState(null);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(initialLine || "");
   const [suggestions, setSuggestions] = useState([]);
   const [error, setError] = useState("");
   const [isDetecting, setIsDetecting] = useState(false);
@@ -268,9 +268,9 @@ const LocationDetector = ({ onLocationChange }) => {
   };
 
   return (
-    <div className="flex flex-col gap-2 w-full max-w-[250px]">
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
+    <div className="flex flex-col gap-2 w-full max-w-full">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative flex-1 min-w-0">
           <input
             type="text"
             value={input}
@@ -299,7 +299,7 @@ const LocationDetector = ({ onLocationChange }) => {
           onClick={getCurrentLocation}
           disabled={isDetecting}
           variant="outline"
-          className="text-sm whitespace-nowrap"
+          className="text-sm whitespace-nowrap w-full sm:w-auto shrink-0"
         >
           {isDetecting ? "Detecting…" : "Detect"}
         </Button>
@@ -322,7 +322,7 @@ const LocationDetector = ({ onLocationChange }) => {
                 ...base,
                 zIndex: 20,
                 width: "100%",
-                maxWidth: "250px",
+                maxWidth: "100%",
                 marginTop: "2px",
               }),
               menuList: (base) => ({

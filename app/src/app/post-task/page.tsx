@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -15,17 +15,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { Toaster } from "../../components/ui/sonner";
 import { toast } from "sonner";
-import { IndianRupee, Loader, Pencil, Upload, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, IndianRupee, Loader, Pencil, Upload, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import axiosInstance from "../../lib/axiosInstance";
 import useStore from "../../lib/Zustand";
@@ -69,6 +61,36 @@ interface ImageData {
 
 const CUSTOM_CATEGORY_VALUE = "__custom__";
 
+const TOTAL_STEPS = 4;
+const WIZARD_DRAFT_KEY = "jobpool_post_task_wizard_v1";
+
+const WIZARD_STEPS = [
+  {
+    step: 1,
+    label: "What you need",
+    title: "Let's start with the basics",
+    hint: "A clear title and description help taskers respond faster.",
+  },
+  {
+    step: 2,
+    label: "Category & budget",
+    title: "How should taskers find this?",
+    hint: "Pick the closest category and a fair budget.",
+  },
+  {
+    step: 3,
+    label: "Where & when",
+    title: "Location and timing",
+    hint: "Taskers need to know where to show up.",
+  },
+  {
+    step: 4,
+    label: "Photos & review",
+    title: "Almost there",
+    hint: "Add photos if it helps, then check the summary and post.",
+  },
+] as const;
+
 /** Get a fallback category ID when user types their own. Tries to match by name first, then Other/General, then first. */
 function getFallbackCategoryId(categories: Category[], customName?: string): string | null {
   if (!categories.length) return null;
@@ -106,7 +128,7 @@ export default function PostTaskPage() {
   });
   const [images, setImages] = useState<ImageData[]>([]);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [showConfirmPost, setShowConfirmPost] = useState<boolean>(false);
+  const [currentStep, setCurrentStep] = useState(1);
   const [minDate, setMinDate] = useState("");
   const [dueDateFlexible, setDueDateFlexible] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -313,6 +335,131 @@ export default function PostTaskPage() {
     fetchCategories();
   }, [fetchCategories]);
 
+  const draftRestoredRef = useRef(false);
+  useEffect(() => {
+    if (loading || !user || draftRestoredRef.current) return;
+    draftRestoredRef.current = true;
+    try {
+      const raw = sessionStorage.getItem(WIZARD_DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw) as {
+        formData?: Partial<FormData>;
+        dueDateFlexible?: boolean;
+        customCategoryName?: string;
+        currentStep?: number;
+      };
+      if (d.formData && typeof d.formData === "object") {
+        setFormData((prev) => ({ ...prev, ...d.formData }));
+      }
+      if (typeof d.dueDateFlexible === "boolean") setDueDateFlexible(d.dueDateFlexible);
+      if (typeof d.customCategoryName === "string") setCustomCategoryName(d.customCategoryName);
+      if (typeof d.currentStep === "number" && d.currentStep >= 1 && d.currentStep <= TOTAL_STEPS) {
+        setCurrentStep(d.currentStep);
+      }
+    } catch {
+      /* ignore corrupt draft */
+    }
+  }, [loading, user]);
+
+  useEffect(() => {
+    if (loading || !user) return;
+    try {
+      sessionStorage.setItem(
+        WIZARD_DRAFT_KEY,
+        JSON.stringify({
+          formData,
+          dueDateFlexible,
+          customCategoryName,
+          currentStep,
+        })
+      );
+    } catch {
+      /* ignore quota */
+    }
+  }, [formData, dueDateFlexible, customCategoryName, currentStep, loading, user]);
+
+  const validateStep = (step: number): boolean => {
+    switch (step) {
+      case 1:
+        if (!formData.title.trim()) {
+          toast.error("Please add a task title");
+          return false;
+        }
+        if (formData.title.trim().length < 3) {
+          toast.error("Title is too short");
+          return false;
+        }
+        if (!formData.description.trim()) {
+          toast.error("Please add a short description");
+          return false;
+        }
+        if (formData.description.trim().length < 10) {
+          toast.error("Please add a bit more detail (at least 10 characters)");
+          return false;
+        }
+        return true;
+      case 2:
+        if (!formData.category) {
+          toast.error("Please select a category");
+          return false;
+        }
+        if (formData.category === CUSTOM_CATEGORY_VALUE && !customCategoryName.trim()) {
+          toast.error("Please type your category name, or select one from the list");
+          return false;
+        }
+        {
+          const b = parseFloat(String(formData.budget));
+          if (!formData.budget || Number.isNaN(b) || b <= 0) {
+            toast.error("Please enter a valid budget");
+            return false;
+          }
+        }
+        return true;
+      case 3:
+        if (!formData.location?.trim()) {
+          toast.error("Please enter or detect your location");
+          return false;
+        }
+        return true;
+      default:
+        return true;
+    }
+  };
+
+  const goNext = () => {
+    if (!validateStep(currentStep)) return;
+    setCurrentStep((s) => Math.min(TOTAL_STEPS, s + 1));
+  };
+
+  const goBack = () => {
+    setCurrentStep((s) => Math.max(1, s - 1));
+  };
+
+  const getCategoryDisplayName = useCallback(() => {
+    if (formData.category === CUSTOM_CATEGORY_VALUE) {
+      return customCategoryName.trim() || "Custom category";
+    }
+    const c = categories.find((x) => x.id === formData.category);
+    return c?.name || "—";
+  }, [formData.category, customCategoryName, categories]);
+
+  const handleFinalPost = async () => {
+    if (isSubmitting) return;
+    if (!validateStep(1)) {
+      setCurrentStep(1);
+      return;
+    }
+    if (!validateStep(2)) {
+      setCurrentStep(2);
+      return;
+    }
+    if (!validateStep(3)) {
+      setCurrentStep(3);
+      return;
+    }
+    await confirmPostSubmission();
+  };
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -328,44 +475,32 @@ export default function PostTaskPage() {
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files);
-      const newImages = files.map((file) => ({
+    if (!e.target.files || e.target.files.length === 0) return;
+    const files = Array.from(e.target.files);
+    const maxImages = 5;
+    setImages((prev) => {
+      const remaining = maxImages - prev.length;
+      if (remaining <= 0) {
+        toast.error("You can upload up to 5 images");
+        return prev;
+      }
+      const slice = files.slice(0, remaining);
+      if (files.length > remaining) {
+        toast.message(`Only ${remaining} more image${remaining === 1 ? "" : "s"} allowed (max 5)`);
+      }
+      const newImages = slice.map((file) => ({
         id: Math.random().toString(36).substr(2, 9),
         name: file.name,
         url: URL.createObjectURL(file),
-        file: file,
+        file,
       }));
-
-      setImages((prev) => [...prev, ...newImages]);
-    }
+      return [...prev, ...newImages];
+    });
+    e.target.value = "";
   };
 
   const removeImage = (id: string) => {
     setImages((prev) => prev.filter((image) => image.id !== id));
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (isSubmitting) return;
-
-    const isCustomCategory = formData.category === CUSTOM_CATEGORY_VALUE;
-    if (
-      !formData.title ||
-      !formData.description ||
-      !formData.category ||
-      !formData.budget ||
-      !formData.location?.trim()
-    ) {
-      toast.error("Please fill in all required fields (including Location)");
-      return;
-    }
-    if (isCustomCategory && !customCategoryName.trim()) {
-      toast.error("Please type your category name, or select one from the list");
-      return;
-    }
-
-    await confirmPostSubmission();
   };
 
   const confirmPostSubmission = async () => {
@@ -429,7 +564,6 @@ export default function PostTaskPage() {
     }
 
     setIsSubmitting(true);
-    setShowConfirmPost(false);
 
     const formDataToSubmit = new FormData();
     formDataToSubmit.append("user_id", userId || "");
@@ -465,6 +599,11 @@ export default function PostTaskPage() {
       );
 
       if (response.data.status_code === 201) {
+        try {
+          sessionStorage.removeItem(WIZARD_DRAFT_KEY);
+        } catch {
+          /* ignore */
+        }
         toast.success("Your task has been posted!");
         router.push("/dashboard");
       } else if (response.data.status_code === 403) {
@@ -522,6 +661,8 @@ export default function PostTaskPage() {
   const fee = budgetAmount * 0.28;
   const totalAmount = budgetAmount + fee;
 
+  const stepMeta = WIZARD_STEPS[currentStep - 1];
+
   return (
     <div className="flex min-h-screen flex-col">
       <Toaster />
@@ -573,67 +714,103 @@ export default function PostTaskPage() {
             )}
           </div>
 
-          <Card className="border-0 shadow-sm rounded-xl">
-            <form onSubmit={handleSubmit}>
-              <CardHeader>
-                <CardTitle className="text-xl font-semibold tracking-tight">Task Details</CardTitle>
-                <CardDescription>
-                  Provide clear details to attract the right taskers
+          <Card className="border border-slate-200/90 shadow-xl shadow-slate-200/50 rounded-2xl overflow-hidden bg-white">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (currentStep === TOTAL_STEPS) void handleFinalPost();
+              }}
+            >
+              <div className="h-1.5 w-full bg-slate-100">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 transition-[width] duration-300 ease-out"
+                  style={{ width: `${(currentStep / TOTAL_STEPS) * 100}%` }}
+                  role="progressbar"
+                  aria-valuenow={currentStep}
+                  aria-valuemin={1}
+                  aria-valuemax={TOTAL_STEPS}
+                />
+              </div>
+              <CardHeader className="space-y-3 pb-2 pt-6 md:pt-8 px-4 md:px-8">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  Step {currentStep} of {TOTAL_STEPS}
+                  <span className="text-slate-300 mx-2">·</span>
+                  {stepMeta.label}
+                </p>
+                <CardTitle className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 leading-tight">
+                  {stepMeta.title}
+                </CardTitle>
+                <CardDescription className="text-base text-slate-600 leading-relaxed">
+                  {stepMeta.hint}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Task Title</Label>
-                  <Input
-                    id="title"
-                    name="title"
-                    placeholder="e.g., Help Moving Furniture"
-                    value={formData.title}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    placeholder="Describe what you need done in detail..."
-                    rows={5}
-                    value={formData.description}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label htmlFor="category">Category</Label>
-                      <button
-                        type="button"
-                        onClick={() => { fetchCategories(); toast.success("Categories refreshed"); }}
-                        className="text-xs text-muted-foreground hover:text-foreground underline"
-                      >
-                        Just added one? Refresh
-                      </button>
+
+              <CardContent className="space-y-6 px-4 md:px-8 pb-2 min-h-[280px] md:min-h-[320px]">
+                {currentStep === 1 && (
+                  <div className="space-y-6 animate-in fade-in duration-200">
+                    <div className="space-y-2">
+                      <Label htmlFor="title" className="text-sm font-medium text-slate-800">
+                        In a few words, what do you need done?
+                      </Label>
+                      <Input
+                        id="title"
+                        name="title"
+                        placeholder="e.g., Help moving my sofa"
+                        value={formData.title}
+                        onChange={handleChange}
+                        className="h-12 rounded-xl border-slate-200 bg-slate-50/50 text-base focus-visible:ring-blue-600/30 focus-visible:border-blue-500"
+                        autoComplete="off"
+                      />
                     </div>
                     <div className="space-y-2">
+                      <Label htmlFor="description" className="text-sm font-medium text-slate-800">
+                        Tell taskers the details
+                      </Label>
+                      <Textarea
+                        id="description"
+                        name="description"
+                        placeholder="Describe what you need done — timing, access, anything important..."
+                        rows={6}
+                        value={formData.description}
+                        onChange={handleChange}
+                        className="rounded-xl border-slate-200 bg-slate-50/50 text-base leading-relaxed focus-visible:ring-blue-600/30 focus-visible:border-blue-500 resize-y min-h-[140px]"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {currentStep === 2 && (
+                  <div className="space-y-6 animate-in fade-in duration-200">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label htmlFor="category" className="text-sm font-medium text-slate-800">
+                          Category
+                        </Label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void fetchCategories();
+                            toast.success("Categories refreshed");
+                          }}
+                          className="text-xs font-medium text-blue-600 hover:text-blue-700 underline underline-offset-2"
+                        >
+                          Just added one? Refresh
+                        </button>
+                      </div>
                       <select
                         id="category"
                         value={formData.category}
-                        onChange={(e) =>
-                          handleSelectChange("category", e.target.value)
-                        }
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        onChange={(e) => handleSelectChange("category", e.target.value)}
+                        className="flex h-12 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-base ring-offset-background focus:outline-none focus:ring-2 focus:ring-blue-600/25 focus:border-blue-500"
                       >
                         <option value="">Select a category or subcategory</option>
                         {categories.length > 0 ? (
                           <>
                             {categories.map((category) => (
-                                <option key={category.id} value={category.id}>
-                                  {category.name}
-                                </option>
-                              ))}
+                              <option key={category.id} value={category.id}>
+                                {category.name}
+                              </option>
+                            ))}
                             <option value={CUSTOM_CATEGORY_VALUE}>
                               ✏️ Can&apos;t find yours? Type your own
                             </option>
@@ -645,150 +822,283 @@ export default function PostTaskPage() {
                         )}
                       </select>
                       {formData.category === CUSTOM_CATEGORY_VALUE && (
-                        <div className="pt-2 space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                          <Label htmlFor="customCategory" className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                        <div className="pt-2 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                          <Label htmlFor="customCategory" className="text-xs font-medium text-slate-600 flex items-center gap-1.5">
                             <Pencil className="h-3.5 w-3.5" />
                             Your category name
                           </Label>
                           <Input
                             id="customCategory"
-                            placeholder="e.g., Event Photography, Car Wash"
+                            placeholder="e.g., Event photography, Car wash"
                             value={customCategoryName}
-                            onChange={(e) =>
-                              setCustomCategoryName(e.target.value)}
-                            className="border-blue-200 focus:ring-blue-500"
+                            onChange={(e) => setCustomCategoryName(e.target.value)}
+                            className="h-11 rounded-xl border-blue-200 focus-visible:ring-blue-500/30"
                             maxLength={60}
                           />
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-slate-500">
                             We&apos;ll use the closest match for now. Admins can add your suggestion to the main list.
                           </p>
                         </div>
                       )}
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="budget" className="text-sm font-medium text-slate-800">
+                        Budget <IndianRupee className="w-4 h-4 inline opacity-70" />
+                      </Label>
+                      <Input
+                        id="budget"
+                        name="budget"
+                        type="number"
+                        inputMode="decimal"
+                        placeholder="e.g., 5000"
+                        value={formData.budget}
+                        onChange={handleChange}
+                        className="h-12 rounded-xl border-slate-200 bg-slate-50/50 text-base focus-visible:ring-blue-600/30 focus-visible:border-blue-500"
+                      />
+                      <p className="text-xs text-slate-500">Fair budgets attract quality offers faster.</p>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="budget">
-                      Budget <IndianRupee className="w-4 h-4 inline" />
-                    </Label>
-                    <Input
-                      id="budget"
-                      name="budget"
-                      type="number"
-                      placeholder="e.g., 5000"
-                      value={formData.budget}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location <span className="text-red-500">*</span></Label>
-                    <p className="text-xs text-muted-foreground">
-                      Enter a full address (street, area, city) so taskers can find the location. Use Detect or search and pick from suggestions for best results.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-2 items-start">
-                      <div className="w-full sm:w-auto">
-                        <LocationDetector
-                          onLocationChange={(location: string) =>
-                            setFormData((prev) => ({ ...prev, location }))
-                          }
-                        />
+                )}
+
+                {currentStep === 3 && (
+                  <div className="space-y-6 animate-in fade-in duration-200">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-slate-800">
+                        Location <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-sm text-slate-600 leading-relaxed">
+                        Enter a full address (street, area, city). Use <strong className="font-semibold text-slate-800">Detect</strong> or type and pick from suggestions.
+                      </p>
+                      <LocationDetector
+                        key="post-task-location"
+                        initialLine={formData.location}
+                        onLocationChange={(location: string) =>
+                          setFormData((prev) => ({ ...prev, location }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label htmlFor="dueDate" className="text-sm font-medium text-slate-800">
+                          Due date <span className="font-normal text-slate-500">(optional)</span>
+                        </Label>
+                        <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
+                          <Checkbox
+                            id="dueDateFlexible"
+                            checked={dueDateFlexible}
+                            onCheckedChange={(checked) => {
+                              setDueDateFlexible(!!checked);
+                              if (checked) setFormData((prev) => ({ ...prev, dueDate: "" }));
+                            }}
+                          />
+                          <span>I&apos;m flexible</span>
+                        </label>
                       </div>
+                      <Input
+                        id="dueDate"
+                        name="dueDate"
+                        type="date"
+                        min={minDate}
+                        value={formData.dueDate}
+                        onChange={handleChange}
+                        disabled={dueDateFlexible}
+                        className="h-12 w-full rounded-xl border-slate-200 bg-white focus-visible:ring-blue-600/30 focus-visible:border-blue-500"
+                      />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label htmlFor="dueDate">Due Date (Optional)</Label>
-                      <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground hover:text-foreground">
-                        <Checkbox
-                          id="dueDateFlexible"
-                          checked={dueDateFlexible}
-                          onCheckedChange={(checked) => {
-                            setDueDateFlexible(!!checked);
-                            if (checked) setFormData((prev) => ({ ...prev, dueDate: "" }));
-                          }}
+                )}
+
+                {currentStep === 4 && (
+                  <div className="space-y-6 animate-in fade-in duration-200">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-slate-800">Photos (optional)</Label>
+                      <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center bg-gradient-to-b from-slate-50/80 to-white transition-colors hover:border-blue-300/80 hover:bg-blue-50/20">
+                        <Input
+                          id="images"
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handleImageUpload}
+                          className="hidden"
                         />
-                        <span>Flexible</span>
-                      </label>
-                    </div>
-                    <Input
-                      id="dueDate"
-                      name="dueDate"
-                      type="date"
-                      min={minDate}
-                      value={formData.dueDate}
-                      onChange={handleChange}
-                      disabled={dueDateFlexible}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Images (Optional)</Label>
-                  <div className="border-2 border-dashed rounded-xl p-6 text-center bg-gray-50">
-                    <Input
-                      id="images"
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                    <Label
-                      htmlFor="images"
-                      className="cursor-pointer flex flex-col items-center gap-2 text-muted-foreground"
-                    >
-                      <Upload className="h-8 w-8" />
-                      <span className="font-medium">
-                        Click to upload images
-                      </span>
-                      <span className="text-xs">
-                        Upload up to 5 images to show your task details
-                      </span>
-                    </Label>
-                  </div>
-                  {images.length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
-                      {images.map((image) => (
-                        <div key={image.id} className="relative group">
-                          <div className="aspect-square rounded-lg overflow-hidden border bg-muted">
-                            <img
-                              src={image.url || "/images/placeholder.svg"}
-                              alt={image.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeImage(image.id)}
-                            className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
+                        <Label
+                          htmlFor="images"
+                          className="cursor-pointer flex flex-col items-center gap-2 text-slate-600"
+                        >
+                          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                            <Upload className="h-6 w-6" />
+                          </span>
+                          <span className="font-semibold text-slate-800">Click to upload</span>
+                          <span className="text-sm text-slate-500">Up to 5 images · JPG, PNG</span>
+                        </Label>
+                      </div>
+                      {images.length > 0 && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {images.map((image) => (
+                            <div key={image.id} className="relative group">
+                              <div className="aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shadow-sm">
+                                <img
+                                  src={image.url || "/images/placeholder.svg"}
+                                  alt={image.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeImage(image.id)}
+                                className="absolute top-2 right-2 rounded-full bg-slate-900/70 text-white p-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                                aria-label="Remove image"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 md:p-5 space-y-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-sm font-semibold text-slate-900">Summary</h3>
+                        <span className="text-xs text-slate-500">Tap edit to jump back</span>
+                      </div>
+                      <dl className="space-y-3 text-sm">
+                        <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4 border-b border-slate-200/80 pb-3">
+                          <dt className="text-slate-500 shrink-0">Task</dt>
+                          <dd className="font-medium text-slate-900 text-right sm:text-left min-w-0">
+                            <span className="line-clamp-2">{formData.title || "—"}</span>
+                            <button
+                              type="button"
+                              onClick={() => setCurrentStep(1)}
+                              className="block text-xs font-semibold text-blue-600 mt-1 hover:underline"
+                            >
+                              Edit
+                            </button>
+                          </dd>
+                        </div>
+                        <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:items-start sm:gap-4 border-b border-slate-200/80 pb-3">
+                          <dt className="text-slate-500 shrink-0">Description</dt>
+                          <dd className="text-slate-800 min-w-0 flex-1">
+                            <p className="line-clamp-3 text-left">{formData.description || "—"}</p>
+                            <button
+                              type="button"
+                              onClick={() => setCurrentStep(1)}
+                              className="text-xs font-semibold text-blue-600 mt-1 hover:underline"
+                            >
+                              Edit
+                            </button>
+                          </dd>
+                        </div>
+                        <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4 border-b border-slate-200/80 pb-3">
+                          <dt className="text-slate-500">Category & budget</dt>
+                          <dd className="font-medium text-slate-900 text-right sm:text-left">
+                            {getCategoryDisplayName()}
+                            <span className="text-slate-500 font-normal"> · </span>
+                            <IndianRupee className="w-3.5 h-3.5 inline opacity-70" />
+                            {budgetAmount > 0 ? budgetAmount.toLocaleString("en-IN") : "—"}
+                            <button
+                              type="button"
+                              onClick={() => setCurrentStep(2)}
+                              className="block text-xs font-semibold text-blue-600 mt-1 hover:underline"
+                            >
+                              Edit
+                            </button>
+                          </dd>
+                        </div>
+                        <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4 border-b border-slate-200/80 pb-3">
+                          <dt className="text-slate-500">Where & when</dt>
+                          <dd className="text-slate-800 text-right sm:text-left min-w-0">
+                            <span className="line-clamp-2">{formData.location || "—"}</span>
+                            <span className="block text-slate-600 mt-0.5">
+                              {dueDateFlexible
+                                ? "Flexible on date"
+                                : formData.dueDate
+                                  ? new Date(formData.dueDate + "T12:00:00").toLocaleDateString("en-IN", {
+                                      day: "numeric",
+                                      month: "short",
+                                      year: "numeric",
+                                    })
+                                  : "No date set"}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setCurrentStep(3)}
+                              className="text-xs font-semibold text-blue-600 mt-1 hover:underline"
+                            >
+                              Edit
+                            </button>
+                          </dd>
+                        </div>
+                        {budgetAmount > 0 && (
+                          <div className="rounded-xl bg-white border border-slate-200/80 px-3 py-2.5 text-xs text-slate-600">
+                            <p className="font-medium text-slate-800 mb-1">Payment estimate</p>
+                            <div className="flex justify-between gap-2">
+                              <span>Task budget</span>
+                              <span>₹{budgetAmount.toLocaleString("en-IN")}</span>
+                            </div>
+                            <div className="flex justify-between gap-2 text-slate-500">
+                              <span>Platform fee (28%)</span>
+                              <span>₹{fee.toFixed(0)}</span>
+                            </div>
+                            <div className="flex justify-between gap-2 font-semibold text-slate-900 pt-1 mt-1 border-t border-slate-100">
+                              <span>Total</span>
+                              <span>₹{totalAmount.toFixed(0)}</span>
+                            </div>
+                          </div>
+                        )}
+                      </dl>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+
+              <CardFooter className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-gradient-to-b from-white to-slate-50/90 px-4 py-4 md:px-8 md:py-6">
+                <div className="flex flex-col sm:flex-row gap-2 sm:justify-between sm:items-center w-full">
+                  {currentStep > 1 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={goBack}
+                      className="w-full sm:w-auto h-11 rounded-full border-slate-200 text-slate-700 hover:bg-slate-50"
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1 shrink-0" />
+                      Back
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => router.back()}
+                      className="w-full sm:w-auto h-11 rounded-full text-slate-500 hover:text-slate-800"
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                  {currentStep < TOTAL_STEPS ? (
+                    <Button
+                      type="button"
+                      onClick={goNext}
+                      className="w-full sm:w-auto h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 px-6"
+                    >
+                      Continue
+                      <ChevronRight className="h-4 w-4 ml-1 shrink-0" />
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting || verificationLoading}
+                      className="w-full sm:w-auto h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 px-6"
+                    >
+                      {isSubmitting ? (
+                        <Loader className="h-5 w-5 animate-spin" />
+                      ) : verificationLoading ? (
+                        "Verifying…"
+                      ) : (
+                        "Post task"
+                      )}
+                    </Button>
                   )}
                 </div>
-              </CardContent>
-              <CardFooter className="flex justify-between">
-                <Button
-                  variant="outline"
-                  type="button"
-                  onClick={() => router.back()}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting || verificationLoading}>
-                  {isSubmitting ? (
-                    <Loader className="animate-spin" />
-                  ) : verificationLoading ? (
-                    "Verifying..."
-                  ) : (
-                    "Post Task"
-                  )}
-                </Button>
               </CardFooter>
             </form>
           </Card>
