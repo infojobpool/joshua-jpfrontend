@@ -24,7 +24,6 @@ import useStore from "../../lib/Zustand";
 import { handleAxiosError } from "../../lib/handleAxiosError";
 import LocationDetector from "../../components/LocationDetector";
 import Header from "@/components/Header";
-import { TrustBadges } from "@/components/TrustBadges";
 import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint";
 import {
   getMissingPayoutEligibilityItems,
@@ -682,50 +681,39 @@ export default function PostTaskPage() {
         user={{ name: user.name, avatar: "/images/placeholder.svg" }}
         onSignOut={handleSignOut}
       />
-      <main className="flex-1 container mx-auto max-w-3xl py-8 md:py-12 px-4 md:px-6">
+      <main className="flex-1 container mx-auto max-w-3xl py-6 md:py-10 px-4 md:px-6">
         <Link
           href="/dashboard"
-          className="text-sm text-muted-foreground hover:underline mb-4 inline-block"
+          className="text-sm font-medium text-slate-500 hover:text-slate-800 hover:underline mb-4 inline-block"
         >
           ← Back to Dashboard
         </Link>
-        <div>
-          <div className="mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Post a Task</h1>
-            <p className="text-muted-foreground mt-1">
-              Describe what you need done and find the right person for the job
-            </p>
-            <div className="mt-4 space-y-2">
-              <TrustBadges
-                variant="strip"
-                heading="Your data is safe with JobPool"
-                subtext="Encrypted, DPDP-ready — industry-standard protection"
-              />
-              {payoutBonusPreview && payoutBonusPreview.remaining > 0 && (
-                <WelcomeBonusProcessHint
-                  variant="compact"
-                  percent={payoutBonusPreview.percent}
-                  label={`${payoutBonusPreview.completed} of ${payoutBonusPreview.total} steps toward ₹100 bonus · ${payoutBonusPreview.remaining} left`}
-                />
-              )}
+        <div className="mb-4 space-y-3">
+          {payoutBonusPreview && payoutBonusPreview.remaining > 0 && (
+            <WelcomeBonusProcessHint
+              variant="compact"
+              percent={payoutBonusPreview.percent}
+              label={`${payoutBonusPreview.completed} of ${payoutBonusPreview.total} steps toward ₹100 bonus · ${payoutBonusPreview.remaining} left`}
+            />
+          )}
+          {error && (
+            <div className="flex items-center justify-between gap-3 text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
+              <span>{error}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setError("");
+                  void fetchCategories();
+                }}
+                className="px-2 py-1 text-xs font-medium bg-red-600 text-white rounded"
+              >
+                Retry
+              </button>
             </div>
-            {error && (
-              <div className="flex items-center justify-between gap-3 text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded-md mb-4">
-                <span>{error}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setError("");
-                    void fetchCategories();
-                  }}
-                  className="px-2 py-1 text-xs font-medium bg-red-600 text-white rounded"
-                >
-                  Retry
-                </button>
-              </div>
-            )}
-          </div>
+          )}
+        </div>
 
+        <div>
           <Card className="border border-slate-200/90 shadow-xl shadow-slate-200/50 rounded-2xl overflow-hidden bg-white">
             <form
               onSubmit={(e) => {
@@ -745,15 +733,15 @@ export default function PostTaskPage() {
                 />
               </div>
               <CardHeader className="space-y-3 pb-2 pt-6 md:pt-8 px-4 md:px-8">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.22em] text-blue-600/90">
                   Step {currentStep} of {TOTAL_STEPS}
                   <span className="text-slate-300 mx-2">·</span>
-                  {stepMeta.label}
+                  <span className="text-slate-500">{stepMeta.label}</span>
                 </p>
-                <CardTitle className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 leading-tight">
+                <CardTitle className="task-title text-[1.625rem] sm:text-[1.85rem] md:text-[2.125rem] text-slate-950 leading-[1.12]">
                   {stepMeta.title}
                 </CardTitle>
-                <CardDescription className="text-base text-slate-600 leading-relaxed">
+                <CardDescription className="text-[0.9375rem] sm:text-base text-slate-600 leading-relaxed font-normal">
                   {stepMeta.hint}
                 </CardDescription>
               </CardHeader>
@@ -762,7 +750,7 @@ export default function PostTaskPage() {
                 {currentStep === 1 && (
                   <div className="space-y-6 animate-in fade-in duration-200">
                     <div className="space-y-2">
-                      <Label htmlFor="title" className="text-sm font-medium text-slate-800">
+                      <Label htmlFor="title" className="task-title text-[0.9375rem] text-slate-900">
                         In a few words, what do you need done?
                       </Label>
                       <Input
@@ -776,7 +764,7 @@ export default function PostTaskPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="description" className="text-sm font-medium text-slate-800">
+                      <Label htmlFor="description" className="task-title text-[0.9375rem] text-slate-900">
                         Tell taskers the details
                       </Label>
                       <Textarea
@@ -796,7 +784,7 @@ export default function PostTaskPage() {
                   <div className="space-y-6 animate-in fade-in duration-200">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
-                        <Label htmlFor="category" className="text-sm font-medium text-slate-800">
+                        <Label htmlFor="category" className="task-title text-[0.9375rem] text-slate-900">
                           Category
                         </Label>
                         <button
@@ -855,7 +843,7 @@ export default function PostTaskPage() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="budget" className="text-sm font-medium text-slate-800">
+                      <Label htmlFor="budget" className="task-title text-[0.9375rem] text-slate-900">
                         Budget <IndianRupee className="w-4 h-4 inline opacity-70" />
                       </Label>
                       <Input
@@ -876,8 +864,8 @@ export default function PostTaskPage() {
                 {currentStep === 3 && (
                   <div className="space-y-6 animate-in fade-in duration-200">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-slate-800">
-                        Location <span className="text-red-500">*</span>
+                      <Label className="task-title text-[0.9375rem] text-slate-900">
+                        Location <span className="text-red-500 font-sans font-normal">*</span>
                       </Label>
                       <p className="text-sm text-slate-600 leading-relaxed">
                         Enter a full address (street, area, city). Use <strong className="font-semibold text-slate-800">Detect</strong> or type and pick from suggestions.
@@ -892,8 +880,8 @@ export default function PostTaskPage() {
                     </div>
                     <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/60 p-4">
                       <div className="flex items-center justify-between gap-2">
-                        <Label htmlFor="dueDate" className="text-sm font-medium text-slate-800">
-                          Due date <span className="font-normal text-slate-500">(optional)</span>
+                        <Label htmlFor="dueDate" className="task-title text-[0.9375rem] text-slate-900">
+                          Due date <span className="font-sans font-normal text-slate-500 text-sm">(optional)</span>
                         </Label>
                         <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
                           <Checkbox
@@ -924,7 +912,7 @@ export default function PostTaskPage() {
                 {currentStep === 4 && (
                   <div className="space-y-6 animate-in fade-in duration-200">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-slate-800">Photos (optional)</Label>
+                      <Label className="task-title text-base text-slate-950">Photos (optional)</Label>
                       <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center bg-gradient-to-b from-slate-50/80 to-white transition-colors hover:border-blue-300/80 hover:bg-blue-50/20">
                         <Input
                           id="images"
@@ -972,8 +960,8 @@ export default function PostTaskPage() {
 
                     <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 md:p-5 space-y-4">
                       <div className="flex items-center justify-between gap-2">
-                        <h3 className="text-sm font-semibold text-slate-900">Summary</h3>
-                        <span className="text-xs text-slate-500">Tap edit to jump back</span>
+                        <h3 className="task-title text-lg text-slate-950 tracking-tight">Summary</h3>
+                        <span className="text-xs font-medium text-slate-500">Tap edit to jump back</span>
                       </div>
                       <dl className="space-y-3 text-sm">
                         <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4 border-b border-slate-200/80 pb-3">

@@ -6,6 +6,7 @@ import MainHeader from "@/components/MainHeader";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import Footer from "@/components/Footer";
 import { MobileBottomNav } from "@/components/mobile/MobileBottomNav";
+import { AppMain } from "@/components/mobile/AppMain";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { InAppNotificationProvider } from "@/components/InAppNotificationProvider";
 import { NotificationPoller } from "@/components/NotificationPoller";
@@ -90,9 +91,7 @@ export default function RootLayout({
           <MobileLayout>
             <AppEntranceWrapper>
               <MainHeader />
-              <main className="min-h-screen pb-[calc(env(safe-area-inset-bottom)+96px)] md:pb-0">
-                {children}
-              </main>
+              <AppMain>{children}</AppMain>
               <Footer />
             </AppEntranceWrapper>
             <MobileBottomNav />

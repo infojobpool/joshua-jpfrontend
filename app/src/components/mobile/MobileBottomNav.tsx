@@ -4,9 +4,14 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Search, User, Plus, Wallet } from "lucide-react";
+import { isMobileBottomNavHidden } from "@/lib/mobileNavVisibility";
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+
+  if (isMobileBottomNavHidden(pathname)) {
+    return null;
+  }
 
   const postTaskButton = (
     <Link
