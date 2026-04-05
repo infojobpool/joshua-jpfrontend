@@ -176,6 +176,8 @@ function BrowseContent() {
     try {
       const cat = searchParams?.get?.("category")
       if (cat) setCategory(cat)
+      const q = searchParams?.get?.("q")
+      if (q) setSearchTerm(q)
     } catch (_) {}
   }, [searchParams])
   const [priceRange, setPriceRange] = useState([0, 500])
