@@ -55,12 +55,15 @@ const MainHeader: React.FC = () => {
   return (
     <header className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-20 md:h-24 lg:h-28 items-center justify-between pt-3 md:pt-4 lg:pt-5">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
-            <img 
-              src="/images/new_logo_22-removebg-preview.png" 
-              alt="JobPool Logo" 
+        <div className="flex h-20 md:h-24 lg:h-28 items-center justify-end md:justify-between pt-3 md:pt-4 lg:pt-5 gap-3">
+          {/* Logo — desktop only */}
+          <Link
+            href="/"
+            className="hidden md:flex items-center gap-2 group flex-shrink-0"
+          >
+            <img
+              src="/images/new_logo_22-removebg-preview.png"
+              alt="JobPool Logo"
               className="h-9 md:h-10 lg:h-11 w-auto drop-shadow-sm transition-all duration-300 group-hover:drop-shadow-md group-hover:opacity-90 object-contain"
             />
           </Link>
@@ -120,13 +123,19 @@ const MainHeader: React.FC = () => {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile menu — larger tap target, clearer affordance */}
           <button
-            className="md:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+            type="button"
+            className="md:hidden flex h-12 min-w-[3rem] items-center justify-center rounded-2xl border-2 border-blue-100 bg-gradient-to-b from-white to-blue-50/80 text-blue-800 shadow-[0_2px_12px_rgba(37,99,235,0.12)] ring-1 ring-blue-200/40 hover:border-blue-200 hover:from-blue-50 hover:to-blue-100/90 hover:text-blue-900 active:scale-[0.97] transition-all"
             onClick={toggleMobileMenu}
-            aria-label="Toggle mobile menu"
+            aria-expanded={isMobileMenuOpen}
+            aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
           >
-            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {isMobileMenuOpen ? (
+              <X className="h-6 w-6 stroke-[2.5]" />
+            ) : (
+              <Menu className="h-6 w-6 stroke-[2.5]" />
+            )}
           </button>
         </div>
 
