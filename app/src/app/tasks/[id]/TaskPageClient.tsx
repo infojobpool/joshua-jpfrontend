@@ -1,7 +1,7 @@
 "use client";
 
 import { ImageGalleryModal } from "@/components/ImageGalleryModal";
-import { OffersSection } from "@/components/OffersSection";
+import { TaskOffersQuestionsTabs } from "@/components/TaskOffersQuestionsTabs";
 import { PaymentModal } from "@/components/PaymentModal";
 import { CompletionReviewModal } from "@/components/CompletionReviewModal";
 import { SafetyTips } from "@/components/SafetyTips";
@@ -1977,8 +1977,10 @@ export default function TaskDetailPage() {
               isPaymentPending={isPaymentPending}
               paymentCheckDone={paymentCheckDone}
               afterDescription={
-                <OffersSection
+                <TaskOffersQuestionsTabs
                   task={task}
+                  posterId={task.poster?.id ?? ""}
+                  qaRefreshKey={taskRefreshKey}
                   offers={offers}
                   isTaskPoster={isTaskPoster}
                   hasSubmittedOffer={hasSubmittedOffer}

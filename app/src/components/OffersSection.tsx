@@ -349,7 +349,7 @@ interface Task {
   assignedTasker?: User;
 }
 
-interface OffersSectionProps {
+export interface OffersSectionProps {
   task: Task;
   offers: Offer[];
   isTaskPoster: boolean;
