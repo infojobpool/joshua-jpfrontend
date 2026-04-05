@@ -3,8 +3,10 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { analytics } from "@/lib/analytics";
 import { useCompactAppFooter } from "@/hooks/useCompactAppFooter";
+import { isAppFooterHidden } from "@/lib/mobileNavVisibility";
 import {
   Facebook,
   Twitter,
@@ -107,6 +109,10 @@ function AppShellFooter() {
 }
 
 const Footer: React.FC = () => {
+  const pathname = usePathname();
+  if (isAppFooterHidden(pathname)) {
+    return null;
+  }
   const compact = useCompactAppFooter();
   if (compact) {
     return <AppShellFooter />;

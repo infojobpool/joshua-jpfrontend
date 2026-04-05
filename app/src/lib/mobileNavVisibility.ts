@@ -34,3 +34,10 @@ export function isMobileBottomNavHidden(pathname: string | null): boolean {
     (prefix) => p === prefix || p.startsWith(`${prefix}/`),
   );
 }
+
+/** Global marketing footer hidden on the post-task wizard for a cleaner flow. */
+export function isAppFooterHidden(pathname: string | null): boolean {
+  if (!pathname) return false;
+  const p = normalizePathname(pathname);
+  return p === "/post-task" || p.startsWith("/post-task/");
+}
