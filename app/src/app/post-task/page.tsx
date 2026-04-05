@@ -129,6 +129,8 @@ export default function PostTaskPage() {
   const [images, setImages] = useState<ImageData[]>([]);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [currentStep, setCurrentStep] = useState(1);
+  /** Avoid accidental post when the same tap lands on "Post task" after Continue swaps the footer (mobile / flex-col-reverse). */
+  const [postActionUnlocked, setPostActionUnlocked] = useState(false);
   const [minDate, setMinDate] = useState("");
   const [dueDateFlexible, setDueDateFlexible] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -377,6 +379,16 @@ export default function PostTaskPage() {
       /* ignore quota */
     }
   }, [formData, dueDateFlexible, customCategoryName, currentStep, loading, user]);
+
+  useEffect(() => {
+    if (currentStep !== TOTAL_STEPS) {
+      setPostActionUnlocked(false);
+      return;
+    }
+    setPostActionUnlocked(false);
+    const id = window.setTimeout(() => setPostActionUnlocked(true), 450);
+    return () => window.clearTimeout(id);
+  }, [currentStep]);
 
   const validateStep = (step: number): boolean => {
     switch (step) {
@@ -718,7 +730,8 @@ export default function PostTaskPage() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (currentStep === TOTAL_STEPS) void handleFinalPost();
+                // Never post from implicit submit (Enter / mobile "Go" / layout-shift double tap).
+                // Posting only happens from the explicit "Post task" button (type="button" + onClick).
               }}
             >
               <div className="h-1.5 w-full bg-slate-100">
@@ -1085,9 +1098,14 @@ export default function PostTaskPage() {
                     </Button>
                   ) : (
                     <Button
-                      type="submit"
-                      disabled={isSubmitting || verificationLoading}
-                      className="w-full sm:w-auto h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 px-6"
+                      type="button"
+                      disabled={
+                        isSubmitting ||
+                        verificationLoading ||
+                        !postActionUnlocked
+                      }
+                      className="w-full sm:w-auto h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 px-6 disabled:opacity-70"
+                      onClick={() => void handleFinalPost()}
                     >
                       {isSubmitting ? (
                         <Loader className="h-5 w-5 animate-spin" />
