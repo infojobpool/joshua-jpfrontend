@@ -51,6 +51,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import axiosInstance from "@/lib/axiosInstance";
+import { useCanAdminWrite } from "@/lib/adminAuth";
 
 interface Tasker {
   id: number;
@@ -106,6 +107,7 @@ export default function PayoutsPage() {
   const [taskerBank, setTaskerBank] = useState<BankDetails | null>(null);
   const [posterBank, setPosterBank] = useState<BankDetails | null>(null);
   const [isBankLoading, setIsBankLoading] = useState(false);
+  const canWrite = useCanAdminWrite();
 
   const formatDate = (isoString: string): string => {
     const date = new Date(isoString);
@@ -278,6 +280,10 @@ export default function PayoutsPage() {
   }, []);
 
   const handleStatusChange = async (payoutId: number, newStatus: string) => {
+    if (!canWrite) {
+      setError("Read-only access");
+      return;
+    }
     try {
       const reverseStatusMap: { [key: string]: number } = {
         Pending: -1,
@@ -727,6 +733,8 @@ export default function PayoutsPage() {
                               >
                                 View Details
                               </DropdownMenuItem>
+                              {canWrite && (
+                                <>
                               {payout.status === "Pending" && (
                                 <>
                                   <DropdownMenuSeparator />
@@ -815,6 +823,8 @@ export default function PayoutsPage() {
                               >
                                 Delete Payout
                               </DropdownMenuItem>
+                                </>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                           <DialogContent className="sm:max-w-[800px]">

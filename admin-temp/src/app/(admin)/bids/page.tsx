@@ -52,6 +52,7 @@ import { Label } from "@/components/ui/label";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import axiosInstance from "@/lib/axiosInstance";
+import { useCanAdminWrite } from "@/lib/adminAuth";
 
 interface Bid {
   bid_id: number;
@@ -104,6 +105,7 @@ export default function BidsPage() {
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const canWrite = useCanAdminWrite();
 
   const formatDate = (isoString: string): string => {
     const date = new Date(isoString);
@@ -436,6 +438,7 @@ export default function BidsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        {canWrite && (
                         <DropdownMenuItem
                           onClick={async () => {
                             try {
@@ -452,6 +455,7 @@ export default function BidsPage() {
                         >
                           Accept Bid
                         </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                           onClick={() => {
                             setSelectedBid(bid);

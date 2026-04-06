@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
+import { useCanAdminWrite } from "@/lib/adminAuth";
 
 interface Bid {
   bid_id: number;
@@ -33,6 +34,7 @@ export default function TaskOffersPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [bids, setBids] = useState<Bid[]>([]);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const canWrite = useCanAdminWrite();
 
   const fetchBids = async () => {
     if (!jobId) return;
@@ -77,6 +79,10 @@ export default function TaskOffersPage() {
 
   const handleDeleteBid = async (bidId: number) => {
     if (!bidId) return;
+    if (!canWrite) {
+      toast.error("Read-only access");
+      return;
+    }
     try {
       setDeletingId(bidId);
       const response = await axiosInstance.delete(
@@ -144,14 +150,18 @@ export default function TaskOffersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteBid(bid.bid_id)}
-                        disabled={deletingId === bid.bid_id}
-                      >
-                        {deletingId === bid.bid_id ? "Deleting…" : "Delete"}
-                      </Button>
+                      {canWrite ? (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteBid(bid.bid_id)}
+                          disabled={deletingId === bid.bid_id}
+                        >
+                          {deletingId === bid.bid_id ? "Deleting…" : "Delete"}
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">View only</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

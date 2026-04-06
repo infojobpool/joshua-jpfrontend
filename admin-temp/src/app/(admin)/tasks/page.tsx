@@ -53,6 +53,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import axiosInstance from "@/lib/axiosInstance";
 import { ConfirmDialog } from "@/components/ConfirmDialog"; // Import ConfirmDialog
+import { useCanAdminWrite } from "@/lib/adminAuth";
 
 interface User {
   id: string;
@@ -144,6 +145,7 @@ export default function TasksPage() {
   const [taskToReset, setTaskToReset] = useState<string | null>(null);
   const [isLoadingPayment, setIsLoadingPayment] = useState<boolean>(false);
   const [promotingTaskId, setPromotingTaskId] = useState<string | null>(null);
+  const canWrite = useCanAdminWrite();
 
   const formatDate = (isoString: string): string => {
     if (!isoString || typeof isoString !== "string" || isoString.trim() === "") return "—";
@@ -372,6 +374,10 @@ export default function TasksPage() {
 
   // Refund management handler
   const handleRefund = async (taskId: string, refundStatus: "approved" | "denied") => {
+    if (!canWrite) {
+      toast.error("Read-only access");
+      return;
+    }
     try {
       await axiosInstance.patch(`/job-refund-status/${taskId}/?refund_status=${refundStatus}`);
       toast.success(`Refund ${refundStatus === "approved" ? "approved" : "denied"} successfully`);
@@ -396,6 +402,10 @@ export default function TasksPage() {
     taskId: string,
     newStatus: Task["status"]
   ) => {
+    if (!canWrite) {
+      toast.error("Read-only access");
+      return;
+    }
     try {
       setIsLoading(true);
       // Use dedicated API for cancellation; avoid mis-mapping boolean status
@@ -436,6 +446,10 @@ export default function TasksPage() {
   };
 
   const handleResetTask = async (taskId: string) => {
+    if (!canWrite) {
+      toast.error("Read-only access");
+      return;
+    }
     try {
       setIsLoading(true);
       const response = await axiosInstance.put(`/reset-job/${taskId}/`, {
@@ -464,6 +478,10 @@ export default function TasksPage() {
 
   // Promote custom_category_name to official category (and update task)
   const handlePromoteCustomCategory = async (taskId: string) => {
+    if (!canWrite) {
+      toast.error("Read-only access");
+      return;
+    }
     try {
       setPromotingTaskId(taskId);
       const response = await axiosInstance.post(
@@ -511,6 +529,10 @@ export default function TasksPage() {
 
   // Permanently delete a task
   const handleHardDelete = async (taskId: string) => {
+    if (!canWrite) {
+      toast.error("Read-only access");
+      return;
+    }
     if (!confirm('⚠️ Are you sure? This action cannot be undone!')) {
       return;
     }
@@ -538,6 +560,10 @@ export default function TasksPage() {
 
   const handleSaveTask = async () => {
     if (!editTask) return;
+    if (!canWrite) {
+      toast.error("Read-only access");
+      return;
+    }
 
     try {
       console.log("[admin] handleSaveTask start", editTask);
@@ -1048,6 +1074,8 @@ export default function TasksPage() {
                           >
                             View Offers
                           </DropdownMenuItem>
+                          {canWrite && (
+                            <>
                           <DropdownMenuItem
                             onClick={() => {
                               setEditTask(task);
@@ -1139,6 +1167,8 @@ export default function TasksPage() {
                           >
                             Delete Permanently
                           </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -1168,7 +1198,7 @@ export default function TasksPage() {
                                   ) : (
                                     <Badge variant="outline">{selectedTask.category}</Badge>
                                   )}
-                                  {selectedTask.customCategoryName && (
+                                  {selectedTask.customCategoryName && canWrite && (
                                     <Button
                                       size="sm"
                                       variant="outline"
@@ -1450,7 +1480,7 @@ export default function TasksPage() {
                                         </div>
                                       )}
 
-                                      {selectedTask.refundStatus === "pending" && (
+                                      {selectedTask.refundStatus === "pending" && canWrite && (
                                         <div className="flex flex-col sm:flex-row gap-3 pt-4 mt-4 border-t-2 border-red-300">
                                           <Button
                                             size="sm"
@@ -1514,7 +1544,7 @@ export default function TasksPage() {
                                     title: e.target.value,
                                   })
                                 }
-                                disabled={isLoading}
+                                disabled={isLoading || !canWrite}
                               />
                             </div>
                             <div className="grid gap-2">
@@ -1529,7 +1559,7 @@ export default function TasksPage() {
                                     description: e.target.value,
                                   })
                                 }
-                                disabled={isLoading}
+                                disabled={isLoading || !canWrite}
                               />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
@@ -1543,7 +1573,7 @@ export default function TasksPage() {
                                       category: value,
                                     })
                                   }
-                                  disabled={isLoading}
+                                  disabled={isLoading || !canWrite}
                                 >
                                   <SelectTrigger id="category">
                                     <SelectValue placeholder="Select category" />
@@ -1567,7 +1597,7 @@ export default function TasksPage() {
                                   onValueChange={(value: Task["status"]) =>
                                     setEditTask({ ...editTask, status: value })
                                   }
-                                  disabled={isLoading}
+                                  disabled={isLoading || !canWrite}
                                 >
                                   <SelectTrigger id="status">
                                     <SelectValue placeholder="Select status" />
@@ -1608,7 +1638,7 @@ export default function TasksPage() {
                                       location: e.target.value,
                                     })
                                   }
-                                  disabled={isLoading}
+                                  disabled={isLoading || !canWrite}
                                 />
                               </div>
                               <div className="grid gap-2">
@@ -1623,7 +1653,7 @@ export default function TasksPage() {
                                       budget: Number(e.target.value),
                                     })
                                   }
-                                  disabled={isLoading}
+                                  disabled={isLoading || !canWrite}
                                 />
                               </div>
                             </div>
@@ -1639,7 +1669,7 @@ export default function TasksPage() {
                                     dueDate: e.target.value,
                                   })
                                 }
-                                disabled={isLoading}
+                                disabled={isLoading || !canWrite}
                               />
                             </div>
                           </div>
@@ -1654,7 +1684,8 @@ export default function TasksPage() {
                           </Button>
                           <Button
                             onClick={handleSaveTask}
-                            disabled={!editTask || isLoading}
+                            disabled={!editTask || isLoading || !canWrite}
+                            title={!canWrite ? "Read-only role" : undefined}
                           >
                             {isLoading ? "Saving..." : "Save Changes"}
                           </Button>

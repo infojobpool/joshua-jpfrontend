@@ -476,6 +476,7 @@ import {
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import axiosInstance from "@/lib/axiosInstance";
+import { useCanAdminWrite } from "@/lib/adminAuth";
 
 interface AdminUser {
   user_id: string;
@@ -506,6 +507,7 @@ export default function AdminUsersPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
+  const canWrite = useCanAdminWrite();
 
   const formatDate = (isoString: string): string => {
     const date = new Date(isoString);
@@ -559,6 +561,10 @@ export default function AdminUsersPage() {
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const handleAddUser = async () => {
+    if (!canWrite) {
+      toast.error("Read-only access");
+      return;
+    }
     if (newUser.full_name.trim() === "") {
       toast.error("Full name is required");
       return;
@@ -596,6 +602,10 @@ export default function AdminUsersPage() {
   };
 
   const handleEditUser = async () => {
+    if (!canWrite) {
+      toast.error("Read-only access");
+      return;
+    }
     if (!editUser || editUser.full_name.trim() === "") {
       toast.error("Full name is required");
       return;
@@ -641,9 +651,15 @@ export default function AdminUsersPage() {
       <Toaster />
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Admin Users Management</h1>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <Dialog
+          open={isAddDialogOpen}
+          onOpenChange={(open) => {
+            if (open && !canWrite) return;
+            setIsAddDialogOpen(open);
+          }}
+        >
           <DialogTrigger asChild>
-            <Button disabled={isLoading}>
+            <Button disabled={isLoading || !canWrite} title={!canWrite ? "Read-only role" : undefined}>
               <Plus className="mr-2 h-4 w-4" />
               Add User
             </Button>
@@ -790,7 +806,8 @@ export default function AdminUsersPage() {
                             });
                             setIsEditDialogOpen(true);
                           }}
-                          disabled={isLoading}
+                          disabled={isLoading || !canWrite}
+                          title={!canWrite ? "Read-only role" : undefined}
                         >
                           <Pencil className="h-4 w-4" />
                           <span className="sr-only">Edit</span>

@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Mail, MessageCircle, RefreshCw, Send, UserX } from "lucide-react";
 import { sendIncompleteProfileReminders, type ReminderRecipient } from "@/lib/reminderApi";
+import { useCanAdminWrite } from "@/lib/adminAuth";
 
 interface CustomerRow {
   user_id: string;
@@ -45,6 +46,7 @@ export default function VerificationRemindersPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
+  const canWrite = useCanAdminWrite();
 
   const fetchCustomers = async () => {
     try {
@@ -97,6 +99,10 @@ export default function VerificationRemindersPage() {
   };
 
   const runSend = async (userIds: string[]) => {
+    if (!canWrite) {
+      toast.error("Read-only access");
+      return;
+    }
     if (userIds.length === 0) {
       toast.error("Select at least one user");
       return;
@@ -141,7 +147,8 @@ export default function VerificationRemindersPage() {
         <Button
           size="sm"
           className="bg-emerald-600 hover:bg-emerald-700"
-          disabled={sending || selected.size === 0}
+          disabled={sending || selected.size === 0 || !canWrite}
+          title={!canWrite ? "Read-only role" : undefined}
           onClick={() => void runSend(Array.from(selected))}
         >
           {sending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2" />}
@@ -150,7 +157,8 @@ export default function VerificationRemindersPage() {
         <Button
           variant="secondary"
           size="sm"
-          disabled={sending || candidates.length === 0}
+          disabled={sending || candidates.length === 0 || !canWrite}
+          title={!canWrite ? "Read-only role" : undefined}
           onClick={() => void runSend(candidates.map((x) => x.c.user_id))}
         >
           <MessageCircle className="h-4 w-4 mr-2" />
@@ -189,6 +197,7 @@ export default function VerificationRemindersPage() {
                         checked={
                           candidates.length > 0 && selected.size === candidates.length
                         }
+                        disabled={!canWrite}
                         onCheckedChange={(checked) => {
                           if (checked === true) {
                             setSelected(new Set(candidates.map((x) => x.c.user_id)));
@@ -212,6 +221,7 @@ export default function VerificationRemindersPage() {
                       <td className="p-3 align-top">
                         <Checkbox
                           checked={selected.has(c.user_id)}
+                          disabled={!canWrite}
                           onCheckedChange={() => toggle(c.user_id)}
                           aria-label={`Select ${c.user_fullname || c.user_id}`}
                         />
@@ -236,7 +246,8 @@ export default function VerificationRemindersPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={sending}
+                          disabled={sending || !canWrite}
+                          title={!canWrite ? "Read-only role" : undefined}
                           onClick={() => void runSend([c.user_id])}
                         >
                           Send

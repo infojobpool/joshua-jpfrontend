@@ -15,6 +15,8 @@ import {
 } from "../components/ui/dropdown-menu";
 import { MobileNav } from "../components/mobile-nav";
 import useStore from "../lib/Zustand";
+import { useCanAdminWrite } from "../lib/adminAuth";
+import { Badge } from "../components/ui/badge";
 
 interface HeaderProps {
   isMobileNavOpen: boolean;
@@ -31,6 +33,7 @@ export function Header({
   handleLogout,
 }: HeaderProps) {
   const user = useStore((state) => state.user);
+  const canWrite = useCanAdminWrite();
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-white/90 backdrop-blur-sm px-4 md:px-6 shadow-sm">
       <Sheet open={isMobileNavOpen} onOpenChange={setIsMobileNavOpen}>
@@ -68,6 +71,11 @@ export function Header({
       </Link>
       <div className="ml-auto flex items-center gap-3">
         <div className="hidden md:flex items-center gap-3">
+          {!canWrite && (
+            <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-900 font-normal">
+              Viewer
+            </Badge>
+          )}
           <span className="text-sm font-medium">{user?.name}</span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

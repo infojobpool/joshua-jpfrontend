@@ -30,6 +30,7 @@ import axiosInstance from "@/lib/axiosInstance";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
+import { useCanAdminWrite } from "@/lib/adminAuth";
 
 interface Withdrawal {
   id?: string | number;
@@ -181,6 +182,7 @@ export default function WalletWithdrawalsPage() {
   const [paidSubmitting, setPaidSubmitting] = useState(false);
   /** null = ok or not loaded; 'auth' = 401 / invalid token; 'other' = other error */
   const [loadError, setLoadError] = useState<null | "auth" | "other">(null);
+  const canWrite = useCanAdminWrite();
 
   const fetchWithdrawals = async () => {
     try {
@@ -275,6 +277,10 @@ export default function WalletWithdrawalsPage() {
     w: Withdrawal,
     status: "completed" | "failed" | "in_process"
   ) => {
+    if (!canWrite) {
+      toast.error("Read-only access");
+      return;
+    }
     const id = getTxId(w);
     if (!id) return;
     try {
@@ -301,6 +307,10 @@ export default function WalletWithdrawalsPage() {
   };
 
   const submitMarkPaid = async () => {
+    if (!canWrite) {
+      toast.error("Read-only access");
+      return;
+    }
     const txId = paidTxId.trim();
     const utr = paidUtr.trim();
     if (!txId) return;
@@ -330,6 +340,10 @@ export default function WalletWithdrawalsPage() {
   };
 
   const saveNote = async (txId: string) => {
+    if (!canWrite) {
+      toast.error("Read-only access");
+      return;
+    }
     const text = (noteDrafts[txId] ?? "").slice(0, NOTE_MAX);
     setNoteDrafts((p) => ({ ...p, [txId]: text }));
     setNoteSaving(txId);
@@ -508,7 +522,7 @@ export default function WalletWithdrawalsPage() {
               type="button"
               className="bg-emerald-600 hover:bg-emerald-700"
               onClick={() => void submitMarkPaid()}
-              disabled={paidSubmitting}
+              disabled={paidSubmitting || !canWrite}
             >
               {paidSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm paid"}
             </Button>
@@ -737,7 +751,7 @@ export default function WalletWithdrawalsPage() {
                                   size="sm"
                                   variant="secondary"
                                   className="h-7 text-xs"
-                                  disabled={noteSaving === id}
+                                  disabled={noteSaving === id || !canWrite}
                                   onClick={() => saveNote(id)}
                                 >
                                   {noteSaving === id ? (
@@ -755,7 +769,7 @@ export default function WalletWithdrawalsPage() {
                                     size="sm"
                                     variant="outline"
                                     className="h-8"
-                                    disabled={actionLoading === id}
+                                    disabled={actionLoading === id || !canWrite}
                                     onClick={() => updateStatus(w, "in_process")}
                                   >
                                     In Process
@@ -763,7 +777,7 @@ export default function WalletWithdrawalsPage() {
                                   <Button
                                     size="sm"
                                     className="bg-emerald-600 hover:bg-emerald-700 h-8"
-                                    disabled={actionLoading === id}
+                                    disabled={actionLoading === id || !canWrite}
                                     onClick={() => openMarkPaid(w)}
                                   >
                                     {actionLoading === id ? (
@@ -779,7 +793,7 @@ export default function WalletWithdrawalsPage() {
                                     size="sm"
                                     variant="destructive"
                                     className="h-8"
-                                    disabled={actionLoading === id}
+                                    disabled={actionLoading === id || !canWrite}
                                     onClick={() => updateStatus(w, "failed")}
                                   >
                                     <X className="h-3 w-3 mr-1" />
@@ -883,7 +897,7 @@ export default function WalletWithdrawalsPage() {
                           size="sm"
                           variant="secondary"
                           className="w-full"
-                          disabled={noteSaving === id}
+                          disabled={noteSaving === id || !canWrite}
                           onClick={() => saveNote(id)}
                         >
                           {noteSaving === id ? (
@@ -899,7 +913,7 @@ export default function WalletWithdrawalsPage() {
                             size="sm"
                             variant="outline"
                             className="flex-1"
-                            disabled={actionLoading === id}
+                            disabled={actionLoading === id || !canWrite}
                             onClick={() => updateStatus(w, "in_process")}
                           >
                             In Process
@@ -907,7 +921,7 @@ export default function WalletWithdrawalsPage() {
                           <Button
                             size="sm"
                             className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-                            disabled={actionLoading === id}
+                            disabled={actionLoading === id || !canWrite}
                             onClick={() => openMarkPaid(w)}
                           >
                             {actionLoading === id ? (
@@ -923,7 +937,7 @@ export default function WalletWithdrawalsPage() {
                             size="sm"
                             variant="destructive"
                             className="flex-1"
-                            disabled={actionLoading === id}
+                            disabled={actionLoading === id || !canWrite}
                             onClick={() => updateStatus(w, "failed")}
                           >
                             <X className="h-4 w-4 mr-1" />

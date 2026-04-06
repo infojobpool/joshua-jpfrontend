@@ -29,6 +29,7 @@ import { Label } from "@/components/ui/label";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import axiosInstance from "@/lib/axiosInstance";
+import { useCanAdminWrite } from "@/lib/adminAuth";
 
 interface Category {
   category_id: string;
@@ -47,6 +48,7 @@ export default function CategoriesPage() {
   const [categoryToDelete, setCategoryToDelete] = useState<null | string>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const canWrite = useCanAdminWrite();
 
   const formatDate = (isoString: string): string => {
     const date = new Date(isoString);
@@ -83,6 +85,10 @@ export default function CategoriesPage() {
   );
 
   const handleAddCategory = async () => {
+    if (!canWrite) {
+      toast.error("Read-only access");
+      return;
+    }
     if (newCategory.name.trim() === "") {
       toast.error("Category name is required");
       return;
@@ -111,6 +117,10 @@ export default function CategoriesPage() {
   
 
   const handleEditCategory = async () => {
+    if (!canWrite) {
+      toast.error("Read-only access");
+      return;
+    }
     if (!editCategory || editCategory.category_name.trim() === "") {
       toast.error("Category name is required");
       return;
@@ -138,6 +148,10 @@ export default function CategoriesPage() {
   };
 
   const handleDeleteCategory = async () => {
+    if (!canWrite) {
+      toast.error("Read-only access");
+      return;
+    }
     if (categoryToDelete === null) return;
   
     try {
@@ -164,9 +178,15 @@ export default function CategoriesPage() {
       <Toaster />
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Categories Management</h1>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <Dialog
+          open={isAddDialogOpen}
+          onOpenChange={(open) => {
+            if (open && !canWrite) return;
+            setIsAddDialogOpen(open);
+          }}
+        >
           <DialogTrigger asChild>
-            <Button disabled={isLoading}>
+            <Button disabled={isLoading || !canWrite} title={!canWrite ? "Read-only role" : undefined}>
               <Plus className="mr-2 h-4 w-4" />
               Add Category
             </Button>
@@ -263,7 +283,8 @@ export default function CategoriesPage() {
                               });
                               setIsEditDialogOpen(true);
                             }}
-                            disabled={isLoading}
+                            disabled={isLoading || !canWrite}
+                            title={!canWrite ? "Read-only role" : undefined}
                           >
                             <Pencil className="h-4 w-4" />
                             <span className="sr-only">Edit</span>
@@ -318,7 +339,8 @@ export default function CategoriesPage() {
                               setCategoryToDelete(category.category_id);
                               setIsDeleteDialogOpen(true);
                             }}
-                            disabled={isLoading}
+                            disabled={isLoading || !canWrite}
+                            title={!canWrite ? "Read-only role" : undefined}
                           >
                             <Trash2 className="h-4 w-4" />
                             <span className="sr-only">Delete</span>

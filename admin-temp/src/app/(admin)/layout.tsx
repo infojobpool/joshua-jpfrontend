@@ -48,6 +48,7 @@ import { useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { Header } from "../../components/header"
 import { Sidebar } from "../../components/sidebar"
+import { AdminReadOnlyBanner } from "../../components/AdminReadOnlyBanner"
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -73,6 +74,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         pathname={pathname}
         handleLogout={handleLogout}
       />
+      <AdminReadOnlyBanner />
       <div className="flex flex-1 bg-slate-50">
         <Sidebar pathname={pathname} />
         <main className="flex-1 p-4 md:p-6 bg-slate-50">{children}</main>

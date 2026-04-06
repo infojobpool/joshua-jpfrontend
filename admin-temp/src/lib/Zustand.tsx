@@ -101,7 +101,7 @@ const useStore = create<StoreState>((set) => ({
 
         set({
           userId: decoded.userId,
-          role: decoded.role,
+          role: decoded.role != null ? String(decoded.role) : null,
           exp: decoded.exp,
           isAuthenticated: true,
           user: normalizedUser,
@@ -148,7 +148,7 @@ const useStore = create<StoreState>((set) => ({
         if (decoded && decoded.userId !== undefined && parsedUser) {
           set({
             userId: decoded.userId,
-            role: decoded.role,
+            role: decoded.role != null ? String(decoded.role) : null,
             exp: decoded.exp,
             isAuthenticated: true,
             user: {

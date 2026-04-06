@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Loader2, Save, Mail, Phone, MapPin, Building, Calendar } from "lucide-react"
 import useStore from "@/lib/Zustand"
+import { useCanAdminWrite } from "@/lib/adminAuth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -42,6 +43,7 @@ export default function AdminProfilePage() {
   const checkAuth = useStore((s) => s.checkAuth)
   const storeUser = useStore((s) => s.user)
   const role = useStore((s) => s.role)
+  const canWrite = useCanAdminWrite()
 
   const [admin, setAdmin] = useState<Admin | null>(null)
   const [profileReady, setProfileReady] = useState(false)
@@ -112,6 +114,10 @@ export default function AdminProfilePage() {
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!canWrite) {
+      setError("Read-only access.")
+      return
+    }
     setError("")
     setIsLoading(true)
 
@@ -143,6 +149,10 @@ export default function AdminProfilePage() {
   }
 
   const handleNotificationUpdate = async () => {
+    if (!canWrite) {
+      setError("Read-only access.")
+      return
+    }
     setError("")
     setIsLoading(true)
 
@@ -267,6 +277,7 @@ export default function AdminProfilePage() {
                         <Input
                           id="name"
                           value={admin.name}
+                          readOnly={!canWrite}
                           onChange={(e) => setAdmin({ ...admin, name: e.target.value })}
                         />
                       </div>
@@ -276,6 +287,7 @@ export default function AdminProfilePage() {
                           id="email"
                           type="email"
                           value={admin.email}
+                          readOnly={!canWrite}
                           onChange={(e) => setAdmin({ ...admin, email: e.target.value })}
                         />
                       </div>
@@ -284,6 +296,7 @@ export default function AdminProfilePage() {
                         <Input
                           id="phone"
                           value={admin.phone}
+                          readOnly={!canWrite}
                           onChange={(e) => setAdmin({ ...admin, phone: e.target.value })}
                         />
                       </div>
@@ -292,6 +305,7 @@ export default function AdminProfilePage() {
                         <Input
                           id="company"
                           value={admin.company}
+                          readOnly={!canWrite}
                           onChange={(e) => setAdmin({ ...admin, company: e.target.value })}
                         />
                       </div>
@@ -302,6 +316,7 @@ export default function AdminProfilePage() {
                       <Input
                         id="address"
                         value={admin.address}
+                        readOnly={!canWrite}
                         onChange={(e) => setAdmin({ ...admin, address: e.target.value })}
                       />
                     </div>
@@ -312,12 +327,13 @@ export default function AdminProfilePage() {
                         id="bio"
                         rows={4}
                         value={admin.bio}
+                        readOnly={!canWrite}
                         onChange={(e) => setAdmin({ ...admin, bio: e.target.value })}
                       />
                     </div>
                   </CardContent>
                   <CardFooter>
-                    <Button type="submit" disabled={isLoading}>
+                    <Button type="submit" disabled={isLoading || !canWrite} title={!canWrite ? "Read-only role" : undefined}>
                       {isLoading ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -355,6 +371,7 @@ export default function AdminProfilePage() {
                       <Switch
                         id="email-notifications"
                         checked={notifications.email}
+                        disabled={!canWrite}
                         onCheckedChange={(checked) => setNotifications({ ...notifications, email: checked })}
                       />
                     </div>
@@ -366,6 +383,7 @@ export default function AdminProfilePage() {
                       <Switch
                         id="push-notifications"
                         checked={notifications.push}
+                        disabled={!canWrite}
                         onCheckedChange={(checked) => setNotifications({ ...notifications, push: checked })}
                       />
                     </div>
@@ -381,6 +399,7 @@ export default function AdminProfilePage() {
                       <Switch
                         id="task-updates"
                         checked={notifications.taskUpdates}
+                        disabled={!canWrite}
                         onCheckedChange={(checked) => setNotifications({ ...notifications, taskUpdates: checked })}
                       />
                     </div>
@@ -392,6 +411,7 @@ export default function AdminProfilePage() {
                       <Switch
                         id="new-users"
                         checked={notifications.newUsers}
+                        disabled={!canWrite}
                         onCheckedChange={(checked) => setNotifications({ ...notifications, newUsers: checked })}
                       />
                     </div>
@@ -403,6 +423,7 @@ export default function AdminProfilePage() {
                       <Switch
                         id="system-alerts"
                         checked={notifications.systemAlerts}
+                        disabled={!canWrite}
                         onCheckedChange={(checked) => setNotifications({ ...notifications, systemAlerts: checked })}
                       />
                     </div>
@@ -414,13 +435,14 @@ export default function AdminProfilePage() {
                       <Switch
                         id="marketing-emails"
                         checked={notifications.marketingEmails}
+                        disabled={!canWrite}
                         onCheckedChange={(checked) => setNotifications({ ...notifications, marketingEmails: checked })}
                       />
                     </div>
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button onClick={handleNotificationUpdate} disabled={isLoading}>
+                  <Button onClick={handleNotificationUpdate} disabled={isLoading || !canWrite} title={!canWrite ? "Read-only role" : undefined}>
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -443,15 +465,15 @@ export default function AdminProfilePage() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="current-password">Current Password</Label>
-                    <Input id="current-password" type="password" />
+                    <Input id="current-password" type="password" readOnly={!canWrite} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="new-password">New Password</Label>
-                    <Input id="new-password" type="password" />
+                    <Input id="new-password" type="password" readOnly={!canWrite} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="confirm-password">Confirm New Password</Label>
-                    <Input id="confirm-password" type="password" />
+                    <Input id="confirm-password" type="password" readOnly={!canWrite} />
                   </div>
 
                   <div className="pt-4">
@@ -461,12 +483,14 @@ export default function AdminProfilePage() {
                         <Label htmlFor="two-factor">Enable Two-Factor Authentication</Label>
                         <p className="text-sm text-muted-foreground">Add an extra layer of security to your account</p>
                       </div>
-                      <Switch id="two-factor" />
+                      <Switch id="two-factor" disabled={!canWrite} />
                     </div>
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button>Update Password</Button>
+                  <Button disabled={!canWrite} title={!canWrite ? "Read-only role" : undefined}>
+                    Update Password
+                  </Button>
                 </CardFooter>
               </Card>
             </TabsContent>
