@@ -4,7 +4,7 @@ import type React from "react";
 import { ChangeEvent, FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -21,6 +21,8 @@ import { toast } from "sonner";
 import axiosInstance from "../lib/axiosInstance";
 import useStore from "../lib/Zustand";
 import axios, { AxiosError } from "axios";
+import { getApiErrorMessage } from "../lib/apiError";
+import { Alert, AlertDescription, AlertTitle } from "../components/ui/alert";
 
 export default function AdminLoginPage() {
   const { login } = useStore();
@@ -32,10 +34,12 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setLoginError(null);
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -49,6 +53,7 @@ export default function AdminLoginPage() {
 
     try {
       setIsLoading(true);
+      setLoginError(null);
       const response = await axiosInstance.post("/admin-login/", {
         user_email: formData.user_email,
         email: formData.user_email,
@@ -76,18 +81,27 @@ export default function AdminLoginPage() {
       }
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        const axiosError = err as AxiosError<{ message?: string }>;
+        const axiosError = err as AxiosError<Record<string, unknown>>;
         const status = axiosError.response?.status;
+        const msg = getApiErrorMessage(err);
 
-        const msg = axiosError.response?.data?.message || axiosError.response?.data?.detail;
-        if (status === 404) {
+        if (status === 403) {
+          setLoginError(msg);
+          toast.error(msg, { duration: 8000 });
+        } else if (status === 404) {
+          setLoginError(msg || "User not found.");
           toast.error(msg || "User not found.");
         } else if (status === 401) {
-          toast.error(msg || "Invalid email or password. Please try again or reset your password.");
+          setLoginError(msg || "Invalid email or password.");
+          toast.error(
+            msg || "Invalid email or password. Try again or use Forgot password."
+          );
         } else {
+          setLoginError(msg || "Login failed. Please try again.");
           toast.error(msg || "An error occurred while logging in");
         }
       } else {
+        setLoginError("Something went wrong");
         toast.error("Something went wrong");
       }
     } finally {
@@ -110,6 +124,25 @@ export default function AdminLoginPage() {
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4 p-6">
+              {loginError && (
+                <Alert variant="destructive" className="text-left">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Could not sign in</AlertTitle>
+                  <AlertDescription className="space-y-2 text-destructive/95">
+                    <p>{loginError}</p>
+                    {loginError.toLowerCase().includes("verified") ||
+                    loginError.toLowerCase().includes("inactive") ? (
+                      <p className="text-xs leading-relaxed opacity-90">
+                        If you already clicked the email link: a superadmin should open{" "}
+                        <strong>Employees</strong>, switch to <strong>All</strong> or{" "}
+                        <strong>Inactive</strong>, and set your user to <strong>Active</strong>. If it still
+                        fails, the API may be waiting on a separate verification flag—check the backend
+                        admin user record or logs.
+                      </p>
+                    ) : null}
+                  </AlertDescription>
+                </Alert>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="user_email" className="text-sm font-semibold text-gray-800">Email</Label>
                 <Input
