@@ -444,7 +444,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Plus, Pencil, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -477,6 +477,9 @@ import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import axiosInstance from "@/lib/axiosInstance";
 import { useCanAdminWrite } from "@/lib/adminAuth";
+import { cn } from "@/lib/utils";
+
+type AdminStatusFilter = "active" | "inactive" | "all";
 
 interface AdminUser {
   user_id: string;
@@ -486,6 +489,11 @@ interface AdminUser {
   role_name: string;
   status: boolean;
   created_at: string;
+}
+
+/** GET get-admin-users/: `status === true` = inactive/disabled; active logins use falsy `status`. */
+function isAdminUserActive(user: AdminUser): boolean {
+  return user.status !== true;
 }
 
 interface Role {
@@ -507,6 +515,7 @@ export default function AdminUsersPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [statusFilter, setStatusFilter] = useState<AdminStatusFilter>("active");
   const canWrite = useCanAdminWrite();
 
   const formatDate = (isoString: string): string => {
@@ -551,11 +560,32 @@ export default function AdminUsersPage() {
     fetchRoles();
   }, []);
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const activeCount = useMemo(
+    () => users.filter((u) => isAdminUserActive(u)).length,
+    [users]
   );
+  const inactiveCount = useMemo(
+    () => users.filter((u) => !isAdminUserActive(u)).length,
+    [users]
+  );
+
+  const filteredUsers = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return users.filter((user) => {
+      const byStatus =
+        statusFilter === "all"
+          ? true
+          : statusFilter === "active"
+            ? isAdminUserActive(user)
+            : !isAdminUserActive(user);
+      if (!byStatus) return false;
+      if (!q) return true;
+      return (
+        user.full_name.toLowerCase().includes(q) ||
+        user.email.toLowerCase().includes(q)
+      );
+    });
+  }, [users, searchTerm, statusFilter]);
 
   const validateEmail = (email: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -735,8 +765,38 @@ export default function AdminUsersPage() {
         </Dialog>
       </div>
 
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div
+          className="inline-flex h-9 w-fit shrink-0 items-center rounded-lg bg-muted p-1 text-muted-foreground"
+          role="tablist"
+          aria-label="Filter by account status"
+        >
+          {(
+            [
+              { key: "active" as const, label: "Active", count: activeCount },
+              { key: "inactive" as const, label: "Inactive", count: inactiveCount },
+              { key: "all" as const, label: "All", count: users.length },
+            ] as const
+          ).map(({ key, label, count }) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={statusFilter === key}
+              className={cn(
+                "inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium transition-all",
+                statusFilter === key
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              onClick={() => setStatusFilter(key)}
+            >
+              {label}
+              <span className="tabular-nums text-xs opacity-70">({count})</span>
+            </button>
+          ))}
+        </div>
+        <div className="relative min-w-0 flex-1 max-w-md">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
@@ -771,7 +831,13 @@ export default function AdminUsersPage() {
             ) : filteredUsers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  No users found
+                  {users.length === 0
+                    ? "No admin users returned from the server."
+                    : statusFilter === "active"
+                      ? "No active admin users match your search."
+                      : statusFilter === "inactive"
+                        ? "No inactive admin users match your search."
+                        : "No admin users match your search."}
                 </TableCell>
               </TableRow>
             ) : (
