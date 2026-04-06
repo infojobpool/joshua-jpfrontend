@@ -38,34 +38,59 @@ export function MobileHeroSection() {
             </div>
           </div>
 
-          <h1 className="task-title text-center text-[1.65rem] sm:text-[1.85rem] leading-[1.12] text-white tracking-tight">
+          <h1 className="task-title text-center text-[1.65rem] sm:text-[1.85rem] leading-[1.1] text-white tracking-[-0.03em] font-extrabold">
             Get Everything Done
           </h1>
-          <p className="text-center text-[0.9375rem] text-blue-50/95 mt-2.5 leading-snug px-1">
+          <p
+            className="text-center text-[0.9375rem] text-blue-50/95 mt-2.5 leading-snug px-1 font-medium tracking-tight"
+            style={{
+              fontFamily:
+                "var(--font-archivo), var(--font-geist-sans), system-ui, sans-serif",
+            }}
+          >
             Post a task or search what you need — local helpers, clear offers.
           </p>
 
           <form
             onSubmit={onSearch}
-            className="mt-5 flex gap-1.5 rounded-2xl bg-white p-1.5 shadow-lg shadow-black/15 ring-1 ring-black/5"
+            className="mt-5 space-y-2"
             role="search"
             aria-label="Search tasks"
           >
-            <input
-              type="search"
-              enterKeyHint="search"
-              placeholder="What do you need help with?"
-              className="flex-1 min-w-0 bg-transparent px-3 py-2.5 text-[0.9375rem] text-slate-900 placeholder:text-slate-400 outline-none"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <button
-              type="submit"
-              className="shrink-0 flex items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white w-11 h-11 transition-colors"
-              aria-label="Search tasks"
+            <p
+              className="text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-100/80"
+              style={{
+                fontFamily:
+                  "var(--font-archivo), var(--font-geist-sans), system-ui, sans-serif",
+              }}
             >
-              <Search className="h-5 w-5" strokeWidth={2.25} />
-            </button>
+              What you need
+            </p>
+            <div className="flex gap-2 items-stretch">
+              <div
+                className="flex-1 min-w-0 rounded-2xl border-2 border-blue-200/90 bg-slate-50 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] transition-[box-shadow,border-color,ring] duration-200 ease-out focus-within:border-blue-500 focus-within:ring-[3px] focus-within:ring-blue-500/30 focus-within:shadow-[0_0_0_1px_rgba(59,130,246,0.35),0_8px_32px_-6px_rgba(37,99,235,0.45)]"
+              >
+                <input
+                  type="search"
+                  enterKeyHint="search"
+                  placeholder="What do you need help with?"
+                  className="w-full min-h-[3.25rem] rounded-2xl bg-transparent px-4 py-3.5 text-[0.9375rem] text-slate-900 placeholder:text-slate-400 placeholder:font-normal outline-none antialiased tracking-tight"
+                  style={{
+                    fontFamily:
+                      "var(--font-geist-sans), system-ui, sans-serif",
+                  }}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
+              <button
+                type="submit"
+                className="shrink-0 flex items-center justify-center self-stretch min-w-[3.25rem] rounded-2xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white shadow-md shadow-blue-900/20 transition-all"
+                aria-label="Search tasks"
+              >
+                <Search className="h-5 w-5" strokeWidth={2.25} />
+              </button>
+            </div>
           </form>
 
           <Link href="/post-task/" className="block mt-4">
