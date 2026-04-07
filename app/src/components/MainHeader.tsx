@@ -64,7 +64,7 @@ const MainHeader: React.FC = () => {
             <img
               src="/images/jobpool-logo-header.png"
               alt="JobPool"
-              className="h-11 w-auto max-w-[min(240px,60vw)] object-contain object-left md:hidden"
+              className="h-[3.25rem] w-auto max-w-[min(270px,64vw)] object-contain object-left sm:h-14 md:hidden"
             />
             <img
               src="/images/new_logo_22-removebg-preview.png"

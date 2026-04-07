@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Archivo } from "next/font/google";
+import { Bebas_Neue, Geist, Geist_Mono, Archivo } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import MainHeader from "@/components/MainHeader";
@@ -31,6 +31,12 @@ const archivo = Archivo({
   variable: "--font-archivo",
   subsets: ["latin"],
   weight: ["600", "700", "800"],
+});
+
+const bebasNeue = Bebas_Neue({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-bebas-neue",
 });
 
 export const metadata: Metadata = {
@@ -80,7 +86,9 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <link rel="mask-icon" href="/icons/icon-192x192.png" color="#1e3a8a" />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} ${archivo.variable} antialiased overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} ${archivo.variable} ${bebasNeue.variable} antialiased overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100`}
+      >
         <GoogleAnalytics />
         <PwaInstallTracker />
         <ThemeProvider>

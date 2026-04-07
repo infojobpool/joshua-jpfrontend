@@ -28,7 +28,15 @@ export function MobileHeroSection() {
       {/* Full-bleed hero — flush to screen edges (no side rounding) */}
       <div className="w-full bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 text-white shadow-[0_12px_40px_-12px_rgba(37,99,235,0.45)] ring-1 ring-white/10">
         <div className="mx-auto max-w-lg px-4 pb-6 pt-3">
-          <h1 className="task-title text-center text-[1.65rem] sm:text-[1.85rem] leading-[1.1] text-white tracking-[-0.03em] font-extrabold">
+          <h1
+            className="task-title text-center uppercase text-[2.05rem] sm:text-[2.45rem] leading-[0.98] text-white font-normal px-1"
+            style={{
+              fontFamily: "var(--font-bebas-neue), var(--font-archivo), system-ui, sans-serif",
+              letterSpacing: "0.06em",
+              textShadow:
+                "0 2px 28px rgba(0,0,0,0.35), 0 1px 0 rgba(0,0,0,0.2), 0 0 40px rgba(255,255,255,0.12)",
+            }}
+          >
             Get Everything Done
           </h1>
           <p
@@ -43,19 +51,10 @@ export function MobileHeroSection() {
 
           <form
             onSubmit={onSearch}
-            className="mt-5 space-y-2"
+            className="mt-5"
             role="search"
             aria-label="Search tasks"
           >
-            <p
-              className="text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-100/80"
-              style={{
-                fontFamily:
-                  "var(--font-archivo), var(--font-geist-sans), system-ui, sans-serif",
-              }}
-            >
-              What you need
-            </p>
             <div className="flex gap-2 items-stretch">
               <div
                 className="flex-1 min-w-0 rounded-2xl border-2 border-blue-200/90 bg-slate-50 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] transition-[box-shadow,border-color,ring] duration-200 ease-out focus-within:border-blue-500 focus-within:ring-[3px] focus-within:ring-blue-500/30 focus-within:shadow-[0_0_0_1px_rgba(59,130,246,0.35),0_8px_32px_-6px_rgba(37,99,235,0.45)]"
