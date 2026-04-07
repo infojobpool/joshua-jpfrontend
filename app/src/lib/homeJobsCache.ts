@@ -8,6 +8,30 @@ let cache: { jobs: RawJob[]; fetchedAt: number } | null = null;
 /** Raw job row from GET /get-all-jobs/ */
 export type RawJob = Record<string, unknown>;
 
+/** True when GET /get-all-jobs/ body indicates success (handles string/number status_code). */
+export function isGetAllJobsResponseOk(
+  data: unknown,
+  httpStatus: number | undefined
+): boolean {
+  const sc = (data as { status_code?: unknown } | null)?.status_code;
+  if (Number(sc) === 200 || sc === "200") return true;
+  if (sc === 200) return true;
+  if (httpStatus === 200 && (sc === undefined || sc === null)) return true;
+  return false;
+}
+
+export function extractJobsArray(data: unknown): RawJob[] {
+  if (!data || typeof data !== "object") return [];
+  const d = data as Record<string, unknown>;
+  const inner = d.data;
+  if (inner && typeof inner === "object") {
+    const j = (inner as { jobs?: unknown }).jobs;
+    if (Array.isArray(j)) return j as RawJob[];
+  }
+  if (Array.isArray(d.jobs)) return d.jobs as RawJob[];
+  return [];
+}
+
 /**
  * Single-flight cached fetch for homepage sections (recent tasks + scroller).
  * Avoids duplicate /get-all-jobs/ when both components mount (mobile + desktop hidden siblings).
@@ -24,9 +48,8 @@ export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
     try {
       const response = await axiosInstance.get("/get-all-jobs/");
       const data = response?.data;
-      if (data?.status_code === 200) {
-        const raw = data?.data?.jobs ?? [];
-        const jobs = Array.isArray(raw) ? raw : [];
+      if (isGetAllJobsResponseOk(data, response?.status)) {
+        const jobs = extractJobsArray(data);
         cache = { jobs, fetchedAt: Date.now() };
         return jobs;
       }
@@ -69,18 +92,43 @@ function parsePostedAtMs(job: RawJob): number {
 
 function firstJobImageUrl(job: RawJob): string | null {
   const ji = job.job_images as { urls?: string[] } | string[] | undefined;
-  if (!ji) return null;
-  const urls = Array.isArray(ji) ? ji : ji.urls;
-  if (!Array.isArray(urls) || urls.length === 0) return null;
-  const u = urls[0];
-  if (typeof u !== "string" || !u.trim()) return null;
-  return u.trim();
+  if (ji) {
+    const urls = Array.isArray(ji) ? ji : ji.urls;
+    if (Array.isArray(urls) && urls.length > 0) {
+      const u = urls[0];
+      if (typeof u === "string" && u.trim()) return u.trim();
+    }
+  }
+  const single = job.image_url ?? job.job_image_url ?? job.thumbnail_url;
+  if (typeof single === "string" && single.trim()) return single.trim();
+  return null;
 }
 
-/** Same “active listing” rule as browse: not deleted and status is true. */
+/**
+ * Open listing available to taskers. Per FRONTEND_API_BROWSE.md, boolean `status === false`
+ * means open; `true` means taken/in progress. Also accepts common string statuses.
+ */
 export function isOpenListingJob(job: RawJob): boolean {
   if (job.deletion_status === true) return false;
-  return job.status === true;
+
+  const st = job.status;
+
+  if (st === false) return true;
+
+  if (st === true) return false;
+
+  if (typeof st === "string") {
+    const s = st.toLowerCase().trim();
+    if (
+      /cancel|completed|closed|assigned|in.?progress|paid|working|accepted/.test(s)
+    ) {
+      return false;
+    }
+    if (/^(open|active|posted|available|pending)$/.test(s)) return true;
+    return false;
+  }
+
+  return false;
 }
 
 /**

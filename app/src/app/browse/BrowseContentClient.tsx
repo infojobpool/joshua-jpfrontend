@@ -12,6 +12,12 @@ import { Badge } from "@/components/ui/badge"
 import { IndianRupee, MapPin, Search, Filter, Loader2, MapPinOff } from "lucide-react"
 import { ShareTaskButton } from "@/components/ShareTaskButton"
 import axiosInstance from "@/lib/axiosInstance"
+import {
+  extractJobsArray,
+  isGetAllJobsResponseOk,
+  isOpenListingJob,
+  type RawJob,
+} from "@/lib/homeJobsCache"
 import { storeTaskForNav, prefetchBidsForTask } from "@/lib/taskNavCache"
 import { toast } from "sonner"
 
@@ -285,9 +291,8 @@ function BrowseContent() {
 
       const response = await axiosInstance.get("/get-all-jobs/");
       const data = response?.data;
-      if (data?.status_code === 200) {
-        const raw = data?.data?.jobs ?? [];
-        const jobs = Array.isArray(raw) ? raw : [];
+      if (isGetAllJobsResponseOk(data, response?.status)) {
+        const jobs = extractJobsArray(data);
         const mappedTasks = jobs.map((j: any) => {
           try { return mapJobToTask(j); } catch { return null; }
         }).filter(Boolean);
@@ -427,8 +432,7 @@ function BrowseContent() {
 
   // Filter tasks based on search and filters
   const filteredTasks = tasks.filter((task) => {
-    // Only show active tasks that are not deleted
-    if (task.deletion_status || !task.status) return false;
+    if (!isOpenListingJob(task as unknown as RawJob)) return false;
 
     // Hide tasks I already bid on
     if (myBidTaskIds.has(String(task.id))) return false
