@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Search, Users } from "lucide-react";
 
 /**
- * Mobile home hero: full-bleed gradient band + search (logo lives in MainHeader).
+ * Mobile home hero: full-bleed premium band + search (logo in MainHeader).
+ * Headline uses system Impact-style stack (Impact / Arial Black fallbacks).
  */
 export function MobileHeroSection() {
   const router = useRouter();
@@ -25,56 +26,64 @@ export function MobileHeroSection() {
 
   return (
     <section className="md:hidden w-full bg-slate-100 pb-2">
-      {/* Full-bleed hero — flush to screen edges (no side rounding) */}
-      <div className="w-full bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 text-white shadow-[0_12px_40px_-12px_rgba(37,99,235,0.45)] ring-1 ring-white/10">
-        <div className="mx-auto max-w-lg px-4 pb-6 pt-3">
-          <h1
-            className="task-title text-center uppercase text-[2.05rem] sm:text-[2.45rem] leading-[0.98] text-white font-normal px-1"
-            style={{
-              fontFamily: "var(--font-bebas-neue), var(--font-archivo), system-ui, sans-serif",
-              letterSpacing: "0.06em",
-              textShadow:
-                "0 2px 28px rgba(0,0,0,0.35), 0 1px 0 rgba(0,0,0,0.2), 0 0 40px rgba(255,255,255,0.12)",
-            }}
-          >
-            Get Everything Done
-          </h1>
-          <p
-            className="text-center text-[0.9375rem] text-blue-50/95 mt-2.5 leading-snug px-1 font-medium tracking-tight"
-            style={{
-              fontFamily:
-                "var(--font-archivo), var(--font-geist-sans), system-ui, sans-serif",
-            }}
-          >
-            Post a task or search what you need — local helpers, clear offers.
-          </p>
+      <div className="relative w-full overflow-hidden bg-gradient-to-b from-blue-500 via-blue-700 to-[#0c1e4a] text-white shadow-[0_16px_48px_-12px_rgba(30,64,175,0.55)] ring-1 ring-white/10">
+        {/* Depth: soft top highlight + vignette */}
+        <div
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_100%_70%_at_50%_-30%,rgba(255,255,255,0.22),transparent_50%)]"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_120%,rgba(0,0,0,0.35),transparent_45%)]"
+          aria-hidden
+        />
+
+        <div className="relative z-10 mx-auto max-w-lg px-4 pb-8 pt-6 sm:px-5">
+          <div className="text-center">
+            <h1
+              className="font-impact-hero text-center uppercase text-[2.4rem] leading-[1.02] tracking-[0.03em] text-white sm:text-[2.95rem] px-0.5"
+              style={{
+                textShadow:
+                  "0 1px 0 rgba(0,0,0,0.5), 0 3px 20px rgba(0,0,0,0.4), 0 0 48px rgba(147,197,253,0.18)",
+              }}
+            >
+              Get Everything Done
+            </h1>
+            <div
+              className="mx-auto mt-4 h-px w-14 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+              aria-hidden
+            />
+            <p
+              className="mx-auto mt-4 max-w-[19.5rem] text-center text-[0.8125rem] leading-relaxed text-blue-100/90 sm:text-sm font-medium"
+              style={{
+                fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
+                letterSpacing: "0.01em",
+              }}
+            >
+              Post a task or search what you need — local helpers, clear offers.
+            </p>
+          </div>
 
           <form
             onSubmit={onSearch}
-            className="mt-5"
+            className="mt-7"
             role="search"
             aria-label="Search tasks"
           >
-            <div className="flex gap-2 items-stretch">
-              <div
-                className="flex-1 min-w-0 rounded-2xl border-2 border-blue-200/90 bg-slate-50 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] transition-[box-shadow,border-color,ring] duration-200 ease-out focus-within:border-blue-500 focus-within:ring-[3px] focus-within:ring-blue-500/30 focus-within:shadow-[0_0_0_1px_rgba(59,130,246,0.35),0_8px_32px_-6px_rgba(37,99,235,0.45)]"
-              >
+            <div className="flex gap-2.5 items-stretch">
+              <div className="flex-1 min-w-0 rounded-2xl border border-white/20 bg-white shadow-[0_8px_32px_-8px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.95)] ring-1 ring-black/5 transition-[box-shadow,ring] duration-200 focus-within:border-blue-400/80 focus-within:ring-2 focus-within:ring-blue-300/50 focus-within:shadow-[0_12px_40px_-10px_rgba(37,99,235,0.45)]">
                 <input
                   type="search"
                   enterKeyHint="search"
                   placeholder="What do you need help with?"
-                  className="w-full min-h-[3.25rem] rounded-2xl bg-transparent px-4 py-3.5 text-[0.9375rem] text-slate-900 placeholder:text-slate-400 placeholder:font-normal outline-none antialiased tracking-tight"
-                  style={{
-                    fontFamily:
-                      "var(--font-geist-sans), system-ui, sans-serif",
-                  }}
+                  className="w-full min-h-[3.35rem] rounded-2xl bg-transparent px-4 py-3.5 text-[0.9375rem] text-slate-900 placeholder:text-slate-400 placeholder:font-medium outline-none antialiased"
+                  style={{ fontFamily: "var(--font-geist-sans), system-ui, sans-serif" }}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
               </div>
               <button
                 type="submit"
-                className="shrink-0 flex items-center justify-center self-stretch min-w-[3.25rem] rounded-2xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white shadow-md shadow-blue-900/20 transition-all"
+                className="shrink-0 flex items-center justify-center self-stretch min-w-[3.35rem] rounded-2xl bg-gradient-to-b from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-950/30 ring-1 ring-white/20 transition active:scale-[0.98] hover:from-blue-400 hover:to-blue-600"
                 aria-label="Search tasks"
               >
                 <Search className="h-5 w-5" strokeWidth={2.25} />
@@ -82,28 +91,31 @@ export function MobileHeroSection() {
             </div>
           </form>
 
-          <Link href="/post-task/" className="block mt-4">
-            <Button
-              type="button"
-              className="w-full h-12 rounded-2xl bg-blue-500 hover:bg-blue-400 text-white font-semibold text-base shadow-md border-0"
-            >
-              Post your task — it&apos;s free
-            </Button>
-          </Link>
+          <div className="mt-5 flex flex-col gap-2.5">
+            <Link href="/post-task/" className="block">
+              <Button
+                type="button"
+                className="h-12 w-full rounded-2xl border-0 bg-gradient-to-r from-sky-400 via-blue-500 to-blue-600 text-[15px] font-semibold text-white shadow-[0_8px_28px_-6px_rgba(37,99,235,0.65)] ring-1 ring-white/25 hover:brightness-105"
+              >
+                Post your task — it&apos;s free
+              </Button>
+            </Link>
+            <Link href="/dashboard/" className="block">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 w-full rounded-2xl border-2 border-white/40 bg-white/10 text-[15px] font-semibold text-white backdrop-blur-sm hover:bg-white/18 hover:text-white"
+              >
+                Browse available tasks
+              </Button>
+            </Link>
+          </div>
 
-          <Link href="/dashboard/" className="block mt-2.5">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full h-11 rounded-2xl border-2 border-white/35 bg-white/10 text-white hover:bg-white/15 hover:text-white font-semibold"
-            >
-              Browse available tasks
-            </Button>
-          </Link>
-
-          <p className="mt-5 flex items-center justify-center gap-2 text-xs text-white/65">
-            <Users className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
-            <span>Verified users · Pay safely on the platform</span>
+          <p className="mt-6 flex items-center justify-center gap-2 text-[11px] font-medium uppercase tracking-wider text-white/55">
+            <Users className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+            <span className="normal-case tracking-normal text-white/70">
+              Verified users · Pay safely on the platform
+            </span>
           </p>
         </div>
       </div>

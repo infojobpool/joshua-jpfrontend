@@ -55,7 +55,7 @@ const MainHeader: React.FC = () => {
   return (
     <header className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-20 md:h-24 lg:h-28 items-center justify-between pt-3 md:pt-4 lg:pt-5 gap-3">
+        <div className="flex min-h-[5.75rem] items-center justify-between gap-3 py-2.5 md:min-h-0 md:h-24 md:py-0 lg:h-28 md:pt-4 lg:pt-5">
           {/* Logo — mobile: full JOB POOL lockup PNG; desktop: wide mark */}
           <Link
             href="/"
@@ -64,7 +64,7 @@ const MainHeader: React.FC = () => {
             <img
               src="/images/jobpool-logo-header.png"
               alt="JobPool"
-              className="h-[3.25rem] w-auto max-w-[min(270px,64vw)] object-contain object-left sm:h-14 md:hidden"
+              className="h-[4.75rem] w-auto max-w-[min(340px,82vw)] object-contain object-left sm:h-[5.125rem] md:hidden"
             />
             <img
               src="/images/new_logo_22-removebg-preview.png"

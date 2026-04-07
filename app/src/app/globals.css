@@ -332,3 +332,19 @@ input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:foc
     animation: none !important;
   }
 }
+
+/* System Impact-style stack (Impact on Windows/macOS; condensed blacks on iOS/Android) */
+.font-impact-hero {
+  font-family:
+    Impact,
+    Haettenschweiler,
+    "Franklin Gothic Bold",
+    Charcoal,
+    "Arial Black",
+    "Arial Narrow",
+    "Helvetica Neue",
+    Helvetica,
+    sans-serif;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
