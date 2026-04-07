@@ -56,15 +56,15 @@ const MainHeader: React.FC = () => {
     <header className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-20 md:h-24 lg:h-28 items-center justify-between pt-3 md:pt-4 lg:pt-5 gap-3">
-          {/* Logo — mobile (with wordmark in SVG) + desktop */}
+          {/* Logo — mobile: full JOB POOL lockup PNG; desktop: wide mark */}
           <Link
             href="/"
             className="flex min-w-0 flex-1 items-center gap-2 group flex-shrink-0 md:flex-initial"
           >
             <img
-              src="/images/jobpool-logo.svg"
+              src="/images/jobpool-logo-header.png"
               alt="JobPool"
-              className="h-9 w-auto max-w-[min(200px,52vw)] object-contain object-left md:hidden"
+              className="h-11 w-auto max-w-[min(240px,60vw)] object-contain object-left md:hidden"
             />
             <img
               src="/images/new_logo_22-removebg-preview.png"
