@@ -41,7 +41,9 @@ function TaskCardImage({ url, alt }: { url: string; alt: string }) {
 export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop" }) {
   const [tasks, setTasks] = useState<HomeTaskCard[]>([]);
   const [loading, setLoading] = useState(true);
-  const trackRef = useRef<HTMLDivElement | null>(null);
+  /** Pause CSS marquee while user touches / hovers the strip */
+  const [marqueePaused, setMarqueePaused] = useState(false);
+  const resumeMarqueeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,58 +64,17 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
   }, []);
 
   useEffect(() => {
-    if (variant !== "mobile" || !tasks.length) return;
-    const el = trackRef.current;
-    if (!el) return;
-
-    let paused = false;
-    /** Slow, smooth drift (~0.4px/frame ≈ 24px/s at 60fps) */
-    const speed = 0.4;
-    let rafId = 0;
-
-    const tick = () => {
-      if (!paused && el) {
-        const half = el.scrollWidth / 2;
-        if (half > el.clientWidth + 2) {
-          el.scrollLeft += speed;
-          if (el.scrollLeft >= half - 1) {
-            el.scrollLeft -= half;
-          }
-        }
-      }
-      rafId = requestAnimationFrame(tick);
-    };
-
-    const startId = window.setTimeout(() => {
-      rafId = requestAnimationFrame(tick);
-    }, 80);
-
-    const onEnter = () => {
-      paused = true;
-    };
-    const onLeave = () => {
-      paused = false;
-    };
-    const onVisibility = () => {
-      paused = document.hidden;
-    };
-
-    el.addEventListener("touchstart", onEnter, { passive: true });
-    el.addEventListener("mouseenter", onEnter);
-    el.addEventListener("mouseleave", onLeave);
-    el.addEventListener("touchend", onLeave, { passive: true });
-    document.addEventListener("visibilitychange", onVisibility);
-
     return () => {
-      window.clearTimeout(startId);
-      cancelAnimationFrame(rafId);
-      el.removeEventListener("touchstart", onEnter);
-      el.removeEventListener("mouseenter", onEnter);
-      el.removeEventListener("mouseleave", onLeave);
-      el.removeEventListener("touchend", onLeave);
-      document.removeEventListener("visibilitychange", onVisibility);
+      if (resumeMarqueeTimerRef.current) clearTimeout(resumeMarqueeTimerRef.current);
     };
-  }, [variant, tasks.length]);
+  }, []);
+
+  useEffect(() => {
+    if (variant !== "mobile") return;
+    const onVis = () => setMarqueePaused(document.hidden);
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [variant]);
 
   if (variant === "mobile") {
     if (loading) {
@@ -149,16 +110,39 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     }
 
     const loop = [...tasks, ...tasks];
+    /** Slower when more cards: ~14s per unique task, clamped for readability */
+    const marqueeDurationSec = Math.min(90, Math.max(32, tasks.length * 14));
+
+    const scheduleMarqueeResume = () => {
+      if (resumeMarqueeTimerRef.current) clearTimeout(resumeMarqueeTimerRef.current);
+      resumeMarqueeTimerRef.current = setTimeout(() => {
+        resumeMarqueeTimerRef.current = null;
+        setMarqueePaused(false);
+      }, 500);
+    };
 
     return (
       <div className="md:hidden px-4 py-4 bg-white">
         <h3 className="mb-1 text-lg font-semibold text-gray-900">Recent available tasks</h3>
         <p className="mb-3 text-sm text-gray-500">Open tasks you can apply for right now</p>
         <div
-          ref={trackRef}
-          className="overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="overflow-hidden pb-2"
+          onTouchStart={() => {
+            if (resumeMarqueeTimerRef.current) clearTimeout(resumeMarqueeTimerRef.current);
+            setMarqueePaused(true);
+          }}
+          onTouchEnd={scheduleMarqueeResume}
+          onTouchCancel={scheduleMarqueeResume}
+          onMouseEnter={() => setMarqueePaused(true)}
+          onMouseLeave={() => setMarqueePaused(false)}
         >
-          <div className="flex w-max gap-3 pr-1">
+          <div
+            className="jp-recent-tasks-marquee-track flex w-max gap-3 pr-1"
+            style={{
+              animationDuration: `${marqueeDurationSec}s`,
+              animationPlayState: marqueePaused ? "paused" : "running",
+            }}
+          >
             {loop.map((t, idx) => (
               <Link
                 key={`${t.id}-${idx}`}
