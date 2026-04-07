@@ -4,8 +4,10 @@ import { useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { ChevronLeft, ChevronRight, MapPin, Loader2, Briefcase } from "lucide-react"
-import axiosInstance from "@/lib/axiosInstance"
+import { getAllJobsForHomeCached, selectOpenRecentTaskCards } from "@/lib/homeJobsCache"
 import { prefetchBidsForTask } from "@/lib/taskNavCache"
+
+const SCROLLER_MAX = 48
 
 interface Task {
   id: string
@@ -15,7 +17,7 @@ interface Task {
   location: string
   category_name: string
   postedAt: string
-  job_images?: { urls?: string[] } | string[]
+  imageUrl: string | null
 }
 
 export function AvailableTasksScroller() {
@@ -27,20 +29,19 @@ export function AvailableTasksScroller() {
     const fetchTasks = async () => {
       try {
         setLoading(true)
-        const response = await axiosInstance.get("/get-all-jobs/")
-        if (response.data?.status_code === 200 && response.data?.data?.jobs) {
-          const mapped: Task[] = (response.data.data.jobs as any[]).map((job: any) => ({
-            id: job.job_id,
-            title: job.job_title || "Task",
-            description: job.job_description || "",
-            budget: Number(job.job_budget) || 0,
-            location: job.job_location || "",
-            category_name: job.job_category_name || job.job_category || "General",
-            postedAt: job.created_at || "",
-            job_images: job.job_images,
-          }))
-          setTasks(mapped)
-        }
+        const jobs = await getAllJobsForHomeCached()
+        const cards = selectOpenRecentTaskCards(jobs, SCROLLER_MAX)
+        const mapped: Task[] = cards.map((c) => ({
+          id: c.id,
+          title: c.title,
+          description: c.description,
+          budget: c.budget,
+          location: c.location,
+          category_name: c.category_name,
+          postedAt: "",
+          imageUrl: c.imageUrl,
+        }))
+        setTasks(mapped)
       } catch {
         setTasks([])
       } finally {
@@ -138,15 +139,32 @@ export function AvailableTasksScroller() {
                     onMouseEnter={() => { try { prefetchBidsForTask(task.id); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(task.id); } catch {} }}
                   >
                     <motion.div
-                      className="bg-white border border-gray-100 rounded-2xl w-[280px] h-[220px] overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col"
+                      className="bg-white border border-gray-100 rounded-2xl w-[280px] h-[260px] overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      <div className="p-4 flex flex-col h-full min-w-0">
+                      <div className="relative h-[88px] w-full shrink-0 overflow-hidden bg-gray-100">
+                        <img
+                          src={task.imageUrl || "/images/placeholder.svg"}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            const el = e.currentTarget;
+                            if (!el.dataset.fallback) {
+                              el.dataset.fallback = "1";
+                              el.src = "/images/placeholder.svg";
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="p-4 flex flex-col flex-1 min-h-0 min-w-0">
                         <span className="text-xs font-medium text-gray-500 uppercase tracking-wide flex-shrink-0">
                           {task.category_name}
                         </span>
-                        <h3 className="task-title text-slate-900 mt-1 line-clamp-2 min-h-[3.25rem] text-base md:text-lg leading-relaxed break-words">
+                        <h3 className="task-title text-slate-900 mt-1 line-clamp-2 min-h-[2.75rem] text-base md:text-lg leading-relaxed break-words">
                           {task.title}
                         </h3>
                         {task.location && (
@@ -155,7 +173,7 @@ export function AvailableTasksScroller() {
                             <span className="truncate">{task.location}</span>
                           </p>
                         )}
-                        <p className="text-blue-600 font-semibold mt-2 flex-shrink-0">
+                        <p className="text-blue-600 font-semibold mt-auto pt-2 flex-shrink-0">
                           {formatBudget(task.budget)}
                         </p>
                       </div>

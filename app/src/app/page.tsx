@@ -2,7 +2,7 @@
 import { HeroSection } from '../components/mainpage/hero-section'
 import { MobileHeroSection } from '../components/mobile/MobileHeroSection'
 import { MobileWelcomeBonus } from '../components/mobile/MobileWelcomeBonus'
-import { MobileServiceScroller } from '../components/mobile/MobileServiceScroller'
+import { RecentAvailableTasks } from '../components/mainpage/recent-available-tasks'
 import { MobileTestimonials } from '../components/mobile/MobileTestimonials'
 import { MobileWhyChoose } from '../components/mobile/MobileWhyChoose'
 import { MobileEarnAsTasker } from '../components/mobile/MobileEarnAsTasker'
@@ -11,7 +11,6 @@ import { MobileHeroBanner } from '../components/mobile/MobileHeroBanner'
 import { HowItWorks } from '../components/mainpage/how-it-works'
 import { Features } from '../components/mainpage/features'
 import { Testimonials } from '../components/mainpage/testimonials'
-import { FeaturedServices } from '../components/mainpage/featured-services'
 import { AvailableTasksScroller } from '../components/mainpage/available-tasks-scroller'
 import { TrustBadgesSection } from '../components/mainpage/TrustBadgesSection'
 import { MobileWrapper } from '../components/mobile/MobileWrapper'
@@ -23,7 +22,7 @@ export default function Home() {
       <div className="md:hidden">
         <MobileHeroSection />
         <MobileWelcomeBonus />
-        <MobileServiceScroller />
+        <RecentAvailableTasks variant="mobile" />
         <MobileHeroBanner />
         <MobileShowcase />
         <MobileEarnAsTasker />
@@ -35,7 +34,7 @@ export default function Home() {
       <div className="hidden md:block">
         <HeroSection />
         <TrustBadgesSection />
-        <FeaturedServices />
+        <RecentAvailableTasks variant="desktop" />
         <AvailableTasksScroller />
         <HowItWorks />
         <Features />
