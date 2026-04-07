@@ -312,27 +312,6 @@ input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:foc
   transition: background-color 5000s ease-in-out 0s !important;
 }
 
-/* Mobile home — recent tasks row (CSS marquee; reliable in WebView vs scrollLeft RAF) */
-@keyframes jp-recent-tasks-marquee {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    transform: translate3d(-50%, 0, 0);
-  }
-}
-.jp-recent-tasks-marquee-track {
-  animation-name: jp-recent-tasks-marquee;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  will-change: transform;
-}
-@media (prefers-reduced-motion: reduce) {
-  .jp-recent-tasks-marquee-track {
-    animation: none !important;
-  }
-}
-
 /* System Impact-style stack (Impact on Windows/macOS; condensed blacks on iOS/Android) */
 .font-impact-hero {
   font-family:

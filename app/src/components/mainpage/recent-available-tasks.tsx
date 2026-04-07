@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { MapPin, Briefcase } from "lucide-react";
 import {
@@ -41,9 +41,24 @@ function TaskCardImage({ url, alt }: { url: string; alt: string }) {
 export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop" }) {
   const [tasks, setTasks] = useState<HomeTaskCard[]>([]);
   const [loading, setLoading] = useState(true);
-  /** Pause CSS marquee while user touches / hovers the strip */
+  /** Pause auto-scroll while user touches / hovers the strip */
   const [marqueePaused, setMarqueePaused] = useState(false);
   const resumeMarqueeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mobileScrollRef = useRef<HTMLDivElement>(null);
+  const scrollProgrammaticRef = useRef(false);
+  /** True after a user-driven scroll until idle timeout (swipe / trackpad). */
+  const autoScrollFromUserRef = useRef(false);
+  const resumeUserScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const marqueePausedRef = useRef(false);
+
+  const registerUserHorizontalScroll = useCallback(() => {
+    autoScrollFromUserRef.current = true;
+    if (resumeUserScrollTimerRef.current) clearTimeout(resumeUserScrollTimerRef.current);
+    resumeUserScrollTimerRef.current = setTimeout(() => {
+      resumeUserScrollTimerRef.current = null;
+      autoScrollFromUserRef.current = false;
+    }, 2800);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,10 +79,55 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
   }, []);
 
   useEffect(() => {
+    marqueePausedRef.current = marqueePaused;
+  }, [marqueePaused]);
+
+  useEffect(() => {
     return () => {
       if (resumeMarqueeTimerRef.current) clearTimeout(resumeMarqueeTimerRef.current);
+      if (resumeUserScrollTimerRef.current) clearTimeout(resumeUserScrollTimerRef.current);
     };
   }, []);
+
+  /** Mobile strip: auto-advance via scrollLeft + seamless loop (pauses on touch / user scroll). */
+  useEffect(() => {
+    if (variant !== "mobile" || tasks.length === 0) return;
+    const el = mobileScrollRef.current;
+    if (!el) return;
+
+    const reducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const onScroll = () => {
+      if (scrollProgrammaticRef.current) return;
+      registerUserHorizontalScroll();
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+
+    let rafId = 0;
+    const tick = () => {
+      if (!reducedMotion && !marqueePausedRef.current && !autoScrollFromUserRef.current) {
+        const half = el.scrollWidth / 2;
+        if (half > 1) {
+          scrollProgrammaticRef.current = true;
+          el.scrollLeft += 0.65;
+          if (el.scrollLeft >= half) el.scrollLeft -= half;
+          queueMicrotask(() => {
+            scrollProgrammaticRef.current = false;
+          });
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      el.removeEventListener("scroll", onScroll);
+      if (resumeUserScrollTimerRef.current) clearTimeout(resumeUserScrollTimerRef.current);
+    };
+  }, [variant, tasks.length, registerUserHorizontalScroll]);
 
   useEffect(() => {
     if (variant !== "mobile") return;
@@ -110,8 +170,6 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     }
 
     const loop = [...tasks, ...tasks];
-    /** Slower when more cards: ~14s per unique task, clamped for readability */
-    const marqueeDurationSec = Math.min(90, Math.max(32, tasks.length * 14));
 
     const scheduleMarqueeResume = () => {
       if (resumeMarqueeTimerRef.current) clearTimeout(resumeMarqueeTimerRef.current);
@@ -126,7 +184,9 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
         <h3 className="mb-1 text-lg font-semibold text-gray-900">Recent available tasks</h3>
         <p className="mb-3 text-sm text-gray-500">Open tasks you can apply for right now</p>
         <div
-          className="overflow-hidden pb-2"
+          ref={mobileScrollRef}
+          className="overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x pb-2"
+          style={{ WebkitOverflowScrolling: "touch" }}
           onTouchStart={() => {
             if (resumeMarqueeTimerRef.current) clearTimeout(resumeMarqueeTimerRef.current);
             setMarqueePaused(true);
@@ -135,14 +195,9 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
           onTouchCancel={scheduleMarqueeResume}
           onMouseEnter={() => setMarqueePaused(true)}
           onMouseLeave={() => setMarqueePaused(false)}
+          onWheel={registerUserHorizontalScroll}
         >
-          <div
-            className="jp-recent-tasks-marquee-track flex w-max gap-3 pr-1"
-            style={{
-              animationDuration: `${marqueeDurationSec}s`,
-              animationPlayState: marqueePaused ? "paused" : "running",
-            }}
-          >
+          <div className="flex w-max gap-3 pr-1">
             {loop.map((t, idx) => (
               <Link
                 key={`${t.id}-${idx}`}
@@ -271,11 +326,12 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
         <div className="relative mx-auto max-w-7xl">
           <div className="flex justify-center">
             <div
-              className="flex gap-4 overflow-x-auto pb-6 pl-12 pr-12 md:pl-14 md:pr-14 scrollbar-hide"
+              className="flex gap-4 overflow-x-auto overscroll-x-contain touch-pan-x pb-6 pl-12 pr-12 md:pl-14 md:pr-14 scrollbar-hide"
               style={{
                 scrollbarWidth: "none",
                 msOverflowStyle: "none",
                 scrollSnapType: "x mandatory",
+                WebkitOverflowScrolling: "touch",
               }}
             >
               {tasks.map((task, index) => (

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { ChevronLeft, ChevronRight, MapPin, Loader2, Briefcase } from "lucide-react"
@@ -22,8 +22,13 @@ interface Task {
 
 export function AvailableTasksScroller() {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const programmaticScrollRef = useRef(false)
+  const autoScrollPausedRef = useRef(false)
+  const resumeAutoScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
+
+  const loopTasks = useMemo(() => (tasks.length ? [...tasks, ...tasks] : []), [tasks])
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -51,27 +56,62 @@ export function AvailableTasksScroller() {
     fetchTasks()
   }, [])
 
+  const pauseAutoScrollForUser = useCallback(() => {
+    autoScrollPausedRef.current = true
+    if (resumeAutoScrollTimerRef.current) clearTimeout(resumeAutoScrollTimerRef.current)
+    resumeAutoScrollTimerRef.current = setTimeout(() => {
+      resumeAutoScrollTimerRef.current = null
+      autoScrollPausedRef.current = false
+    }, 2800)
+  }, [])
+
   const scroll = (dir: "left" | "right") => {
     if (!scrollRef.current) return
+    pauseAutoScrollForUser()
     const step = 296
     scrollRef.current.scrollBy({ left: dir === "left" ? -step : step, behavior: "smooth" })
   }
 
-  // Continuous auto-scroll
+  // Continuous auto-scroll; pause while the user drags, swipes, wheels, or uses arrows
   useEffect(() => {
-    if (!tasks.length || !scrollRef.current) return
+    if (!tasks.length) return
     const el = scrollRef.current
-    let rafId: number
+    if (!el) return
+
+    const reducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+
+    const onScroll = () => {
+      if (programmaticScrollRef.current) return
+      pauseAutoScrollForUser()
+    }
+
+    el.addEventListener("scroll", onScroll, { passive: true })
+
+    let rafId = 0
     const tick = () => {
-      el.scrollLeft += 1
-      if (el.scrollLeft >= el.scrollWidth - el.clientWidth - 1) {
-        el.scrollLeft = 0
+      if (!reducedMotion && !autoScrollPausedRef.current) {
+        const half = el.scrollWidth / 2
+        if (half > 1) {
+          programmaticScrollRef.current = true
+          el.scrollLeft += 0.65
+          if (el.scrollLeft >= half) el.scrollLeft -= half
+          queueMicrotask(() => {
+            programmaticScrollRef.current = false
+          })
+        }
       }
       rafId = requestAnimationFrame(tick)
     }
     rafId = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafId)
-  }, [tasks.length])
+
+    return () => {
+      cancelAnimationFrame(rafId)
+      el.removeEventListener("scroll", onScroll)
+      if (resumeAutoScrollTimerRef.current) clearTimeout(resumeAutoScrollTimerRef.current)
+    }
+  }, [tasks.length, pauseAutoScrollForUser])
 
   const formatBudget = (n: number) => {
     return `₹${Math.round(n).toLocaleString("en-IN")}`
@@ -124,16 +164,19 @@ export function AvailableTasksScroller() {
             <>
               <div
                 ref={scrollRef}
-                className="flex gap-4 overflow-x-auto scrollbar-hide pb-4 px-2"
+                className="flex gap-4 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide pb-4 px-2"
                 style={{
                   scrollbarWidth: "none",
                   msOverflowStyle: "none",
                   scrollSnapType: "x mandatory",
+                  WebkitOverflowScrolling: "touch",
                 }}
+                onPointerDown={pauseAutoScrollForUser}
+                onWheel={pauseAutoScrollForUser}
               >
-                {tasks.map((task) => (
+                {loopTasks.map((task, idx) => (
                   <Link
-                    key={task.id}
+                    key={`${task.id}-${idx}`}
                     href={`/tasks/${task.id}`}
                     className="flex-shrink-0 scroll-snap-start w-[280px]"
                     onMouseEnter={() => { try { prefetchBidsForTask(task.id); } catch {} }} onTouchStart={() => { try { prefetchBidsForTask(task.id); } catch {} }}
