@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Search, Users } from "lucide-react";
 
 /**
- * Mobile home hero: Airtasker-style contained card + TaskRabbit-style search.
+ * Mobile home hero: full-bleed gradient band + search (logo lives in MainHeader).
  */
 export function MobileHeroSection() {
   const router = useRouter();
@@ -24,20 +24,10 @@ export function MobileHeroSection() {
   };
 
   return (
-    <section className="md:hidden bg-slate-100 pb-2">
-      <div className="px-4 pt-[calc(env(safe-area-inset-top)+12px)] max-w-md mx-auto space-y-4">
-        {/* Dark hero card — single focal block */}
-        <div className="rounded-[28px] bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 text-white p-6 shadow-[0_20px_50px_-12px_rgba(37,99,235,0.5)] ring-1 ring-white/20">
-          <div className="flex justify-center mb-4">
-            <div className="rounded-2xl bg-white/95 p-1.5 shadow-lg ring-1 ring-black/5">
-              <img
-                src="/images/new-logo.png"
-                alt="JobPool"
-                className="h-10 w-auto"
-              />
-            </div>
-          </div>
-
+    <section className="md:hidden w-full bg-slate-100 pb-2">
+      {/* Full-bleed hero — flush to screen edges (no side rounding) */}
+      <div className="w-full bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 text-white shadow-[0_12px_40px_-12px_rgba(37,99,235,0.45)] ring-1 ring-white/10">
+        <div className="mx-auto max-w-lg px-4 pb-6 pt-3">
           <h1 className="task-title text-center text-[1.65rem] sm:text-[1.85rem] leading-[1.1] text-white tracking-[-0.03em] font-extrabold">
             Get Everything Done
           </h1>

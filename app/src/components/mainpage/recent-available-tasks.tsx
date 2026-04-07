@@ -67,15 +67,18 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     if (!el) return;
 
     let paused = false;
-    const speed = 1.2;
+    /** Slow, smooth drift (~0.4px/frame ≈ 24px/s at 60fps) */
+    const speed = 0.4;
     let rafId = 0;
 
     const tick = () => {
       if (!paused && el) {
-        const max = el.scrollWidth - el.clientWidth;
-        if (max > 0) {
-          const next = el.scrollLeft + speed;
-          el.scrollLeft = next >= max ? 0 : next;
+        const half = el.scrollWidth / 2;
+        if (half > el.clientWidth + 2) {
+          el.scrollLeft += speed;
+          if (el.scrollLeft >= half - 1) {
+            el.scrollLeft -= half;
+          }
         }
       }
       rafId = requestAnimationFrame(tick);
@@ -83,7 +86,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
 
     const startId = window.setTimeout(() => {
       rafId = requestAnimationFrame(tick);
-    }, 50);
+    }, 80);
 
     const onEnter = () => {
       paused = true;
@@ -151,8 +154,11 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
       <div className="md:hidden px-4 py-4 bg-white">
         <h3 className="mb-1 text-lg font-semibold text-gray-900">Recent available tasks</h3>
         <p className="mb-3 text-sm text-gray-500">Open tasks you can apply for right now</p>
-        <div className="overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div ref={trackRef} className="flex w-max gap-3">
+        <div
+          ref={trackRef}
+          className="overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <div className="flex w-max gap-3 pr-1">
             {loop.map((t, idx) => (
               <Link
                 key={`${t.id}-${idx}`}
