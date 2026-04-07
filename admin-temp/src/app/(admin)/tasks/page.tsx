@@ -10,6 +10,8 @@ import {
   Clock,
   AlertCircle,
   Pencil,
+  Trash2,
+  ImagePlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -123,6 +125,18 @@ interface Task {
   refundStatus?: string;
   refundDate?: string;
   deletion_status: boolean;
+  /** From job_images.urls for admin edit / replace / delete */
+  imageUrls?: string[];
+}
+
+const MAX_TASK_IMAGES_ADMIN = 10;
+
+function jobImageUrlsFromJob(job: Job | Record<string, unknown>): string[] {
+  const ji = (job as Job).job_images as { urls?: string[] } | string[] | undefined;
+  if (!ji) return [];
+  const urls = Array.isArray(ji) ? ji : ji.urls;
+  if (!Array.isArray(urls)) return [];
+  return urls.filter((u): u is string => typeof u === "string" && u.trim() !== "");
 }
 
 export default function TasksPage() {
@@ -145,6 +159,9 @@ export default function TasksPage() {
   const [taskToReset, setTaskToReset] = useState<string | null>(null);
   const [isLoadingPayment, setIsLoadingPayment] = useState<boolean>(false);
   const [promotingTaskId, setPromotingTaskId] = useState<string | null>(null);
+  /** Staged removals / new files while edit dialog is open */
+  const [editRemovedImageUrls, setEditRemovedImageUrls] = useState<Set<string>>(() => new Set());
+  const [editNewImageFiles, setEditNewImageFiles] = useState<File[]>([]);
   const canWrite = useCanAdminWrite();
 
   const formatDate = (isoString: string): string => {
@@ -217,6 +234,7 @@ export default function TasksPage() {
           refundStatus: job.refund_status,
           refundDate: job.refund_date,
           deletion_status: job.deletion_status || false,
+          imageUrls: jobImageUrlsFromJob(job),
         }));
         // Show all tasks including cancelled ones
         setTasks(mappedTasks);
@@ -298,6 +316,7 @@ export default function TasksPage() {
               refundStatus: job.refund_status,
               refundDate: job.refund_date,
               deletion_status: job.deletion_status || false,
+              imageUrls: jobImageUrlsFromJob(job),
             };
             setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
           }
@@ -579,6 +598,13 @@ export default function TasksPage() {
         return d; // fallback: leave untouched (e.g., YYYY-MM-DD)
       };
       const normalizedDate = normalizeDate(editTask.dueDate);
+      const keptUrls = (editTask.imageUrls ?? []).filter((u) => !editRemovedImageUrls.has(u));
+      const totalImages = keptUrls.length + editNewImageFiles.length;
+      if (totalImages > MAX_TASK_IMAGES_ADMIN) {
+        toast.error(`At most ${MAX_TASK_IMAGES_ADMIN} images allowed (kept + new)`);
+        setIsLoading(false);
+        return;
+      }
       // Build multipart form-data with ALL canonical job_* fields
       const fd = new FormData();
       fd.append("job_id", editTask.id);
@@ -600,6 +626,12 @@ export default function TasksPage() {
       fd.append("budget", String(editTask.budget));
       fd.append("location", editTask.location);
       fd.append("due_date", normalizedDate);
+      editRemovedImageUrls.forEach((url) => {
+        fd.append("remove_image_urls", url);
+      });
+      editNewImageFiles.forEach((file) => {
+        fd.append("images", file);
+      });
       // Debug: log payload keys/values so we can verify what was sent
       try {
         const debugEntries: Record<string, string> = {};
@@ -675,6 +707,7 @@ export default function TasksPage() {
               refundStatus: job.refund_status,
               refundDate: job.refund_date,
               deletion_status: job.deletion_status || false,
+              imageUrls: jobImageUrlsFromJob(job),
             };
             setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
           }
@@ -683,6 +716,8 @@ export default function TasksPage() {
         }
         setIsEditDialogOpen(false);
         setEditTask(null);
+        setEditRemovedImageUrls(new Set());
+        setEditNewImageFiles([]);
         try { sessionStorage.setItem("adminLastUpdatedJobId", editTask.id); } catch {}
       } else {
         toast.error(response.data.message || "Failed to update task");
@@ -1078,6 +1113,8 @@ export default function TasksPage() {
                             <>
                           <DropdownMenuItem
                             onClick={() => {
+                              setEditRemovedImageUrls(new Set());
+                              setEditNewImageFiles([]);
                               setEditTask(task);
                               setIsEditDialogOpen(true);
                             }}
@@ -1521,14 +1558,19 @@ export default function TasksPage() {
                       open={isEditDialogOpen && editTask?.id === task.id}
                       onOpenChange={(open) => {
                         setIsEditDialogOpen(open);
-                        if (!open) setEditTask(null);
+                        if (!open) {
+                          setEditTask(null);
+                          setEditRemovedImageUrls(new Set());
+                          setEditNewImageFiles([]);
+                        }
                       }}
                     >
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Edit Task</DialogTitle>
                           <DialogDescription>
-                            Make changes to the task details.
+                            Update fields, replace photos, or remove images. Saves use the same{" "}
+                            <code className="text-xs">update-job</code> API as the user app.
                           </DialogDescription>
                         </DialogHeader>
                         {editTask && (
@@ -1672,12 +1714,127 @@ export default function TasksPage() {
                                 disabled={isLoading || !canWrite}
                               />
                             </div>
+                            <div className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+                              <div className="flex items-center gap-2">
+                                <ImagePlus className="h-4 w-4 text-slate-600" />
+                                <Label className="text-base">Task images</Label>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Remove current photos or add new files (max {MAX_TASK_IMAGES_ADMIN} total after save).
+                                URLs marked removed are sent as{" "}
+                                <code className="rounded bg-white px-0.5">remove_image_urls</code>; new files as{" "}
+                                <code className="rounded bg-white px-0.5">images</code>.
+                              </p>
+                              {(editTask.imageUrls ?? []).filter((u) => !editRemovedImageUrls.has(u)).length === 0 &&
+                              editNewImageFiles.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">No images on this task yet.</p>
+                              ) : null}
+                              <div className="flex flex-wrap gap-2">
+                                {(editTask.imageUrls ?? [])
+                                  .filter((u) => !editRemovedImageUrls.has(u))
+                                  .map((url) => (
+                                    <div
+                                      key={url}
+                                      className="relative h-20 w-20 overflow-hidden rounded-md border bg-white shadow-sm"
+                                    >
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={url} alt="" className="h-full w-full object-cover" />
+                                      <Button
+                                        type="button"
+                                        size="icon"
+                                        variant="destructive"
+                                        className="absolute bottom-1 right-1 h-7 w-7"
+                                        disabled={isLoading || !canWrite}
+                                        title="Remove image"
+                                        onClick={() =>
+                                          setEditRemovedImageUrls((prev) => new Set(prev).add(url))
+                                        }
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                              </div>
+                              {editRemovedImageUrls.size > 0 ? (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-fit text-xs"
+                                  disabled={isLoading || !canWrite}
+                                  onClick={() => setEditRemovedImageUrls(new Set())}
+                                >
+                                  Undo all removals ({editRemovedImageUrls.size})
+                                </Button>
+                              ) : null}
+                              {editNewImageFiles.length > 0 ? (
+                                <ul className="space-y-1 text-sm">
+                                  {editNewImageFiles.map((f, i) => (
+                                    <li
+                                      key={`${f.name}-${i}`}
+                                      className="flex items-center justify-between gap-2 rounded border bg-white px-2 py-1"
+                                    >
+                                      <span className="truncate">{f.name}</span>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="shrink-0 h-7 px-2"
+                                        disabled={isLoading || !canWrite}
+                                        onClick={() =>
+                                          setEditNewImageFiles((prev) => prev.filter((_, j) => j !== i))
+                                        }
+                                      >
+                                        Remove
+                                      </Button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : null}
+                              <div>
+                                <Label htmlFor={`task-images-${task.id}`} className="sr-only">
+                                  Add images
+                                </Label>
+                                <Input
+                                  id={`task-images-${task.id}`}
+                                  type="file"
+                                  accept="image/*"
+                                  multiple
+                                  disabled={isLoading || !canWrite}
+                                  className="cursor-pointer text-xs file:mr-2"
+                                  onChange={(e) => {
+                                    const files = e.target.files;
+                                    if (!files?.length) return;
+                                    const kept =
+                                      (editTask.imageUrls ?? []).filter((u) => !editRemovedImageUrls.has(u))
+                                        .length + editNewImageFiles.length;
+                                    const room = MAX_TASK_IMAGES_ADMIN - kept;
+                                    if (room <= 0) {
+                                      toast.error(`Maximum ${MAX_TASK_IMAGES_ADMIN} images`);
+                                      e.target.value = "";
+                                      return;
+                                    }
+                                    const next = Array.from(files).slice(0, room);
+                                    if (files.length > next.length) {
+                                      toast.message(`Only ${next.length} more image(s) allowed`);
+                                    }
+                                    setEditNewImageFiles((prev) => [...prev, ...next]);
+                                    e.target.value = "";
+                                  }}
+                                />
+                              </div>
+                            </div>
                           </div>
                         )}
                         <DialogFooter>
                           <Button
                             variant="outline"
-                            onClick={() => setIsEditDialogOpen(false)}
+                            onClick={() => {
+                              setIsEditDialogOpen(false);
+                              setEditTask(null);
+                              setEditRemovedImageUrls(new Set());
+                              setEditNewImageFiles([]);
+                            }}
                             disabled={isLoading}
                           >
                             Cancel
