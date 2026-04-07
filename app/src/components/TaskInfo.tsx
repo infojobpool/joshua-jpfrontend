@@ -139,7 +139,7 @@
 "use client";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Calendar, IndianRupee, MapPin, MessageSquare, SquarePen, Star } from "lucide-react";
+import { Calendar, IndianRupee, MapPin, MessageSquare, SquarePen, Star, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card";
@@ -147,9 +147,10 @@ import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
+import { Checkbox } from "./ui/checkbox";
 import axiosInstance from "@/lib/axiosInstance";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 // Interfaces
@@ -169,6 +170,36 @@ interface Task {
   assignedTasker?: User;
   latitude?: number;
   longitude?: number;
+  dueDateFlexible?: boolean;
+  jobDueDateIso?: string | null;
+  jobCategoryId?: string | null;
+  customCategoryName?: string | null;
+}
+
+interface CategoryOption {
+  id: string;
+  name: string;
+}
+
+const CUSTOM_CATEGORY_VALUE = "__custom__";
+const MAX_TASK_IMAGES = 5;
+
+function getFallbackCategoryId(categories: CategoryOption[], customName?: string): string | null {
+  if (!categories.length) return null;
+  const lower = (s: string) => (s || "").toLowerCase().trim();
+  const custom = lower(customName || "");
+  if (custom) {
+    const matched = categories.find((c) => {
+      const n = lower(c.name);
+      return n.includes(custom) || custom.includes(n);
+    });
+    if (matched) return matched.id;
+  }
+  const other = categories.find((c) => lower(c.name).includes("other"));
+  if (other) return other.id;
+  const general = categories.find((c) => lower(c.name).includes("general"));
+  if (general) return general.id;
+  return categories[0].id;
 }
 
 interface Image {
@@ -206,6 +237,8 @@ interface TaskInfoProps {
   /** From parent - avoids flicker; only show payment pending after async API check */
   isPaymentPending?: boolean;
   paymentCheckDone?: boolean;
+  /** After successful save — refetch task on task page */
+  onTaskUpdated?: () => void;
   /** Rendered directly under the description (e.g. offers section). */
   afterDescription?: ReactNode;
 }
@@ -271,8 +304,37 @@ function daysLeftLabel(due: string): string | null {
   return `${diff} days left`;
 }
 
-export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPoster, isEditing = false, setIsEditing, isPaymentPending: parentPaymentPending, paymentCheckDone, afterDescription }: TaskInfoProps) {
+function dueDisplayToIsoInput(display: string, isoFallback?: string | null): string {
+  if (isoFallback && /^\d{4}-\d{2}-\d{2}$/.test(isoFallback)) return isoFallback;
+  const t = display?.trim();
+  if (!t || t === "Flexible" || t === "N/A") return "";
+  const m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) {
+    const day = parseInt(m[1], 10);
+    const month = parseInt(m[2], 10);
+    const year = parseInt(m[3], 10);
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+  }
+  return "";
+}
+
+export function TaskInfo({
+  task,
+  openImageGallery,
+  handleMessageUser,
+  isTaskPoster,
+  isEditing = false,
+  setIsEditing,
+  isPaymentPending: parentPaymentPending,
+  paymentCheckDone,
+  onTaskUpdated,
+  afterDescription,
+}: TaskInfoProps) {
   const router = useRouter();
+  const canPosterEdit = isTaskPoster && task.status === "open";
+
   const [formData, setFormData] = useState({
     title: task.title,
     description: task.description,
@@ -281,7 +343,13 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
     dueDate: task.dueDate,
     category: task.category,
   });
-  const [images, setImages] = useState<File[]>([]);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [categoryId, setCategoryId] = useState<string>("");
+  const [customCatName, setCustomCatName] = useState("");
+  const [dueFlex, setDueFlex] = useState(false);
+  const [dueDateInput, setDueDateInput] = useState("");
+  const [removedImageUrls, setRemovedImageUrls] = useState<Set<string>>(() => new Set());
+  const [newImageFiles, setNewImageFiles] = useState<{ id: string; file: File; url: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [minDate, setMinDate] = useState("");
   
@@ -309,80 +377,15 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
     ? "pending_payment" 
     : task.status;
   
-    useEffect(() => {
-      const today = new Date();
-      const yyyy = today.getFullYear();
-      const mm = String(today.getMonth() + 1).padStart(2, "0");
-      const dd = String(today.getDate()).padStart(2, "0");
-      setMinDate(`${yyyy}-${mm}-${dd}`);
-    }, []);
+  useEffect(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    setMinDate(`${yyyy}-${mm}-${dd}`);
+  }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setImages(Array.from(e.target.files));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    try {
-      const formDataToSend = new FormData();
-      formDataToSend.append("job_id", task.id);
-      if (formData.title !== task.title) formDataToSend.append("title", formData.title);
-      if (formData.description !== task.description) formDataToSend.append("description", formData.description);
-      if (formData.category !== task.category) formDataToSend.append("category", formData.category);
-      if (formData.budget !== task.budget.toString()) formDataToSend.append("budget", formData.budget);
-      if (formData.location !== task.location) formDataToSend.append("location", formData.location);
-      if (formData.dueDate !== task.dueDate) formDataToSend.append("due_date", formData.dueDate);
-      images.forEach((image) => formDataToSend.append("images", image));
-
-      const response = await axiosInstance.put(`/update-job/${task.id}/`, formDataToSend, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      if (response.data.status_code === 200) {
-        toast.success("Task updated successfully");
-        setIsEditing?.(false);
-        // Update the task state to reflect changes
-        const updatedTask = {
-          ...task,
-          title: formData.title,
-          description: formData.description,
-          budget: parseFloat(formData.budget),
-          location: formData.location,
-          dueDate: formData.dueDate,
-          category: formData.category,
-          images: images.length > 0 ? images.map((_, index) => ({
-            id: `img${index + 1}`,
-            url: URL.createObjectURL(_), // Temporary URL for new images
-            alt: `Job image ${index + 1}`,
-          })) : task.images,
-        };
-        // Note: You may need to reload task data from the API to get the actual image URLs
-        router.refresh(); // Refresh the page to reflect changes
-      } else {
-        throw new Error(response.data.message || "Failed to update task");
-      }
-    } catch (error: any) {
-      console.error("Error updating task:", error);
-      toast.error(error.response?.data?.message || "Failed to update task");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleEditClick = () => {
-    setIsEditing?.(true);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing?.(false);
+  const syncFormFromTask = useCallback(() => {
     setFormData({
       title: task.title,
       description: task.description,
@@ -391,7 +394,219 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
       dueDate: task.dueDate,
       category: task.category,
     });
-    setImages([]);
+    setDueFlex(task.dueDateFlexible === true || task.dueDate === "Flexible");
+    setDueDateInput(dueDisplayToIsoInput(task.dueDate, task.jobDueDateIso ?? null));
+    setRemovedImageUrls(new Set());
+    setNewImageFiles((prev) => {
+      prev.forEach((p) => URL.revokeObjectURL(p.url));
+      return [];
+    });
+  }, [
+    task.id,
+    task.title,
+    task.description,
+    task.budget,
+    task.location,
+    task.dueDate,
+    task.category,
+    task.dueDateFlexible,
+    task.jobDueDateIso,
+  ]);
+
+  useEffect(() => {
+    if (!isEditing) syncFormFromTask();
+  }, [isEditing, syncFormFromTask]);
+
+  useEffect(() => {
+    if (!isEditing || !canPosterEdit) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await axiosInstance.get("get-all-categories/");
+        const data = res?.data;
+        const ok =
+          data?.status_code === 200 ||
+          Number(data?.status_code) === 200 ||
+          res?.status === 200;
+        if (!ok) return;
+        const raw = data?.data?.categories ?? data?.data?.category ?? data?.data ?? [];
+        const list = Array.isArray(raw) ? raw : [];
+        const mapped: CategoryOption[] = list
+          .map((c: { category_id?: string; id?: string; category_name?: string; name?: string }) => ({
+            id: String(c.category_id ?? c.id ?? ""),
+            name: String(c.category_name ?? c.name ?? ""),
+          }))
+          .filter((c) => c.id && c.name);
+        if (!cancelled) setCategories(mapped);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isEditing, canPosterEdit]);
+
+  useEffect(() => {
+    if (!isEditing || !categories.length) return;
+    if (task.customCategoryName) {
+      setCategoryId(CUSTOM_CATEGORY_VALUE);
+      setCustomCatName(task.customCategoryName);
+      return;
+    }
+    if (task.jobCategoryId && categories.some((c) => c.id === task.jobCategoryId)) {
+      setCategoryId(task.jobCategoryId);
+      setCustomCatName("");
+      return;
+    }
+    const byName = categories.find((c) => c.name === task.category);
+    if (byName) {
+      setCategoryId(byName.id);
+      setCustomCatName("");
+      return;
+    }
+    setCategoryId(categories[0]?.id ?? "");
+    setCustomCatName("");
+  }, [isEditing, categories, task.customCategoryName, task.jobCategoryId, task.category, task.id]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleNewImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length) return;
+    const keptExisting = task.images.filter(
+      (img) => isRealTaskImage(img) && !removedImageUrls.has(img.url)
+    ).length;
+    const room = MAX_TASK_IMAGES - keptExisting - newImageFiles.length;
+    if (room <= 0) {
+      toast.error(`You can have at most ${MAX_TASK_IMAGES} photos`);
+      e.target.value = "";
+      return;
+    }
+    const slice = Array.from(e.target.files).slice(0, room);
+    if (e.target.files.length > slice.length) {
+      toast.message(`Only ${slice.length} more image${slice.length === 1 ? "" : "s"} allowed`);
+    }
+    setNewImageFiles((prev) => [
+      ...prev,
+      ...slice.map((file) => ({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        file,
+        url: URL.createObjectURL(file),
+      })),
+    ]);
+    e.target.value = "";
+  };
+
+  const removeNewImage = (id: string) => {
+    setNewImageFiles((prev) => {
+      const row = prev.find((x) => x.id === id);
+      if (row) URL.revokeObjectURL(row.url);
+      return prev.filter((x) => x.id !== id);
+    });
+  };
+
+  const toggleRemoveExistingUrl = (url: string) => {
+    setRemovedImageUrls((prev) => {
+      const next = new Set(prev);
+      if (next.has(url)) next.delete(url);
+      else next.add(url);
+      return next;
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dueFlex && !dueDateInput.trim()) {
+      toast.error("Choose a due date or mark it as flexible");
+      return;
+    }
+    const keptPhotos =
+      task.images.filter((img) => isRealTaskImage(img) && !removedImageUrls.has(img.url)).length +
+      newImageFiles.length;
+    if (keptPhotos > MAX_TASK_IMAGES) {
+      toast.error(`At most ${MAX_TASK_IMAGES} images allowed`);
+      return;
+    }
+    if (categoryId === CUSTOM_CATEGORY_VALUE && !customCatName.trim()) {
+      toast.error("Enter a custom category name");
+      return;
+    }
+    setIsSubmitting(true);
+
+    try {
+      const isCustom = categoryId === CUSTOM_CATEGORY_VALUE;
+      const categoryNameForApi = isCustom
+        ? customCatName.trim() || task.category
+        : categories.find((c) => c.id === categoryId)?.name || task.category;
+      const categoryIdForApi = isCustom
+        ? getFallbackCategoryId(categories, customCatName) ||
+          task.jobCategoryId ||
+          categories[0]?.id ||
+          ""
+        : categoryId || task.jobCategoryId || categories[0]?.id || "";
+
+      const formDataToSend = new FormData();
+      formDataToSend.append("job_id", task.id);
+      formDataToSend.append("job_title", formData.title);
+      formDataToSend.append("job_description", formData.description);
+      formDataToSend.append("job_budget", formData.budget);
+      formDataToSend.append("job_location", formData.location);
+      formDataToSend.append("job_category", categoryIdForApi);
+      formDataToSend.append("job_category_name", categoryNameForApi);
+      if (isCustom && customCatName.trim()) {
+        formDataToSend.append("custom_category_name", customCatName.trim());
+      }
+
+      const dueSend = dueFlex ? "" : dueDateInput.trim();
+      formDataToSend.append("job_due_date", dueSend);
+      formDataToSend.append("due_date", dueSend);
+      formDataToSend.append("due_date_flexible", dueFlex ? "true" : "false");
+
+      formDataToSend.append("title", formData.title);
+      formDataToSend.append("description", formData.description);
+      formDataToSend.append("budget", formData.budget);
+      formDataToSend.append("location", formData.location);
+      formDataToSend.append("category", categoryIdForApi);
+      formDataToSend.append("category_name", categoryNameForApi);
+
+      removedImageUrls.forEach((url) => {
+        formDataToSend.append("remove_image_urls", url);
+      });
+      newImageFiles.forEach(({ file }) => formDataToSend.append("images", file));
+
+      const response = await axiosInstance.put(`/update-job/${task.id}/`, formDataToSend, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      const ok =
+        response.data.status_code === 200 || Number(response.data.status_code) === 200;
+      if (ok) {
+        toast.success("Task updated successfully");
+        setIsEditing?.(false);
+        onTaskUpdated?.();
+        router.refresh();
+      } else {
+        throw new Error(response.data.message || "Failed to update task");
+      }
+    } catch (error: unknown) {
+      console.error("Error updating task:", error);
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || "Failed to update task");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditClick = () => {
+    syncFormFromTask();
+    setIsEditing?.(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing?.(false);
+    syncFormFromTask();
   };
 
   const realImageEntries = task.images
@@ -406,7 +621,7 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
       <CardHeader className="border-b border-slate-100 bg-gradient-to-b from-slate-50/90 to-white p-4 md:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            {isEditing && isTaskPoster ? (
+            {isEditing && canPosterEdit ? (
               <Input
                 name="title"
                 value={formData.title}
@@ -421,13 +636,14 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {isTaskPoster && !isEditing && (
+            {canPosterEdit && !isEditing && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleEditClick}
                 className="text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg p-2"
                 aria-label="Edit task"
+                title="Edit task (open tasks only)"
               >
                 <SquarePen className="h-4 w-4" />
               </Button>
@@ -668,20 +884,71 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
         </div>
       </CardHeader>
       <CardContent className="p-4 md:p-5 space-y-4">
-        {/* Image upload when editing */}
-        {isEditing && isTaskPoster && (
-          <div className="bg-blue-50/80 rounded-lg p-2 border border-blue-200/50">
-            <Label htmlFor="images" className="text-xs font-medium text-blue-800">
-              {task.images.length > 0 ? "Upload New Images (Optional)" : "Upload Images (Optional)"}
-            </Label>
-            <Input
-              id="images"
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleImageChange}
-              className="mt-1 border-blue-200 focus:border-blue-400 text-xs"
-            />
+        {/* Photos: replace / remove / add (open tasks only) */}
+        {isEditing && canPosterEdit && (
+          <div className="rounded-xl border border-blue-200/60 bg-blue-50/50 p-3 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-blue-900/80">Photos</p>
+            <p className="text-xs text-blue-800/80">
+              Remove photos you no longer want, then add new ones (max {MAX_TASK_IMAGES} total).
+            </p>
+            {task.images.some((img) => isRealTaskImage(img)) ? (
+              <div className="flex flex-wrap gap-2">
+                {task.images
+                  .filter((img) => isRealTaskImage(img))
+                  .map((img) => {
+                    const marked = removedImageUrls.has(img.url);
+                    return (
+                      <div
+                        key={img.id + img.url}
+                        className={`relative h-20 w-20 overflow-hidden rounded-lg border-2 ${
+                          marked ? "border-red-300 opacity-50" : "border-white shadow-sm"
+                        }`}
+                      >
+                        <img src={img.url} alt="" className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => toggleRemoveExistingUrl(img.url)}
+                          className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-md bg-white/95 text-red-600 shadow border border-red-100"
+                          aria-label={marked ? "Undo remove" : "Remove photo"}
+                          title={marked ? "Undo remove" : "Remove photo"}
+                        >
+                          {marked ? <X className="h-4 w-4" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+            ) : null}
+            {newImageFiles.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {newImageFiles.map((row) => (
+                  <div key={row.id} className="relative h-20 w-20 overflow-hidden rounded-lg border border-emerald-200 shadow-sm">
+                    <img src={row.url} alt="" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeNewImage(row.id)}
+                      className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-md bg-white/95 text-slate-700 shadow border"
+                      aria-label="Remove new photo"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <div>
+              <Label htmlFor="task-edit-images" className="text-xs font-medium text-blue-900">
+                Add images
+              </Label>
+              <Input
+                id="task-edit-images"
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleNewImageChange}
+                className="mt-1 border-blue-200 focus:border-blue-400 text-xs bg-white"
+              />
+            </div>
           </div>
         )}
 
@@ -696,7 +963,7 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
             Description
           </h3>
           <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3.5 md:p-4">
-            {isEditing && isTaskPoster ? (
+            {isEditing && canPosterEdit ? (
               <Textarea
                 name="description"
                 value={formData.description}
@@ -712,8 +979,42 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
 
         {afterDescription ? <div className="space-y-2">{afterDescription}</div> : null}
 
-        {isEditing && isTaskPoster && (
-          <div className="grid grid-cols-2 gap-3">
+        {isEditing && canPosterEdit && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2 bg-gradient-to-br from-slate-50 to-slate-100/80 rounded-lg p-3 border border-slate-200/70">
+              <h4 className="text-xs font-semibold text-gray-800 mb-2">Category</h4>
+              <select
+                value={categoryId}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setCategoryId(v);
+                  if (v !== CUSTOM_CATEGORY_VALUE) setCustomCatName("");
+                }}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                disabled={!categories.length}
+              >
+                {!categories.length ? (
+                  <option value="">Loading categories…</option>
+                ) : (
+                  <>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                    <option value={CUSTOM_CATEGORY_VALUE}>Type your own…</option>
+                  </>
+                )}
+              </select>
+              {categoryId === CUSTOM_CATEGORY_VALUE ? (
+                <Input
+                  value={customCatName}
+                  onChange={(e) => setCustomCatName(e.target.value)}
+                  placeholder="Custom category name"
+                  className="mt-2 border-slate-200 text-sm"
+                />
+              ) : null}
+            </div>
             <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-lg p-3 border border-emerald-200/50">
               <div className="flex items-center gap-2 mb-1">
                 <div className="p-1 rounded bg-emerald-100">
@@ -743,27 +1044,38 @@ export function TaskInfo({ task, openImageGallery, handleMessageUser, isTaskPost
                 className="border-blue-200 focus:border-blue-400 bg-white/80 text-sm"
               />
             </div>
-            <div className="col-span-2 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-3 border border-purple-200/50">
+            <div className="sm:col-span-2 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-3 border border-purple-200/50 space-y-3">
               <div className="flex items-center gap-2 mb-1">
                 <div className="p-1 rounded bg-purple-100">
                   <Calendar className="h-3 w-3 text-purple-600" />
                 </div>
                 <h4 className="text-xs font-semibold text-gray-800">Due date</h4>
               </div>
-              <Input
-                id="dueDate"
-                name="dueDate"
-                type="date"
-                min={minDate}
-                value={formData.dueDate}
-                onChange={handleChange}
-                className="w-full border-purple-200 focus:border-purple-400 bg-white/80 text-sm"
-              />
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="due-flex"
+                  checked={dueFlex}
+                  onCheckedChange={(c) => setDueFlex(c === true)}
+                />
+                <Label htmlFor="due-flex" className="text-sm font-normal cursor-pointer">
+                  No specific date (flexible)
+                </Label>
+              </div>
+              {!dueFlex ? (
+                <Input
+                  id="dueDateInput"
+                  type="date"
+                  min={minDate}
+                  value={dueDateInput}
+                  onChange={(e) => setDueDateInput(e.target.value)}
+                  className="w-full border-purple-200 focus:border-purple-400 bg-white/80 text-sm"
+                />
+              ) : null}
             </div>
           </div>
         )}
       </CardContent>
-      {isEditing && isTaskPoster && (
+      {isEditing && canPosterEdit && (
         <CardFooter className="bg-gradient-to-r from-gray-50 to-blue-50/50 border-t border-gray-200/50 p-3">
           <div className="flex gap-2 w-full">
             <Button 

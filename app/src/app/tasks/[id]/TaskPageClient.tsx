@@ -802,6 +802,23 @@ export default function TaskDetailPage() {
                       })
                     : "Flexible";
                 })(),
+          dueDateFlexible: job.due_date_flexible === true,
+          jobDueDateIso:
+            job.due_date_flexible === true || !job.job_due_date
+              ? null
+              : (() => {
+                  const d = new Date(job.job_due_date);
+                  if (isNaN(d.getTime())) return null;
+                  const y = d.getUTCFullYear();
+                  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+                  const day = String(d.getUTCDate()).padStart(2, "0");
+                  return `${y}-${m}-${day}`;
+                })(),
+          jobCategoryId:
+            job.job_category != null && job.job_category !== ""
+              ? String(job.job_category)
+              : null,
+          customCategoryName: job.custom_category_name || null,
           category: job.custom_category_name || job.job_category_name || "General",
           images: job.job_images?.urls?.length
             ? job.job_images.urls.map((url: string, index: number) => ({
@@ -1976,6 +1993,7 @@ export default function TaskDetailPage() {
               setIsEditing={setIsEditing}
               isPaymentPending={isPaymentPending}
               paymentCheckDone={paymentCheckDone}
+              onTaskUpdated={() => setTaskRefreshKey((k) => k + 1)}
               afterDescription={
                 <TaskOffersQuestionsTabs
                   task={task}

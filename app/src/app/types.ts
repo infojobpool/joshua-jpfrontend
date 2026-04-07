@@ -46,6 +46,14 @@ export interface Image {
     progressLabel?: string;
     latitude?: number;
     longitude?: number;
+    /** Edit form: API due_date_flexible */
+    dueDateFlexible?: boolean;
+    /** yyyy-mm-dd for date input when not flexible */
+    jobDueDateIso?: string | null;
+    /** API job_category id when known */
+    jobCategoryId?: string | null;
+    /** When task used a custom category label */
+    customCategoryName?: string | null;
   }
   
   export interface Bid {
