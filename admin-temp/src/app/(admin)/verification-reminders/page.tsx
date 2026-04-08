@@ -180,9 +180,9 @@ export default function VerificationRemindersPage() {
             phone. <strong>Reminders sent</strong> uses{" "}
             <code className="rounded bg-muted px-1 text-xs">profile_reminder_send_count</code> (and similar
             profile-specific fields) from <code className="rounded bg-muted px-1 text-xs">all-user-details/</code>.
-            A dash (—) means those fields were not returned; &quot;0 times&quot; means the API reported zero
-            sends. Generic counters that default to 0 for every user are ignored unless a last-sent date is
-            present.
+            A dash (—) means reminder stats were omitted (e.g. never reminded) or not in the payload;
+            &quot;0 times&quot; means the API included a count of zero (usually with a last-sent date).
+            Generic counters are ignored unless count &gt; 0 or a last-sent timestamp is present.
           </CardDescription>
         </CardHeader>
         <CardContent>

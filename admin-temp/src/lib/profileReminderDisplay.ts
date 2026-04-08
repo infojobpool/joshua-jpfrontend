@@ -1,10 +1,10 @@
 /**
- * Maps GET all-user-details/ fields (canonical + backend aliases) for profile/KYC reminder stats.
- * Backend: profile_reminder_send_count, last_profile_reminder_at (+ aliases on same payload).
+ * Maps GET all-user-details/ (snake_case JSON) for profile/KYC reminder stats.
+ * Canonical: profile_reminder_send_count, last_profile_reminder_at; aliases duplicate the same values when present.
+ * When the user has never been reminded, the backend omits reminder fields (exclude_none) — UI shows —.
  *
- * We read profile-named counts first. Generic keys (e.g. verification_reminder_count) are often
- * default 0 for every row; using them in a flat ?? chain made the UI show "0 times" even when
- * reminder history was not actually tracked — use those only when count > 0 or a last-sent date exists.
+ * We read profile-named counts first. Loose keys (e.g. verification_reminder_count) are only used when
+ * count > 0 or a last-sent timestamp exists, so default zeros on unrelated columns do not fake “0 times”.
  */
 
 export function formatProfileReminderShortDate(d: Date): string {
@@ -38,11 +38,6 @@ function getLastRaw(row: Record<string, unknown>): string | null {
       row.last_incomplete_profile_reminder_at) ||
     (typeof row.last_reminder_sent_at === "string" && row.last_reminder_sent_at) ||
     (typeof row.profile_reminder_last_at === "string" && row.profile_reminder_last_at) ||
-    (typeof row.lastProfileReminderAt === "string" && row.lastProfileReminderAt) ||
-    (typeof row.lastIncompleteProfileReminderAt === "string" &&
-      row.lastIncompleteProfileReminderAt) ||
-    (typeof row.lastReminderSentAt === "string" && row.lastReminderSentAt) ||
-    (typeof row.profileReminderLastAt === "string" && row.profileReminderLastAt) ||
     null
   );
 }
@@ -50,20 +45,12 @@ function getLastRaw(row: Record<string, unknown>): string | null {
 /** Count fields that specifically mean “profile / KYC reminder sends” (including 0). */
 const PRIMARY_COUNT_KEYS = [
   "profile_reminder_send_count",
-  "profileReminderSendCount",
   "profile_reminder_count",
-  "profileReminderCount",
   "incomplete_profile_reminder_count",
-  "incompleteProfileReminderCount",
 ] as const;
 
-/** Broader aliases: only trust when > 0, or when a last-sent timestamp is present (avoids default 0 noise). */
-const LOOSE_COUNT_KEYS = [
-  "verification_reminder_count",
-  "verificationReminderCount",
-  "reminder_send_count",
-  "reminderSendCount",
-] as const;
+/** Broader snake_case aliases: only trust when > 0, or when a last-sent timestamp is present. */
+const LOOSE_COUNT_KEYS = ["verification_reminder_count", "reminder_send_count"] as const;
 
 export function getProfileReminderDisplay(row: Record<string, unknown>): ProfileReminderDisplay {
   const lastRaw = getLastRaw(row);

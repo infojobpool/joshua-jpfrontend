@@ -254,12 +254,17 @@ await axiosInstance.patch(`admin/wallet-transaction/${transactionId}`, { status:
 
 **Admin frontend (`admin-temp`):** Verification reminders page calls this route first; the UI toast uses `message` plus `data.summary` when present. Large selections are split into batches of 500 client-side. No Vercel `REMINDER_*` env vars are required when this endpoint is deployed.
 
-**Reminder history in admin table:** To show “how many times sent” per user on the Verification reminders page, include on each user in **`GET /api/v1/all-user-details/`** (or equivalent list) optional fields such as:
+**GET `/api/v1/all-user-details/` — serialization (reminders + optional fields)**
 
-- `profile_reminder_send_count` (integer), and/or `profile_reminder_count`, `incomplete_profile_reminder_count`, `verification_reminder_count`
-- `last_profile_reminder_at` (ISO 8601), and/or `last_incomplete_profile_reminder_at`, `last_reminder_sent_at`, `profile_reminder_last_at`
+- Response uses **`response_model_exclude_none=True`**: any optional field that is `None` is **omitted** from JSON (not sent as `null`).
+- **Reminder block:** If the user has **never** been successfully reminded (`count == 0` and no last timestamp), reminder-related fields are set to `None` and **dropped** from the payload. The admin UI shows **—** (treat missing like “no stats”).
+- After **at least one** successful remind, **`profile_reminder_send_count` ≥ 1** and **`last_profile_reminder_at`** are included. A numeric **0** together with a last-sent date would only reflect an odd DB state.
+- **Canonical names (JSON is snake_case only):** `profile_reminder_send_count`, `last_profile_reminder_at`. When the backend includes data, **alias** keys (`profile_reminder_count`, `incomplete_profile_reminder_count`, `verification_reminder_count`, `last_incomplete_profile_reminder_at`, `last_reminder_sent_at`, `profile_reminder_last_at`, etc.) duplicate the same integer / ISO string.
+- **POST** `admin/remind-incomplete-profile/` (or equivalent) should increment/persist counts and last-sent after successful sends so the next `GET all-user-details/` reflects history.
 
-The admin UI reads the first matching field name from that set. After each successful send batch, the page silently re-fetches `all-user-details/` so counts update when the backend persists them.
+**Admin frontend (`admin-temp`):** `getProfileReminderDisplay()` prefers **profile-named** count fields, then looser aliases **only** if `count > 0` or a **last-sent** field is present (avoids misleading “0 times” when only generic counters default to zero). After each successful send batch, the Verification reminders page re-fetches `all-user-details/`.
+
+**Other optional user fields** on the same route (`phone_number`, `tasks_completed`, `earnings`, etc.) are also omitted when `None`. Admin code should treat **missing keys** the same as **`null`** / empty.
 
 ---
 
