@@ -13,6 +13,8 @@ import { prefetchBidsForTask } from "@/lib/taskNavCache";
 
 const PLACEHOLDER = "/images/placeholder.svg";
 const DESKTOP_MAX = 12;
+/** Mobile recent-tasks strip: auto-scroll speed (px/s) — time-based for smooth sliding */
+const MOBILE_RECENT_AUTO_SCROLL_PX_PER_SEC = 40;
 
 function formatBudget(n: number) {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
@@ -106,18 +108,30 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     el.addEventListener("scroll", onScroll, { passive: true });
 
     let rafId = 0;
-    const tick = () => {
+    let lastTs = performance.now();
+    let fracCarry = 0;
+
+    const tick = (now: number) => {
+      const dt = Math.min(48, Math.max(0, now - lastTs));
+      lastTs = now;
+
       if (!reducedMotion && !marqueePausedRef.current && !autoScrollFromUserRef.current) {
         const half = el.scrollWidth / 2;
         if (half > 1) {
-          scrollProgrammaticRef.current = true;
-          el.scrollLeft += 0.65;
-          if (el.scrollLeft >= half) el.scrollLeft -= half;
-          queueMicrotask(() => {
-            scrollProgrammaticRef.current = false;
-          });
+          fracCarry += (MOBILE_RECENT_AUTO_SCROLL_PX_PER_SEC / 1000) * dt;
+          const steps = Math.floor(fracCarry);
+          fracCarry -= steps;
+          if (steps > 0) {
+            scrollProgrammaticRef.current = true;
+            el.scrollLeft += steps;
+            if (el.scrollLeft >= half) el.scrollLeft -= half;
+            queueMicrotask(() => {
+              scrollProgrammaticRef.current = false;
+            });
+          }
         }
       }
+
       rafId = requestAnimationFrame(tick);
     };
     rafId = requestAnimationFrame(tick);
@@ -185,7 +199,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
         <p className="mb-3 text-sm text-gray-500">Open tasks you can apply for right now</p>
         <div
           ref={mobileScrollRef}
-          className="overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x pb-2"
+          className="overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x scroll-smooth pb-2 [overflow-anchor:none]"
           style={{ WebkitOverflowScrolling: "touch" }}
           onTouchStart={() => {
             if (resumeMarqueeTimerRef.current) clearTimeout(resumeMarqueeTimerRef.current);
@@ -197,7 +211,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
           onMouseLeave={() => setMarqueePaused(false)}
           onWheel={registerUserHorizontalScroll}
         >
-          <div className="flex w-max gap-3 pr-1">
+          <div className="flex w-max gap-3 pr-1 transform-gpu will-change-transform">
             {loop.map((t, idx) => (
               <Link
                 key={`${t.id}-${idx}`}
