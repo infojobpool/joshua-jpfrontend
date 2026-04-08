@@ -4894,15 +4894,15 @@ export default function Dashboard() {
                       const hasUserBid = requestedTasks.some(bid => bid.task_id === task.id);
                       
                       return (
-                        <Card key={task.id} className="group flex flex-col bg-white dark:bg-slate-800/95 border border-slate-200/60 dark:border-slate-700/60 shadow-sm hover:shadow-md dark:shadow-[0_1px_2px_rgba(0,0,0,0.15)] transition-all duration-300 rounded-2xl overflow-hidden">
-                          <div className={`relative ${isMobile ? "p-4" : "p-6"}`}>
+                        <Card key={task.id} className="group flex h-full min-h-0 flex-col bg-white dark:bg-slate-800/95 border border-slate-200/60 dark:border-slate-700/60 shadow-sm hover:shadow-md dark:shadow-[0_1px_2px_rgba(0,0,0,0.15)] transition-all duration-300 rounded-2xl overflow-hidden">
+                          <div className={`relative flex min-h-0 flex-1 flex-col ${isMobile ? "p-4" : "p-6"}`}>
                             <div className="absolute top-4 right-4 md:top-6 md:right-6 opacity-70 hover:opacity-100 transition-opacity">
                               <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
                             </div>
-                            <h3 className="task-title pr-10 text-slate-900 dark:text-slate-100 font-semibold leading-snug text-lg md:text-xl">
+                            <h3 className="task-title line-clamp-3 min-h-[4.5rem] pr-10 text-slate-900 dark:text-slate-100 font-semibold leading-snug text-lg md:text-xl">
                               {task.title}
                             </h3>
-                            <div className="flex items-center gap-2 mt-2">
+                            <div className="mt-2 flex shrink-0 items-center gap-2">
                               <Badge variant="outline" className={`text-xs px-2 py-0.5 rounded-md ${
                                 task.status === "open" ? "border-emerald-200 text-emerald-700 bg-emerald-50/50" :
                                 task.status === "in_progress" ? "border-blue-200 text-blue-700 bg-blue-50/50" :
@@ -4911,23 +4911,25 @@ export default function Dashboard() {
                                 {task.status === "open" ? "Open" : task.status === "in_progress" ? "In progress" : "Completed"}
                               </Badge>
                             </div>
-                            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600 dark:text-slate-400">
-                              <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-100 text-base">₹{task.budget}</span>
-                              {task.location ? (
-                                <>
-                                  <span className="text-slate-300 dark:text-slate-600" aria-hidden>·</span>
-                                  <span className="inline-flex items-center gap-1 min-w-0">
-                                    <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
-                                    <span className="truncate">{task.location}</span>
-                                  </span>
-                                </>
-                              ) : null}
+                            <div className="mt-auto pt-4">
+                              <div className="border-t border-slate-100 pt-3 dark:border-slate-700/60 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600 dark:text-slate-400">
+                                <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-100 text-base">₹{task.budget}</span>
+                                {task.location ? (
+                                  <>
+                                    <span className="text-slate-300 dark:text-slate-600" aria-hidden>·</span>
+                                    <span className="inline-flex min-w-0 items-center gap-1">
+                                      <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+                                      <span className="truncate">{task.location}</span>
+                                    </span>
+                                  </>
+                                ) : null}
+                              </div>
+                              <Link href={`/tasks/${task.id}`} className="mt-4 block" onClick={() => { try { storeTaskForNav(task); } catch {} }}>
+                                <Button className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5">
+                                  {hasUserBid ? "View Offer" : "Make an Offer"}
+                                </Button>
+                              </Link>
                             </div>
-                            <Link href={`/tasks/${task.id}`} className="block mt-4" onClick={() => { try { storeTaskForNav(task); } catch {} }}>
-                              <Button className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5">
-                                {hasUserBid ? "View Offer" : "Make an Offer"}
-                              </Button>
-                            </Link>
                           </div>
                         </Card>
                       );
