@@ -31,7 +31,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import axiosInstance from "@/lib/axiosInstance";
 import { useCanAdminWrite } from "@/lib/adminAuth";
-import { getApiErrorMessage } from "@/lib/apiError";
+import { formatAxiosApiError } from "@/lib/apiError";
 
 export type AdminTestimonialRow = {
   testimonial_id: string;
@@ -134,7 +134,7 @@ export default function TestimonialsPage() {
         toast.error(body?.message || "Failed to fetch testimonials");
       }
     } catch (e) {
-      toast.error(getApiErrorMessage(e));
+      toast.error(formatAxiosApiError(e));
       setRows([]);
     } finally {
       setIsLoading(false);
@@ -177,7 +177,7 @@ export default function TestimonialsPage() {
         toast.error(response.data?.message || "Failed to create");
       }
     } catch (e) {
-      toast.error(getApiErrorMessage(e));
+      toast.error(formatAxiosApiError(e));
     } finally {
       setIsLoading(false);
     }
@@ -205,7 +205,7 @@ export default function TestimonialsPage() {
         toast.error(response.data?.message || "Failed to update");
       }
     } catch (e) {
-      toast.error(getApiErrorMessage(e));
+      toast.error(formatAxiosApiError(e));
     } finally {
       setIsLoading(false);
     }
@@ -224,7 +224,7 @@ export default function TestimonialsPage() {
         toast.error(response.data?.message || "Failed to delete");
       }
     } catch (e) {
-      toast.error(getApiErrorMessage(e));
+      toast.error(formatAxiosApiError(e));
     } finally {
       setIsLoading(false);
     }
