@@ -7,7 +7,10 @@ export function ProfileReminderCell({ row }: { row: Record<string, unknown> }) {
   const rem = getProfileReminderDisplay(row);
   if (rem.count == null && !rem.lastLabel) {
     return (
-      <span className="text-gray-400 text-sm" title="From API; 0 after backend tracks reminders">
+      <span
+        className="text-gray-400 text-sm"
+        title="No reminder stats in this API row (or only default 0 on generic fields). Add profile_reminder_send_count / last_profile_reminder_at on all-user-details/, or send reminders and persist counts."
+      >
         —
       </span>
     );

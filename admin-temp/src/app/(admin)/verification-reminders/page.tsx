@@ -177,10 +177,12 @@ export default function VerificationRemindersPage() {
           </CardTitle>
           <CardDescription>
             PAN+Aadhaar = verification level ≥ 2. Rows include anyone below that or missing name / email /
-            phone. &quot;Reminders sent&quot; shows counts when{" "}
-            <code className="rounded bg-muted px-1 text-xs">all-user-details/</code> includes fields such as{" "}
-            <code className="rounded bg-muted px-1 text-xs">profile_reminder_send_count</code> and{" "}
-            <code className="rounded bg-muted px-1 text-xs">last_profile_reminder_at</code>.
+            phone. <strong>Reminders sent</strong> uses{" "}
+            <code className="rounded bg-muted px-1 text-xs">profile_reminder_send_count</code> (and similar
+            profile-specific fields) from <code className="rounded bg-muted px-1 text-xs">all-user-details/</code>.
+            A dash (—) means those fields were not returned; &quot;0 times&quot; means the API reported zero
+            sends. Generic counters that default to 0 for every user are ignored unless a last-sent date is
+            present.
           </CardDescription>
         </CardHeader>
         <CardContent>

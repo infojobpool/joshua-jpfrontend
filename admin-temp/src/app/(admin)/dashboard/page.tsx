@@ -3,7 +3,17 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, CreditCard, DollarSign, Users, CheckCircle2, Clock, AlertCircle, IndianRupee, RefreshCw } from "lucide-react";
+import {
+  Activity,
+  CreditCard,
+  Users,
+  AlertCircle,
+  IndianRupee,
+  RefreshCw,
+  BellRing,
+  ChevronRight,
+  Briefcase,
+} from "lucide-react";
 import Link from "next/link";
 import axiosInstance from "@/lib/axiosInstance";
 import { Toaster } from "@/components/ui/sonner";
@@ -15,7 +25,7 @@ interface TaskStatus {
   name: string;
   count: number;
   percentage: number;
-  icon: typeof CheckCircle2 | typeof Clock | typeof AlertCircle; // Specific icon types
+  icon: typeof AlertCircle;
   color: string;
 }
 
@@ -23,9 +33,11 @@ interface User {
   user_id: string;
   user_fullname: string;
   user_email: string;
+  phone_number?: string;
   tasker: boolean;
   task_manager: boolean;
   status: boolean;
+  verification_status?: number;
   created_at?: string;
   joined_at?: string;
   date_joined?: string;
@@ -55,7 +67,21 @@ interface ActivityItem {
   action: string;
   task?: string;
   time: string;
-  sortTime: number; // for sorting by actual date
+  sortTime: number;
+  kind: "signup" | "task";
+}
+
+function trimStr(s?: string) {
+  return (s || "").trim();
+}
+
+/** Same rules as Verification reminders: incomplete KYC (below Aadhaar) or missing profile fields. */
+function userNeedsVerificationAttention(u: User): boolean {
+  const v = Number(u.verification_status ?? 0);
+  const incompleteKyc = v < 2;
+  const incompleteProfile =
+    !trimStr(u.user_fullname) || !trimStr(u.user_email) || !trimStr(u.phone_number);
+  return incompleteKyc || incompleteProfile;
 }
 
 /** Format ISO date to "X days/hours ago"; fallback for missing/invalid dates */
@@ -194,120 +220,175 @@ export default function AdminDashboard() {
     const pendingOrders = taskOrders.filter((o) => o.status === -1);
     const pendingPayouts = pendingOrders.reduce((sum, o) => sum + o.bid_amount, 0);
     const pendingPayoutsCount = pendingOrders.length;
-    
+    const needsVerificationCount = users.filter(userNeedsVerificationAttention).length;
+
     return {
       totalRevenue,
       activeTasks,
       totalUsers,
       pendingPayouts,
-      pendingPayoutsCount
+      pendingPayoutsCount,
+      needsVerificationCount,
     };
   }, [jobs, users, taskOrders]);
-  
-  const { totalRevenue, activeTasks, totalUsers, pendingPayouts, pendingPayoutsCount } = statistics;
+
+  const { totalRevenue, activeTasks, totalUsers, pendingPayouts, pendingPayoutsCount, needsVerificationCount } =
+    statistics;
+
+  const KpiSkeleton = () => (
+    <div className="h-9 w-28 max-w-full animate-pulse rounded-md bg-slate-200/80 dark:bg-slate-700/50" aria-hidden />
+  );
 
   return (
     <div className="flex flex-col gap-4">
       <Toaster />
-      <div className="flex justify-end">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Overview of users, tasks, and payouts — data from your latest admin sync.
+          </p>
+        </div>
         <Button
           variant="outline"
           size="sm"
           onClick={handleRefresh}
           disabled={isLoading}
-          className="gap-2"
+          className="gap-2 shrink-0 self-start sm:self-auto"
         >
           <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
           Refresh
         </Button>
       </div>
+
+      {!isLoading && needsVerificationCount > 0 && (
+        <Link
+          href="/verification-reminders"
+          className="group flex items-center justify-between gap-3 rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm shadow-sm transition-colors hover:bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/30 dark:hover:bg-amber-950/40"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
+              <BellRing className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-medium text-amber-950 dark:text-amber-100">
+                {needsVerificationCount} user{needsVerificationCount === 1 ? "" : "s"} need KYC or profile details
+              </p>
+              <p className="text-xs text-amber-900/70 dark:text-amber-200/70">
+                Send email &amp; WhatsApp reminders from Verification reminders.
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 shrink-0 text-amber-700/80 transition-transform group-hover:translate-x-0.5 dark:text-amber-300/80" />
+        </Link>
+      )}
+
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl rounded-2xl">
+        <Card className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-md dark:border-slate-800 dark:bg-slate-950/40">
+          <div className="h-1 bg-emerald-500/90" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-semibold">Total Revenue</CardTitle>
+            <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200">Total revenue</CardTitle>
             <IndianRupee className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="text-2xl font-bold">Loading...</div>
+              <KpiSkeleton />
             ) : (
               <>
-                <div className="text-2xl font-bold">₹{totalRevenue.toLocaleString()}</div>
-                <p className="text-xs text-gray-500">+20.1% from last month</p>
+                <div className="text-2xl font-bold tabular-nums tracking-tight text-slate-900 dark:text-slate-50">
+                  ₹{totalRevenue.toLocaleString("en-IN")}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Sum of task budgets in the admin job list</p>
               </>
             )}
           </CardContent>
         </Card>
-        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl rounded-2xl">
+        <Card className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-md dark:border-slate-800 dark:bg-slate-950/40">
+          <div className="h-1 bg-blue-500/90" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-semibold">Active Tasks</CardTitle>
+            <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200">Open tasks</CardTitle>
             <Activity className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="text-2xl font-bold">Loading...</div>
+              <KpiSkeleton />
             ) : (
               <>
-                <div className="text-2xl font-bold">{activeTasks}</div>
-                <p className="text-xs text-gray-500">+{Math.min(activeTasks, 201)} since last week</p>
+                <div className="text-2xl font-bold tabular-nums tracking-tight text-slate-900 dark:text-slate-50">
+                  {activeTasks}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Jobs not marked cancelled in admin feed</p>
               </>
             )}
           </CardContent>
         </Card>
-        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl rounded-2xl">
+        <Card className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-md dark:border-slate-800 dark:bg-slate-950/40">
+          <div className="h-1 bg-indigo-500/90" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-semibold">Total Users</CardTitle>
+            <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200">Total users</CardTitle>
             <Users className="h-4 w-4 text-indigo-600" />
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="text-2xl font-bold">Loading...</div>
+              <KpiSkeleton />
             ) : (
               <>
-                <div className="text-2xl font-bold">{totalUsers}</div>
-                <p className="text-xs text-gray-500">+10.1% from last month</p>
+                <div className="text-2xl font-bold tabular-nums tracking-tight text-slate-900 dark:text-slate-50">
+                  {totalUsers}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Accounts returned by all-user-details</p>
               </>
             )}
           </CardContent>
         </Card>
-        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl rounded-2xl">
+        <Card className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-md dark:border-slate-800 dark:bg-slate-950/40">
+          <div className="h-1 bg-amber-500/90" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-semibold">Pending Payouts</CardTitle>
+            <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200">Pending payouts</CardTitle>
             <CreditCard className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="text-2xl font-bold">Loading...</div>
+              <KpiSkeleton />
             ) : (
               <>
-                <div className="text-2xl font-bold">₹{pendingPayouts.toLocaleString()}</div>
-                <p className="text-xs text-gray-500">{pendingPayoutsCount} payouts pending</p>
+                <div className="text-2xl font-bold tabular-nums tracking-tight text-slate-900 dark:text-slate-50">
+                  ₹{pendingPayouts.toLocaleString("en-IN")}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {pendingPayoutsCount} order{pendingPayoutsCount === 1 ? "" : "s"} awaiting payout
+                </p>
               </>
             )}
           </CardContent>
         </Card>
       </div>
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="bg-white/80 border rounded-xl p-1">
+        <TabsList className="bg-white/90 border border-slate-200/80 rounded-xl p-1 dark:bg-slate-950/40 dark:border-slate-800">
           <TabsTrigger value="overview" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900">Overview</TabsTrigger>
           <TabsTrigger value="tasks" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900">Tasks</TabsTrigger>
           <TabsTrigger value="payouts" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900">Payouts</TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-4 bg-white/90 backdrop-blur-sm border-0 shadow-xl rounded-2xl">
+            <Card className="col-span-4 rounded-2xl border border-slate-200/80 bg-white shadow-md dark:border-slate-800 dark:bg-slate-950/40">
               <CardHeader>
-                <CardTitle className="font-semibold">Recent Activity</CardTitle>
+                <CardTitle className="font-semibold">Recent activity</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  Latest signups and new tasks from your loaded admin data.
+                </CardDescription>
               </CardHeader>
               <CardContent className="pl-2">
                 <ActivityList users={users} jobs={jobs} isLoading={isLoading} />
               </CardContent>
             </Card>
-            <Card className="col-span-3 bg-white/90 backdrop-blur-sm border-0 shadow-xl rounded-2xl">
+            <Card className="col-span-3 rounded-2xl border border-slate-200/80 bg-white shadow-md dark:border-slate-800 dark:bg-slate-950/40">
               <CardHeader>
-                <CardTitle className="font-semibold">Task Status</CardTitle>
-                <CardDescription className="text-gray-600">Distribution of tasks by status</CardDescription>
+                <CardTitle className="font-semibold">Task status</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  Open vs cancelled from the admin job list. Other states are not split here yet.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <TaskStatusList jobs={jobs} isLoading={isLoading} />
@@ -316,10 +397,10 @@ export default function AdminDashboard() {
           </div>
         </TabsContent>
         <TabsContent value="tasks" className="space-y-4">
-          <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl rounded-2xl">
+          <Card className="rounded-2xl border border-slate-200/80 bg-white shadow-md dark:border-slate-800 dark:bg-slate-950/40">
             <CardHeader>
-              <CardTitle className="font-semibold">Recent Tasks</CardTitle>
-              <CardDescription className="text-gray-600">Overview of recently created tasks</CardDescription>
+              <CardTitle className="font-semibold">Recent tasks</CardTitle>
+              <CardDescription className="text-muted-foreground">Newest tasks from the admin job list</CardDescription>
             </CardHeader>
             <CardContent>
               <RecentTasksList jobs={jobs} isLoading={isLoading} />
@@ -327,11 +408,11 @@ export default function AdminDashboard() {
           </Card>
         </TabsContent>
         <TabsContent value="payouts" className="space-y-4">
-          <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-xl rounded-2xl">
+          <Card className="rounded-2xl border border-slate-200/80 bg-white shadow-md dark:border-slate-800 dark:bg-slate-950/40">
             <CardHeader className="flex flex-row items-start justify-between space-y-0">
               <div>
-                <CardTitle className="font-semibold">Recent Payouts</CardTitle>
-                <CardDescription className="text-gray-600">Overview of recent payouts to taskers</CardDescription>
+                <CardTitle className="font-semibold">Recent payouts</CardTitle>
+                <CardDescription className="text-muted-foreground">Latest task orders from the payout feed</CardDescription>
               </div>
               <Link
                 href="/payouts"
@@ -354,16 +435,25 @@ function ActivityList({ users, jobs, isLoading }: { users: User[]; jobs: Job[]; 
   const userJoinedAt = (u: User) => u.created_at ?? u.joined_at ?? u.date_joined;
   const jobCreatedAt = (j: Job) => j.created_at ?? j.timestamp ?? j.job_tstamp;
 
+  const signupAction = (user: User) => {
+    const roles: string[] = [];
+    if (user.tasker) roles.push("tasker");
+    if (user.task_manager) roles.push("task poster");
+    const suffix = roles.length ? ` · ${roles.join(" & ")}` : "";
+    return `Joined JobPool${suffix}`;
+  };
+
   const activities: ActivityItem[] = [
     ...users.map((user) => {
       const iso = userJoinedAt(user);
       return {
         id: `user-${user.user_id}`,
-        user: user.user_fullname,
-        action: "joined as a tasker",
+        user: user.user_fullname || user.user_email || user.user_id,
+        action: signupAction(user),
         task: "",
         time: formatTimeAgo(iso),
         sortTime: iso ? new Date(iso).getTime() : 0,
+        kind: "signup" as const,
       };
     }),
     ...jobs.map((job) => {
@@ -371,34 +461,56 @@ function ActivityList({ users, jobs, isLoading }: { users: User[]; jobs: Job[]; 
       return {
         id: `job-${job.job_id}`,
         user: job.posted_by,
-        action: "created a new task",
+        action: "posted a new task",
         task: job.job_title,
         time: formatTimeAgo(iso),
         sortTime: iso ? new Date(iso).getTime() : 0,
+        kind: "task" as const,
       };
     }),
   ]
     .sort((a, b) => b.sortTime - a.sortTime)
-    .slice(0, 5);
+    .slice(0, 6);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-0">
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading activities...</p>
+        <p className="text-sm text-muted-foreground">Loading activities…</p>
       ) : activities.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No recent activities</p>
+        <p className="text-sm text-muted-foreground">No recent activity</p>
       ) : (
-        activities.map((activity) => (
-          <div key={activity.id} className="flex items-center">
-            <div className="ml-4 space-y-1">
-              <p className="text-sm font-medium leading-none">
-                <span className="font-semibold">{activity.user}</span> {activity.action}
-                {activity.task && <span className="font-medium"> {activity.task}</span>}
-              </p>
-              <p className="text-sm text-muted-foreground">{activity.time}</p>
-            </div>
-          </div>
-        ))
+        <ul className="space-y-0">
+          {activities.map((activity) => (
+            <li key={activity.id} className="flex gap-3 py-3 border-b border-slate-100 last:border-0 dark:border-slate-800">
+              <span
+                className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                  activity.kind === "signup"
+                    ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
+                    : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200"
+                }`}
+              >
+                {activity.kind === "signup" ? (
+                  <Users className="h-4 w-4" />
+                ) : (
+                  <Briefcase className="h-4 w-4" />
+                )}
+              </span>
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <p className="text-sm leading-snug text-slate-900 dark:text-slate-100">
+                  <span className="font-semibold">{activity.user}</span>{" "}
+                  <span className="text-slate-700 dark:text-slate-300">{activity.action}</span>
+                  {activity.task ? (
+                    <>
+                      {" "}
+                      <span className="font-medium text-slate-800 dark:text-slate-200">&ldquo;{activity.task}&rdquo;</span>
+                    </>
+                  ) : null}
+                </p>
+                <p className="text-xs text-muted-foreground">{activity.time}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
@@ -408,66 +520,52 @@ function TaskStatusList({ jobs, isLoading }: { jobs: Job[]; isLoading: boolean }
   const statuses: TaskStatus[] = useMemo(() => {
     const openCount = jobs.filter((job) => !job.status).length;
     const cancelledCount = jobs.filter((job) => job.status).length;
-    const totalCount = jobs.length || 1; // Avoid division by zero
-    
+    const total = jobs.length;
+    const pct = (n: number) => (total > 0 ? (n / total) * 100 : 0);
+
     return [
-    {
-      id: 1,
-      name: "Completed",
-      count: 0, // No API data; dummy
-      percentage: 0,
-      icon: CheckCircle2,
-      color: "text-green-500",
-    },
-    {
-      id: 2,
-      name: "In Progress",
-      count: 0, // No API data; dummy
-      percentage: 0,
-      icon: Clock,
-      color: "text-blue-500",
-    },
-    {
-      id: 3,
-      name: "Open",
-      count: openCount,
-      percentage: Math.round((openCount / totalCount) * 100),
-      icon: Clock,
-      color: "text-yellow-500",
-    },
-    {
-      id: 4,
-      name: "Cancelled",
-      count: cancelledCount,
-      percentage: Math.round((cancelledCount / totalCount) * 100),
-      icon: AlertCircle,
-      color: "text-red-500",
-    },
-  ];
+      {
+        id: 1,
+        name: "Open",
+        count: openCount,
+        percentage: pct(openCount),
+        icon: AlertCircle,
+        color: "text-amber-600 dark:text-amber-400",
+      },
+      {
+        id: 2,
+        name: "Cancelled",
+        count: cancelledCount,
+        percentage: pct(cancelledCount),
+        icon: AlertCircle,
+        color: "text-slate-500 dark:text-slate-400",
+      },
+    ];
   }, [jobs]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading task statuses...</p>
+        <p className="text-sm text-muted-foreground">Loading task status…</p>
+      ) : jobs.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No jobs in the loaded list</p>
       ) : (
         statuses.map((status) => (
-          <div key={status.id} className="flex items-center">
-            <status.icon className={`mr-2 h-4 w-4 ${status.color}`} />
-            <div className="w-full">
-              <div className="flex items-center justify-between">
+          <div key={status.id} className="flex items-center gap-3">
+            <status.icon className={`h-4 w-4 shrink-0 ${status.color}`} />
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex items-baseline justify-between gap-2">
                 <span className="text-sm font-medium">{status.name}</span>
-                <span className="text-sm text-muted-foreground">{status.count}</span>
+                <span className="text-sm tabular-nums text-muted-foreground">
+                  {status.count} ({status.percentage.toFixed(1)}%)
+                </span>
               </div>
-              <div className="mt-1 h-2 w-full rounded-full bg-muted">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                 <div
                   className={`h-full rounded-full ${
-                    status.id === 1 ? "bg-green-500" :
-                    status.id === 2 ? "bg-blue-500" :
-                    status.id === 3 ? "bg-yellow-500" :
-                    "bg-red-500"
+                    status.id === 1 ? "bg-amber-500" : "bg-slate-400 dark:bg-slate-500"
                   }`}
-                  style={{ width: `${status.percentage}%` }}
+                  style={{ width: `${Math.min(100, status.percentage)}%` }}
                 />
               </div>
             </div>
