@@ -10,12 +10,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Mail, MessageCircle, RefreshCw, Send, UserX } from "lucide-react";
 import { sendIncompleteProfileReminders, type ReminderRecipient } from "@/lib/reminderApi";
 import { useCanAdminWrite } from "@/lib/adminAuth";
+import { ProfileReminderCell } from "@/components/admin/ProfileReminderCell";
 
-/**
- * Rows from GET all-user-details/. Backend can add reminder stats per user, e.g.:
- * - profile_reminder_send_count / profile_reminder_count / incomplete_profile_reminder_count
- * - last_profile_reminder_at / last_reminder_sent_at (ISO string)
- */
+/** Rows from GET all-user-details/ (includes profile_reminder_send_count, last_profile_reminder_at, aliases). */
 interface CustomerRow {
   user_id: string;
   user_fullname: string;
@@ -25,55 +22,10 @@ interface CustomerRow {
   created_at?: string;
   joined_at?: string;
   date_joined?: string;
-  profile_reminder_send_count?: number;
-  profile_reminder_count?: number;
-  incomplete_profile_reminder_count?: number;
-  verification_reminder_count?: number;
-  last_profile_reminder_at?: string;
-  last_incomplete_profile_reminder_at?: string;
-  last_reminder_sent_at?: string;
 }
 
 function trim(s?: string) {
   return (s || "").trim();
-}
-
-function formatShortDate(d: Date): string {
-  try {
-    return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
-  } catch {
-    return "";
-  }
-}
-
-/** Reads reminder stats from row; supports several backend field names until API is unified. */
-function getReminderDisplay(c: CustomerRow): { count: number | null; lastLabel: string | null } {
-  const raw: Record<string, unknown> = { ...c };
-  const asNum = (v: unknown): number | null => {
-    if (typeof v === "number" && !Number.isNaN(v)) return v;
-    if (typeof v === "string" && v.trim() !== "" && !Number.isNaN(Number(v))) return Number(v);
-    return null;
-  };
-  const count =
-    asNum(raw.profile_reminder_send_count) ??
-    asNum(raw.profile_reminder_count) ??
-    asNum(raw.incomplete_profile_reminder_count) ??
-    asNum(raw.verification_reminder_count) ??
-    asNum(raw.reminder_send_count);
-
-  const lastRaw =
-    (typeof raw.last_profile_reminder_at === "string" && raw.last_profile_reminder_at) ||
-    (typeof raw.last_incomplete_profile_reminder_at === "string" && raw.last_incomplete_profile_reminder_at) ||
-    (typeof raw.last_reminder_sent_at === "string" && raw.last_reminder_sent_at) ||
-    (typeof raw.profile_reminder_last_at === "string" && raw.profile_reminder_last_at) ||
-    null;
-
-  let lastLabel: string | null = null;
-  if (lastRaw) {
-    const d = new Date(lastRaw);
-    lastLabel = Number.isNaN(d.getTime()) ? lastRaw : formatShortDate(d);
-  }
-  return { count, lastLabel };
 }
 
 function needsReminder(c: CustomerRow): { flag: boolean; reasons: string[] } {
@@ -271,9 +223,7 @@ export default function VerificationRemindersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {candidates.map(({ c, reasons }) => {
-                    const rem = getReminderDisplay(c);
-                    return (
+                  {candidates.map(({ c, reasons }) => (
                     <tr key={c.user_id} className="border-b last:border-0">
                       <td className="p-3 align-top">
                         <Checkbox
@@ -299,24 +249,8 @@ export default function VerificationRemindersPage() {
                           ))}
                         </ul>
                       </td>
-                      <td className="p-3 align-top text-xs text-muted-foreground">
-                        {rem.count != null || rem.lastLabel ? (
-                          <div className="space-y-0.5">
-                            {rem.count != null ? (
-                              <div>
-                                <span className="font-medium text-slate-700 tabular-nums">{rem.count}</span>{" "}
-                                {rem.count === 1 ? "time" : "times"}
-                              </div>
-                            ) : (
-                              <div className="text-slate-400">—</div>
-                            )}
-                            {rem.lastLabel ? <div>Last: {rem.lastLabel}</div> : null}
-                          </div>
-                        ) : (
-                          <span className="text-slate-400" title="Add counts to all-user-details API response">
-                            —
-                          </span>
-                        )}
+                      <td className="p-3 align-top text-xs">
+                        <ProfileReminderCell row={c as unknown as Record<string, unknown>} />
                       </td>
                       <td className="p-3 align-top">
                         <Button
@@ -330,8 +264,7 @@ export default function VerificationRemindersPage() {
                         </Button>
                       </td>
                     </tr>
-                    );
-                  })}
+                  ))}
                 </tbody>
               </table>
             </div>

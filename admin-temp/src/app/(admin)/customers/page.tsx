@@ -289,6 +289,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Search, Eye, EyeOff, CreditCard, Phone, Download, Calendar } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import { toast } from "sonner";
+import { ProfileReminderCell } from "@/components/admin/ProfileReminderCell";
 
 interface BankInfo {
   bank_account_number: string;
@@ -310,6 +311,9 @@ interface Customer {
   date_joined?: string;
   tasks_completed?: number;
   earnings?: number;
+  /** From all-user-details/ after profile reminder tracking (optional). */
+  profile_reminder_send_count?: number;
+  last_profile_reminder_at?: string;
 }
 
 export default function CustomersPage() {
@@ -581,6 +585,9 @@ export default function CustomersPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Verification
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                  Profile reminders
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Bank Details
                 </th>
@@ -589,7 +596,7 @@ export default function CustomersPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex items-center justify-center gap-2">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                       Loading customers...
@@ -598,7 +605,7 @@ export default function CustomersPage() {
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={8} className="px-6 py-12 text-center">
                     <div className="text-red-600">
                       {error}
                     </div>
@@ -612,7 +619,7 @@ export default function CustomersPage() {
                 </tr>
               ) : filteredCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                     {searchTerm ? "No customers found matching your search" : "No customers found"}
                   </td>
                 </tr>
@@ -645,6 +652,11 @@ export default function CustomersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getVerificationStatus(customer.verification_status)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap align-top">
+                      <ProfileReminderCell
+                        row={customer as unknown as Record<string, unknown>}
+                      />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap min-w-[200px]">
                       {renderBankDetails(customer)}
