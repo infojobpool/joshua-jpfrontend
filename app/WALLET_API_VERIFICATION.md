@@ -254,6 +254,13 @@ await axiosInstance.patch(`admin/wallet-transaction/${transactionId}`, { status:
 
 **Admin frontend (`admin-temp`):** Verification reminders page calls this route first; the UI toast uses `message` plus `data.summary` when present. Large selections are split into batches of 500 client-side. No Vercel `REMINDER_*` env vars are required when this endpoint is deployed.
 
+**Reminder history in admin table:** To show “how many times sent” per user on the Verification reminders page, include on each user in **`GET /api/v1/all-user-details/`** (or equivalent list) optional fields such as:
+
+- `profile_reminder_send_count` (integer), and/or `profile_reminder_count`, `incomplete_profile_reminder_count`, `verification_reminder_count`
+- `last_profile_reminder_at` (ISO 8601), and/or `last_incomplete_profile_reminder_at`, `last_reminder_sent_at`, `profile_reminder_last_at`
+
+The admin UI reads the first matching field name from that set. After each successful send batch, the page silently re-fetches `all-user-details/` so counts update when the backend persists them.
+
 ---
 
 ## Response Handling
