@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Mail, MessageCircle, RefreshCw, Send, UserX } from "lucide-react";
+import { ChevronRight, Loader2, Mail, MessageCircle, RefreshCw, Send, UserX } from "lucide-react";
 import { sendIncompleteProfileReminders, type ReminderRecipient } from "@/lib/reminderApi";
 import { useCanAdminWrite } from "@/lib/adminAuth";
 import { ProfileReminderCell } from "@/components/admin/ProfileReminderCell";
@@ -176,14 +176,47 @@ export default function VerificationRemindersPage() {
             Needs attention ({candidates.length})
           </CardTitle>
           <CardDescription>
-            PAN+Aadhaar = verification level ≥ 2. Rows include anyone below that or missing name / email /
-            phone. <strong>Reminders sent</strong> uses{" "}
-            <code className="rounded bg-muted px-1 text-xs">profile_reminder_send_count</code> (and similar
-            profile-specific fields) from <code className="rounded bg-muted px-1 text-xs">all-user-details/</code>.
-            A dash (—) means reminder stats were omitted (e.g. never reminded) or not in the payload;
-            &quot;0 times&quot; means the API included a count of zero (usually with a last-sent date).
-            Generic counters are ignored unless count &gt; 0 or a last-sent timestamp is present.
+            Users appear here if KYC is not complete through Aadhaar or if name, email, or phone is missing.
+            <strong className="font-medium text-foreground"> Reminders sent</strong> shows how many times you
+            have nudged them (— if nothing is recorded yet).
           </CardDescription>
+          <details className="mt-3 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 dark:border-slate-800 dark:bg-slate-950/40 open:[&_.reminder-details-chevron]:rotate-90">
+            <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-100 select-none [&::-webkit-details-marker]:hidden">
+              <ChevronRight className="reminder-details-chevron h-4 w-4 shrink-0 text-slate-500 transition-transform duration-200 dark:text-slate-400" />
+              How this works
+            </summary>
+            <div className="mt-3 border-t border-slate-200/90 pt-3 text-xs text-muted-foreground leading-relaxed dark:border-slate-800">
+              <ul className="list-disc space-y-2 pl-4">
+                <li>
+                  <span className="font-medium text-slate-700 dark:text-slate-300">Who is listed:</span> PAN +
+                  Aadhaar means verification level ≥ 2. Anyone below that, or missing name, email, or phone,
+                  appears in this table.
+                </li>
+                <li>
+                  <span className="font-medium text-slate-700 dark:text-slate-300">Data source:</span> Rows
+                  load from <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">all-user-details/</code>
+                  . Reminder counts use{" "}
+                  <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">
+                    profile_reminder_send_count
+                  </code>{" "}
+                  and related profile fields when the API includes them.
+                </li>
+                <li>
+                  <span className="font-medium text-slate-700 dark:text-slate-300">— vs &quot;0 times&quot;:</span> A
+                  dash means reminder stats were omitted (e.g. never reminded). &quot;0 times&quot; means the API
+                  returned an explicit zero (often with a last-sent timestamp). Other generic counters are only
+                  used when count &gt; 0 or a last-sent time is present.
+                </li>
+                <li>
+                  <span className="font-medium text-slate-700 dark:text-slate-300">Docs:</span> Full contract
+                  (serialization, <code className="rounded bg-muted px-1 font-mono text-[11px]">exclude_none</code>
+                  , POST behavior) is in{" "}
+                  <code className="rounded bg-muted px-1 font-mono text-[11px]">app/WALLET_API_VERIFICATION.md</code>{" "}
+                  in the frontend repository.
+                </li>
+              </ul>
+            </div>
+          </details>
         </CardHeader>
         <CardContent>
           {loading ? (
