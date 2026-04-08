@@ -55,17 +55,17 @@ export function HeroSection() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            {/* Hero image – enlarged so person is more prominent */}
-            <div className="relative aspect-[4/3] w-full max-w-2xl mx-auto rounded-2xl overflow-hidden bg-gray-100 shadow-lg">
+            {/* Hero illustration — desktop “GET EVERYTHING DONE” banner */}
+            <div className="relative aspect-[4/3] w-full max-w-2xl mx-auto rounded-2xl overflow-hidden bg-[#0c2d6b] shadow-lg">
               <Image
-                src="/images/heropage.png"
-                alt="Get help from skilled Taskers – post your task on JobPool"
+                src="/images/desktop-hero-get-everything-done.png"
+                alt="Get everything done — tasks, moving, cleaning, and more on JobPool"
                 fill
                 className="object-cover object-center"
                 sizes="(max-width: 1024px) 0vw, 672px"
                 priority
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent pointer-events-none" />
               {/* Task completed (left) & Payment released (right) – side by side */}
               <div className="absolute bottom-5 right-5 flex items-center gap-3">
                 <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-4 py-2.5 flex items-center gap-3">
