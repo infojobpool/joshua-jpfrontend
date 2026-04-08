@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { BarChart3, Users, Tags, CreditCard, X, LogOut, CheckSquare, User2Icon } from "lucide-react"
+import { BarChart3, Users, Tags, CreditCard, X, LogOut, CheckSquare, User2Icon, Star } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
@@ -26,6 +26,11 @@ const sidebarNavItems = [
     title: "Categories",
     href: "/categories",
     icon: Tags,
+  },
+  {
+    title: "Testimonials",
+    href: "/testimonials",
+    icon: Star,
   },
   {
     title: "Tasks",
