@@ -9,8 +9,8 @@ import { ArrowRight, ThumbsUp, Check } from "lucide-react"
 export function HeroSection() {
   return (
     <section className="relative overflow-hidden bg-white pt-4 pb-16 md:pt-6 md:pb-20 lg:pt-8 lg:pb-24">
-      <div className="w-full px-4 md:px-6 lg:px-10 xl:px-14 2xl:px-16 max-w-7xl mx-auto">
-        <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 xl:gap-20 items-center">
+      <div className="w-full px-4 md:px-6 lg:px-10 xl:px-14 2xl:px-16 max-w-[90rem] mx-auto">
+        <div className="grid gap-12 lg:gap-14 xl:gap-20 items-center lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] xl:grid-cols-[minmax(0,1fr)_minmax(0,1.28fr)]">
           {/* Left: Post your first task CTA */}
           <motion.div
             className="flex flex-col justify-center max-w-xl"
@@ -50,31 +50,30 @@ export function HeroSection() {
 
           {/* Right: Hero image with overlay cards */}
           <motion.div
-            className="relative hidden lg:block"
+            className="relative hidden lg:block w-full min-w-0"
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            {/* Hero illustration — desktop “GET EVERYTHING DONE” banner */}
-            <div className="relative aspect-[4/3] w-full max-w-2xl mx-auto rounded-2xl overflow-hidden bg-[#0c2d6b] shadow-lg">
+            {/* Hero photo — storefront-style “make anything” creative display */}
+            <div className="relative ml-auto w-full max-w-3xl xl:max-w-[44rem] 2xl:max-w-[52rem] aspect-[16/10] min-h-[17.5rem] xl:min-h-[22rem] 2xl:min-h-[26rem] rounded-3xl overflow-hidden bg-neutral-100 shadow-xl ring-1 ring-black/[0.06]">
               <Image
-                src="/images/desktop-hero-get-everything-done.png"
-                alt="Get everything done — tasks, moving, cleaning, and more on JobPool"
+                src="/images/hero-home-make-anything.png"
+                alt="Bold colorful display — make anything happen; post tasks on JobPool and get them done"
                 fill
                 className="object-cover object-center"
-                sizes="(max-width: 1024px) 0vw, 672px"
+                sizes="(max-width: 1024px) 0vw, (max-width: 1280px) 50vw, 820px"
                 priority
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent pointer-events-none" />
-              {/* Task completed (left) & Payment released (right) – side by side */}
-              <div className="absolute bottom-5 right-5 flex items-center gap-3">
-                <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-4 py-2.5 flex items-center gap-3">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/5 to-transparent pointer-events-none" />
+              <div className="absolute bottom-4 left-4 right-4 xl:bottom-6 xl:left-6 xl:right-6 flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+                <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-3 py-2 sm:px-4 sm:py-2.5 flex items-center gap-2 sm:gap-3">
                   <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
-                  <span className="text-sm font-medium text-gray-800">Task completed 2m ago</span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-800">Task completed 2m ago</span>
                 </div>
-                <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-4 py-2.5 flex items-center gap-3">
+                <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-3 py-2 sm:px-4 sm:py-2.5 flex items-center gap-2 sm:gap-3">
                   <ThumbsUp className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                  <span className="text-sm font-medium text-gray-800">Payment released 2m ago</span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-800">Payment released 2m ago</span>
                 </div>
               </div>
             </div>
