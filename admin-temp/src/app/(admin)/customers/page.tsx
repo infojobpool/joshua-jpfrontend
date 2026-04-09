@@ -290,6 +290,7 @@ import { Search, Eye, EyeOff, CreditCard, Phone, Download, Calendar } from "luci
 import axiosInstance from "@/lib/axiosInstance";
 import { toast } from "sonner";
 import { ProfileReminderCell } from "@/components/admin/ProfileReminderCell";
+import { Badge } from "@/components/ui/badge";
 
 interface BankInfo {
   bank_account_number: string;
@@ -314,6 +315,11 @@ interface Customer {
   /** From all-user-details/ after profile reminder tracking (optional). */
   profile_reminder_send_count?: number;
   last_profile_reminder_at?: string;
+  /** Signup bonus snapshot — same rules as wallet credit (optional until backend ships). */
+  signup_bonus_claimed?: boolean;
+  signup_bonus_eligible?: boolean;
+  signup_bonus_missing?: string[];
+  signup_bonus_amount?: number;
 }
 
 export default function CustomersPage() {
@@ -447,6 +453,74 @@ export default function CustomersPage() {
         <Step label="Aadhar" done={aadhar} />
         <Step label="Bank" done={bank} />
       </div>
+    );
+  };
+
+  const hasSignupBonusApi = (c: Customer) =>
+    Object.prototype.hasOwnProperty.call(c, "signup_bonus_claimed") ||
+    Object.prototype.hasOwnProperty.call(c, "signup_bonus_eligible") ||
+    Object.prototype.hasOwnProperty.call(c, "signup_bonus_missing") ||
+    Object.prototype.hasOwnProperty.call(c, "signup_bonus_amount");
+
+  const renderSignupBonus = (customer: Customer) => {
+    if (!hasSignupBonusApi(customer)) {
+      return (
+        <span className="text-sm text-gray-400" title="Not returned by API yet">
+          —
+        </span>
+      );
+    }
+
+    const amount = Number(customer.signup_bonus_amount);
+    const rupees = Number.isFinite(amount) && amount > 0 ? amount : 100;
+    const label = `₹${rupees.toLocaleString("en-IN")}`;
+
+    if (customer.signup_bonus_claimed === true) {
+      return (
+        <div className="flex flex-col gap-1">
+          <Badge className="border border-emerald-200 bg-emerald-100 font-medium text-emerald-900 hover:bg-emerald-100">
+            Credited
+          </Badge>
+          <span className="text-xs text-gray-500 tabular-nums">{label}</span>
+        </div>
+      );
+    }
+
+    if (customer.signup_bonus_eligible === true) {
+      return (
+        <Badge
+          className="border border-sky-200 bg-sky-100 font-medium text-sky-950 hover:bg-sky-100"
+          title={`Eligible for signup bonus (${label}); same rules as wallet credit`}
+        >
+          Ready · {label}
+        </Badge>
+      );
+    }
+
+    const missing = Array.isArray(customer.signup_bonus_missing) ? customer.signup_bonus_missing : [];
+    if (missing.length > 0) {
+      return (
+        <div className="flex max-w-[240px] flex-col gap-1.5">
+          <span className="text-[11px] font-medium text-amber-900">Missing for {label}</span>
+          <div className="flex flex-wrap gap-1">
+            {missing.map((item, i) => (
+              <Badge
+                key={`${item}-${i}`}
+                variant="outline"
+                className="border-amber-200 bg-amber-50 text-[10px] font-normal leading-tight text-amber-950"
+              >
+                {item}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <span className="text-sm text-gray-400" title="No blockers listed; check API">
+        —
+      </span>
     );
   };
 
@@ -585,6 +659,12 @@ export default function CustomersPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Verification
                 </th>
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]"
+                  title="Matches wallet signup bonus rules (profile phone, KYC, UPI, address, etc.)"
+                >
+                  Signup bonus
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
                   Profile reminders
                 </th>
@@ -596,7 +676,7 @@ export default function CustomersPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex items-center justify-center gap-2">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                       Loading customers...
@@ -605,7 +685,7 @@ export default function CustomersPage() {
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center">
+                  <td colSpan={9} className="px-6 py-12 text-center">
                     <div className="text-red-600">
                       {error}
                     </div>
@@ -619,7 +699,7 @@ export default function CustomersPage() {
                 </tr>
               ) : filteredCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
                     {searchTerm ? "No customers found matching your search" : "No customers found"}
                   </td>
                 </tr>
@@ -652,6 +732,9 @@ export default function CustomersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getVerificationStatus(customer.verification_status)}
+                    </td>
+                    <td className="px-6 py-4 align-top whitespace-normal">
+                      {renderSignupBonus(customer)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap align-top">
                       <ProfileReminderCell

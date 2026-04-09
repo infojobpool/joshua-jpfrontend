@@ -266,6 +266,17 @@ await axiosInstance.patch(`admin/wallet-transaction/${transactionId}`, { status:
 
 **Other optional user fields** on the same route (`phone_number`, `tasks_completed`, `earnings`, etc.) are also omitted when `None`. Admin code should treat **missing keys** the same as **`null`** / empty.
 
+**Signup bonus snapshot (same rules as wallet credit):** Each user may include:
+
+| Field | Meaning |
+|--------|--------|
+| `signup_bonus_claimed` | Bonus already credited |
+| `signup_bonus_eligible` | Would qualify right now (not claimed and all requirements met) |
+| `signup_bonus_missing` | List of strings still blocking (e.g. phone on profile, address, UPI); empty when eligible or already claimed |
+| `signup_bonus_amount` | Amount in INR from env (e.g. 100) |
+
+Logic aligns with `check_and_credit_signup_bonus` / signup bonus eligibility: **profile** phone (not registration phone alone), full KYC including bank, name, address, UPI, etc. Omitted keys follow `exclude_none` like other optional fields. **Admin Customers** shows this as **Signup bonus** (credited / ready / missing chips).
+
 ---
 
 ## Response Handling
