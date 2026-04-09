@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -114,6 +114,7 @@ function getFallbackCategoryId(categories: Category[], customName?: string): str
 
 export default function PostTaskPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [verificationLoading, setVerificationLoading] = useState<boolean>(true);
@@ -361,6 +362,21 @@ export default function PostTaskPage() {
       /* ignore corrupt draft */
     }
   }, [loading, user]);
+
+  /** Prefill title from home hero (?title=...). Defer one tick so session draft merge applies first. */
+  const urlTitleAppliedRef = useRef(false);
+  useEffect(() => {
+    if (loading || !user || urlTitleAppliedRef.current) return;
+    const raw = searchParams.get("title");
+    if (raw == null) return;
+    const decoded = raw.trim();
+    if (!decoded) return;
+    urlTitleAppliedRef.current = true;
+    const id = window.setTimeout(() => {
+      setFormData((prev) => ({ ...prev, title: decoded }));
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [loading, user, searchParams]);
 
   useEffect(() => {
     if (loading || !user) return;
