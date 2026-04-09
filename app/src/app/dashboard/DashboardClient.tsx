@@ -3910,7 +3910,6 @@ export default function Dashboard() {
               </div>
               </div>
               <div className="mt-3 text-left space-y-0.5">
-                <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">Welcome back, {safeUser?.name?.split(" ")[0] || "there"}!</p>
                 <h1 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-slate-100">Dashboard</h1>
                 <div className="mt-2 inline-flex max-w-full flex-wrap items-center gap-1 rounded-full border border-amber-100/90 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20 px-2 py-0.5">
                   <Sparkles className="h-3 w-3 text-amber-600/90 dark:text-amber-400/90 shrink-0" aria-hidden />
@@ -3921,7 +3920,6 @@ export default function Dashboard() {
           )}
           {!isMobile && (
             <div className="animate-slide-in-right">
-              <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">Welcome back, {safeUser?.name?.split(" ")[0] || "there"}!</p>
               <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-gray-900 dark:text-slate-100">
                 Dashboard
               </h1>

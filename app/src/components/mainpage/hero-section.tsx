@@ -5,11 +5,22 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { Button } from "../../components/ui/button"
 import { ArrowRight, ThumbsUp, Check } from "lucide-react"
+import useStore from "@/lib/Zustand"
 
 export function HeroSection() {
+  const isAuthenticated = useStore((s) => s.isAuthenticated)
+  const user = useStore((s) => s.user)
+  const firstName =
+    user?.name?.trim().split(/\s+/)[0] || (isAuthenticated ? "there" : "")
+
   return (
     <section className="relative overflow-hidden bg-white pt-4 pb-16 md:pt-6 md:pb-20 lg:pt-8 lg:pb-24">
       <div className="w-full px-4 md:px-6 lg:px-10 xl:px-14 2xl:px-16 max-w-[90rem] mx-auto">
+        {isAuthenticated && firstName ? (
+          <p className="mb-5 text-center text-sm font-semibold text-slate-600 md:mb-6 md:text-base">
+            Welcome back, {firstName}!
+          </p>
+        ) : null}
         <div className="grid gap-12 lg:gap-14 xl:gap-20 items-center lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] xl:grid-cols-[minmax(0,1fr)_minmax(0,1.28fr)]">
           {/* Left: Post your first task CTA */}
           <motion.div

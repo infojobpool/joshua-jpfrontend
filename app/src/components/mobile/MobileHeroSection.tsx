@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Search, Users } from "lucide-react";
+import useStore from "@/lib/Zustand";
 
 /**
  * Mobile home hero: full-bleed premium band + search (logo in MainHeader).
@@ -13,6 +14,10 @@ import { Search, Users } from "lucide-react";
 export function MobileHeroSection() {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const isAuthenticated = useStore((s) => s.isAuthenticated);
+  const user = useStore((s) => s.user);
+  const firstName =
+    user?.name?.trim().split(/\s+/)[0] || (isAuthenticated ? "there" : "");
 
   const onSearch = (e: FormEvent) => {
     e.preventDefault();
@@ -39,6 +44,17 @@ export function MobileHeroSection() {
 
         <div className="relative z-10 mx-auto max-w-lg px-4 pb-8 pt-6 sm:px-5">
           <div className="text-center">
+            {isAuthenticated && firstName ? (
+              <p
+                className="mb-3 text-center text-[0.8125rem] font-semibold tracking-wide text-white/95 sm:text-sm"
+                style={{
+                  fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
+                  textShadow: "0 1px 8px rgba(0,0,0,0.35)",
+                }}
+              >
+                Welcome back, {firstName}!
+              </p>
+            ) : null}
             <h1
               className="font-impact-hero text-center uppercase text-[2.4rem] leading-[1.02] tracking-[0.03em] text-white sm:text-[2.95rem] px-0.5"
               style={{
