@@ -21,6 +21,29 @@ interface JwtPayload {
   exp: number;
 }
 
+/**
+ * Login/localStorage payloads may use user_id, user_fullname, etc. Missing `id` + `name`
+ * caused checkAuth to skip set() (undefined === undefined), so the store stayed logged out.
+ */
+function normalizeAuthUser(parsed: unknown, tokenUserId?: string): UserData | null {
+  if (!parsed || typeof parsed !== "object") return null;
+  const p = parsed as Record<string, unknown>;
+  const id = String(p.id ?? p.user_id ?? p.userId ?? tokenUserId ?? "").trim();
+  if (!id) return null;
+  const nameRaw = String(p.name ?? p.user_fullname ?? p.full_name ?? p.userFullname ?? "").trim();
+  const email = String(p.email ?? p.user_email ?? "");
+  const displayName = nameRaw || (email.includes("@") ? email.split("@")[0] : "") || "there";
+  return {
+    id,
+    name: displayName,
+    email,
+    accountType: String(p.accountType ?? p.account_type ?? "user"),
+    isLoggedIn: Boolean(p.isLoggedIn ?? p.is_logged_in ?? true),
+    verification_status: Number(p.verification_status ?? p.verificationStatus ?? 0),
+    profile_image: (p.profile_image ?? p.profile_img) as string | undefined,
+  };
+}
+
 interface AuthState {
    userId: string | null;
   exp: number | null;
@@ -119,23 +142,23 @@ const useStore = create<StoreState>((set) => ({
     try {
       const decoded = jwt.decode(token) as JwtPayload | null;
       if (decoded && decoded.userId !== undefined) {
+        const normalized = normalizeAuthUser(user, decoded.userId);
+        if (!normalized) {
+          console.error("Could not normalize user payload from login");
+          return;
+        }
         set({
           userId: decoded.userId,
           exp: decoded.exp,
           isAuthenticated: true,
-          user: {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            accountType: user.accountType,
-            isLoggedIn: user.isLoggedIn,
-            verification_status: user.verification_status,
-            profile_image: user.profile_image || (user as any).profile_img,
-          },
+          user: normalized,
         });
         if (typeof window !== "undefined") {
           localStorage.setItem("token", token);
-          localStorage.setItem("user", JSON.stringify(user));
+          localStorage.setItem(
+            "user",
+            JSON.stringify({ ...(user as object), ...normalized }),
+          );
           notifyTokenUpdated();
         }
       } else {
@@ -224,31 +247,23 @@ const useStore = create<StoreState>((set) => ({
     if (token && user) {
       try {
         const decoded = jwt.decode(token) as JwtPayload | null;
-        const parsedUser = JSON.parse(user) as UserData;
-        
-        if (decoded && decoded.userId !== undefined && parsedUser) {
-          // Get current state to avoid unnecessary updates
+        const parsedRaw = JSON.parse(user);
+        const normalized = normalizeAuthUser(parsedRaw, decoded?.userId);
+
+        if (decoded && decoded.userId !== undefined && normalized) {
           const currentState = useStore.getState();
-          
-          // Only update if the state is different
+
           if (
             currentState.userId !== decoded.userId ||
             currentState.isAuthenticated !== true ||
-            currentState.user?.id !== parsedUser.id
+            currentState.user?.id !== normalized.id ||
+            currentState.user?.name !== normalized.name
           ) {
             set({
               userId: decoded.userId,
               exp: decoded.exp,
               isAuthenticated: true,
-              user: {
-                id: parsedUser.id,
-                name: parsedUser.name,
-                email: parsedUser.email,
-                accountType: parsedUser.accountType,
-                isLoggedIn: parsedUser.isLoggedIn,
-                verification_status: parsedUser.verification_status,
-                profile_image: parsedUser.profile_image || (parsedUser as any).profile_img,
-              },
+              user: normalized,
             });
           }
           notifyTokenUpdated();

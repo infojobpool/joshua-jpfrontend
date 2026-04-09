@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -8,10 +9,15 @@ import { ArrowRight, ThumbsUp, Check } from "lucide-react"
 import useStore from "@/lib/Zustand"
 
 export function HeroSection() {
+  const checkAuth = useStore((s) => s.checkAuth)
   const isAuthenticated = useStore((s) => s.isAuthenticated)
   const user = useStore((s) => s.user)
   const firstName =
     user?.name?.trim().split(/\s+/)[0] || (isAuthenticated ? "there" : "")
+
+  useEffect(() => {
+    checkAuth()
+  }, [checkAuth])
 
   return (
     <section className="relative overflow-hidden bg-white pt-4 pb-16 md:pt-6 md:pb-20 lg:pt-8 lg:pb-24">

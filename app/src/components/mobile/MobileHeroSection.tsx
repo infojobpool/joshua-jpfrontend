@@ -1,9 +1,8 @@
 "use client";
 
-import React, { FormEvent, useState } from "react";
+import React, { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Sparkles } from "lucide-react";
 import useStore from "@/lib/Zustand";
 
 /**
@@ -12,8 +11,14 @@ import useStore from "@/lib/Zustand";
 export function MobileHeroSection() {
   const router = useRouter();
   const [taskTitle, setTaskTitle] = useState("");
+  const checkAuth = useStore((s) => s.checkAuth);
   const isAuthenticated = useStore((s) => s.isAuthenticated);
   const user = useStore((s) => s.user);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
   const firstName =
     user?.name?.trim().split(/\s+/)[0] || (isAuthenticated ? "there" : "");
 
@@ -45,21 +50,21 @@ export function MobileHeroSection() {
         />
 
         <div className="relative z-10 mx-auto max-w-lg px-4 pb-8 pt-6 sm:px-5">
+          {isAuthenticated && firstName ? (
+            <div
+              className="mb-5 border-l-2 border-white/30 pl-3.5 text-left sm:pl-4"
+              style={{ fontFamily: "var(--font-geist-sans), system-ui, sans-serif" }}
+            >
+              <p className="text-[0.6875rem] font-medium uppercase tracking-[0.2em] text-white/65">
+                Welcome back
+              </p>
+              <p className="mt-1.5 text-[1.375rem] font-semibold leading-snug tracking-tight text-white [text-shadow:0_1px_16px_rgba(0,0,0,0.28)] sm:text-2xl">
+                {firstName}
+              </p>
+            </div>
+          ) : null}
+
           <div className="text-center">
-            {isAuthenticated && firstName ? (
-              <div
-                className="mx-auto mb-5 flex max-w-[17.5rem] flex-col items-center gap-1 rounded-2xl border border-white/30 bg-gradient-to-b from-white/[0.18] to-white/[0.06] px-5 py-3 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-xl sm:max-w-xs"
-                style={{ fontFamily: "var(--font-geist-sans), system-ui, sans-serif" }}
-              >
-                <div className="flex items-center gap-1.5 text-[0.62rem] font-bold uppercase tracking-[0.28em] text-amber-100/95">
-                  <Sparkles className="h-3 w-3 text-amber-200/90" aria-hidden />
-                  <span>Welcome back</span>
-                </div>
-                <p className="text-lg font-semibold leading-tight tracking-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)] sm:text-xl">
-                  {firstName}
-                </p>
-              </div>
-            ) : null}
             <h1
               className="font-impact-hero text-center uppercase text-[2.4rem] leading-[1.02] tracking-[0.03em] text-white sm:text-[2.95rem] px-0.5"
               style={{
