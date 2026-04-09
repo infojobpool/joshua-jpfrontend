@@ -86,12 +86,14 @@ export function MobileHeroSection() {
               value={taskTitle}
               onChange={(e) => setTaskTitle(e.target.value)}
             />
-            <Button
-              type="submit"
-              className="h-12 w-full rounded-2xl border-0 bg-white text-[15px] font-semibold text-blue-700 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.35)] hover:bg-blue-50"
-            >
-              Next
-            </Button>
+            <div className="flex justify-center pt-0.5">
+              <Button
+                type="submit"
+                className="h-10 min-w-[7.5rem] rounded-xl border-0 bg-white px-8 text-sm font-semibold text-blue-700 shadow-[0_6px_20px_-8px_rgba(0,0,0,0.35)] hover:bg-blue-50"
+              >
+                Next
+              </Button>
+            </div>
           </form>
         </div>
       </div>
