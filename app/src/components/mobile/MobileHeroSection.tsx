@@ -69,24 +69,11 @@ export function MobileHeroSection() {
             >
               Get Everything Done
             </h1>
-            <div
-              className="mx-auto mt-4 h-px w-14 bg-gradient-to-r from-transparent via-white/40 to-transparent"
-              aria-hidden
-            />
-            <p
-              className="mx-auto mt-4 max-w-[19.5rem] text-center text-[0.8125rem] leading-relaxed text-blue-100/90 sm:text-sm font-medium"
-              style={{
-                fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
-                letterSpacing: "0.01em",
-              }}
-            >
-              Post a task or search what you need — local helpers, clear offers.
-            </p>
           </div>
 
           <form
             onSubmit={onFormSubmit}
-            className="mt-7 space-y-3"
+            className="mt-6 space-y-3 sm:mt-7"
             aria-label="Start posting a task"
           >
             <input
