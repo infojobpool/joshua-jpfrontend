@@ -8,14 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Offering, OfferingType } from "@/lib/offerings/types";
-import { validateForPublish, PROHIBITED_OFFERING_KEYWORDS } from "@/lib/offerings/policy";
+import {
+  validateForPublish,
+  PROHIBITED_OFFERING_KEYWORDS,
+  getMaxOfferingSlots,
+} from "@/lib/offerings/policy";
 import {
   createOfferingApi,
   updateOfferingApi,
   isOfferingLimitError,
   OFFERING_LIMIT_TOAST,
 } from "@/lib/offerings/api";
-import { getMaxOfferingSlots, readOfferingSubscriptionMock } from "@/lib/offerings/storage";
+import { readOfferingSubscriptionMock } from "@/lib/offerings/storage";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ImagePlus, X } from "lucide-react";
