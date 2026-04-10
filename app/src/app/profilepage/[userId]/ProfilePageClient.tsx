@@ -165,24 +165,24 @@ export default function ProfilePageClient() {
   if (error) return <div>Error: {error}</div>;
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 via-slate-100/30 to-white">
-      {/* Main content */}
-      <main className="flex-1 container py-6 md:py-10 px-4 md:px-6 max-w-6xl mx-auto">
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 via-slate-100/30 to-white overflow-x-hidden w-full min-w-0">
+      {/* Main content — min-w-0 + overflow-x-hidden stop wide children (e.g. portfolio strip) from shifting layout on mobile */}
+      <main className="flex-1 w-full min-w-0 max-w-6xl mx-auto box-border py-6 md:py-10 px-4 md:px-6 overflow-x-hidden">
         <Link
           href="/dashboard"
           className="text-sm text-slate-600 hover:text-emerald-600 font-medium mb-4 inline-block transition-colors"
         >
           ← Back to Dashboard
         </Link>
-        <div className="grid gap-8 md:grid-cols-3">
-          {/* Premium ID-style profile card */}
-          <Card className="md:col-span-1 border-0 rounded-2xl overflow-hidden relative shadow-[0_24px_64px_-16px_rgba(15,118,110,0.38)] ring-1 ring-slate-900/[0.06] before:pointer-events-none before:absolute before:inset-x-5 before:top-0 before:z-10 before:h-1 before:rounded-full before:bg-gradient-to-r before:from-amber-300 before:via-emerald-400 before:to-cyan-500 before:content-['']">
-            <div className="h-24 bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-800" />
-            <CardHeader className="flex flex-col items-center text-center -mt-14 relative px-4 pb-6">
-              <div className="relative w-[7.25rem] h-[7.25rem] mb-3">
-                <Avatar className="w-[7.25rem] h-[7.25rem] ring-[3px] ring-white shadow-[0_12px_40px_-8px_rgba(0,0,0,0.25)]">
-                  <AvatarImage src={avatarSrc} alt={profileUser.name} />
-                  <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-xl font-semibold">
+        <div className="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-3 min-w-0 w-full max-w-full">
+          {/* Plain div (not Card): shared Card uses flex + gap-6 + py-6 which still caused huge empty bands / odd alignment on mobile WebViews */}
+          <div className="md:col-span-1 w-full max-w-full min-w-0 rounded-2xl overflow-hidden relative bg-card text-card-foreground shadow-[0_24px_64px_-16px_rgba(15,118,110,0.38)] ring-1 ring-slate-900/[0.06] before:pointer-events-none before:absolute before:inset-x-5 before:top-0 before:z-10 before:h-1 before:rounded-full before:bg-gradient-to-r before:from-amber-300 before:via-emerald-400 before:to-cyan-500 before:content-['']">
+            <div className="h-[4.5rem] sm:h-24 shrink-0 bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-800" />
+            <div className="flex flex-col items-center justify-start text-center -mt-11 sm:-mt-14 relative z-0 px-3 sm:px-4 pb-4 sm:pb-5 pt-0 w-full max-w-full min-w-0 mx-auto">
+              <div className="relative w-[5.75rem] h-[5.75rem] sm:w-[7.25rem] sm:h-[7.25rem] mb-2 sm:mb-3 shrink-0 mx-auto">
+                <Avatar className="w-full h-full ring-[3px] ring-white shadow-[0_12px_40px_-8px_rgba(0,0,0,0.25)]">
+                  <AvatarImage src={avatarSrc} alt={profileUser.name} className="object-cover" />
+                  <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-lg sm:text-xl font-semibold">
                     {profileUser.name
                       .split(" ")
                       .map((n) => n[0])
@@ -193,18 +193,18 @@ export default function ProfilePageClient() {
               <div className="inline-flex items-center rounded-full border border-emerald-200/90 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-900 mb-2">
                 JobPool profile
               </div>
-              <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">
+              <CardTitle className="text-lg sm:text-2xl font-bold tracking-tight text-slate-900 w-full max-w-full px-1 break-words text-center">
                 {profileUser.name || "Unknown User"}
               </CardTitle>
-              <CardDescription className="flex items-start justify-center gap-1 mt-2 text-slate-600 text-sm max-w-full">
-                <MapPin className="w-4 h-4 mr-0.5 shrink-0 mt-0.5" />
-                <span className="text-left break-words">
+              <CardDescription className="mt-2 text-slate-600 text-sm w-full max-w-full px-1 flex flex-col items-center gap-1 sm:flex-row sm:justify-center sm:items-start sm:gap-1.5 sm:text-left">
+                <MapPin className="w-4 h-4 shrink-0 sm:mt-0.5" aria-hidden />
+                <span className="break-words min-w-0 text-center sm:text-left max-w-[min(100%,20rem)]">
                   {profileUser.addresses.find((addr) => addr.isDefault)?.address ||
                     "Location not specified"}
                 </span>
               </CardDescription>
               {averageRating > 0 && (
-                <div className="flex items-center justify-center flex-wrap gap-1 mt-3 rounded-full bg-slate-50 px-3 py-1.5 border border-slate-100">
+                <div className="flex items-center justify-center flex-wrap gap-1 mt-3 w-full max-w-full rounded-full bg-slate-50 px-2.5 sm:px-3 py-1.5 border border-slate-100">
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
@@ -221,11 +221,11 @@ export default function ProfilePageClient() {
                   <span className="text-xs text-slate-500">({reviewCount} reviews)</span>
                 </div>
               )}
-            </CardHeader>
-          </Card>
+            </div>
+          </div>
 
           {/* Listings and reviews — collapsible */}
-          <div className="md:col-span-2 space-y-4">
+          <div className="md:col-span-2 space-y-4 min-w-0">
             <Card className="border-0 shadow-lg rounded-2xl overflow-hidden ring-1 ring-slate-200/80">
               <CardHeader className="border-b border-slate-100/80 bg-gradient-to-b from-slate-50/95 via-white to-white py-6">
                 <CardTitle className="text-xl font-bold text-slate-800">About this member</CardTitle>

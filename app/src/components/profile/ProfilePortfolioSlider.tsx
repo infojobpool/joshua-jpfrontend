@@ -144,7 +144,7 @@ export function ProfilePortfolioSlider({ userId, viewerIsOwner, className }: Pro
   }
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn("relative w-full max-w-full min-w-0", className)}>
       <div className="flex items-end justify-between gap-3 mb-3 px-0.5">
         <div>
           <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Portfolio</h3>
