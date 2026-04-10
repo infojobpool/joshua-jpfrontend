@@ -38,7 +38,6 @@ import {
   Briefcase,
   Wallet,
   Package,
-  Sparkles,
   Landmark,
 } from "lucide-react";
 import useStore from "../../lib/Zustand";
@@ -592,8 +591,8 @@ export default function ProfilePage() {
         </Link>
 
         <div className="grid gap-8 md:grid-cols-3 mt-2">
-          {/* Profile card - left column with overlapping avatar */}
-          <Card className="md:col-span-1 border-0 rounded-2xl overflow-visible bg-white relative z-10 md:-mr-4 shadow-[0_24px_64px_-16px_rgba(15,118,110,0.42)] ring-1 ring-slate-900/[0.06] before:pointer-events-none before:absolute before:inset-x-5 before:top-0 before:z-10 before:h-1 before:rounded-full before:bg-gradient-to-r before:from-amber-300 before:via-emerald-400 before:to-cyan-500 before:content-['']">
+          {/* Profile card — below workspace on small screens; left column on md+ */}
+          <Card className="order-2 md:order-1 md:col-span-1 border-0 rounded-2xl overflow-visible bg-white relative z-10 md:-mr-4 shadow-lg ring-1 ring-slate-200/80">
             <div
               className="h-32 rounded-t-2xl bg-cover bg-center bg-no-repeat relative"
               style={{
@@ -678,24 +677,32 @@ export default function ProfilePage() {
                   )}
                 </div>
               ) : (
-                <Avatar className="h-36 w-36 ring-4 ring-white shadow-2xl border-2 border-white/30 overflow-hidden">
-                  <AvatarImage
-                    src={resolveAvatarUrl(profileuser.avatar) || profileuser.avatar}
-                    alt={profileuser.name}
-                    className="object-cover aspect-square"
-                  />
-                  <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-2xl">
-                    {profileuser.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative -mt-1 shrink-0">
+                  <Avatar className="h-36 w-36 ring-4 ring-white shadow-md border-2 border-white overflow-hidden">
+                    <AvatarImage
+                      src={resolveAvatarUrl(profileuser.avatar) || profileuser.avatar}
+                      alt={profileuser.name}
+                      className="object-cover aspect-square"
+                    />
+                    <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-2xl">
+                      {profileuser.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </AvatarFallback>
+                  </Avatar>
+                  {verificationStatus.bank.completed && (
+                    <span
+                      className="absolute bottom-0.5 right-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-md ring-2 ring-white"
+                      title="Verified"
+                      aria-label="Bank verified"
+                    >
+                      <CheckCircle className="h-5 w-5 text-emerald-600" aria-hidden />
+                    </span>
+                  )}
+                </div>
               )}
               <div className="text-center mt-3 px-2">
-                <div className="inline-flex items-center gap-1 rounded-full border border-emerald-200/80 bg-emerald-50/90 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-800 mb-2">
-                  JobPool member
-                </div>
                 <CardTitle className="text-xl font-bold text-slate-800 tracking-tight">{profileuser.name}</CardTitle>
                 <CardDescription className="text-sm text-slate-500 mt-0.5 break-all">{profileuser.email}</CardDescription>
               </div>
@@ -712,24 +719,15 @@ export default function ProfilePage() {
             <CardContent className="space-y-6 pt-2">
               {!profileuser.isEditing && (
                 <>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="rounded-xl bg-gradient-to-br from-slate-50 to-white p-4 text-center border border-slate-100 shadow-sm">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl bg-slate-50/80 p-4 text-center border border-slate-100">
                       <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
                         <Calendar className="h-5 w-5 text-emerald-600" />
                       </div>
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Member since</p>
                       <p className="text-sm font-bold text-slate-800 mt-1 break-words">{profileuser.joinDate || "—"}</p>
                     </div>
-                    <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50/80 p-4 text-center border border-emerald-100 shadow-sm">
-                      <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-200/60">
-                        <CheckCircle className="h-5 w-5 text-emerald-700" />
-                      </div>
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Verification</p>
-                      <p className={`text-sm font-bold mt-1 break-words ${verificationStatus.bank.completed ? "text-emerald-700" : "text-slate-600"}`}>
-                        {verificationStatus.bank.completed ? "Verified" : verificationStatus.aadhar.completed ? "Aadhar" : verificationStatus.pan.completed ? "PAN" : "Pending"}
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-gradient-to-br from-slate-50 to-white p-4 text-center border border-slate-100 shadow-sm">
+                    <div className="rounded-xl bg-slate-50/80 p-4 text-center border border-slate-100">
                       <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
                         <Phone className="h-5 w-5 text-emerald-600" />
                       </div>
@@ -1007,27 +1005,23 @@ export default function ProfilePage() {
               )}
             </CardContent>
           </Card>
-          <Card className="md:col-span-2 border-0 shadow-xl rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200/50 relative z-0 md:ml-[-1rem] md:shadow-2xl">
-            <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-emerald-50/30 py-6">
-              <CardTitle className="text-xl font-bold text-slate-800 tracking-tight">Your workspace</CardTitle>
+          <Card className="order-1 md:order-2 md:col-span-2 border-0 shadow-lg rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200/80 relative z-0 md:ml-[-1rem]">
+            <CardHeader className="border-b border-slate-100 bg-white py-5">
+              <CardTitle className="text-xl font-bold text-slate-800 tracking-tight">Offerings &amp; workspace</CardTitle>
               <CardDescription className="text-slate-500">
-                Expand sections — offerings are spotlighted for quick access
+                Your services, bank details, and reviews — offerings open first
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-4 px-3 sm:px-6">
               <Accordion type="multiple" defaultValue={["offerings"]} className="w-full space-y-3">
                 <AccordionItem
                   value="offerings"
-                  className="rounded-2xl border-2 border-amber-400/45 bg-gradient-to-br from-amber-50/50 via-white to-emerald-50/30 px-3 sm:px-4 shadow-[0_0_0_1px_rgba(16,185,129,0.12),0_12px_40px_-20px_rgba(245,158,11,0.35)] border-b-0"
+                  className="rounded-2xl border border-emerald-200/60 bg-emerald-50/20 px-3 sm:px-4 border-b-0"
                 >
                   <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
                     <span className="flex flex-wrap items-center gap-2 pr-2">
-                      <Package className="h-5 w-5 text-amber-600 shrink-0" aria-hidden />
-                      <span className="text-base font-bold text-slate-900">Offerings</span>
-                      <Badge className="border-amber-300/60 bg-amber-100/90 text-amber-900 hover:bg-amber-100 gap-1">
-                        <Sparkles className="h-3 w-3" aria-hidden />
-                        Spotlight
-                      </Badge>
+                      <Package className="h-5 w-5 text-emerald-600 shrink-0" aria-hidden />
+                      <span className="text-base font-semibold text-slate-900">Offerings</span>
                     </span>
                   </AccordionTrigger>
                   <AccordionContent className="pb-4">
