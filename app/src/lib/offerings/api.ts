@@ -70,9 +70,14 @@ export function mapOfferingFromApi(raw: unknown): Offering | null {
       userId = String(pick(h, "id", "user_id", "uuid", "pk") ?? "");
     }
   }
+  const displayNameRaw = pick(r, "provider_display_name", "providerDisplayName");
+  const providerDisplayName =
+    typeof displayNameRaw === "string" && displayNameRaw.trim() ? displayNameRaw.trim() : undefined;
+
   return {
     id,
     userId,
+    ...(providerDisplayName ? { providerDisplayName } : {}),
     type,
     title: String(pick(r, "title") ?? ""),
     category: String(pick(r, "category") ?? ""),
@@ -182,46 +187,46 @@ export async function listOfferingsApi(profileUserId: string): Promise<Offering[
   return rows.map(mapOfferingFromApi).filter((x): x is Offering => x !== null);
 }
 
-function parseOfferingsListResponse(res: { data?: unknown }): Offering[] {
-  const rows = extractOfferingsPayload(unwrapOfferingEnvelope(res) ?? res.data);
-  return rows.map(mapOfferingFromApi).filter((x): x is Offering => x !== null);
+/**
+ * Public discovery feed: anonymous, published only.
+ * GET /offerings/feed/?limit=&offset= — see backend OFFERING_FEED_* env.
+ */
+export type OfferingFeedPage = {
+  offerings: Offering[];
+  /** Total published rows (for load more / pager) */
+  total: number;
+};
+
+export async function listOfferingFeedApi(limit = 24, offset = 0): Promise<OfferingFeedPage> {
+  try {
+    const res = await axiosInstance.get("offerings/feed/", {
+      params: { limit, offset },
+    });
+    const payload = unwrapOfferingEnvelope(res) ?? res.data;
+    const rows = extractOfferingsPayload(payload);
+    const offerings = rows
+      .map(mapOfferingFromApi)
+      .filter((x): x is Offering => x !== null)
+      .filter((o) => o.userId.trim().length > 0 && o.status === "published");
+
+    let total = 0;
+    if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+      const t = (payload as Record<string, unknown>).total;
+      if (typeof t === "number" && Number.isFinite(t)) total = t;
+      else if (typeof t === "string" && /^\d+$/.test(t)) total = parseInt(t, 10);
+    }
+    if (total <= 0) total = offerings.length;
+
+    return { offerings, total };
+  } catch {
+    return { offerings: [], total: 0 };
+  }
 }
 
-/**
- * Published listings for the marketing home page (no `user_id` on the request).
- * Tries common query shapes; backend may only implement one of them.
- */
+/** Home / marketing slider: first page of the public feed. */
 export async function listPublishedOfferingsForHomeApi(limit = 24): Promise<Offering[]> {
-  const filterForHome = (list: Offering[]) =>
-    list
-      .filter((o) => o.status === "published" && o.userId.trim().length > 0)
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-      .slice(0, limit);
-
-  const paramSets: Record<string, string>[] = [
-    { status: "published" },
-    { listing_status: "published" },
-    { is_public: "true" },
-    { public: "1" },
-  ];
-
-  for (const params of paramSets) {
-    try {
-      const res = await axiosInstance.get("offerings/", { params });
-      const filtered = filterForHome(parseOfferingsListResponse(res));
-      if (filtered.length > 0) return filtered;
-    } catch {
-      /* try next */
-    }
-  }
-
-  // Last resort: unfiltered list (some APIs return only public rows when omitting user_id)
-  try {
-    const res = await axiosInstance.get("offerings/", { params: {} });
-    return filterForHome(parseOfferingsListResponse(res));
-  } catch {
-    return [];
-  }
+  const { offerings } = await listOfferingFeedApi(limit, 0);
+  return offerings.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, limit);
 }
 
 export async function createOfferingApi(o: Offering): Promise<Offering> {

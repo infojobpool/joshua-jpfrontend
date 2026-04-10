@@ -171,9 +171,8 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
             <Package className="mx-auto h-10 w-10 text-emerald-200" />
             <p className="mt-2 text-sm font-medium text-gray-800">No public listings here yet</p>
             <p className="mt-1 text-xs text-gray-500 max-w-sm mx-auto leading-relaxed">
-              When taskers publish services with a starting price, they can appear here for everyone to browse. If
-              this stays empty, your server may need a public &quot;featured&quot; or published offerings list (not
-              only per-profile).
+              Published services from the public feed appear here. If this is empty, check that{" "}
+              <span className="font-medium text-gray-600">GET /offerings/feed/</span> is deployed and returning rows.
             </p>
             <Link
               href="/profile?tab=listings"
@@ -243,6 +242,11 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
                   <h4 className="line-clamp-2 min-w-0 overflow-hidden break-words text-sm font-medium text-gray-900">
                     {o.title || "Listing"}
                   </h4>
+                  {o.providerDisplayName ? (
+                    <p className="mt-0.5 truncate text-[11px] font-medium text-emerald-700/90">
+                      {o.providerDisplayName}
+                    </p>
+                  ) : null}
                   {o.locationText ? (
                     <p className="mt-1 flex items-center gap-1 truncate text-xs text-gray-500">
                       <MapPin className="h-3 w-3 shrink-0" />
@@ -359,6 +363,9 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
                       <h3 className="line-clamp-2 min-w-0 overflow-hidden break-words text-base font-semibold text-gray-900">
                         {o.title || "Listing"}
                       </h3>
+                      {o.providerDisplayName ? (
+                        <p className="mt-1 truncate text-xs font-medium text-emerald-700">{o.providerDisplayName}</p>
+                      ) : null}
                       {o.locationText ? (
                         <p className="mt-2 flex min-w-0 items-center gap-1 text-sm text-gray-500">
                           <MapPin className="h-3.5 w-3.5 shrink-0" />

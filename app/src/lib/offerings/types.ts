@@ -6,6 +6,8 @@ export type OfferingStatus = "draft" | "published" | "paused";
 export interface Offering {
   id: string;
   userId: string;
+  /** From offerings/feed; optional on owner list / editor payloads */
+  providerDisplayName?: string;
   type: OfferingType;
   title: string;
   /** Tasker-defined category label (separate from job categories). */
