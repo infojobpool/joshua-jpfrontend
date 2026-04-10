@@ -6,12 +6,14 @@ import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Menu, X, User, Plus } from "lucide-react";
 import useStore from "@/lib/Zustand";
+import { cn } from "@/lib/utils";
 
 const MainHeader: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { isAuthenticated, user, logout, checkAuth } = useStore();
   const [isHydrated, setIsHydrated] = useState(false);
   const pathname = usePathname();
+  const isMarketingHome = pathname === "/" || pathname === "";
 
   useEffect(() => {
     try {
@@ -53,9 +55,21 @@ const MainHeader: React.FC = () => {
   }
 
   return (
-    <header className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
+    <header
+      className={cn(
+        "bg-white/95 backdrop-blur-sm sticky top-0 z-50",
+        isMarketingHome ? "max-md:border-b-0 max-md:shadow-none" : "border-b border-gray-100",
+      )}
+    >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex min-h-[5.75rem] items-center justify-between gap-3 py-2.5 md:min-h-0 md:h-24 md:py-0 lg:h-28 md:pt-4 lg:pt-5">
+        <div
+          className={cn(
+            "flex items-center justify-between gap-3 md:min-h-0 md:h-24 md:py-0 lg:h-28 md:pt-4 md:pb-0 lg:pt-5 lg:pb-0",
+            isMarketingHome
+              ? "max-md:min-h-0 max-md:py-1 max-md:pb-1.5"
+              : "min-h-[5.75rem] py-2.5",
+          )}
+        >
           {/* Logo — mobile: full JOB POOL lockup PNG; desktop: wide mark */}
           <Link
             href="/"
@@ -64,7 +78,10 @@ const MainHeader: React.FC = () => {
             <img
               src="/images/jobpool-logo-header.png"
               alt="JobPool"
-              className="h-[4.75rem] w-auto max-w-[min(340px,82vw)] object-contain object-left sm:h-[5.125rem] md:hidden"
+              className={cn(
+                "w-auto max-w-[min(340px,82vw)] object-contain object-left md:hidden",
+                isMarketingHome ? "h-[3rem] sm:h-[3.25rem]" : "h-[4.75rem] sm:h-[5.125rem]",
+              )}
             />
             <img
               src="/images/new_logo_22-removebg-preview.png"

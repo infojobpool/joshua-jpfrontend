@@ -15,6 +15,7 @@ const PLACEHOLDER = "/images/placeholder.svg";
 const DESKTOP_MAX = 12;
 /** Mobile recent-tasks strip: auto-scroll speed (px/s) — time-based; keep modest so swipe still feels natural */
 const MOBILE_RECENT_AUTO_SCROLL_PX_PER_SEC = 52;
+const DESKTOP_RECENT_AUTO_SCROLL_PX_PER_SEC = 42;
 
 function formatBudget(n: number) {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
@@ -47,6 +48,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
   const [marqueePaused, setMarqueePaused] = useState(false);
   const resumeMarqueeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mobileScrollRef = useRef<HTMLDivElement>(null);
+  const desktopScrollRef = useRef<HTMLDivElement>(null);
   const scrollProgrammaticRef = useRef(false);
   /** True after a user-driven scroll until idle timeout (swipe / trackpad). */
   const autoScrollFromUserRef = useRef(false);
@@ -143,12 +145,63 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     };
   }, [variant, tasks.length, registerUserHorizontalScroll]);
 
+  /** Desktop strip: same seamless loop auto-scroll (pauses on hover / user scroll / tab hidden). */
   useEffect(() => {
-    if (variant !== "mobile") return;
+    if (variant !== "desktop" || tasks.length === 0) return;
+    const el = desktopScrollRef.current;
+    if (!el) return;
+
+    const reducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const onScroll = () => {
+      if (scrollProgrammaticRef.current) return;
+      registerUserHorizontalScroll();
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+
+    let rafId = 0;
+    let lastTs = performance.now();
+    let fracCarry = 0;
+
+    const tick = (now: number) => {
+      const dt = Math.min(48, Math.max(0, now - lastTs));
+      lastTs = now;
+
+      if (!reducedMotion && !marqueePausedRef.current && !autoScrollFromUserRef.current) {
+        const half = el.scrollWidth / 2;
+        if (half > 1) {
+          fracCarry += (DESKTOP_RECENT_AUTO_SCROLL_PX_PER_SEC / 1000) * dt;
+          const steps = Math.floor(fracCarry);
+          fracCarry -= steps;
+          if (steps > 0) {
+            scrollProgrammaticRef.current = true;
+            el.scrollLeft += steps;
+            if (el.scrollLeft >= half) el.scrollLeft -= half;
+            queueMicrotask(() => {
+              scrollProgrammaticRef.current = false;
+            });
+          }
+        }
+      }
+
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      el.removeEventListener("scroll", onScroll);
+      if (resumeUserScrollTimerRef.current) clearTimeout(resumeUserScrollTimerRef.current);
+    };
+  }, [variant, tasks.length, registerUserHorizontalScroll]);
+
+  useEffect(() => {
     const onVis = () => setMarqueePaused(document.hidden);
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
-  }, [variant]);
+  }, []);
 
   if (variant === "mobile") {
     if (loading) {
@@ -170,8 +223,8 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     if (tasks.length === 0) {
       return (
         <div className="md:hidden px-4 py-6 bg-white">
-          <h3 className="text-lg font-semibold text-gray-900">Recent available tasks</h3>
-          <p className="mt-1 text-sm text-gray-500">Open tasks you can apply for right now</p>
+          <h3 className="font-home-section-title text-lg text-gray-900">Recent available tasks</h3>
+          <p className="font-home-section-desc mt-1 text-sm text-gray-500">Open tasks you can apply for right now</p>
           <div className="mt-4 flex flex-col items-center rounded-2xl border border-gray-100 bg-gray-50 py-8">
             <Briefcase className="mb-2 h-10 w-10 text-gray-300" />
             <p className="text-sm font-medium text-gray-600">No open tasks yet</p>
@@ -194,9 +247,9 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     };
 
     return (
-      <div className="md:hidden px-4 py-4 bg-white">
-        <h3 className="mb-1 text-lg font-semibold text-gray-900">Recent available tasks</h3>
-        <p className="mb-3 text-sm text-gray-500">Open tasks you can apply for right now</p>
+        <div className="md:hidden px-4 py-4 bg-white">
+          <h3 className="font-home-section-title mb-1 text-lg text-gray-900">Recent available tasks</h3>
+          <p className="font-home-section-desc mb-3 text-sm text-gray-500">Open tasks you can apply for right now</p>
         <div
           ref={mobileScrollRef}
           className="overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x scroll-auto snap-x snap-mandatory pb-2 [overflow-anchor:none] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
@@ -302,10 +355,10 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
           >
-            <h2 className="mb-2 text-2xl font-bold text-gray-900 md:text-3xl">
+            <h2 className="font-home-section-title mb-2 text-2xl text-gray-900 md:text-3xl">
               Recent available tasks
             </h2>
-            <p className="mx-auto max-w-2xl text-sm text-gray-600 md:text-base">
+            <p className="font-home-section-desc mx-auto max-w-2xl text-sm text-gray-600 md:text-base">
               Open tasks you can browse and apply for right now
             </p>
           </motion.div>
@@ -325,6 +378,16 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     );
   }
 
+  const loopDesktop = [...tasks, ...tasks];
+
+  const scheduleMarqueeResumeDesktop = () => {
+    if (resumeMarqueeTimerRef.current) clearTimeout(resumeMarqueeTimerRef.current);
+    resumeMarqueeTimerRef.current = setTimeout(() => {
+      resumeMarqueeTimerRef.current = null;
+      setMarqueePaused(false);
+    }, 500);
+  };
+
   return (
     <section className="hidden py-12 md:block bg-gray-50 overflow-hidden">
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
@@ -335,10 +398,10 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <h2 className="mb-2 text-2xl font-bold text-gray-900 md:text-3xl">
+          <h2 className="font-home-section-title mb-2 text-2xl text-gray-900 md:text-3xl">
             Recent available tasks
           </h2>
-          <p className="mx-auto max-w-2xl text-sm text-gray-600 md:text-base">
+          <p className="font-home-section-desc mx-auto max-w-2xl text-sm text-gray-600 md:text-base">
             Open tasks you can browse and apply for right now
           </p>
         </motion.div>
@@ -346,22 +409,30 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
         <div className="relative mx-auto max-w-7xl">
           <div className="flex justify-center">
             <div
-              className="flex gap-4 overflow-x-auto overscroll-x-contain touch-pan-x pb-6 pl-12 pr-12 md:pl-14 md:pr-14 scrollbar-hide"
+              ref={desktopScrollRef}
+              className="max-w-full overflow-x-auto overscroll-x-contain touch-pan-x scroll-auto pb-6 pl-12 pr-12 md:pl-14 md:pr-14 [overflow-anchor:none] scrollbar-hide"
               style={{
                 scrollbarWidth: "none",
                 msOverflowStyle: "none",
                 scrollSnapType: "x mandatory",
                 WebkitOverflowScrolling: "touch",
+                scrollBehavior: "auto",
               }}
+              onPointerDown={() => {
+                if (resumeMarqueeTimerRef.current) clearTimeout(resumeMarqueeTimerRef.current);
+                setMarqueePaused(true);
+              }}
+              onPointerUp={scheduleMarqueeResumeDesktop}
+              onPointerCancel={scheduleMarqueeResumeDesktop}
+              onMouseEnter={() => setMarqueePaused(true)}
+              onMouseLeave={() => setMarqueePaused(false)}
+              onWheel={registerUserHorizontalScroll}
             >
-              {tasks.map((task, index) => (
-                <motion.div
-                  key={task.id}
+              <div className="flex w-max gap-4 transform-gpu will-change-transform">
+                {loopDesktop.map((task, idx) => (
+                <div
+                  key={`${task.id}-${idx}`}
                   className="w-56 flex-shrink-0 scroll-snap-start sm:w-60 md:w-64"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.06, duration: 0.5 }}
-                  viewport={{ once: true }}
                 >
                   <Link
                     href={`/tasks/${task.id}`}
@@ -406,8 +477,9 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
                       ) : null}
                     </div>
                   </Link>
-                </motion.div>
-              ))}
+                </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
