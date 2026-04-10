@@ -99,7 +99,9 @@ function TaskCardWithPrefetch({
     <Card className="flex flex-col bg-white dark:bg-slate-800/95 border border-slate-200/60 dark:border-slate-700/60 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.06),0_12px_24px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.25),0_12px_24px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden">
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start gap-2">
-          <CardTitle className="task-title text-2xl md:text-3xl text-slate-900">{task.title}</CardTitle>
+          <CardTitle className="task-title line-clamp-3 min-w-0 flex-1 shrink-0 overflow-hidden break-words text-2xl text-slate-900 md:text-3xl">
+            {task.title}
+          </CardTitle>
           <div className="flex flex-col items-end gap-1.5 shrink-0">
             <div className="flex items-center gap-1">
               <Badge variant="outline" className="text-xs font-normal">

@@ -248,7 +248,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
                   </div>
                 </div>
                 <div className="p-3">
-                  <h4 className="task-title line-clamp-2 text-sm font-semibold text-gray-900">
+                  <h4 className="task-title line-clamp-2 min-w-0 overflow-hidden break-words text-sm text-gray-900">
                     {t.title}
                   </h4>
                   {t.location ? (
@@ -389,7 +389,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
                       </div>
                     </div>
                     <div className="p-4">
-                      <h3 className="task-title line-clamp-2 min-h-[2.75rem] text-base font-semibold leading-snug text-gray-900">
+                      <h3 className="task-title line-clamp-2 min-w-0 overflow-hidden break-words text-base text-gray-900">
                         {task.title}
                       </h3>
                       {task.location ? (

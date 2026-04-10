@@ -1,7 +1,6 @@
 
 "use client";
 
-import { MobileDashboard } from "../../components/mobile/MobileDashboard";
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -4897,7 +4896,7 @@ export default function Dashboard() {
                             <div className="absolute top-4 right-4 md:top-6 md:right-6 opacity-70 hover:opacity-100 transition-opacity">
                               <ShareTaskButton taskId={String(task.id)} title={task.title} description={task.description} budget={task.budget} variant="icon" />
                             </div>
-                            <h3 className="task-title line-clamp-3 min-h-[4.5rem] pr-10 text-slate-900 dark:text-slate-100 font-semibold leading-snug text-lg md:text-xl">
+                            <h3 className="task-title line-clamp-3 min-w-0 shrink-0 overflow-hidden break-words pr-10 text-slate-900 dark:text-slate-100 text-lg md:text-xl">
                               {task.title}
                             </h3>
                             <div className="mt-2 flex shrink-0 items-center gap-2">
@@ -5129,7 +5128,7 @@ export default function Dashboard() {
                       {/* Header with title and status */}
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1 min-w-0">
-                          <h3 className={`task-title text-slate-900 dark:text-slate-100 line-clamp-2 ${isMobile ? "text-xl md:text-2xl" : "text-2xl md:text-3xl"} leading-snug`}>
+                          <h3 className={`task-title line-clamp-2 min-w-0 shrink-0 overflow-hidden break-words text-slate-900 dark:text-slate-100 ${isMobile ? "text-xl md:text-2xl" : "text-2xl md:text-3xl"}`}>
                             {task.title}
                           </h3>
                           <div className="flex items-center gap-2 mt-1">

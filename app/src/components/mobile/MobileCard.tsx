@@ -141,15 +141,15 @@ export function MobileTaskCard({ task, onViewDetails, onApply }: MobileTaskCardP
   return (
     <MobileCard onClick={() => onViewDetails(task.id)}>
       <MobileCardHeader>
-        <div className="flex items-start justify-between mb-2">
-          <h3 className="task-title text-gray-900 text-xl md:text-2xl leading-tight flex-1 pr-2">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h3 className="task-title line-clamp-3 min-w-0 flex-1 shrink-0 overflow-hidden break-words pr-2 text-xl text-gray-900 md:text-2xl">
             {task.title}
           </h3>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
+          <span className={`shrink-0 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
             {task.status.replace('_', ' ')}
           </span>
         </div>
-        <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">
+        <p className="line-clamp-2 min-w-0 shrink-0 overflow-hidden break-words text-sm text-gray-600">
           {task.description}
         </p>
       </MobileCardHeader>
