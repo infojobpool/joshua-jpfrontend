@@ -163,7 +163,27 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
     }
 
     if (rows.length === 0) {
-      return null;
+      return (
+        <div className="md:hidden px-4 py-5 bg-gray-50 border-t border-gray-100/80">
+          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
+          <div className="mt-4 rounded-2xl border border-dashed border-emerald-200/90 bg-white p-6 text-center shadow-sm">
+            <Package className="mx-auto h-10 w-10 text-emerald-200" />
+            <p className="mt-2 text-sm font-medium text-gray-800">No public listings here yet</p>
+            <p className="mt-1 text-xs text-gray-500 max-w-sm mx-auto leading-relaxed">
+              When taskers publish services with a starting price, they can appear here for everyone to browse. If
+              this stays empty, your server may need a public &quot;featured&quot; or published offerings list (not
+              only per-profile).
+            </p>
+            <Link
+              href="/profile?tab=listings"
+              className="mt-4 inline-block text-sm font-semibold text-emerald-700 hover:underline"
+            >
+              Publish a listing from Profile
+            </Link>
+          </div>
+        </div>
+      );
     }
 
     const loop = [...rows, ...rows];
@@ -255,7 +275,36 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
   }
 
   if (rows.length === 0) {
-    return null;
+    return (
+      <section className="hidden py-10 md:block bg-white overflow-hidden border-t border-gray-100">
+        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
+          <motion.div
+            className="mb-6 text-center"
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="mb-2 text-2xl font-bold text-gray-900 md:text-3xl">{title}</h2>
+            <p className="mx-auto max-w-2xl text-sm text-gray-600 md:text-base">{subtitle}</p>
+          </motion.div>
+          <div className="mx-auto max-w-2xl rounded-2xl border border-dashed border-emerald-200/90 bg-slate-50/80 py-10 px-6 text-center">
+            <Package className="mx-auto h-12 w-12 text-emerald-200" />
+            <p className="mt-3 font-medium text-gray-800">No public listings to show yet</p>
+            <p className="mt-2 text-sm text-gray-500 leading-relaxed">
+              Published offerings from providers will appear in this row. Until the feed returns data here, visitors
+              can still open any public profile to book a service.
+            </p>
+            <Link
+              href="/profile?tab=listings"
+              className="mt-5 inline-block text-sm font-semibold text-emerald-700 hover:underline"
+            >
+              Publish a listing from Profile
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
   }
 
   return (

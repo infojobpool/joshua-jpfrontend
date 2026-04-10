@@ -45,18 +45,34 @@ export function mapOfferingFromApi(raw: unknown): Offering | null {
   const r = raw as Record<string, unknown>;
   const id = String(pick(r, "id") ?? "");
   if (!id) return null;
-  const statusRaw = String(pick(r, "status") ?? "draft").toLowerCase();
-  const status: OfferingStatus =
-    statusRaw === "published" || statusRaw === "paused" || statusRaw === "draft" ? statusRaw : "draft";
+  const statusRaw = String(pick(r, "status") ?? "draft").toLowerCase().replace(/\s+/g, "_");
+  let status: OfferingStatus = "draft";
+  if (statusRaw === "published" || statusRaw === "live" || statusRaw === "active" || statusRaw === "public") {
+    status = "published";
+  } else if (statusRaw === "paused") {
+    status = "paused";
+  } else if (statusRaw === "draft") {
+    status = "draft";
+  }
   const typeRaw = String(pick(r, "type") ?? "service").toLowerCase();
   const type: OfferingType = typeRaw === "product" ? "product" : "service";
   const photos = pick(r, "photo_urls", "photoUrls");
   const photoUrls = Array.isArray(photos)
     ? (photos as unknown[]).filter((u): u is string => typeof u === "string" && u.length > 0).slice(0, 12)
     : [];
+  let userId = String(
+    pick(r, "user_id", "userId", "profile_user_id", "provider_id", "owner_id", "tasker_id") ?? "",
+  );
+  if (!userId.trim()) {
+    const holder = pick(r, "user", "profile", "provider", "tasker");
+    if (holder && typeof holder === "object" && !Array.isArray(holder)) {
+      const h = holder as Record<string, unknown>;
+      userId = String(pick(h, "id", "user_id", "uuid", "pk") ?? "");
+    }
+  }
   return {
     id,
-    userId: String(pick(r, "user_id", "userId") ?? ""),
+    userId,
     type,
     title: String(pick(r, "title") ?? ""),
     category: String(pick(r, "category") ?? ""),
@@ -166,22 +182,43 @@ export async function listOfferingsApi(profileUserId: string): Promise<Offering[
   return rows.map(mapOfferingFromApi).filter((x): x is Offering => x !== null);
 }
 
+function parseOfferingsListResponse(res: { data?: unknown }): Offering[] {
+  const rows = extractOfferingsPayload(unwrapOfferingEnvelope(res) ?? res.data);
+  return rows.map(mapOfferingFromApi).filter((x): x is Offering => x !== null);
+}
+
 /**
- * Published listings for the marketing home page (no `user_id`).
- * Backend should return public `published` rows for anonymous users when filtering by status.
- * If the API only supports per-profile lists, this returns [] until the feed endpoint exists.
+ * Published listings for the marketing home page (no `user_id` on the request).
+ * Tries common query shapes; backend may only implement one of them.
  */
 export async function listPublishedOfferingsForHomeApi(limit = 24): Promise<Offering[]> {
-  try {
-    const res = await axiosInstance.get("offerings/", {
-      params: { status: "published" },
-    });
-    const rows = extractOfferingsPayload(unwrapOfferingEnvelope(res) ?? res.data);
-    const list = rows.map(mapOfferingFromApi).filter((x): x is Offering => x !== null);
-    return list
-      .filter((o) => o.status === "published" && o.userId)
+  const filterForHome = (list: Offering[]) =>
+    list
+      .filter((o) => o.status === "published" && o.userId.trim().length > 0)
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, limit);
+
+  const paramSets: Record<string, string>[] = [
+    { status: "published" },
+    { listing_status: "published" },
+    { is_public: "true" },
+    { public: "1" },
+  ];
+
+  for (const params of paramSets) {
+    try {
+      const res = await axiosInstance.get("offerings/", { params });
+      const filtered = filterForHome(parseOfferingsListResponse(res));
+      if (filtered.length > 0) return filtered;
+    } catch {
+      /* try next */
+    }
+  }
+
+  // Last resort: unfiltered list (some APIs return only public rows when omitting user_id)
+  try {
+    const res = await axiosInstance.get("offerings/", { params: {} });
+    return filterForHome(parseOfferingsListResponse(res));
   } catch {
     return [];
   }
