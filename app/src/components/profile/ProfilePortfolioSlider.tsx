@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Images } from "lucide-react";
-import { loadPortfolio } from "@/lib/portfolio/storage";
+import { fetchPortfolioApi } from "@/lib/portfolio/api";
+import type { PortfolioSlide } from "@/lib/portfolio/types";
 import { PORTFOLIO_UPDATE_EVENT } from "@/lib/portfolio/events";
 import { ImageGalleryModal } from "@/components/ImageGalleryModal";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,8 @@ type Props = {
 
 export function ProfilePortfolioSlider({ userId, viewerIsOwner, className }: Props) {
   const [tick, setTick] = useState(0);
+  const [items, setItems] = useState<PortfolioSlide[]>([]);
+  const [loadError, setLoadError] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const stripRef = useRef<HTMLDivElement>(null);
@@ -35,9 +38,26 @@ export function ProfilePortfolioSlider({ userId, viewerIsOwner, className }: Pro
     };
   }, []);
 
-  const items = useMemo(() => {
-    void tick;
-    return loadPortfolio(userId);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!userId) return;
+      try {
+        const slides = await fetchPortfolioApi(userId);
+        if (!cancelled) {
+          setItems(slides);
+          setLoadError(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setItems([]);
+          setLoadError(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [userId, tick]);
 
   const galleryImages = useMemo(
@@ -80,6 +100,14 @@ export function ProfilePortfolioSlider({ userId, viewerIsOwner, className }: Pro
     el.scrollBy({ left: delta, behavior: "smooth" });
   };
 
+  if (loadError && viewerIsOwner) {
+    return (
+      <div className={cn("rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-900", className)}>
+        Couldn&apos;t load portfolio from the server. Check your connection or try again later.
+      </div>
+    );
+  }
+
   if (items.length === 0) {
     if (!viewerIsOwner) {
       return null;
@@ -99,8 +127,8 @@ export function ProfilePortfolioSlider({ userId, viewerIsOwner, className }: Pro
             <div className="min-w-0">
               <h3 className="text-sm font-semibold text-slate-900 tracking-tight">Portfolio showcase</h3>
               <p className="mt-1 text-sm text-slate-600 max-w-lg">
-                Add your own photos here — work samples, products, before/afters. This slider is separate from listing
-                card images.
+                Add photos that show your work, products, or results. This gallery is separate from individual listing
+                images.
               </p>
             </div>
           </div>

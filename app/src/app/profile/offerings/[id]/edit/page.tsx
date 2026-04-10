@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import useStore from "@/lib/Zustand";
 import { OfferingEditorForm } from "@/components/profile/OfferingEditorForm";
-import { loadOfferings } from "@/lib/offerings/storage";
+import { listOfferingsApi } from "@/lib/offerings/api";
+import type { Offering } from "@/lib/offerings/types";
 import Header from "@/components/Header";
 import Link from "next/link";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
@@ -18,10 +19,24 @@ export default function EditOfferingPage() {
   const userId = useStore((s) => s.userId);
   const user = useStore((s) => s.user);
   const [authChecked, setAuthChecked] = useState(false);
+  const [offering, setOffering] = useState<Offering | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [listLoading, setListLoading] = useState(true);
 
-  const offering = useMemo(() => {
-    if (!userId || !id) return null;
-    return loadOfferings(userId).find((x) => x.id === id) ?? null;
+  const load = useCallback(async () => {
+    if (!userId || !id) return;
+    setListLoading(true);
+    try {
+      const list = await listOfferingsApi(userId);
+      const found = list.find((x) => x.id === id) ?? null;
+      setOffering(found);
+      setLoadError(!found);
+    } catch {
+      setOffering(null);
+      setLoadError(true);
+    } finally {
+      setListLoading(false);
+    }
   }, [userId, id]);
 
   useEffect(() => {
@@ -34,6 +49,10 @@ export default function EditOfferingPage() {
     if (!userId) router.replace("/signin");
   }, [authChecked, userId, router]);
 
+  useEffect(() => {
+    if (userId && id) void load();
+  }, [userId, id, load]);
+
   if (!authChecked || !userId) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
@@ -42,7 +61,15 @@ export default function EditOfferingPage() {
     );
   }
 
-  if (!offering) {
+  if (listLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600" />
+      </div>
+    );
+  }
+
+  if (loadError || !offering) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6">
         <p className="text-slate-600">Offering not found.</p>

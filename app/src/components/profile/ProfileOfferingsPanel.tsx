@@ -5,16 +5,11 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Offering } from "@/lib/offerings/types";
-import {
-  countSlotsUsed,
-  getMaxOfferingSlots,
-} from "@/lib/offerings/policy";
-import {
-  deleteOffering,
-  loadOfferings,
-  readOfferingSubscriptionMock,
-} from "@/lib/offerings/storage";
+import { countSlotsUsed, getMaxOfferingSlots } from "@/lib/offerings/policy";
+import { deleteOfferingApi, listOfferingsApi } from "@/lib/offerings/api";
+import { readOfferingSubscriptionMock } from "@/lib/offerings/storage";
 import { Package, Plus, PencilLine, MapPin } from "lucide-react";
+import { toast } from "sonner";
 
 type Props = {
   userId: string;
@@ -33,16 +28,35 @@ function statusBadge(status: Offering["status"]) {
 
 export function ProfileOfferingsPanel({ userId }: Props) {
   const [list, setList] = useState<Offering[]>([]);
+  const [loading, setLoading] = useState(true);
   const maxSlots = getMaxOfferingSlots(readOfferingSubscriptionMock());
   const used = countSlotsUsed(list);
 
-  const refresh = useCallback(() => {
-    setList(loadOfferings(userId));
+  const refresh = useCallback(async () => {
+    if (!userId) return;
+    setLoading(true);
+    try {
+      const data = await listOfferingsApi(userId);
+      setList(data);
+    } catch {
+      toast.error("Could not load listings from the server.");
+      setList([]);
+    } finally {
+      setLoading(false);
+    }
   }, [userId]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -53,7 +67,7 @@ export function ProfileOfferingsPanel({ userId }: Props) {
             {readOfferingSubscriptionMock() ? " (subscription)" : " (free)"}
           </p>
           <p className="text-xs text-slate-500 mt-0.5">
-            Drafts don&apos;t use a slot. Paused listings stay on your plan limit.
+            Drafts don&apos;t use a slot. Limits are enforced on the server — upgrade in Settings if you hit the cap.
           </p>
         </div>
         <Button asChild className="rounded-xl bg-emerald-600 hover:bg-emerald-700 shrink-0">
@@ -128,9 +142,14 @@ export function ProfileOfferingsPanel({ userId }: Props) {
                         size="sm"
                         className="rounded-xl text-red-600 hover:text-red-700 hover:bg-red-50"
                         type="button"
-                        onClick={() => {
-                          deleteOffering(userId, o.id);
-                          refresh();
+                        onClick={async () => {
+                          try {
+                            await deleteOfferingApi(o.id);
+                            toast.success("Draft deleted");
+                            await refresh();
+                          } catch {
+                            toast.error("Could not delete listing.");
+                          }
                         }}
                       >
                         Delete

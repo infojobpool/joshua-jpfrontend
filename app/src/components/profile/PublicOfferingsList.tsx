@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import { MapPin, MessageSquare, Package, CalendarCheck } from "lucide-react";
 import type { Offering } from "@/lib/offerings/types";
-import { loadOfferings } from "@/lib/offerings/storage";
+import { listOfferingsApi } from "@/lib/offerings/api";
 import { Button } from "@/components/ui/button";
 import useStore from "@/lib/Zustand";
 
@@ -31,8 +32,34 @@ function signinNextPath(path: string): string {
 }
 
 export function PublicOfferingsList({ profileUserId, providerName = "Provider", viewerIsOwner }: Props) {
-  const list = loadOfferings(profileUserId).filter((o) => o.status === "published");
+  const [list, setList] = useState<Offering[]>([]);
+  const [loading, setLoading] = useState(true);
   const { userId } = useStore();
+
+  const load = useCallback(async () => {
+    if (!profileUserId) return;
+    setLoading(true);
+    try {
+      const data = await listOfferingsApi(profileUserId);
+      setList(data.filter((o) => o.status === "published"));
+    } catch {
+      setList([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [profileUserId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600" />
+      </div>
+    );
+  }
 
   if (list.length === 0) {
     return (

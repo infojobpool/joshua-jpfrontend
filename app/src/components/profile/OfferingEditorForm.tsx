@@ -8,17 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Offering, OfferingType } from "@/lib/offerings/types";
+import { validateForPublish, PROHIBITED_OFFERING_KEYWORDS } from "@/lib/offerings/policy";
 import {
-  countSlotsUsed,
-  getMaxOfferingSlots,
-  validateForPublish,
-  PROHIBITED_OFFERING_KEYWORDS,
-} from "@/lib/offerings/policy";
-import {
-  loadOfferings,
-  upsertOffering,
-  readOfferingSubscriptionMock,
-} from "@/lib/offerings/storage";
+  createOfferingApi,
+  updateOfferingApi,
+  isOfferingLimitError,
+  OFFERING_LIMIT_TOAST,
+} from "@/lib/offerings/api";
+import { getMaxOfferingSlots, readOfferingSubscriptionMock } from "@/lib/offerings/storage";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ImagePlus, X } from "lucide-react";
@@ -33,6 +30,18 @@ function readFileAsDataUrl(file: File): Promise<string> {
     r.onerror = () => reject(new Error("read failed"));
     r.readAsDataURL(file);
   });
+}
+
+function isUnsyncedDraftId(id: string): boolean {
+  return id.startsWith("of_");
+}
+
+function apiErrorMessage(e: unknown): string {
+  const ax = e as { response?: { data?: { message?: string; detail?: string } } };
+  const m = ax.response?.data?.message ?? ax.response?.data?.detail;
+  if (m) return String(m);
+  if (e instanceof Error) return e.message;
+  return "Something went wrong. Please try again.";
 }
 
 const PROFILE_FIELD_TEXT = {
@@ -50,13 +59,20 @@ type Props = {
 export function OfferingEditorForm({ userId, initial, isNew }: Props) {
   const router = useRouter();
   const [o, setO] = useState<Offering>(initial);
+  const [saving, setSaving] = useState(false);
   const maxSlots = getMaxOfferingSlots(readOfferingSubscriptionMock());
 
   const update = useCallback((patch: Partial<Offering>) => {
     setO((prev) => ({ ...prev, ...patch, updatedAt: Date.now() }));
   }, []);
 
-  const saveProgress = () => {
+  const handleLimitError = () => {
+    toast.error(OFFERING_LIMIT_TOAST, {
+      action: { label: "Settings", onClick: () => router.push("/settings") },
+    });
+  };
+
+  const saveProgress = async () => {
     if (o.status !== "draft") {
       const err = validateForPublish({
         title: o.title,
@@ -71,18 +87,32 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
         return;
       }
     }
-    const next: Offering = {
-      ...o,
-      status: o.status === "draft" ? "draft" : o.status,
-      updatedAt: Date.now(),
-    };
-    upsertOffering(userId, next);
-    setO(next);
-    toast.success(next.status === "draft" ? "Draft saved" : "Changes saved");
-    router.push("/profile");
+    setSaving(true);
+    try {
+      const payload: Offering = {
+        ...o,
+        userId,
+        status: o.status === "draft" ? "draft" : o.status,
+        updatedAt: Date.now(),
+      };
+      let next: Offering;
+      if (isUnsyncedDraftId(o.id)) {
+        next = await createOfferingApi(payload);
+      } else {
+        next = await updateOfferingApi(o.id, payload);
+      }
+      setO(next);
+      toast.success(next.status === "draft" ? "Draft saved" : "Changes saved");
+      router.push("/profile");
+    } catch (e) {
+      if (isOfferingLimitError(e)) handleLimitError();
+      else toast.error(apiErrorMessage(e));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const publish = () => {
+  const publish = async () => {
     const err = validateForPublish({
       title: o.title,
       description: o.description,
@@ -95,40 +125,56 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
       toast.error(err);
       return;
     }
-    const all = loadOfferings(userId);
-    const used = countSlotsUsed(all);
-    const wasSlot = o.status === "published" || o.status === "paused";
-    const nextUsed = wasSlot ? used : used + 1;
-    if (nextUsed > maxSlots) {
-      toast.error(
-        `You can have up to ${maxSlots} public listings on your plan. Pause or remove one, or upgrade your subscription.`
-      );
-      return;
+    setSaving(true);
+    try {
+      const payload: Offering = { ...o, userId, status: "published", updatedAt: Date.now() };
+      let next: Offering;
+      if (isUnsyncedDraftId(o.id)) {
+        next = await createOfferingApi(payload);
+      } else {
+        next = await updateOfferingApi(o.id, payload);
+      }
+      setO(next);
+      toast.success("Offering published — visible on your profile");
+      router.push("/profile");
+    } catch (e) {
+      if (isOfferingLimitError(e)) handleLimitError();
+      else toast.error(apiErrorMessage(e));
+    } finally {
+      setSaving(false);
     }
-    const next: Offering = { ...o, status: "published", updatedAt: Date.now() };
-    upsertOffering(userId, next);
-    toast.success("Offering published — visible on your profile");
-    router.push("/profile");
   };
 
-  const pause = () => {
-    const next: Offering = { ...o, status: "paused", updatedAt: Date.now() };
-    upsertOffering(userId, next);
-    setO(next);
-    toast.success("Offering hidden from public");
-  };
-
-  const resume = () => {
-    const all = loadOfferings(userId);
-    const used = countSlotsUsed(all.filter((x) => x.id !== o.id));
-    if (used >= maxSlots) {
-      toast.error(`Active slot limit (${maxSlots}) reached. Pause another listing or upgrade.`);
+  const pause = async () => {
+    if (isUnsyncedDraftId(o.id)) {
+      toast.error("Save the draft first before pausing.");
       return;
     }
-    const next: Offering = { ...o, status: "published", updatedAt: Date.now() };
-    upsertOffering(userId, next);
-    setO(next);
-    toast.success("Offering is live again");
+    setSaving(true);
+    try {
+      const next = await updateOfferingApi(o.id, { status: "paused", updatedAt: Date.now() });
+      setO(next);
+      toast.success("Offering hidden from public");
+    } catch (e) {
+      toast.error(apiErrorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const resume = async () => {
+    if (isUnsyncedDraftId(o.id)) return;
+    setSaving(true);
+    try {
+      const next = await updateOfferingApi(o.id, { status: "published", updatedAt: Date.now() });
+      setO(next);
+      toast.success("Offering is live again");
+    } catch (e) {
+      if (isOfferingLimitError(e)) handleLimitError();
+      else toast.error(apiErrorMessage(e));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addPhotosFromFiles = async (files: FileList | null) => {
@@ -174,7 +220,7 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
 
       <div>
         <h1 className="text-xl font-bold text-slate-900">{isNew ? "New offering" : "Edit offering"}</h1>
-        <p className="mt-1 text-sm text-slate-500">Service or product — separate from tasks. Public when published.</p>
+        <p className="mt-1 text-sm text-slate-500">Service or product — saved to your account. Public when published.</p>
       </div>
 
       <div className="flex rounded-xl bg-slate-100 p-1">
@@ -182,6 +228,7 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
           <button
             key={t}
             type="button"
+            disabled={saving}
             onClick={() => update({ type: t })}
             className={cn(
               "flex-1 rounded-lg py-2 text-sm font-semibold transition-colors",
@@ -201,6 +248,7 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
           onChange={(e) => update({ title: e.target.value })}
           placeholder="e.g. Weekend home cleaning"
           className="rounded-xl"
+          disabled={saving}
           style={PROFILE_FIELD_TEXT}
         />
       </div>
@@ -213,6 +261,7 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
           onChange={(e) => update({ category: e.target.value })}
           placeholder="e.g. Cleaning, Tutoring, Handmade goods"
           className="rounded-xl"
+          disabled={saving}
           style={PROFILE_FIELD_TEXT}
         />
       </div>
@@ -226,16 +275,17 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
           placeholder="What you offer, what’s included, your experience…"
           rows={5}
           className="rounded-xl resize-y min-h-[120px]"
+          disabled={saving}
           style={PROFILE_FIELD_TEXT}
         />
       </div>
 
       <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
         <div>
-          <Label className="text-base">Portfolio photos</Label>
+          <Label className="text-base">Listing photos</Label>
           <p className="text-xs text-slate-500 mt-1">
-            Shown in your profile catalogue and on listing cards. Up to {MAX_OFFERING_PHOTOS} images, max{" "}
-            {Math.round(MAX_PHOTO_BYTES / 1024)} KB each.
+            Shown on your listing cards. Up to {MAX_OFFERING_PHOTOS} images, max{" "}
+            {Math.round(MAX_PHOTO_BYTES / 1024)} KB each (use hosted URLs when the API supports uploads).
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -246,6 +296,7 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
               <button
                 type="button"
                 onClick={() => removePhotoAt(i)}
+                disabled={saving}
                 className="absolute top-1 right-1 rounded-full bg-slate-900/85 p-1 text-white hover:bg-slate-900"
                 aria-label={`Remove photo ${i + 1}`}
               >
@@ -262,6 +313,7 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
                 accept="image/*"
                 multiple
                 className="sr-only"
+                disabled={saving}
                 onChange={(e) => {
                   void addPhotosFromFiles(e.target.files);
                   e.target.value = "";
@@ -280,6 +332,7 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
           onChange={(e) => update({ locationText: e.target.value })}
           placeholder="e.g. Hyderabad — within 10 km of Gachibowli"
           className="rounded-xl"
+          disabled={saving}
           style={PROFILE_FIELD_TEXT}
         />
       </div>
@@ -294,6 +347,7 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
           value={Number.isNaN(o.startingPriceInr) ? "" : o.startingPriceInr}
           onChange={(e) => update({ startingPriceInr: Math.max(0, parseInt(e.target.value, 10) || 0) })}
           className="rounded-xl"
+          disabled={saving}
           style={PROFILE_FIELD_TEXT}
         />
         <p className="text-xs text-slate-500">Shown publicly as &quot;Starting from ₹…&quot;</p>
@@ -312,6 +366,7 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
           <input
             type="checkbox"
             checked={o.attestationAccepted}
+            disabled={saving}
             onChange={(e) => update({ attestationAccepted: e.target.checked })}
             className="mt-1 rounded border-slate-300"
           />
@@ -322,32 +377,38 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-        <Button type="button" variant="outline" className="rounded-xl border-slate-300" onClick={saveProgress}>
+        <Button
+          type="button"
+          variant="outline"
+          className="rounded-xl border-slate-300"
+          disabled={saving}
+          onClick={() => void saveProgress()}
+        >
           {o.status === "draft" ? "Save draft" : "Save changes"}
         </Button>
         {o.status === "draft" && (
-          <Button type="button" className="rounded-xl bg-emerald-600 hover:bg-emerald-700" onClick={publish}>
+          <Button type="button" className="rounded-xl bg-emerald-600 hover:bg-emerald-700" disabled={saving} onClick={() => void publish()}>
             Publish
           </Button>
         )}
         {o.status === "published" && (
-          <Button type="button" variant="secondary" className="rounded-xl" onClick={pause}>
+          <Button type="button" variant="secondary" className="rounded-xl" disabled={saving} onClick={() => void pause()}>
             Pause (hide)
           </Button>
         )}
         {o.status === "paused" && (
-          <Button type="button" variant="secondary" className="rounded-xl" onClick={resume}>
+          <Button type="button" variant="secondary" className="rounded-xl" disabled={saving} onClick={() => void resume()}>
             Resume
           </Button>
         )}
       </div>
 
       <p className="text-xs text-slate-500">
-        Free plan: up to {maxSlots} published or paused listings.{" "}
+        Typical free plan: up to {maxSlots} published or paused listings (server-enforced).{" "}
         <Link href="/settings" className="font-medium text-emerald-700 underline-offset-2 hover:underline">
-          Subscription
+          Settings
         </Link>{" "}
-        unlocks more when available.
+        for subscription when available.
       </p>
     </div>
   );

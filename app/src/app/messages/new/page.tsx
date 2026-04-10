@@ -67,16 +67,29 @@ export default function NewMessagePage() {
             throw new Error('Failed to get chat ID');
           }
         } else {
-          const chatResponse = await axiosInstance.post('/get-chat-id/', {
-            sender: senderId,
-            receiver: receiverId,
-            job_id: null,
-          });
-          if (chatResponse.data?.status_code === 200 && chatResponse.data?.data?.chat_id) {
-            chatId = chatResponse.data.data.chat_id;
-          } else {
-            throw new Error('Failed to get chat ID');
+          let directId: string | undefined;
+          try {
+            const r1 = await axiosInstance.get('/create-or-get-direct-chat/', {
+              params: { sender: senderId, receiver: receiverId },
+            });
+            if (r1.data?.status_code === 200 && r1.data?.data?.chat_id) {
+              directId = r1.data.data.chat_id;
+            }
+          } catch {
+            /* try fallback endpoint */
           }
+          if (!directId) {
+            const r2 = await axiosInstance.get('/get-direct-chat-id/', {
+              params: { sender: senderId, receiver: receiverId },
+            });
+            if (r2.data?.status_code === 200 && r2.data?.data?.chat_id) {
+              directId = r2.data.data.chat_id;
+            }
+          }
+          if (!directId) {
+            throw new Error('Failed to get direct chat ID');
+          }
+          chatId = directId;
         }
       } catch (error) {
         console.error('Error getting chat ID:', error);
