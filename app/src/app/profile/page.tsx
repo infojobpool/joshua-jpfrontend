@@ -38,7 +38,6 @@ import {
   Briefcase,
   Wallet,
   Package,
-  Landmark,
   Inbox,
   Images,
 } from "lucide-react";
@@ -391,6 +390,15 @@ export default function ProfilePage() {
     return start + middle + end;
   };
 
+  const hasCoverImage = Boolean(
+    (tempCoverImage && String(tempCoverImage).length > 0) ||
+      (profileuser.cover_image && String(profileuser.cover_image).trim().length > 0),
+  );
+  const resolvedCoverUrl =
+    tempCoverImage ||
+    (profileuser.cover_image && resolveProfileImageUrl(profileuser.cover_image)) ||
+    profileuser.cover_image;
+
   const toggleEditProfile = () => {
     setProfileUser({ ...profileuser, isEditing: !profileuser.isEditing });
     setTempAvatar(null);
@@ -598,50 +606,60 @@ export default function ProfilePage() {
         <div className="grid gap-6 md:gap-8 md:grid-cols-3 mt-2 min-w-0">
           {/* Profile first on all breakpoints; gap-0 py-0: Card defaults would inset the cover & add dead space */}
           <Card className="order-1 md:col-span-1 border-0 rounded-2xl overflow-visible bg-white relative z-10 md:-mr-4 gap-0 py-0 shadow-[0_20px_50px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70">
-            <div
-              className="h-[7.25rem] sm:h-32 rounded-t-2xl bg-cover bg-center bg-no-repeat relative overflow-hidden"
-              style={{
-                backgroundImage: (tempCoverImage || (profileuser.cover_image && resolveProfileImageUrl(profileuser.cover_image)) || profileuser.cover_image)
-                  ? `url(${tempCoverImage || resolveProfileImageUrl(profileuser.cover_image) || profileuser.cover_image})`
-                  : undefined,
-                backgroundColor: !tempCoverImage && !profileuser.cover_image ? undefined : undefined,
-              }}
-            >
-              {(!tempCoverImage && !profileuser.cover_image) && (
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-800 rounded-t-2xl" />
-              )}
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/5" aria-hidden />
-              {profileuser.isEditing && (
-                <>
-                  <button
-                    type="button"
-                    onClick={triggerCoverImageInput}
-                    className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 rounded-t-2xl transition-colors"
-                  >
-                    <div className="rounded-full bg-white/90 p-3">
-                      <Camera className="h-6 w-6 text-emerald-700" />
-                    </div>
-                  </button>
-                  <input
-                    type="file"
-                    ref={coverImageInputRef}
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleCoverImageUpload}
-                  />
-                  {tempCoverImage && (
+            {(hasCoverImage || profileuser.isEditing) && (
+              <div
+                className={`rounded-t-2xl bg-slate-100 relative overflow-hidden ${
+                  hasCoverImage ? "h-20 sm:h-24 bg-cover bg-center bg-no-repeat" : "h-12 sm:h-14"
+                }`}
+                style={
+                  hasCoverImage && resolvedCoverUrl
+                    ? { backgroundImage: `url(${resolvedCoverUrl})` }
+                    : undefined
+                }
+              >
+                {hasCoverImage && (
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-black/[0.06]" aria-hidden />
+                )}
+                {profileuser.isEditing && (
+                  <>
                     <button
                       type="button"
-                      onClick={removeCoverImage}
-                      className="absolute top-2 right-2 rounded-full bg-red-500 p-1.5 shadow-md hover:bg-red-600"
+                      onClick={triggerCoverImageInput}
+                      className={`absolute inset-0 flex items-center justify-center transition-colors rounded-t-2xl ${
+                        hasCoverImage ? "bg-black/25 hover:bg-black/35" : "bg-transparent hover:bg-slate-200/60"
+                      }`}
                     >
-                      <X className="h-4 w-4 text-white" />
+                      <div className="rounded-full bg-white/95 p-2 shadow-sm ring-1 ring-slate-200/80">
+                        <Camera className="h-5 w-5 text-emerald-700" />
+                      </div>
                     </button>
-                  )}
-                </>
-              )}
-            </div>
-            <CardHeader className="flex flex-col items-center -mt-[4.5rem] sm:-mt-20 relative pb-1 px-4 pt-0 border-0 shadow-none bg-transparent">
+                    <input
+                      type="file"
+                      ref={coverImageInputRef}
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleCoverImageUpload}
+                    />
+                    {tempCoverImage && (
+                      <button
+                        type="button"
+                        onClick={removeCoverImage}
+                        className="absolute top-1.5 right-1.5 rounded-full bg-red-500 p-1.5 shadow-md hover:bg-red-600 z-10"
+                      >
+                        <X className="h-3.5 w-3.5 text-white" />
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+            <CardHeader
+              className={`flex flex-col items-center relative px-4 border-0 shadow-none bg-transparent ${
+                hasCoverImage
+                  ? "-mt-[3rem] sm:-mt-[4.25rem] pt-0 pb-1"
+                  : "pt-5 pb-1"
+              }`}
+            >
               {profileuser.isEditing ? (
                 <div className="relative -mt-1">
                   <Avatar className="h-[6.75rem] w-[6.75rem] sm:h-36 sm:w-36 ring-[3px] ring-white shadow-[0_12px_40px_-8px_rgba(0,0,0,0.18)] border border-white/80 overflow-hidden">
@@ -708,63 +726,30 @@ export default function ProfilePage() {
                   )}
                 </div>
               )}
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 mt-3 mb-0.5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 mt-2 mb-0">
                 Your profile
               </p>
-              <div className="text-center px-2">
+              <div className="text-center px-2 mt-1">
                 <CardTitle className="text-lg sm:text-xl font-semibold text-slate-900 tracking-tight capitalize">
                   {profileuser.name}
                 </CardTitle>
-                <CardDescription className="text-xs sm:text-sm text-slate-500 mt-1 break-all leading-relaxed">
+                <CardDescription className="text-xs sm:text-sm text-slate-500 mt-0.5 break-all leading-snug">
                   {profileuser.email}
                 </CardDescription>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3 rounded-full px-5 border-slate-200/90 bg-white text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300"
-                onClick={toggleEditProfile}
-              >
-                <Edit className="mr-2 h-3.5 w-3.5" />
-                {profileuser.isEditing ? "Cancel" : "Edit profile"}
-              </Button>
             </CardHeader>
-            <CardContent className="space-y-5 pt-1 pb-6 px-4 sm:px-5">
+            <CardContent className="space-y-3 pt-0 pb-6 px-4 sm:px-5">
               {!profileuser.isEditing && (
                 <>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div className="rounded-xl border border-slate-100 bg-white p-3 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.03]">
-                      <div className="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
-                        <Calendar className="h-4 w-4" />
-                      </div>
-                      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Member since</p>
-                      <p className="text-sm font-semibold text-slate-900 mt-1 break-words leading-tight tabular-nums">
-                        {profileuser.joinDate || "—"}
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-slate-100 bg-white p-3 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.03]">
-                      <div className="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
-                        <Phone className="h-4 w-4" />
-                      </div>
-                      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Phone</p>
-                      <p className="text-sm font-semibold text-slate-900 mt-1 break-all leading-tight">
-                        {profileuser.phone?.trim() ? profileuser.phone : (
-                          <span className="text-slate-400 font-normal">Add in details</span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
                   <TrustBadges
                     variant="strip"
                     stripAccent="emerald"
                     heading="Your data is safe with JobPool"
                     subtext="Encrypted and handled under DPDP-aligned practices."
-                    className="mt-0.5"
                   />
                   {payoutBonusPreview.remaining > 0 && (
                     <WelcomeBonusProcessHint
                       variant="compact"
-                      className="mt-1"
                       percent={payoutBonusPreview.percent}
                       label={`${payoutBonusPreview.completed} of ${payoutBonusPreview.total} steps toward ₹100 bonus · ${payoutBonusPreview.remaining} left`}
                     />
@@ -891,7 +876,17 @@ export default function ProfilePage() {
                       Add Address
                     </Button>
                   </div>
-                  <div className="flex justify-end pt-2">
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl"
+                      onClick={toggleEditProfile}
+                      disabled={isLoading}
+                    >
+                      Cancel
+                    </Button>
                     <Button type="submit" size="sm" disabled={isLoading} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">
                       {isLoading ? "Saving..." : "Save Changes"}
                     </Button>
@@ -899,13 +894,25 @@ export default function ProfilePage() {
                 </form>
               ) : (
                 <>
-                  <Accordion type="single" collapsible className="w-full">
+                  <Accordion type="single" collapsible defaultValue="contact" className="w-full">
                     <AccordionItem value="contact" className="border-0">
-                      <AccordionTrigger className="text-sm font-semibold text-slate-800 py-3 hover:no-underline">
+                      <AccordionTrigger className="text-sm font-semibold text-slate-800 py-2.5 hover:no-underline">
                         Contact &amp; profile details
                       </AccordionTrigger>
                       <AccordionContent className="pb-2">
                         <div className="space-y-3">
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="rounded-full px-4 border-slate-200/90 bg-white text-slate-700 shadow-sm hover:bg-slate-50"
+                              onClick={toggleEditProfile}
+                            >
+                              <Edit className="mr-2 h-3.5 w-3.5" />
+                              Edit profile
+                            </Button>
+                          </div>
                           <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
                             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
                               <User className="h-5 w-5 text-emerald-600" />
@@ -930,7 +937,11 @@ export default function ProfilePage() {
                             </div>
                             <div>
                               <p className="text-xs text-slate-500">Phone</p>
-                              <p className="font-medium text-slate-800">{profileuser.phone || "—"}</p>
+                              <p className="font-medium text-slate-800">
+                                {profileuser.phone?.trim() ? profileuser.phone : (
+                                  <span className="text-slate-400 font-normal">Add in details</span>
+                                )}
+                              </p>
                             </div>
                           </div>
                           <div className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3">
@@ -983,8 +994,8 @@ export default function ProfilePage() {
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="verification" className="border-0 border-t border-slate-100">
-                      <AccordionTrigger className="text-sm font-semibold text-slate-800 py-3 hover:no-underline">
-                        Verification status
+                      <AccordionTrigger className="text-sm font-semibold text-slate-800 py-2.5 hover:no-underline">
+                        Verification &amp; bank
                       </AccordionTrigger>
                       <AccordionContent className="pb-2">
                         <div className="space-y-2">
@@ -1008,14 +1019,69 @@ export default function ProfilePage() {
                               <Badge variant="outline" className="bg-white text-slate-500 border-slate-200">Pending</Badge>
                             )}
                           </div>
-                          <div className="flex items-center justify-between rounded-xl px-4 py-3 bg-slate-50">
-                            <span className="text-sm font-medium text-slate-700">Bank Account</span>
-                            {verificationStatus.bank.completed ? (
-                              <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                                <CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Verified
-                              </Badge>
+                        </div>
+                        <div className="mt-4 space-y-4 border-t border-slate-200/90 pt-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Bank account (payouts)
+                          </p>
+                          <div className="space-y-4">
+                            {profileuser.bank_info &&
+                            (profileuser.bank_info.bank_account_number || profileuser.bank_info.ifsc_code) ? (
+                              <>
+                                {verificationStatus.bank.completed && (
+                                  <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4 text-emerald-800">
+                                    <div className="flex items-center gap-3">
+                                      <CheckCircle className="h-6 w-6 text-emerald-600 shrink-0" />
+                                      <p className="font-semibold">Bank verification complete</p>
+                                    </div>
+                                  </div>
+                                )}
+                                {!verificationStatus.bank.completed && (
+                                  <div className="rounded-xl bg-amber-50 border border-amber-100 p-4 text-amber-800">
+                                    <p className="font-medium">Verification pending</p>
+                                    <p className="text-sm text-amber-700 mt-1">
+                                      Details are saved. Complete verification to receive payments.
+                                    </p>
+                                  </div>
+                                )}
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  <div className="rounded-xl bg-slate-50 px-4 py-3 border border-slate-100">
+                                    <p className="text-xs font-semibold uppercase text-slate-500">Account number</p>
+                                    <p className="font-medium text-slate-800 mt-1 tabular-nums">
+                                      {maskString(profileuser.bank_info.bank_account_number, 0, 4)}
+                                    </p>
+                                  </div>
+                                  <div className="rounded-xl bg-slate-50 px-4 py-3 border border-slate-100">
+                                    <p className="text-xs font-semibold uppercase text-slate-500">IFSC</p>
+                                    <p className="font-medium text-slate-800 mt-1 tabular-nums">
+                                      {maskString(profileuser.bank_info.ifsc_code, 0, 4)}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Button asChild variant="outline" className="w-full sm:w-auto rounded-xl border-emerald-600 text-emerald-700 hover:bg-emerald-50">
+                                  <Link href="/bankverification">Edit bank details</Link>
+                                </Button>
+                              </>
                             ) : (
-                              <Badge variant="outline" className="bg-white text-slate-500 border-slate-200">Pending</Badge>
+                              <>
+                                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+                                  <p className="font-medium text-slate-700">No bank details yet</p>
+                                  <p className="text-sm text-slate-500 mt-1">Add your account to receive payouts after verification.</p>
+                                </div>
+                                {!verificationStatus.bank.completed && (
+                                  <Button asChild className="rounded-xl bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto">
+                                    <Link
+                                      href={
+                                        user?.verification_status === 2
+                                          ? "/bankverification"
+                                          : "/verification"
+                                      }
+                                    >
+                                      Start verification
+                                    </Link>
+                                  </Button>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
@@ -1027,226 +1093,27 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
           <Card className="order-2 md:col-span-2 border-0 gap-0 py-0 shadow-[0_20px_50px_-12px_rgba(15,23,42,0.1)] rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200/70 relative z-0 md:ml-[-1rem]">
-            <CardHeader className="border-b border-slate-100/90 bg-gradient-to-b from-slate-50/98 via-white to-white py-5 px-4 sm:px-6 space-y-2 flex flex-col items-start">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">
-                Public profile
-              </p>
-              <CardTitle className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight text-left">
+            <CardHeader className="border-b border-slate-100/90 bg-white py-3.5 sm:py-4 px-4 sm:px-6">
+              <CardTitle className="text-lg sm:text-xl font-semibold text-slate-900 tracking-tight text-left">
                 Listings &amp; workspace
               </CardTitle>
-              <CardDescription className="text-slate-500 text-sm leading-relaxed text-left max-w-xl">
-                Manage what appears on your profile page: start with{" "}
-                <span className="text-slate-700 font-medium">service listings</span>, then add a portfolio, review
-                booking requests, and payouts below.
-              </CardDescription>
             </CardHeader>
-            <CardContent className="pt-4 sm:pt-5 px-3 sm:px-6 pb-6 space-y-4 bg-slate-50/30">
+            <CardContent className="pt-3 sm:pt-4 px-3 sm:px-6 pb-6 space-y-3 bg-slate-50/30">
               {userId ? (
                 <ProfilePortfolioSlider userId={userId} viewerIsOwner />
               ) : null}
-              <p className="text-[11px] text-slate-500 leading-relaxed px-1 -mt-1 mb-1">
-                A preview strip appears here once you add images in{" "}
-                <span className="font-medium text-slate-700">Portfolio gallery</span> below.
-              </p>
               <Accordion type="multiple" defaultValue={["offerings"]} className="w-full rounded-2xl bg-slate-100/60 p-2 sm:p-2.5 space-y-2 ring-1 ring-slate-200/40">
                 <AccordionItem
-                  id="profile-offerings"
-                  value="offerings"
-                  className="rounded-xl border-0 bg-white px-1 sm:px-2 border-b-0 scroll-mt-4 shadow-sm ring-1 ring-slate-200/50 data-[state=open]:ring-emerald-200/60 data-[state=open]:shadow-md"
-                >
-                  <AccordionTrigger className="hover:no-underline py-3.5 sm:py-4 px-2 sm:px-3 text-left rounded-lg hover:bg-slate-50/80 [&[data-state=open]]:bg-emerald-50/40 [&[data-state=open]]:pb-2">
-                    <div className="flex flex-1 flex-col items-start gap-1 text-left min-w-0 pr-2">
-                      <span className="flex items-center gap-3 w-full">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-                          <Package className="h-5 w-5" aria-hidden />
-                        </span>
-                        <span className="text-[15px] font-semibold text-slate-900">Service listings</span>
-                      </span>
-                      <span className="text-xs text-slate-500 leading-snug pl-[3.25rem]">
-                        Services or products with price — shown on your public profile
-                      </span>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-4 pt-0 px-2 sm:px-3">
-                    {userId ? (
-                      <ProfileOfferingsPanel userId={userId} />
-                    ) : (
-                      <p className="text-sm text-slate-500">Sign in to manage offerings.</p>
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem
-                  id="profile-portfolio"
-                  value="portfolio"
-                  className="rounded-xl border-0 bg-white px-1 sm:px-2 border-b-0 scroll-mt-4 shadow-sm ring-1 ring-slate-200/50 data-[state=open]:shadow-md"
-                >
-                  <AccordionTrigger className="hover:no-underline py-3.5 sm:py-4 px-2 sm:px-3 text-left rounded-lg hover:bg-slate-50/80 [&[data-state=open]]:pb-2">
-                    <div className="flex flex-1 flex-col items-start gap-1 text-left min-w-0 pr-2">
-                      <span className="flex items-center gap-3 w-full">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                          <Images className="h-5 w-5" aria-hidden />
-                        </span>
-                        <span className="text-[15px] font-semibold text-slate-900">Portfolio gallery</span>
-                      </span>
-                      <span className="text-xs text-slate-500 leading-snug pl-[3.25rem]">
-                        Extra photos of your work — optional, separate from each listing
-                      </span>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-4 pt-0 px-2 sm:px-3">
-                    {userId ? (
-                      <PortfolioEditorPanel userId={userId} />
-                    ) : (
-                      <p className="text-sm text-slate-500">Sign in to manage your portfolio.</p>
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem
-                  value="listing-requests"
-                  className="rounded-xl border-0 bg-white px-1 sm:px-2 border-b-0 shadow-sm ring-1 ring-slate-200/50"
-                >
-                  <AccordionTrigger className="hover:no-underline py-3.5 sm:py-4 px-2 sm:px-3 text-left rounded-lg hover:bg-slate-50/80">
-                    <div className="flex flex-1 flex-col items-start gap-1 text-left min-w-0 pr-2">
-                      <span className="flex items-center gap-3">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                          <Inbox className="h-5 w-5" aria-hidden />
-                        </span>
-                        <span className="text-[15px] font-semibold text-slate-900">Booking requests</span>
-                      </span>
-                      <span className="text-xs text-slate-500 pl-[3.25rem]">Leads from your public listings</span>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-4 px-2 sm:px-3">
-                    {userId ? (
-                      <ListingRequestsPanel userId={userId} />
-                    ) : (
-                      <p className="text-sm text-slate-500">Sign in to see requests.</p>
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem
-                  value="bank"
-                  className="rounded-xl border-0 bg-white px-1 sm:px-2 border-b-0 shadow-sm ring-1 ring-slate-200/50"
-                >
-                  <AccordionTrigger className="hover:no-underline py-3.5 sm:py-4 px-2 sm:px-3 text-left rounded-lg hover:bg-slate-50/80">
-                    <div className="flex flex-1 flex-col items-start gap-1 text-left min-w-0 pr-2">
-                      <span className="flex items-center gap-3">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                          <Landmark className="h-5 w-5" aria-hidden />
-                        </span>
-                        <span className="text-[15px] font-semibold text-slate-900">Bank account</span>
-                      </span>
-                      <span className="text-xs text-slate-500 pl-[3.25rem]">Payouts &amp; verification</span>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-4 px-2 sm:px-3">
-                <div className="space-y-6">
-                  <div className="flex flex-col gap-6 md:flex-row">
-                    <div className="w-full md:w-1/3">
-                      <div className="rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 border border-slate-200 p-6 flex items-center justify-center min-h-[180px]">
-                        <div className="text-center">
-                          <div className="mx-auto w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-3">
-                            <Briefcase className="h-8 w-8 text-emerald-600" />
-                          </div>
-                          <p className="text-sm font-medium text-slate-600">Bank Details</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="w-full space-y-4 md:w-2/3">
-                      {profileuser.bank_info &&
-                      (profileuser.bank_info.bank_account_number || profileuser.bank_info.ifsc_code) ? (
-                        <>
-                          {verificationStatus.bank.completed && (
-                            <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4 text-emerald-800">
-                              <div className="flex items-center gap-3">
-                                <CheckCircle className="h-6 w-6 text-emerald-600 shrink-0" />
-                                <p className="font-semibold">Verification Complete</p>
-                              </div>
-                            </div>
-                          )}
-                          {!verificationStatus.bank.completed && (
-                            <div className="rounded-xl bg-amber-50 border border-amber-100 p-4 text-amber-800">
-                              <p className="font-medium">Verification Pending</p>
-                              <p className="text-sm text-amber-700 mt-1">Your bank details are saved. Complete verification to receive payments.</p>
-                            </div>
-                          )}
-                          <div className="grid gap-4 md:grid-cols-2">
-                            <div className="rounded-xl bg-slate-50 px-4 py-3 border border-slate-100">
-                              <p className="text-xs font-semibold uppercase text-slate-500">Account Number</p>
-                              <p className="font-medium text-slate-800 mt-1">{maskString(profileuser.bank_info.bank_account_number, 0, 4)}</p>
-                            </div>
-                            <div className="rounded-xl bg-slate-50 px-4 py-3 border border-slate-100">
-                              <p className="text-xs font-semibold uppercase text-slate-500">IFSC Code</p>
-                              <p className="font-medium text-slate-800 mt-1">{maskString(profileuser.bank_info.ifsc_code, 0, 4)}</p>
-                            </div>
-                            {/* <div>
-                              <p className="text-sm font-medium text-muted-foreground">
-                                Bank Name
-                              </p>
-                              <p>{profileuser.bank_info.bank_name}</p>
-                            </div> */}
-                            {/* <div>
-                              <p className="text-sm font-medium text-muted-foreground">
-                                Bank Location
-                              </p>
-                              <p>{profileuser.bank_info.bank_location}</p>
-                            </div> */}
-                            {/* <div>
-                              <p className="text-sm font-medium text-muted-foreground">
-                                SWIFT Code
-                              </p>
-                              <p>{profileuser.bank_info.swift_code}</p>
-                            </div> */}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
-                          <p className="font-medium text-slate-700">Verification Pending</p>
-                        </div>
-                      )}
-                      {profileuser.bank_info &&
-                      (profileuser.bank_info.bank_account_number || profileuser.bank_info.ifsc_code) ? (
-                        <Button asChild variant="outline" className="rounded-xl border-emerald-600 text-emerald-700 hover:bg-emerald-50">
-                          <Link href="/bankverification">Edit Bank Details</Link>
-                        </Button>
-                      ) : (
-                        !verificationStatus.bank.completed && (
-                          <Button asChild className="rounded-xl bg-emerald-600 hover:bg-emerald-700">
-                            <Link
-                              href={
-                                user?.verification_status === 2
-                                  ? "/bankverification"
-                                  : "/verification"
-                              }
-                            >
-                              Start Verification
-                            </Link>
-                          </Button>
-                        )
-                      )}
-                    </div>
-                  </div>
-                </div>
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem
                   value="reviews"
-                  className="rounded-xl border-0 bg-white px-1 sm:px-2 border-b-0 shadow-sm ring-1 ring-slate-200/50"
+                  className="rounded-xl border-0 bg-white px-1 sm:px-2 border-b-0 shadow-sm ring-1 ring-slate-200/50 data-[state=open]:shadow-md"
                 >
-                  <AccordionTrigger className="hover:no-underline py-3.5 sm:py-4 px-2 sm:px-3 text-left rounded-lg hover:bg-slate-50/80">
-                    <div className="flex flex-1 flex-col items-start gap-1 text-left min-w-0 pr-2">
-                      <span className="flex items-center gap-3">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-                          <Star className="h-5 w-5 fill-amber-200/80" aria-hidden />
-                        </span>
-                        <span className="text-[15px] font-semibold text-slate-900">Reviews</span>
+                  <AccordionTrigger className="hover:no-underline py-3 sm:py-3.5 px-2 sm:px-3 text-left rounded-lg hover:bg-slate-50/80">
+                    <span className="flex items-center gap-3 pr-2">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                        <Star className="h-5 w-5 fill-amber-200/80" aria-hidden />
                       </span>
-                      <span className="text-xs text-slate-500 pl-[3.25rem]">From completed tasks</span>
-                    </div>
+                      <span className="text-[15px] font-semibold text-slate-900">Reviews</span>
+                    </span>
                   </AccordionTrigger>
                   <AccordionContent className="pb-4 px-2 sm:px-3">
                   <Tabs defaultValue="tasker" className="space-y-4">
@@ -1361,6 +1228,71 @@ export default function ProfilePage() {
                       )}
                     </TabsContent>
                   </Tabs>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem
+                  id="profile-offerings"
+                  value="offerings"
+                  className="rounded-xl border-0 bg-white px-1 sm:px-2 border-b-0 scroll-mt-4 shadow-sm ring-1 ring-slate-200/50 data-[state=open]:ring-emerald-200/60 data-[state=open]:shadow-md"
+                >
+                  <AccordionTrigger className="hover:no-underline py-3 sm:py-3.5 px-2 sm:px-3 text-left rounded-lg hover:bg-slate-50/80 [&[data-state=open]]:bg-emerald-50/40">
+                    <span className="flex items-center gap-3 pr-2">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                        <Package className="h-5 w-5" aria-hidden />
+                      </span>
+                      <span className="text-[15px] font-semibold text-slate-900">Service listings</span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-4 pt-0 px-2 sm:px-3">
+                    {userId ? (
+                      <ProfileOfferingsPanel userId={userId} />
+                    ) : (
+                      <p className="text-sm text-slate-500">Sign in to manage offerings.</p>
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem
+                  id="profile-portfolio"
+                  value="portfolio"
+                  className="rounded-xl border-0 bg-white px-1 sm:px-2 border-b-0 scroll-mt-4 shadow-sm ring-1 ring-slate-200/50 data-[state=open]:shadow-md"
+                >
+                  <AccordionTrigger className="hover:no-underline py-3 sm:py-3.5 px-2 sm:px-3 text-left rounded-lg hover:bg-slate-50/80">
+                    <span className="flex items-center gap-3 pr-2">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                        <Images className="h-5 w-5" aria-hidden />
+                      </span>
+                      <span className="text-[15px] font-semibold text-slate-900">Portfolio gallery</span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-4 pt-0 px-2 sm:px-3">
+                    {userId ? (
+                      <PortfolioEditorPanel userId={userId} />
+                    ) : (
+                      <p className="text-sm text-slate-500">Sign in to manage your portfolio.</p>
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem
+                  value="listing-requests"
+                  className="rounded-xl border-0 bg-white px-1 sm:px-2 border-b-0 shadow-sm ring-1 ring-slate-200/50"
+                >
+                  <AccordionTrigger className="hover:no-underline py-3 sm:py-3.5 px-2 sm:px-3 text-left rounded-lg hover:bg-slate-50/80">
+                    <span className="flex items-center gap-3 pr-2">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                        <Inbox className="h-5 w-5" aria-hidden />
+                      </span>
+                      <span className="text-[15px] font-semibold text-slate-900">Booking requests</span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-4 px-2 sm:px-3">
+                    {userId ? (
+                      <ListingRequestsPanel userId={userId} />
+                    ) : (
+                      <p className="text-sm text-slate-500">Sign in to see requests.</p>
+                    )}
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
