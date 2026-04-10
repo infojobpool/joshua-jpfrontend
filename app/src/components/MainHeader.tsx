@@ -66,7 +66,7 @@ const MainHeader: React.FC = () => {
           className={cn(
             "flex items-center justify-between gap-3 md:min-h-0 md:h-24 md:py-0 lg:h-28 md:pt-4 md:pb-0 lg:pt-5 lg:pb-0",
             isMarketingHome
-              ? "max-md:min-h-0 max-md:py-1 max-md:pb-1.5"
+              ? "max-md:min-h-0 max-md:py-0.5 max-md:pb-1"
               : "min-h-[5.75rem] py-2.5",
           )}
         >
@@ -80,7 +80,7 @@ const MainHeader: React.FC = () => {
               alt="JobPool"
               className={cn(
                 "w-auto max-w-[min(340px,82vw)] object-contain object-left md:hidden",
-                isMarketingHome ? "h-[3rem] sm:h-[3.25rem]" : "h-[4.75rem] sm:h-[5.125rem]",
+                isMarketingHome ? "h-[3.75rem] sm:h-[4.125rem]" : "h-[4.75rem] sm:h-[5.125rem]",
               )}
             />
             <img

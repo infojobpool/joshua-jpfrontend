@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono, Archivo } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
@@ -96,7 +97,9 @@ export default function RootLayout({
               <AppMain>{children}</AppMain>
               <Footer />
             </AppEntranceWrapper>
-            <MobileBottomNav />
+            <Suspense fallback={null}>
+              <MobileBottomNav />
+            </Suspense>
           </MobileLayout>
           <SupportPill />
           <Toaster />

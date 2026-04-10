@@ -2,12 +2,21 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Home, Search, User, Plus, Wallet } from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Home, Search, Plus, Wallet, LayoutList } from "lucide-react";
 import { isMobileBottomNavHidden } from "@/lib/mobileNavVisibility";
+
+type NavLinkItem = {
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  /** When set, active only on /profile with this ?tab= value */
+  activeProfileTab?: string;
+};
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   if (isMobileBottomNavHidden(pathname)) {
     return null;
@@ -16,30 +25,35 @@ export function MobileBottomNav() {
   const postTaskButton = (
     <Link
       href="/post-task"
-      className="flex-shrink-0 -mt-6 flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] text-white shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 active:scale-95 transition-all duration-200 ease-out touch-manipulation border-4 border-white dark:border-slate-900"
+      className="flex-shrink-0 -mt-5 flex items-center justify-center w-[3.25rem] h-[3.25rem] rounded-full bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] text-white shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 active:scale-95 transition-all duration-200 ease-out touch-manipulation border-[3px] border-white dark:border-slate-900"
       aria-label="Post a task"
     >
-      <Plus className="h-7 w-7" strokeWidth={2.5} />
+      <Plus className="h-6 w-6" strokeWidth={2.5} />
     </Link>
   );
 
-  const navItems = [
+  const navItems: (NavLinkItem | { type: "post" })[] = [
     { href: "/", icon: Home, label: "Home" },
     { href: "/dashboard", icon: Search, label: "Browse" },
-    { type: "post" as const },
+    { type: "post" },
     { href: "/wallet", icon: Wallet, label: "Wallet" },
-    { href: "/profile", icon: User, label: "Profile" },
+    {
+      href: "/profile?tab=listings",
+      icon: LayoutList,
+      label: "Listings",
+      activeProfileTab: "listings",
+    },
   ];
 
   const navLinkClass =
-    "flex flex-col items-center justify-center gap-0.5 py-1 px-2 rounded-xl transition-all duration-200 ease-out active:scale-90 touch-manipulation min-w-0 flex-1";
+    "flex flex-col items-center justify-center gap-0 py-0.5 px-1.5 rounded-lg transition-all duration-200 ease-out active:scale-90 touch-manipulation min-w-0 flex-1";
 
   return (
     <div
       className="fixed left-0 right-0 bottom-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-gray-200/80 dark:border-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.2)] z-50 md:hidden mobile-nav-appear"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="flex items-center justify-between px-3 py-2 max-w-lg mx-auto gap-1">
+      <div className="flex items-center justify-between px-2 py-1.5 max-w-lg mx-auto gap-0.5">
         {navItems.map((item) => {
           if (item.type === "post") {
             return (
@@ -48,13 +62,11 @@ export function MobileBottomNav() {
             </div>
           );
           }
-          const { href, icon: Icon, label } = item as {
-            href: string;
-            icon: React.ComponentType<{ className?: string }>;
-            label: string;
-          };
-          const isActive =
-            pathname === href || (href !== "/" && pathname.startsWith(href));
+          const { href, icon: Icon, label, activeProfileTab } = item;
+          const pathOnly = href.split("?")[0];
+          const isActive = activeProfileTab
+            ? pathname.startsWith("/profile") && searchParams.get("tab") === activeProfileTab
+            : pathname === pathOnly || (pathOnly !== "/" && pathname.startsWith(pathOnly));
           return (
             <Link
               key={href}

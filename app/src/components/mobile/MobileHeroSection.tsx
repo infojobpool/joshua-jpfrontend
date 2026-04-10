@@ -48,10 +48,10 @@ export function MobileHeroSection() {
           aria-hidden
         />
 
-        <div className="relative z-10 mx-auto max-w-lg px-4 pb-7 pt-4 sm:px-5 sm:pb-8 sm:pt-5">
+        <div className="relative z-10 mx-auto max-w-lg px-4 pb-5 pt-3 sm:px-5 sm:pb-6 sm:pt-4">
           {isAuthenticated && firstName ? (
             <div
-              className="mb-4 border-l-[3px] border-white/40 pl-3.5 text-left sm:mb-5 sm:pl-4"
+              className="mb-3 border-l-[3px] border-white/40 pl-3.5 text-left sm:mb-4 sm:pl-4"
               style={{ fontFamily: "var(--font-archivo), var(--font-geist-sans), system-ui, sans-serif" }}
             >
               <p className="text-[0.625rem] font-semibold uppercase tracking-[0.22em] text-white/70">
@@ -77,7 +77,7 @@ export function MobileHeroSection() {
 
           <form
             onSubmit={onFormSubmit}
-            className="mt-5 space-y-3 sm:mt-6"
+            className="mt-4 space-y-2.5 sm:mt-5 sm:space-y-3"
             aria-label="Start posting a task"
           >
             <input
@@ -90,7 +90,7 @@ export function MobileHeroSection() {
               value={taskTitle}
               onChange={(e) => setTaskTitle(e.target.value)}
             />
-            <div className="flex justify-center pt-1">
+            <div className="flex justify-center pt-0.5">
               <button
                 type="submit"
                 className="relative min-h-[2.875rem] min-w-[11rem] overflow-hidden rounded-full border border-white/55 bg-gradient-to-b from-white/[0.22] to-white/[0.06] px-8 text-[0.8125rem] font-semibold uppercase tracking-[0.14em] text-white shadow-[0_8px_28px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.45)] backdrop-blur-md transition-[transform,box-shadow,border-color,background-color] duration-300 hover:border-white/75 hover:from-white/[0.3] hover:shadow-[0_12px_36px_rgba(0,0,0,0.32)] active:scale-[0.98]"
