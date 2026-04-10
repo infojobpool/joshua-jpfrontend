@@ -134,7 +134,7 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
       if (isUnsyncedDraftId(o.id)) {
         next = await createOfferingApi(payload);
       } else {
-        next = await updateOfferingApi(o.id, payload);
+        next = await updateOfferingApi(o.id, payload, o);
       }
       setO(next);
       toast.success(next.status === "draft" ? "Draft saved" : "Changes saved");
@@ -173,7 +173,7 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
       if (isUnsyncedDraftId(o.id)) {
         next = await createOfferingApi(payload);
       } else {
-        next = await updateOfferingApi(o.id, payload);
+        next = await updateOfferingApi(o.id, payload, o);
       }
       setO(next);
       toast.success("Offering published — visible on your profile");
@@ -193,7 +193,7 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
     }
     setSaving(true);
     try {
-      const next = await updateOfferingApi(o.id, { status: "paused", updatedAt: Date.now() });
+      const next = await updateOfferingApi(o.id, { status: "paused", updatedAt: Date.now() }, o);
       setO(next);
       toast.success("Offering hidden from public");
     } catch (e) {
@@ -207,7 +207,7 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
     if (isUnsyncedDraftId(o.id)) return;
     setSaving(true);
     try {
-      const next = await updateOfferingApi(o.id, { status: "published", updatedAt: Date.now() });
+      const next = await updateOfferingApi(o.id, { status: "published", updatedAt: Date.now() }, o);
       setO(next);
       toast.success("Offering is live again");
     } catch (e) {

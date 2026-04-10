@@ -109,13 +109,49 @@ function unwrapResponseData<T = unknown>(res: { data?: unknown }): T | undefined
   return d.data as T;
 }
 
-function parseOfferingResponse(res: { data?: unknown }): Offering {
+function hasOfferingShapeId(idVal: unknown): boolean {
+  return (
+    (typeof idVal === "string" && idVal.length > 0) ||
+    (typeof idVal === "number" && Number.isFinite(idVal))
+  );
+}
+
+/**
+ * Normalize single-offering bodies: envelopes, flat JSON, numeric ids, nested `offering`.
+ * PATCH often differs from POST (e.g. Django returns integer pk or minimal payload).
+ */
+function extractOfferingRawFromAxiosResponse(res: { data?: unknown }): unknown {
   const d = res.data as Record<string, unknown> | undefined;
-  let raw: unknown = unwrapResponseData(res);
-  if (raw == null && d) {
-    if (typeof d.id === "string") raw = d;
-    else if (d.data && typeof d.data === "object") raw = d.data;
+  if (!d || typeof d !== "object" || Array.isArray(d)) return undefined;
+  if (d.status_code != null && Number(d.status_code) !== 200) return undefined;
+
+  const inner = d.data;
+  if (inner != null && typeof inner === "object" && !Array.isArray(inner)) {
+    const io = inner as Record<string, unknown>;
+    if (io.offering && typeof io.offering === "object" && !Array.isArray(io.offering)) return io.offering;
+    if (io.Offering && typeof io.Offering === "object" && !Array.isArray(io.Offering)) return io.Offering;
+    if (hasOfferingShapeId(io.id)) return inner;
   }
+
+  if (hasOfferingShapeId(d.id)) return d;
+
+  return undefined;
+}
+
+function applyOfferingPatch(base: Offering, patch: Partial<Offering>): Offering {
+  const out: Offering = { ...base };
+  (Object.entries(patch) as [keyof Offering, Offering[keyof Offering]][]).forEach(([k, v]) => {
+    if (v !== undefined) (out as Record<string, unknown>)[k as string] = v;
+  });
+  out.id = base.id;
+  if (patch.photoUrls !== undefined) {
+    out.photoUrls = filterHttpsPhotoUrls(patch.photoUrls);
+  }
+  return out;
+}
+
+function parseOfferingResponse(res: { data?: unknown; status?: number }): Offering {
+  const raw = extractOfferingRawFromAxiosResponse(res);
   const m = mapOfferingFromApi(raw);
   if (!m) throw new Error("Invalid offering response from server");
   return m;
@@ -136,10 +172,23 @@ export async function createOfferingApi(o: Offering): Promise<Offering> {
   return parseOfferingResponse(res);
 }
 
-export async function updateOfferingApi(id: string, patch: Partial<Offering>): Promise<Offering> {
+export async function updateOfferingApi(
+  id: string,
+  patch: Partial<Offering>,
+  /** When the server returns 200 with no parseable offering (common on PATCH), merge onto this. */
+  baseline?: Offering,
+): Promise<Offering> {
   const body = offeringToApiBody(patch);
   const res = await axiosInstance.patch(`offerings/${id}/`, body);
-  return parseOfferingResponse(res);
+  try {
+    return parseOfferingResponse(res);
+  } catch {
+    const httpStatus = (res as { status?: number }).status ?? 0;
+    if (httpStatus >= 200 && httpStatus < 300 && baseline) {
+      return applyOfferingPatch(baseline, { ...patch, id: baseline.id });
+    }
+    throw new Error("Invalid offering response from server");
+  }
 }
 
 export async function deleteOfferingApi(id: string): Promise<void> {
