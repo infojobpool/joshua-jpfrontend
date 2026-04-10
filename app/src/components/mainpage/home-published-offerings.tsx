@@ -209,8 +209,10 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
       lastTs = now;
 
       if (!reducedMotion && !marqueePausedRef.current && !autoScrollFromUserRef.current) {
-        const half = el.scrollWidth / 2;
-        if (half > 1) {
+        const sw = el.scrollWidth;
+        const cw = el.clientWidth;
+        if (sw > cw + 2) {
+          const half = sw / 2;
           fracCarry += (MOBILE_AUTO_SCROLL_PX_PER_SEC / 1000) * dt;
           const steps = Math.floor(fracCarry);
           fracCarry -= steps;
@@ -361,12 +363,12 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
     };
 
     return (
-      <div className="md:hidden border-t border-emerald-100/70 bg-gradient-to-b from-emerald-50/45 via-gray-50/90 to-gray-50 px-4 py-4">
+      <div className="md:hidden w-full min-w-0 max-w-full border-t border-emerald-100/70 bg-gradient-to-b from-emerald-50/45 via-gray-50/90 to-gray-50 px-4 py-4">
         <h3 className="font-home-section-title mb-1 text-lg text-gray-900">{title}</h3>
         <p className="font-home-section-desc mb-3 text-sm text-gray-500">{subtitle}</p>
         <div
           ref={mobileScrollRef}
-          className="overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x scroll-auto snap-x snap-mandatory pb-2 [overflow-anchor:none] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          className="w-full min-w-0 max-w-full overflow-x-scroll overflow-y-hidden overscroll-x-contain touch-pan-x pb-2 [overflow-anchor:none] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           style={{ WebkitOverflowScrolling: "touch", scrollBehavior: "auto" }}
           onPointerDown={() => {
             if (resumeMarqueeTimerRef.current) clearTimeout(resumeMarqueeTimerRef.current);
@@ -382,14 +384,13 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
           onTouchCancel={scheduleMarqueeResume}
           onWheel={registerUserHorizontalScroll}
         >
-          <div className="flex w-max gap-4 pr-1 transform-gpu will-change-transform">
+          <div className="flex w-max gap-4 pr-1">
             {loop.map((o, idx) => (
               <PremiumOfferingCard
                 key={`${o.id}-${idx}`}
                 o={o}
                 href={profileHref(o)}
                 widthClass="w-[17.25rem]"
-                scrollSnap
               />
             ))}
           </div>
