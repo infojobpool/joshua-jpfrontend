@@ -29,7 +29,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { PublicOfferingsList } from "@/components/profile/PublicOfferingsList";
-import { OfferingsPortfolioHero } from "@/components/profile/OfferingsPortfolioHero";
+import { ProfilePortfolioSlider } from "@/components/profile/ProfilePortfolioSlider";
 import { RecentWorksChips } from "@/components/profile/RecentWorksChips";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 
@@ -236,11 +236,11 @@ export default function ProfilePageClient() {
               <CardHeader className="border-b border-slate-100/80 bg-gradient-to-b from-slate-50/95 via-white to-white py-6">
                 <CardTitle className="text-xl font-bold text-slate-800">About this member</CardTitle>
                 <CardDescription>
-                  Portfolio and listings first — recent work and reviews below
+                  Portfolio showcase, then listings — recent work and reviews below
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-5 px-3 sm:px-6 pb-6 space-y-6">
-                <OfferingsPortfolioHero userId={profileIdStr} viewerIsOwner={viewerIsOwner} />
+                <ProfilePortfolioSlider userId={profileIdStr} viewerIsOwner={viewerIsOwner} />
                 <Accordion type="multiple" defaultValue={["listings", "recent"]} className="w-full space-y-3">
                   <AccordionItem
                     value="listings"
