@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { PublicOfferingsList } from "@/components/profile/PublicOfferingsList";
 import { ProfilePortfolioSlider } from "@/components/profile/ProfilePortfolioSlider";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
+import { BrandedPageLoader } from "@/components/BrandedPageLoader";
 
 interface Address {
   id: number;
@@ -161,7 +162,7 @@ export default function ProfilePageClient() {
     fetchProfile();
   }, [userId, router]);
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) return <BrandedPageLoader subtitle="Loading profile" />;
   if (error) return <div>Error: {error}</div>;
 
   return (
