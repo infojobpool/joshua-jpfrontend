@@ -73,12 +73,14 @@ export function ProfileOfferingsPanel({ userId }: Props) {
             Drafts don&apos;t use a slot. Limits are enforced on the server.
           </p>
         </div>
-        <Button asChild size="sm" className="rounded-lg bg-emerald-600 hover:bg-emerald-700 shrink-0 w-full sm:w-auto">
-          <Link href="/profile/offerings/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Add listing
-          </Link>
-        </Button>
+        {list.length > 0 ? (
+          <Button asChild size="sm" className="rounded-lg bg-emerald-600 hover:bg-emerald-700 shrink-0 w-full sm:w-auto">
+            <Link href="/profile/offerings/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Add listing
+            </Link>
+          </Button>
+        ) : null}
       </div>
 
       {list.length === 0 ? (
@@ -88,8 +90,11 @@ export function ProfileOfferingsPanel({ userId }: Props) {
           <p className="mt-1 text-xs sm:text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
             Add a service or product clients can book from your public profile.
           </p>
-          <Button asChild size="sm" className="mt-3 rounded-lg bg-emerald-600 hover:bg-emerald-700">
-            <Link href="/profile/offerings/new">Create listing</Link>
+          <Button asChild size="sm" className="mt-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 w-full max-w-xs mx-auto">
+            <Link href="/profile/offerings/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Add listing
+            </Link>
           </Button>
         </div>
       ) : (
