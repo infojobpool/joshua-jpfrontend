@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { MapPin, Package } from "lucide-react";
 import type { Offering } from "@/lib/offerings/types";
 import { getHomeOfferingsCached } from "@/lib/homeOfferingsCache";
 import { cn } from "@/lib/utils";
+import useStore from "@/lib/Zustand";
 
 const PLACEHOLDER = "/images/placeholder.svg";
 const DESKTOP_MAX = 12;
@@ -131,6 +132,11 @@ function PremiumOfferingCard({
 export function HomePublishedOfferings({ variant }: { variant: "mobile" | "desktop" }) {
   const [rows, setRows] = useState<Offering[]>([]);
   const [loading, setLoading] = useState(true);
+  const currentUserId = useStore((s) => s.user?.id ?? null);
+  const visibleRows = useMemo(() => {
+    if (!currentUserId) return rows;
+    return rows.filter((o) => String(o.userId) !== String(currentUserId));
+  }, [rows, currentUserId]);
   const [marqueePaused, setMarqueePaused] = useState(false);
   const resumeMarqueeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mobileScrollRef = useRef<HTMLDivElement>(null);
@@ -178,19 +184,14 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
   }, []);
 
   useEffect(() => {
-    if (variant !== "mobile" || rows.length === 0) return;
+    if (variant !== "mobile" || visibleRows.length === 0) return;
     const el = mobileScrollRef.current;
     if (!el) return;
 
     const reducedMotion =
       typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    const onScroll = () => {
-      if (scrollProgrammaticRef.current) return;
-      registerUserHorizontalScroll();
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-
+    /** See recent-available-tasks mobile marquee: avoid scroll listener on mobile WebKit. */
     let rafId = 0;
     let lastTs = performance.now();
     let fracCarry = 0;
@@ -228,13 +229,12 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
 
     return () => {
       cancelAnimationFrame(rafId);
-      el.removeEventListener("scroll", onScroll);
       if (resumeUserScrollTimerRef.current) clearTimeout(resumeUserScrollTimerRef.current);
     };
-  }, [variant, rows.length, registerUserHorizontalScroll]);
+  }, [variant, visibleRows.length, registerUserHorizontalScroll]);
 
   useEffect(() => {
-    if (variant !== "desktop" || rows.length === 0) return;
+    if (variant !== "desktop" || visibleRows.length === 0) return;
     const el = desktopScrollRef.current;
     if (!el) return;
 
@@ -287,7 +287,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
       el.removeEventListener("scroll", onScroll);
       if (resumeUserScrollTimerRef.current) clearTimeout(resumeUserScrollTimerRef.current);
     };
-  }, [variant, rows.length, registerUserHorizontalScroll]);
+  }, [variant, visibleRows.length, registerUserHorizontalScroll]);
 
   useEffect(() => {
     const onVis = () => setMarqueePaused(document.hidden);
@@ -315,30 +315,42 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
       );
     }
 
-    if (rows.length === 0) {
+    if (visibleRows.length === 0) {
+      const feedEmpty = rows.length === 0;
       return (
         <div className="md:hidden border-t border-emerald-100/70 bg-gradient-to-b from-emerald-50/45 via-gray-50/90 to-gray-50 px-4 py-5">
           <h3 className="font-home-section-title text-lg text-gray-900">{title}</h3>
           <p className="font-home-section-desc mt-1 text-sm text-gray-500">{subtitle}</p>
           <div className="mt-4 rounded-2xl border border-dashed border-emerald-200/90 bg-white p-6 text-center shadow-sm">
             <Package className="mx-auto h-10 w-10 text-emerald-200" />
-            <p className="mt-2 text-sm font-medium text-gray-800">No public listings here yet</p>
+            <p className="mt-2 text-sm font-medium text-gray-800">
+              {feedEmpty ? "No public listings here yet" : "No other providers in the feed right now"}
+            </p>
             <p className="mt-1 text-xs text-gray-500 max-w-sm mx-auto leading-relaxed">
-              Published services from the public feed appear here. If this is empty, check that{" "}
-              <span className="font-medium text-gray-600">GET /offerings/feed/</span> is deployed and returning rows.
+              {feedEmpty ? (
+                <>
+                  Published services from the public feed appear here. If this is empty, check that{" "}
+                  <span className="font-medium text-gray-600">GET /offerings/feed/</span> is deployed and returning rows.
+                </>
+              ) : (
+                <>
+                  Your own listings are not shown in this row. Manage them under{" "}
+                  <span className="font-medium text-gray-600">Profile → Listings</span>.
+                </>
+              )}
             </p>
             <Link
               href="/profile?tab=listings"
               className="mt-4 inline-block text-sm font-semibold text-emerald-700 hover:underline"
             >
-              Publish a listing from Profile
+              {feedEmpty ? "Publish a listing from Profile" : "Open your listings"}
             </Link>
           </div>
         </div>
       );
     }
 
-    const loop = [...rows, ...rows];
+    const loop = [...visibleRows, ...visibleRows];
 
     const scheduleMarqueeResume = () => {
       if (resumeMarqueeTimerRef.current) clearTimeout(resumeMarqueeTimerRef.current);
@@ -405,7 +417,8 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
     );
   }
 
-  if (rows.length === 0) {
+  if (visibleRows.length === 0) {
+    const feedEmpty = rows.length === 0;
     return (
       <section className="hidden border-t border-emerald-100/60 py-10 md:block overflow-hidden bg-gradient-to-b from-emerald-50/35 via-white to-white">
         <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
@@ -421,16 +434,27 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
           </motion.div>
           <div className="mx-auto max-w-2xl rounded-2xl border border-dashed border-emerald-200/90 bg-slate-50/80 py-10 px-6 text-center">
             <Package className="mx-auto h-12 w-12 text-emerald-200" />
-            <p className="mt-3 font-medium text-gray-800">No public listings to show yet</p>
+            <p className="mt-3 font-medium text-gray-800">
+              {feedEmpty ? "No public listings to show yet" : "No other providers in the feed right now"}
+            </p>
             <p className="mt-2 text-sm text-gray-500 leading-relaxed">
-              Published offerings from providers will appear in this row. Until the feed returns data here, visitors
-              can still open any public profile to book a service.
+              {feedEmpty ? (
+                <>
+                  Published offerings from providers will appear in this row. Until the feed returns data here, visitors
+                  can still open any public profile to book a service.
+                </>
+              ) : (
+                <>
+                  Your own listings are omitted here so this strip highlights other pros. Edit yours under Profile →
+                  Listings.
+                </>
+              )}
             </p>
             <Link
               href="/profile?tab=listings"
               className="mt-5 inline-block text-sm font-semibold text-emerald-700 hover:underline"
             >
-              Publish a listing from Profile
+              {feedEmpty ? "Publish a listing from Profile" : "Open your listings"}
             </Link>
           </div>
         </div>
@@ -438,7 +462,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
     );
   }
 
-  const loopDesktop = [...rows, ...rows];
+  const loopDesktop = [...visibleRows, ...visibleRows];
 
   const scheduleMarqueeResumeDesktop = () => {
     if (resumeMarqueeTimerRef.current) clearTimeout(resumeMarqueeTimerRef.current);

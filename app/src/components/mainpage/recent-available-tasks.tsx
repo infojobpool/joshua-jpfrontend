@@ -103,12 +103,8 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    const onScroll = () => {
-      if (scrollProgrammaticRef.current) return;
-      registerUserHorizontalScroll();
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-
+    /** Mobile WebKit often fires `scroll` after programmatic scrollLeft *after* our guard clears, which
+     *  sets autoScrollFromUserRef and kills the marquee. Touch/pointer handlers already pause for real drags. */
     let rafId = 0;
     let lastTs = performance.now();
     let fracCarry = 0;
@@ -146,7 +142,6 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
 
     return () => {
       cancelAnimationFrame(rafId);
-      el.removeEventListener("scroll", onScroll);
       if (resumeUserScrollTimerRef.current) clearTimeout(resumeUserScrollTimerRef.current);
     };
   }, [variant, tasks.length, registerUserHorizontalScroll]);
