@@ -33,6 +33,11 @@ import {
   type CacheStats
 } from "@/lib/cacheUtils";
 import Header from "@/components/Header";
+import { Switch } from "@/components/ui/switch";
+import {
+  readOfferingSubscriptionMock,
+  setOfferingSubscriptionMock,
+} from "@/lib/offerings/storage";
 
 // Force dynamic rendering (don't pre-render at build time)
 export const dynamic = 'force-dynamic';
@@ -47,6 +52,11 @@ export default function SettingsPage() {
   const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [offeringSubMock, setOfferingSubMock] = useState(false);
+
+  useEffect(() => {
+    setOfferingSubMock(readOfferingSubscriptionMock());
+  }, []);
 
   const handleSignOut = () => {
     logout();
@@ -286,6 +296,31 @@ export default function SettingsPage() {
             <ThemeToggle />
           </div>
         </div>
+
+        {process.env.NODE_ENV === "development" && (
+          <Card className="mb-6 border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800">
+            <CardHeader>
+              <CardTitle className="text-lg">Developer — profile offerings</CardTitle>
+              <CardDescription>
+                Simulate a paid plan (more listing slots). Uses localStorage only; replace with real subscription when the API is ready.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap items-center justify-between gap-4">
+              <Label htmlFor="offering-sub-mock" className="text-sm font-normal cursor-pointer">
+                Mock &quot;subscription&quot; active
+              </Label>
+              <Switch
+                id="offering-sub-mock"
+                checked={offeringSubMock}
+                onCheckedChange={(v) => {
+                  setOfferingSubscriptionMock(v);
+                  setOfferingSubMock(v);
+                  toast.success(v ? "Mock subscription on (up to 25 slots)" : "Mock subscription off (2 slots)");
+                }}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Cache Stats Card */}
         <Card className="mb-6 dark:bg-slate-800 dark:border-slate-700">

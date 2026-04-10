@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import axiosInstance from "@/lib/axiosInstance";
-import { MobileProfile } from "@/components/mobile/MobileProfile";
 import { useIsMobile } from "@/components/mobile/MobileWrapper";
 import {
   Card,
@@ -32,6 +31,7 @@ import {
   X,
   Briefcase,
   Wallet,
+  Package,
 } from "lucide-react";
 import useStore from "../../lib/Zustand";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
@@ -44,6 +44,7 @@ import {
   hasRealProfilePhotoUrl,
 } from "@/lib/payoutProfileCompletion";
 import { toast } from "sonner";
+import { ProfileOfferingsPanel } from "@/components/profile/ProfileOfferingsPanel";
 
 /** Android WebView: force visible text in fields (avoids white-on-white). */
 const PROFILE_FIELD_TEXT = {
@@ -986,13 +987,24 @@ export default function ProfilePage() {
           <Card className="md:col-span-2 border-0 shadow-xl rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200/50 relative z-0 md:ml-[-1rem] md:shadow-2xl">
             <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-emerald-50/30 py-6">
               <CardTitle className="text-xl font-bold text-slate-800 tracking-tight">Profile Details</CardTitle>
-              <CardDescription className="text-slate-500">Manage your verification and reviews</CardDescription>
+              <CardDescription className="text-slate-500">Bank, public offerings, and reviews</CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
               <Tabs defaultValue="bank">
-                <TabsList className="w-full grid grid-cols-2 rounded-xl bg-slate-100/80 p-1.5 h-12">
-                  <TabsTrigger value="bank" className="rounded-lg font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">Bank Account</TabsTrigger>
-                  <TabsTrigger value="reviews" className="rounded-lg font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">Reviews</TabsTrigger>
+                <TabsList className="w-full grid grid-cols-3 gap-0.5 rounded-xl bg-slate-100/80 p-1.5 min-h-12 h-auto">
+                  <TabsTrigger value="bank" className="rounded-lg text-xs sm:text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 data-[state=active]:font-semibold px-1.5 py-2">
+                    Bank
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="offerings"
+                    className="rounded-lg text-xs sm:text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 data-[state=active]:font-semibold px-1.5 py-2 inline-flex items-center justify-center gap-1"
+                  >
+                    <Package className="h-3.5 w-3.5 shrink-0 hidden sm:inline" aria-hidden />
+                    Offerings
+                  </TabsTrigger>
+                  <TabsTrigger value="reviews" className="rounded-lg text-xs sm:text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 data-[state=active]:font-semibold px-1.5 py-2">
+                    Reviews
+                  </TabsTrigger>
                 </TabsList>
                 <TabsContent value="bank" className="space-y-6 pt-6">
                   <div className="flex flex-col gap-6 md:flex-row">
@@ -1080,6 +1092,13 @@ export default function ProfilePage() {
                       )}
                     </div>
                   </div>
+                </TabsContent>
+                <TabsContent value="offerings" className="space-y-4 pt-6">
+                  {userId ? (
+                    <ProfileOfferingsPanel userId={userId} />
+                  ) : (
+                    <p className="text-sm text-slate-500">Sign in to manage offerings.</p>
+                  )}
                 </TabsContent>
                 <TabsContent value="reviews" className="space-y-4 pt-6">
                   <Tabs defaultValue="tasker" className="space-y-4">
