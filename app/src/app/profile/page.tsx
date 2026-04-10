@@ -18,6 +18,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   CheckCircle,
   XCircle,
   Edit,
@@ -32,6 +38,8 @@ import {
   Briefcase,
   Wallet,
   Package,
+  Sparkles,
+  Landmark,
 } from "lucide-react";
 import useStore from "../../lib/Zustand";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
@@ -585,7 +593,7 @@ export default function ProfilePage() {
 
         <div className="grid gap-8 md:grid-cols-3 mt-2">
           {/* Profile card - left column with overlapping avatar */}
-          <Card className="md:col-span-1 border-0 shadow-xl rounded-2xl overflow-visible bg-white ring-1 ring-slate-200/50 relative z-10 md:-mr-4">
+          <Card className="md:col-span-1 border-0 rounded-2xl overflow-visible bg-white relative z-10 md:-mr-4 shadow-[0_24px_64px_-16px_rgba(15,118,110,0.42)] ring-1 ring-slate-900/[0.06] before:pointer-events-none before:absolute before:inset-x-5 before:top-0 before:z-10 before:h-1 before:rounded-full before:bg-gradient-to-r before:from-amber-300 before:via-emerald-400 before:to-cyan-500 before:content-['']">
             <div
               className="h-32 rounded-t-2xl bg-cover bg-center bg-no-repeat relative"
               style={{
@@ -684,9 +692,12 @@ export default function ProfilePage() {
                   </AvatarFallback>
                 </Avatar>
               )}
-              <div className="text-center mt-3">
-                <CardTitle className="text-xl font-bold text-slate-800">{profileuser.name}</CardTitle>
-                <CardDescription className="text-sm text-slate-500 mt-0.5">{profileuser.email}</CardDescription>
+              <div className="text-center mt-3 px-2">
+                <div className="inline-flex items-center gap-1 rounded-full border border-emerald-200/80 bg-emerald-50/90 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-800 mb-2">
+                  JobPool member
+                </div>
+                <CardTitle className="text-xl font-bold text-slate-800 tracking-tight">{profileuser.name}</CardTitle>
+                <CardDescription className="text-sm text-slate-500 mt-0.5 break-all">{profileuser.email}</CardDescription>
               </div>
               <Button
                 variant="outline"
@@ -869,144 +880,177 @@ export default function ProfilePage() {
                 </form>
               ) : (
                 <>
-                  <div className="space-y-3">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Profile Details</h3>
-                    <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
-                        <User className="h-5 w-5 text-emerald-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-500">Name</p>
-                        <p className="font-medium text-slate-800">{profileuser.name}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
-                        <Mail className="h-5 w-5 text-emerald-600" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs text-slate-500">Email</p>
-                        <p className="font-medium text-slate-800 truncate">{profileuser.email}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
-                        <Phone className="h-5 w-5 text-emerald-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-500">Phone</p>
-                        <p className="font-medium text-slate-800">{profileuser.phone || "—"}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
-                        <Wallet className="h-5 w-5 text-emerald-600" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs text-slate-500">UPI ID</p>
-                        <p className="font-medium text-slate-800 break-all">
-                          {profileuser.upi_vpa?.trim() || "Not set"}
-                        </p>
-                        <Link
-                          href="/wallet"
-                          className="text-xs text-emerald-600 font-medium mt-1 inline-block underline-offset-2 hover:underline"
-                        >
-                          Open Wallet
-                        </Link>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
-                        <MapPin className="h-5 w-5 text-emerald-600" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs text-slate-500">Addresses</p>
-                        {profileuser.addresses.filter((a) => a.address).length > 0 ? (
-                          profileuser.addresses.map((addr) => (
-                            <div key={addr.id} className="flex items-center gap-2 mt-1 flex-wrap">
-                              <span className="font-medium text-slate-800">{addr.address}</span>
-                              {addr.isDefault && (
-                                <Badge className="bg-emerald-100 text-emerald-700 text-xs">Default</Badge>
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="contact" className="border-0">
+                      <AccordionTrigger className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3 hover:no-underline">
+                        Contact &amp; profile details
+                      </AccordionTrigger>
+                      <AccordionContent className="pb-2">
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                              <User className="h-5 w-5 text-emerald-600" />
+                            </div>
+                            <div>
+                              <p className="text-xs text-slate-500">Name</p>
+                              <p className="font-medium text-slate-800">{profileuser.name}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                              <Mail className="h-5 w-5 text-emerald-600" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs text-slate-500">Email</p>
+                              <p className="font-medium text-slate-800 truncate">{profileuser.email}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                              <Phone className="h-5 w-5 text-emerald-600" />
+                            </div>
+                            <div>
+                              <p className="text-xs text-slate-500">Phone</p>
+                              <p className="font-medium text-slate-800">{profileuser.phone || "—"}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                              <Wallet className="h-5 w-5 text-emerald-600" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-slate-500">UPI ID</p>
+                              <p className="font-medium text-slate-800 break-all">
+                                {profileuser.upi_vpa?.trim() || "Not set"}
+                              </p>
+                              <Link
+                                href="/wallet"
+                                className="text-xs text-emerald-600 font-medium mt-1 inline-block underline-offset-2 hover:underline"
+                              >
+                                Open Wallet
+                              </Link>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                              <MapPin className="h-5 w-5 text-emerald-600" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-slate-500">Addresses</p>
+                              {profileuser.addresses.filter((a) => a.address).length > 0 ? (
+                                profileuser.addresses.map((addr) => (
+                                  <div key={addr.id} className="flex items-center gap-2 mt-1 flex-wrap">
+                                    <span className="font-medium text-slate-800">{addr.address}</span>
+                                    {addr.isDefault && (
+                                      <Badge className="bg-emerald-100 text-emerald-700 text-xs">Default</Badge>
+                                    )}
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="font-medium text-slate-500">No address added</p>
                               )}
                             </div>
-                          ))
-                        ) : (
-                          <p className="font-medium text-slate-500">No address added</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
-                        <Calendar className="h-5 w-5 text-emerald-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-500">Joined</p>
-                        <p className="font-medium text-slate-800">{profileuser.joinDate || "—"}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="pt-4 border-t border-slate-100">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Verification Status</h3>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between rounded-xl px-4 py-3 bg-slate-50">
-                        <span className="text-sm font-medium text-slate-700">PAN Card</span>
-                        {verificationStatus.pan.completed ? (
-                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                            <CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Verified
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-white text-slate-500 border-slate-200">Pending</Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between rounded-xl px-4 py-3 bg-slate-50">
-                        <span className="text-sm font-medium text-slate-700">Aadhar</span>
-                        {verificationStatus.aadhar.completed ? (
-                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                            <CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Verified
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-white text-slate-500 border-slate-200">Pending</Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between rounded-xl px-4 py-3 bg-slate-50">
-                        <span className="text-sm font-medium text-slate-700">Bank Account</span>
-                        {verificationStatus.bank.completed ? (
-                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                            <CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Verified
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-white text-slate-500 border-slate-200">Pending</Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                          </div>
+                          <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                              <Calendar className="h-5 w-5 text-emerald-600" />
+                            </div>
+                            <div>
+                              <p className="text-xs text-slate-500">Joined</p>
+                              <p className="font-medium text-slate-800">{profileuser.joinDate || "—"}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="verification" className="border-0 border-t border-slate-100">
+                      <AccordionTrigger className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3 hover:no-underline">
+                        Verification status
+                      </AccordionTrigger>
+                      <AccordionContent className="pb-2">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between rounded-xl px-4 py-3 bg-slate-50">
+                            <span className="text-sm font-medium text-slate-700">PAN Card</span>
+                            {verificationStatus.pan.completed ? (
+                              <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                                <CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Verified
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-white text-slate-500 border-slate-200">Pending</Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between rounded-xl px-4 py-3 bg-slate-50">
+                            <span className="text-sm font-medium text-slate-700">Aadhar</span>
+                            {verificationStatus.aadhar.completed ? (
+                              <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                                <CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Verified
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-white text-slate-500 border-slate-200">Pending</Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between rounded-xl px-4 py-3 bg-slate-50">
+                            <span className="text-sm font-medium text-slate-700">Bank Account</span>
+                            {verificationStatus.bank.completed ? (
+                              <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                                <CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Verified
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-white text-slate-500 border-slate-200">Pending</Badge>
+                            )}
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                 </>
               )}
             </CardContent>
           </Card>
           <Card className="md:col-span-2 border-0 shadow-xl rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200/50 relative z-0 md:ml-[-1rem] md:shadow-2xl">
             <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-emerald-50/30 py-6">
-              <CardTitle className="text-xl font-bold text-slate-800 tracking-tight">Profile Details</CardTitle>
-              <CardDescription className="text-slate-500">Bank, public offerings, and reviews</CardDescription>
+              <CardTitle className="text-xl font-bold text-slate-800 tracking-tight">Your workspace</CardTitle>
+              <CardDescription className="text-slate-500">
+                Expand sections — offerings are spotlighted for quick access
+              </CardDescription>
             </CardHeader>
-            <CardContent className="pt-6">
-              <Tabs defaultValue="bank">
-                <TabsList className="w-full grid grid-cols-3 gap-0.5 rounded-xl bg-slate-100/80 p-1.5 min-h-12 h-auto">
-                  <TabsTrigger value="bank" className="rounded-lg text-xs sm:text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 data-[state=active]:font-semibold px-1.5 py-2">
-                    Bank
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="offerings"
-                    className="rounded-lg text-xs sm:text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 data-[state=active]:font-semibold px-1.5 py-2 inline-flex items-center justify-center gap-1"
-                  >
-                    <Package className="h-3.5 w-3.5 shrink-0 hidden sm:inline" aria-hidden />
-                    Offerings
-                  </TabsTrigger>
-                  <TabsTrigger value="reviews" className="rounded-lg text-xs sm:text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 data-[state=active]:font-semibold px-1.5 py-2">
-                    Reviews
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="bank" className="space-y-6 pt-6">
+            <CardContent className="pt-4 px-3 sm:px-6">
+              <Accordion type="multiple" defaultValue={["offerings"]} className="w-full space-y-3">
+                <AccordionItem
+                  value="offerings"
+                  className="rounded-2xl border-2 border-amber-400/45 bg-gradient-to-br from-amber-50/50 via-white to-emerald-50/30 px-3 sm:px-4 shadow-[0_0_0_1px_rgba(16,185,129,0.12),0_12px_40px_-20px_rgba(245,158,11,0.35)] border-b-0"
+                >
+                  <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
+                    <span className="flex flex-wrap items-center gap-2 pr-2">
+                      <Package className="h-5 w-5 text-amber-600 shrink-0" aria-hidden />
+                      <span className="text-base font-bold text-slate-900">Offerings</span>
+                      <Badge className="border-amber-300/60 bg-amber-100/90 text-amber-900 hover:bg-amber-100 gap-1">
+                        <Sparkles className="h-3 w-3" aria-hidden />
+                        Spotlight
+                      </Badge>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-4">
+                    {userId ? (
+                      <ProfileOfferingsPanel userId={userId} />
+                    ) : (
+                      <p className="text-sm text-slate-500">Sign in to manage offerings.</p>
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem
+                  value="bank"
+                  className="rounded-2xl border border-slate-200/80 bg-white px-3 sm:px-4 border-b-0"
+                >
+                  <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
+                    <span className="flex items-center gap-2">
+                      <Landmark className="h-5 w-5 text-emerald-600 shrink-0" aria-hidden />
+                      <span className="text-base font-semibold text-slate-900">Bank account</span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-4">
+                <div className="space-y-6">
                   <div className="flex flex-col gap-6 md:flex-row">
                     <div className="w-full md:w-1/3">
                       <div className="rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 border border-slate-200 p-6 flex items-center justify-center min-h-[180px]">
@@ -1092,15 +1136,21 @@ export default function ProfilePage() {
                       )}
                     </div>
                   </div>
-                </TabsContent>
-                <TabsContent value="offerings" className="space-y-4 pt-6">
-                  {userId ? (
-                    <ProfileOfferingsPanel userId={userId} />
-                  ) : (
-                    <p className="text-sm text-slate-500">Sign in to manage offerings.</p>
-                  )}
-                </TabsContent>
-                <TabsContent value="reviews" className="space-y-4 pt-6">
+                </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem
+                  value="reviews"
+                  className="rounded-2xl border border-slate-200/80 bg-white px-3 sm:px-4 border-b-0"
+                >
+                  <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
+                    <span className="flex items-center gap-2">
+                      <Star className="h-5 w-5 text-amber-500 shrink-0 fill-amber-400/30" aria-hidden />
+                      <span className="text-base font-semibold text-slate-900">Reviews</span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-4">
                   <Tabs defaultValue="tasker" className="space-y-4">
                     <TabsList className="w-full grid grid-cols-2 rounded-xl bg-slate-100/80 p-1.5 h-12">
                       <TabsTrigger value="tasker" className="rounded-lg font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">
@@ -1213,8 +1263,9 @@ export default function ProfilePage() {
                       )}
                     </TabsContent>
                   </Tabs>
-                </TabsContent>
-              </Tabs>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </CardContent>
           </Card>
         </div>

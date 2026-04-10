@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Star, MapPin, Briefcase } from "lucide-react";
+import { Star, MapPin, Briefcase, Package, Sparkles, History } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
@@ -14,6 +14,12 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -22,6 +28,10 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { PublicOfferingsList } from "@/components/profile/PublicOfferingsList";
+import { RecentWorksChips } from "@/components/profile/RecentWorksChips";
+import { resolveProfileImageUrl } from "@/lib/profileImage";
 
 interface Address {
   id: number;
@@ -52,8 +62,7 @@ interface Review {
 export default function ProfilePageClient() {
   const router = useRouter();
   const { userId } = useParams();
-  const { userId: loggedInUserId, logout } = useStore();
-  const [activeTab, setActiveTab] = useState<"tasker" | "taskmaster">("tasker");
+  const { userId: loggedInUserId } = useStore();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profileUser, setProfileUser] = useState<UserProfile>({
@@ -72,6 +81,19 @@ export default function ProfilePageClient() {
       : 0;
   const reviewCount = reviews.length;
 
+  const profileIdStr = String(userId ?? "");
+  const viewerIsOwner =
+    Boolean(loggedInUserId) && String(loggedInUserId) === profileIdStr;
+
+  const recentWorkFeed = useMemo(
+    () => reviews.map((r) => ({ project: r.project })),
+    [reviews]
+  );
+
+  const avatarSrc = profileUser.avatar
+    ? resolveProfileImageUrl(profileUser.avatar) || profileUser.avatar
+    : "";
+
   const formatDate = (dateString: string): string => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -80,11 +102,6 @@ export default function ProfilePageClient() {
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
-  };
-
-  const handleSignOut = () => {
-    logout();
-    router.push("/");
   };
 
   useEffect(() => {
@@ -164,13 +181,13 @@ export default function ProfilePageClient() {
           ← Back to Dashboard
         </Link>
         <div className="grid gap-8 md:grid-cols-3">
-          {/* Profile Information */}
-          <Card className="md:col-span-1 border-0 shadow-xl rounded-2xl overflow-hidden ring-1 ring-slate-200/50">
-            <div className="h-20 bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700" />
-            <CardHeader className="flex flex-col items-center text-center -mt-12 relative">
-              <div className="relative w-28 h-28 mb-4">
-                <Avatar className="w-28 h-28 ring-4 ring-white shadow-xl">
-                  <AvatarImage src={profileUser.avatar} alt={profileUser.name} />
+          {/* Premium ID-style profile card */}
+          <Card className="md:col-span-1 border-0 rounded-2xl overflow-hidden relative shadow-[0_24px_64px_-16px_rgba(15,118,110,0.38)] ring-1 ring-slate-900/[0.06] before:pointer-events-none before:absolute before:inset-x-5 before:top-0 before:z-10 before:h-1 before:rounded-full before:bg-gradient-to-r before:from-amber-300 before:via-emerald-400 before:to-cyan-500 before:content-['']">
+            <div className="h-24 bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-800" />
+            <CardHeader className="flex flex-col items-center text-center -mt-14 relative px-4 pb-6">
+              <div className="relative w-[7.25rem] h-[7.25rem] mb-3">
+                <Avatar className="w-[7.25rem] h-[7.25rem] ring-[3px] ring-white shadow-[0_12px_40px_-8px_rgba(0,0,0,0.25)]">
+                  <AvatarImage src={avatarSrc} alt={profileUser.name} />
                   <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-xl font-semibold">
                     {profileUser.name
                       .split(" ")
@@ -179,48 +196,101 @@ export default function ProfilePageClient() {
                   </AvatarFallback>
                 </Avatar>
               </div>
-              <CardTitle className="text-2xl font-bold">
+              <div className="inline-flex items-center rounded-full border border-emerald-200/90 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-900 mb-2">
+                JobPool profile
+              </div>
+              <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">
                 {profileUser.name || "Unknown User"}
               </CardTitle>
-              <CardDescription className="flex items-center justify-center mt-1">
-                <MapPin className="w-4 h-4 mr-1" />
-                {profileUser.addresses.find((addr) => addr.isDefault)?.address ||
-                  "Location not specified"}
+              <CardDescription className="flex items-start justify-center gap-1 mt-2 text-slate-600 text-sm max-w-full">
+                <MapPin className="w-4 h-4 mr-0.5 shrink-0 mt-0.5" />
+                <span className="text-left break-words">
+                  {profileUser.addresses.find((addr) => addr.isDefault)?.address ||
+                    "Location not specified"}
+                </span>
               </CardDescription>
               {averageRating > 0 && (
-                <div className="flex items-center mt-2">
+                <div className="flex items-center justify-center flex-wrap gap-1 mt-3 rounded-full bg-slate-50 px-3 py-1.5 border border-slate-100">
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
                       className={`w-4 h-4 ${
                         i < Math.floor(averageRating)
-                          ? "text-yellow-500 fill-yellow-500"
-                          : "text-gray-300"
+                          ? "text-amber-500 fill-amber-400"
+                          : "text-slate-200"
                       }`}
                     />
                   ))}
-                  <span className="ml-2 text-sm font-medium">
-                    {averageRating.toFixed(1)} ({reviewCount} reviews)
+                  <span className="ml-1 text-sm font-semibold text-slate-800">
+                    {averageRating.toFixed(1)}
                   </span>
+                  <span className="text-xs text-slate-500">({reviewCount} reviews)</span>
                 </div>
               )}
             </CardHeader>
           </Card>
 
-          {/* Reviews */}
-          <div className="md:col-span-2 space-y-6">
+          {/* Listings, recent work, reviews — collapsible */}
+          <div className="md:col-span-2 space-y-4">
             <Card className="border-0 shadow-xl rounded-2xl overflow-hidden ring-1 ring-slate-200/50">
-              <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white py-5">
-                <CardTitle className="text-xl font-bold text-slate-800">Reviews</CardTitle>
-                <CardDescription>What others say about {profileUser.name}</CardDescription>
+              <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-emerald-50/40 py-5">
+                <CardTitle className="text-xl font-bold text-slate-800">About this member</CardTitle>
+                <CardDescription>
+                  Listings, recent work from reviews, and feedback from the community
+                </CardDescription>
               </CardHeader>
-              <CardContent className="pt-6">
-            <Tabs
-              defaultValue="tasker"
-              onValueChange={(value) =>
-                setActiveTab(value as "tasker" | "taskmaster")
-              }
-            >
+              <CardContent className="pt-4 px-3 sm:px-6 pb-6">
+                <Accordion type="multiple" defaultValue={["listings", "recent"]} className="w-full space-y-3">
+                  <AccordionItem
+                    value="listings"
+                    className="rounded-2xl border-2 border-amber-400/40 bg-gradient-to-br from-amber-50/40 via-white to-emerald-50/20 px-3 sm:px-4 shadow-[0_0_0_1px_rgba(16,185,129,0.1)] border-b-0"
+                  >
+                    <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
+                      <span className="flex flex-wrap items-center gap-2 pr-2">
+                        <Package className="h-5 w-5 text-amber-600 shrink-0" />
+                        <span className="text-base font-bold text-slate-900">Public listings</span>
+                        <Badge className="border-amber-300/60 bg-amber-100/90 text-amber-900 hover:bg-amber-100 gap-1">
+                          <Sparkles className="h-3 w-3" />
+                          Services &amp; products
+                        </Badge>
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-4">
+                      <PublicOfferingsList profileUserId={profileIdStr} viewerIsOwner={viewerIsOwner} />
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  <AccordionItem
+                    value="recent"
+                    className="rounded-2xl border border-slate-200/80 bg-white px-3 sm:px-4 border-b-0"
+                  >
+                    <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
+                      <span className="flex items-center gap-2">
+                        <History className="h-5 w-5 text-emerald-600 shrink-0" />
+                        <span className="text-base font-semibold text-slate-900">Recent work</span>
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-4">
+                      <p className="text-xs text-slate-500 mb-3">
+                        Based on completed tasks mentioned in reviews. Full history may come from your feed later.
+                      </p>
+                      <RecentWorksChips reviews={recentWorkFeed} />
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  <AccordionItem
+                    value="reviews"
+                    className="rounded-2xl border border-slate-200/80 bg-white px-3 sm:px-4 border-b-0"
+                  >
+                    <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
+                      <span className="flex items-center gap-2">
+                        <Star className="h-5 w-5 text-amber-500 shrink-0 fill-amber-400/25" />
+                        <span className="text-base font-semibold text-slate-900">Reviews</span>
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-2">
+                      <p className="text-sm text-slate-600 mb-4">What others say about {profileUser.name}</p>
+            <Tabs defaultValue="tasker">
               <TabsList className="w-full grid grid-cols-2 rounded-xl bg-slate-100 p-1.5 mb-6">
                 <TabsTrigger value="tasker" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">As Tasker</TabsTrigger>
                 <TabsTrigger value="taskmaster" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">As Taskmaster</TabsTrigger>
@@ -264,6 +334,9 @@ export default function ProfilePageClient() {
                 </div>
               </TabsContent>
             </Tabs>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </CardContent>
             </Card>
           </div>
