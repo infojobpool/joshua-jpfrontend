@@ -1,11 +1,10 @@
 "use client";
 
 import type React from "react";
-import { useRouter } from "next/navigation";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import axiosInstance from "@/lib/axiosInstance";
-import { useIsMobile } from "@/components/mobile/MobileWrapper";
 import {
   Card,
   CardContent,
@@ -117,11 +116,17 @@ interface Review {
   role?: "tasker" | "taskmaster";
 }
 
+type ProfileMainTab = "profile" | "listings" | "reviews";
+
+function isProfileMainTab(v: string | null): v is ProfileMainTab {
+  return v === "profile" || v === "listings" || v === "reviews";
+}
+
 export default function ProfilePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverImageInputRef = useRef<HTMLInputElement>(null);
-  const { isMobile } = useIsMobile();
   const [tempAvatar, setTempAvatar] = useState<string | null>(null);
   const [tempCoverImage, setTempCoverImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -153,6 +158,22 @@ export default function ProfilePage() {
   });
 
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [mainTab, setMainTab] = useState<ProfileMainTab>("profile");
+
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (isProfileMainTab(t)) setMainTab(t);
+  }, [searchParams]);
+
+  const onMainTabChange = useCallback(
+    (v: string) => {
+      if (!isProfileMainTab(v)) return;
+      setMainTab(v);
+      router.replace(`/profile?tab=${v}`, { scroll: false });
+    },
+    [router],
+  );
+
   const payoutBonusPreview = useMemo(() => {
     const v = Math.max(
       Number(storeUser?.verification_status ?? 0),
@@ -603,9 +624,34 @@ export default function ProfilePage() {
           ← Back to Dashboard
         </Link>
 
-        <div className="grid gap-6 md:gap-8 md:grid-cols-3 mt-2 min-w-0">
-          {/* Profile first on all breakpoints; gap-0 py-0: Card defaults would inset the cover & add dead space */}
-          <Card className="order-1 md:col-span-1 border-0 rounded-2xl overflow-visible bg-white relative z-10 md:-mr-4 gap-0 py-0 shadow-[0_20px_50px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70">
+        <Tabs value={mainTab} onValueChange={onMainTabChange} className="mt-2 w-full min-w-0">
+          <TabsList
+            className="grid h-auto w-full grid-cols-3 gap-1 rounded-xl bg-slate-100/90 p-1 ring-1 ring-slate-200/60"
+            aria-label="Profile sections"
+          >
+            <TabsTrigger
+              value="profile"
+              className="rounded-lg py-2.5 text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm sm:text-sm"
+            >
+              Profile
+            </TabsTrigger>
+            <TabsTrigger
+              value="listings"
+              className="rounded-lg px-1.5 py-2.5 text-[11px] font-semibold leading-tight data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm sm:px-3 sm:text-sm whitespace-normal sm:whitespace-nowrap"
+            >
+              <span className="sm:hidden">Listings</span>
+              <span className="hidden sm:inline">Listings &amp; workspace</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="reviews"
+              className="rounded-lg py-2.5 text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm sm:text-sm"
+            >
+              Reviews
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="profile" className="mt-4 min-w-0 focus-visible:outline-none md:mt-6" tabIndex={-1}>
+          <Card className="border-0 rounded-2xl overflow-visible bg-white relative z-10 gap-0 py-0 shadow-[0_20px_50px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70">
             {(hasCoverImage || profileuser.isEditing) && (
               <div
                 className={`rounded-t-2xl bg-slate-100 relative overflow-hidden ${
@@ -1092,7 +1138,10 @@ export default function ProfilePage() {
               )}
             </CardContent>
           </Card>
-          <Card className="order-2 md:col-span-2 border-0 gap-0 py-0 shadow-[0_20px_50px_-12px_rgba(15,23,42,0.1)] rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200/70 relative z-0 md:ml-[-1rem]">
+          </TabsContent>
+
+          <TabsContent value="listings" className="mt-4 min-w-0 focus-visible:outline-none md:mt-6" tabIndex={-1}>
+          <Card className="border-0 gap-0 py-0 shadow-[0_20px_50px_-12px_rgba(15,23,42,0.1)] rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200/70 relative z-0">
             <CardHeader className="border-b border-slate-100/90 bg-white py-3.5 sm:py-4 px-4 sm:px-6">
               <CardTitle className="text-lg sm:text-xl font-semibold text-slate-900 tracking-tight text-left">
                 Listings &amp; workspace
@@ -1103,134 +1152,6 @@ export default function ProfilePage() {
                 <ProfilePortfolioSlider userId={userId} viewerIsOwner />
               ) : null}
               <Accordion type="multiple" defaultValue={["offerings"]} className="w-full rounded-2xl bg-slate-100/60 p-2 sm:p-2.5 space-y-2 ring-1 ring-slate-200/40">
-                <AccordionItem
-                  value="reviews"
-                  className="rounded-xl border-0 bg-white px-1 sm:px-2 border-b-0 shadow-sm ring-1 ring-slate-200/50 data-[state=open]:shadow-md"
-                >
-                  <AccordionTrigger className="hover:no-underline py-3 sm:py-3.5 px-2 sm:px-3 text-left rounded-lg hover:bg-slate-50/80">
-                    <span className="flex items-center gap-3 pr-2">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-                        <Star className="h-5 w-5 fill-amber-200/80" aria-hidden />
-                      </span>
-                      <span className="text-[15px] font-semibold text-slate-900">Reviews</span>
-                    </span>
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-4 px-2 sm:px-3">
-                  <Tabs defaultValue="tasker" className="space-y-4">
-                    <TabsList className="w-full grid grid-cols-2 rounded-xl bg-slate-100/80 p-1.5 h-12">
-                      <TabsTrigger value="tasker" className="rounded-lg font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">
-                        Reviews as Tasker
-                      </TabsTrigger>
-                      <TabsTrigger value="taskmaster" className="rounded-lg font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">
-                        Reviews as Taskmaster
-                      </TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="tasker" className="space-y-5 mt-0">
-                      {reviews.filter((r) => (r.role || "tasker") === "tasker").length > 0 ? (
-                        reviews
-                          .filter((r) => (r.role || "tasker") === "tasker")
-                          .map((review) => (
-                            <div
-                              key={review.id}
-                              className="group rounded-2xl border border-slate-100 bg-gradient-to-br from-white to-slate-50/50 p-5 space-y-3 shadow-sm hover:shadow-lg hover:border-emerald-100 transition-all duration-300"
-                            >
-                              <div className="flex items-start gap-4">
-                                <Avatar className="h-14 w-14 shrink-0 ring-2 ring-white shadow-md">
-                                  <AvatarImage src={review.reviewer_avatar} alt={review.reviewer_name} />
-                                  <AvatarFallback className="bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-700 text-lg font-semibold">
-                                    {(review.reviewer_name || "A").charAt(0)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                                    <span className="font-semibold text-slate-800">{review.reviewer_name || "Anonymous"}</span>
-                                    <span className="text-xs text-slate-500 font-medium">{review.date}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 mb-2">
-                                    {[...Array(5)].map((_, i) => (
-                                      <Star
-                                        key={i}
-                                        className={`h-4 w-4 ${i < review.rating ? "fill-amber-400 text-amber-400 drop-shadow-sm" : "text-slate-200"}`}
-                                      />
-                                    ))}
-                                    <span className="text-sm font-medium text-slate-600 ml-1">{review.rating}/5</span>
-                                  </div>
-                                  {review.jobTitle && (
-                                    <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-100">
-                                      <Briefcase className="h-4 w-4 shrink-0 text-emerald-600" />
-                                      <span className="text-sm font-semibold text-emerald-800">{review.jobTitle}</span>
-                                    </div>
-                                  )}
-                                  <blockquote className="text-sm text-slate-600 leading-relaxed pl-2 border-l-2 border-emerald-200 italic">
-                                    {review.comment}
-                                  </blockquote>
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                      ) : (
-                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
-                          <Star className="h-12 w-12 mx-auto text-slate-300 mb-3" />
-                          <p className="text-slate-500 font-medium">No reviews as tasker yet.</p>
-                          <p className="text-sm text-slate-400 mt-1">Complete tasks to receive reviews.</p>
-                        </div>
-                      )}
-                    </TabsContent>
-                    <TabsContent value="taskmaster" className="space-y-5 mt-0">
-                      {reviews.filter((r) => r.role === "taskmaster").length > 0 ? (
-                        reviews
-                          .filter((r) => r.role === "taskmaster")
-                          .map((review) => (
-                            <div
-                              key={review.id}
-                              className="group rounded-2xl border border-slate-100 bg-gradient-to-br from-white to-slate-50/50 p-5 space-y-3 shadow-sm hover:shadow-lg hover:border-cyan-100 transition-all duration-300"
-                            >
-                              <div className="flex items-start gap-4">
-                                <Avatar className="h-14 w-14 shrink-0 ring-2 ring-white shadow-md">
-                                  <AvatarImage src={review.reviewer_avatar} alt={review.reviewer_name} />
-                                  <AvatarFallback className="bg-gradient-to-br from-cyan-100 to-teal-100 text-cyan-700 text-lg font-semibold">
-                                    {(review.reviewer_name || "A").charAt(0)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                                    <span className="font-semibold text-slate-800">{review.reviewer_name || "Anonymous"}</span>
-                                    <span className="text-xs text-slate-500 font-medium">{review.date}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 mb-2">
-                                    {[...Array(5)].map((_, i) => (
-                                      <Star
-                                        key={i}
-                                        className={`h-4 w-4 ${i < review.rating ? "fill-amber-400 text-amber-400 drop-shadow-sm" : "text-slate-200"}`}
-                                      />
-                                    ))}
-                                    <span className="text-sm font-medium text-slate-600 ml-1">{review.rating}/5</span>
-                                  </div>
-                                  {review.jobTitle && (
-                                    <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-cyan-50 border border-cyan-100">
-                                      <Briefcase className="h-4 w-4 shrink-0 text-cyan-600" />
-                                      <span className="text-sm font-semibold text-cyan-800">{review.jobTitle}</span>
-                                    </div>
-                                  )}
-                                  <blockquote className="text-sm text-slate-600 leading-relaxed pl-2 border-l-2 border-cyan-200 italic">
-                                    {review.comment}
-                                  </blockquote>
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                      ) : (
-                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
-                          <Star className="h-12 w-12 mx-auto text-slate-300 mb-3" />
-                          <p className="text-slate-500 font-medium">No reviews as taskmaster yet.</p>
-                          <p className="text-sm text-slate-400 mt-1">Post tasks and complete them to receive reviews.</p>
-                        </div>
-                      )}
-                    </TabsContent>
-                  </Tabs>
-                  </AccordionContent>
-                </AccordionItem>
-
                 <AccordionItem
                   id="profile-offerings"
                   value="offerings"
@@ -1298,7 +1219,138 @@ export default function ProfilePage() {
               </Accordion>
             </CardContent>
           </Card>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="reviews" className="mt-4 min-w-0 focus-visible:outline-none md:mt-6" tabIndex={-1}>
+            <Card className="border-0 gap-0 py-0 shadow-[0_20px_50px_-12px_rgba(15,23,42,0.1)] rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200/70">
+              <CardHeader className="border-b border-slate-100/90 bg-white py-3.5 sm:py-4 px-4 sm:px-6">
+                <CardTitle className="text-lg sm:text-xl font-semibold text-slate-900 tracking-tight text-left">
+                  Reviews
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4 px-3 sm:px-6 pb-6 bg-slate-50/30">
+                <Tabs defaultValue="tasker" className="space-y-4">
+                  <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl bg-slate-100/80 p-1.5 min-h-12">
+                    <TabsTrigger
+                      value="tasker"
+                      className="rounded-lg px-2 py-2 text-xs font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 data-[state=active]:font-semibold sm:text-sm"
+                    >
+                      As tasker
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="taskmaster"
+                      className="rounded-lg px-2 py-2 text-xs font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 data-[state=active]:font-semibold sm:text-sm"
+                    >
+                      As taskmaster
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="tasker" className="space-y-5 mt-0">
+                    {reviews.filter((r) => (r.role || "tasker") === "tasker").length > 0 ? (
+                      reviews
+                        .filter((r) => (r.role || "tasker") === "tasker")
+                        .map((review) => (
+                          <div
+                            key={review.id}
+                            className="group rounded-2xl border border-slate-100 bg-gradient-to-br from-white to-slate-50/50 p-5 space-y-3 shadow-sm hover:shadow-lg hover:border-emerald-100 transition-all duration-300"
+                          >
+                            <div className="flex items-start gap-4">
+                              <Avatar className="h-14 w-14 shrink-0 ring-2 ring-white shadow-md">
+                                <AvatarImage src={review.reviewer_avatar} alt={review.reviewer_name} />
+                                <AvatarFallback className="bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-700 text-lg font-semibold">
+                                  {(review.reviewer_name || "A").charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                  <span className="font-semibold text-slate-800">{review.reviewer_name || "Anonymous"}</span>
+                                  <span className="text-xs text-slate-500 font-medium">{review.date}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 mb-2">
+                                  {[...Array(5)].map((_, i) => (
+                                    <Star
+                                      key={i}
+                                      className={`h-4 w-4 ${i < review.rating ? "fill-amber-400 text-amber-400 drop-shadow-sm" : "text-slate-200"}`}
+                                    />
+                                  ))}
+                                  <span className="text-sm font-medium text-slate-600 ml-1">{review.rating}/5</span>
+                                </div>
+                                {review.jobTitle && (
+                                  <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-100">
+                                    <Briefcase className="h-4 w-4 shrink-0 text-emerald-600" />
+                                    <span className="text-sm font-semibold text-emerald-800">{review.jobTitle}</span>
+                                  </div>
+                                )}
+                                <blockquote className="text-sm text-slate-600 leading-relaxed pl-2 border-l-2 border-emerald-200 italic">
+                                  {review.comment}
+                                </blockquote>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
+                        <Star className="h-12 w-12 mx-auto text-slate-300 mb-3" />
+                        <p className="text-slate-500 font-medium">No reviews as tasker yet.</p>
+                        <p className="text-sm text-slate-400 mt-1">Complete tasks to receive reviews.</p>
+                      </div>
+                    )}
+                  </TabsContent>
+                  <TabsContent value="taskmaster" className="space-y-5 mt-0">
+                    {reviews.filter((r) => r.role === "taskmaster").length > 0 ? (
+                      reviews
+                        .filter((r) => r.role === "taskmaster")
+                        .map((review) => (
+                          <div
+                            key={review.id}
+                            className="group rounded-2xl border border-slate-100 bg-gradient-to-br from-white to-slate-50/50 p-5 space-y-3 shadow-sm hover:shadow-lg hover:border-cyan-100 transition-all duration-300"
+                          >
+                            <div className="flex items-start gap-4">
+                              <Avatar className="h-14 w-14 shrink-0 ring-2 ring-white shadow-md">
+                                <AvatarImage src={review.reviewer_avatar} alt={review.reviewer_name} />
+                                <AvatarFallback className="bg-gradient-to-br from-cyan-100 to-teal-100 text-cyan-700 text-lg font-semibold">
+                                  {(review.reviewer_name || "A").charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                  <span className="font-semibold text-slate-800">{review.reviewer_name || "Anonymous"}</span>
+                                  <span className="text-xs text-slate-500 font-medium">{review.date}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 mb-2">
+                                  {[...Array(5)].map((_, i) => (
+                                    <Star
+                                      key={i}
+                                      className={`h-4 w-4 ${i < review.rating ? "fill-amber-400 text-amber-400 drop-shadow-sm" : "text-slate-200"}`}
+                                    />
+                                  ))}
+                                  <span className="text-sm font-medium text-slate-600 ml-1">{review.rating}/5</span>
+                                </div>
+                                {review.jobTitle && (
+                                  <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-cyan-50 border border-cyan-100">
+                                    <Briefcase className="h-4 w-4 shrink-0 text-cyan-600" />
+                                    <span className="text-sm font-semibold text-cyan-800">{review.jobTitle}</span>
+                                  </div>
+                                )}
+                                <blockquote className="text-sm text-slate-600 leading-relaxed pl-2 border-l-2 border-cyan-200 italic">
+                                  {review.comment}
+                                </blockquote>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
+                        <Star className="h-12 w-12 mx-auto text-slate-300 mb-3" />
+                        <p className="text-slate-500 font-medium">No reviews as taskmaster yet.</p>
+                        <p className="text-sm text-slate-400 mt-1">Post tasks and complete them to receive reviews.</p>
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
