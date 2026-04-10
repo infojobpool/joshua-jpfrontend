@@ -13,8 +13,8 @@ import { prefetchBidsForTask } from "@/lib/taskNavCache";
 
 const PLACEHOLDER = "/images/placeholder.svg";
 const DESKTOP_MAX = 12;
-/** Mobile recent-tasks strip: auto-scroll speed (px/s) — time-based for smooth sliding */
-const MOBILE_RECENT_AUTO_SCROLL_PX_PER_SEC = 40;
+/** Mobile recent-tasks strip: auto-scroll speed (px/s) — time-based; keep modest so swipe still feels natural */
+const MOBILE_RECENT_AUTO_SCROLL_PX_PER_SEC = 52;
 
 function formatBudget(n: number) {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
@@ -59,7 +59,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     resumeUserScrollTimerRef.current = setTimeout(() => {
       resumeUserScrollTimerRef.current = null;
       autoScrollFromUserRef.current = false;
-    }, 2800);
+    }, 3200);
   }, []);
 
   useEffect(() => {
@@ -199,8 +199,14 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
         <p className="mb-3 text-sm text-gray-500">Open tasks you can apply for right now</p>
         <div
           ref={mobileScrollRef}
-          className="overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x scroll-smooth pb-2 [overflow-anchor:none]"
-          style={{ WebkitOverflowScrolling: "touch" }}
+          className="overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x scroll-auto snap-x snap-mandatory pb-2 [overflow-anchor:none] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          style={{ WebkitOverflowScrolling: "touch", scrollBehavior: "auto" }}
+          onPointerDown={() => {
+            if (resumeMarqueeTimerRef.current) clearTimeout(resumeMarqueeTimerRef.current);
+            setMarqueePaused(true);
+          }}
+          onPointerUp={scheduleMarqueeResume}
+          onPointerCancel={scheduleMarqueeResume}
           onTouchStart={() => {
             if (resumeMarqueeTimerRef.current) clearTimeout(resumeMarqueeTimerRef.current);
             setMarqueePaused(true);
@@ -216,7 +222,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
               <Link
                 key={`${t.id}-${idx}`}
                 href={`/tasks/${t.id}`}
-                className="group shrink-0 snap-start overflow-hidden rounded-2xl border border-gray-200/60 bg-white shadow-lg shadow-black/5 w-64"
+                className="group w-64 shrink-0 snap-start overflow-hidden rounded-2xl border border-gray-200/60 bg-white shadow-lg shadow-black/5 [scroll-snap-stop:always]"
                 onMouseEnter={() => {
                   try {
                     prefetchBidsForTask(t.id);
