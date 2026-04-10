@@ -39,6 +39,7 @@ import {
   Wallet,
   Package,
   Landmark,
+  Inbox,
 } from "lucide-react";
 import useStore from "../../lib/Zustand";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
@@ -52,6 +53,8 @@ import {
 } from "@/lib/payoutProfileCompletion";
 import { toast } from "sonner";
 import { ProfileOfferingsPanel } from "@/components/profile/ProfileOfferingsPanel";
+import { OfferingsPortfolioHero } from "@/components/profile/OfferingsPortfolioHero";
+import { ListingRequestsPanel } from "@/components/profile/ListingRequestsPanel";
 
 /** Android WebView: force visible text in fields (avoids white-on-white). */
 const PROFILE_FIELD_TEXT = {
@@ -1006,17 +1009,21 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
           <Card className="order-1 md:order-2 md:col-span-2 border-0 shadow-lg rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200/80 relative z-0 md:ml-[-1rem]">
-            <CardHeader className="border-b border-slate-100 bg-white py-5">
+            <CardHeader className="border-b border-slate-100/80 bg-gradient-to-b from-slate-50/95 via-white to-white py-6">
               <CardTitle className="text-xl font-bold text-slate-800 tracking-tight">Offerings &amp; workspace</CardTitle>
               <CardDescription className="text-slate-500">
-                Your services, bank details, and reviews — offerings open first
+                Portfolio and listings up top — bank and reviews below
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-4 px-3 sm:px-6">
+            <CardContent className="pt-5 px-3 sm:px-6 space-y-6">
+              {userId ? (
+                <OfferingsPortfolioHero userId={userId} viewerIsOwner />
+              ) : null}
               <Accordion type="multiple" defaultValue={["offerings"]} className="w-full space-y-3">
                 <AccordionItem
+                  id="profile-offerings"
                   value="offerings"
-                  className="rounded-2xl border border-emerald-200/60 bg-emerald-50/20 px-3 sm:px-4 border-b-0"
+                  className="rounded-2xl border border-emerald-200/60 bg-emerald-50/20 px-3 sm:px-4 border-b-0 scroll-mt-4"
                 >
                   <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
                     <span className="flex flex-wrap items-center gap-2 pr-2">
@@ -1029,6 +1036,25 @@ export default function ProfilePage() {
                       <ProfileOfferingsPanel userId={userId} />
                     ) : (
                       <p className="text-sm text-slate-500">Sign in to manage offerings.</p>
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem
+                  value="listing-requests"
+                  className="rounded-2xl border border-slate-200/80 bg-white px-3 sm:px-4 border-b-0"
+                >
+                  <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
+                    <span className="flex items-center gap-2">
+                      <Inbox className="h-5 w-5 text-emerald-600 shrink-0" aria-hidden />
+                      <span className="text-base font-semibold text-slate-900">Listing requests</span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-4">
+                    {userId ? (
+                      <ListingRequestsPanel userId={userId} />
+                    ) : (
+                      <p className="text-sm text-slate-500">Sign in to see requests.</p>
                     )}
                   </AccordionContent>
                 </AccordionItem>

@@ -44,8 +44,6 @@ export function ProfileOfferingsPanel({ userId }: Props) {
     refresh();
   }, [refresh]);
 
-  const publicList = list.filter((o) => o.status === "published");
-
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -66,22 +64,6 @@ export function ProfileOfferingsPanel({ userId }: Props) {
         </Button>
       </div>
 
-      {publicList.length > 0 && (
-        <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Preview — public on your profile</p>
-          <ul className="space-y-2">
-            {publicList.map((o) => (
-              <li key={o.id} className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-700">
-                <span className="font-medium text-slate-900">{o.title || "Untitled"}</span>
-                <span className="text-emerald-700 font-semibold tabular-nums">
-                  Starting from ₹{Math.round(o.startingPriceInr).toLocaleString("en-IN")}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       {list.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-10 text-center">
           <Package className="mx-auto h-12 w-12 text-slate-300" />
@@ -92,53 +74,73 @@ export function ProfileOfferingsPanel({ userId }: Props) {
           </Button>
         </div>
       ) : (
-        <ul className="space-y-3">
-          {list.map((o) => (
-            <li
-              key={o.id}
-              className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  {statusBadge(o.status)}
-                  <span className="text-xs font-medium uppercase text-slate-400">{o.type}</span>
+        <ul className="space-y-4">
+          {list.map((o) => {
+            const cover = o.photoUrls?.[0];
+            return (
+              <li
+                key={o.id}
+                className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-md ring-1 ring-slate-900/[0.04] sm:flex sm:min-h-[148px]"
+              >
+                <div className="relative aspect-[16/10] sm:aspect-auto sm:w-44 sm:max-w-[40%] sm:shrink-0 bg-gradient-to-br from-slate-100 via-slate-50 to-emerald-50/40">
+                  {cover ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={cover} alt="" className="h-full w-full min-h-[120px] sm:min-h-0 object-cover" />
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-900/25 to-transparent sm:bg-gradient-to-r" />
+                    </>
+                  ) : (
+                    <div className="flex h-full min-h-[120px] sm:min-h-full items-center justify-center">
+                      <Package className="h-11 w-11 text-slate-200" aria-hidden />
+                    </div>
+                  )}
                 </div>
-                <p className="mt-1 font-semibold text-slate-900 truncate">{o.title || "Untitled draft"}</p>
-                {o.category ? <p className="text-xs text-slate-500 mt-0.5">{o.category}</p> : null}
-                <p className="text-sm text-emerald-700 font-semibold mt-1 tabular-nums">
-                  Starting from ₹{Math.round(o.startingPriceInr).toLocaleString("en-IN")}
-                </p>
-                {o.locationText ? (
-                  <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
-                    <MapPin className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{o.locationText}</span>
-                  </p>
-                ) : null}
-              </div>
-              <div className="flex flex-wrap gap-2 shrink-0">
-                <Button asChild variant="outline" size="sm" className="rounded-lg">
-                  <Link href={`/profile/offerings/${o.id}/edit`}>
-                    <PencilLine className="mr-1.5 h-3.5 w-3.5" />
-                    Edit
-                  </Link>
-                </Button>
-                {o.status === "draft" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50"
-                    type="button"
-                    onClick={() => {
-                      deleteOffering(userId, o.id);
-                      refresh();
-                    }}
-                  >
-                    Delete
-                  </Button>
-                )}
-              </div>
-            </li>
-          ))}
+                <div className="flex min-w-0 flex-1 flex-col justify-center gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:pl-5">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {statusBadge(o.status)}
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{o.type}</span>
+                    </div>
+                    <p className="mt-1.5 font-semibold text-slate-900 text-base leading-snug line-clamp-2">
+                      {o.title || "Untitled draft"}
+                    </p>
+                    {o.category ? <p className="text-xs text-slate-500 mt-0.5">{o.category}</p> : null}
+                    <p className="text-sm text-emerald-700 font-bold mt-1.5 tabular-nums tracking-tight">
+                      Starting from ₹{Math.round(o.startingPriceInr).toLocaleString("en-IN")}
+                    </p>
+                    {o.locationText ? (
+                      <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
+                        <MapPin className="h-3.5 w-3.5 shrink-0 text-emerald-600/80" />
+                        <span className="truncate">{o.locationText}</span>
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap gap-2 shrink-0">
+                    <Button asChild variant="outline" size="sm" className="rounded-xl border-slate-200 shadow-sm">
+                      <Link href={`/profile/offerings/${o.id}/edit`}>
+                        <PencilLine className="mr-1.5 h-3.5 w-3.5" />
+                        Edit
+                      </Link>
+                    </Button>
+                    {o.status === "draft" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-xl text-red-600 hover:text-red-700 hover:bg-red-50"
+                        type="button"
+                        onClick={() => {
+                          deleteOffering(userId, o.id);
+                          refresh();
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

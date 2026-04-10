@@ -1,17 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { MapPin, Package } from "lucide-react";
+import { MapPin, MessageSquare, Package, CalendarCheck } from "lucide-react";
 import type { Offering } from "@/lib/offerings/types";
 import { loadOfferings } from "@/lib/offerings/storage";
+import { Button } from "@/components/ui/button";
+import useStore from "@/lib/Zustand";
 
 type Props = {
   profileUserId: string;
+  providerName?: string;
   viewerIsOwner?: boolean;
 };
 
-export function PublicOfferingsList({ profileUserId, viewerIsOwner }: Props) {
+function listingRequestPath(providerId: string, providerName: string, o: Offering): string {
+  const q = new URLSearchParams({
+    providerId,
+    providerName,
+    offeringId: o.id,
+    title: o.title || "Offering",
+    type: o.type,
+    price: String(Math.round(o.startingPriceInr)),
+    location: o.locationText || "",
+  });
+  return `/listing-request?${q.toString()}`;
+}
+
+function signinNextPath(path: string): string {
+  return `/signin?next=${encodeURIComponent(path)}`;
+}
+
+export function PublicOfferingsList({ profileUserId, providerName = "Provider", viewerIsOwner }: Props) {
   const list = loadOfferings(profileUserId).filter((o) => o.status === "published");
+  const { userId } = useStore();
 
   if (list.length === 0) {
     return (
@@ -36,31 +57,94 @@ export function PublicOfferingsList({ profileUserId, viewerIsOwner }: Props) {
   }
 
   return (
-    <ul className="grid gap-3 sm:grid-cols-2">
+    <ul className="grid gap-4 sm:grid-cols-2">
       {list.map((o) => (
-        <PublicOfferingCard key={o.id} offering={o} />
+        <PublicOfferingCard
+          key={o.id}
+          offering={o}
+          providerId={profileUserId}
+          providerName={providerName}
+          viewerIsOwner={Boolean(viewerIsOwner)}
+          viewerId={userId}
+        />
       ))}
     </ul>
   );
 }
 
-function PublicOfferingCard({ offering: o }: { offering: Offering }) {
+function PublicOfferingCard({
+  offering: o,
+  providerId,
+  providerName,
+  viewerIsOwner,
+  viewerId,
+}: {
+  offering: Offering;
+  providerId: string;
+  providerName: string;
+  viewerIsOwner: boolean;
+  viewerId: string | null;
+}) {
+  const cover = o.photoUrls?.[0];
+  const requestPath = listingRequestPath(providerId, providerName, o);
+  const messagePath = `/messages/new?${new URLSearchParams({
+    receiver: providerId,
+    receiverName: providerName,
+    context: `Hi — I'm interested in "${(o.title || "your listing").slice(0, 80)}". `,
+  }).toString()}`;
+
+  const showActions = !viewerIsOwner && (!viewerId || viewerId !== providerId);
+
   return (
-    <li className="rounded-2xl border border-slate-100 bg-gradient-to-br from-white to-slate-50/80 p-4 shadow-sm ring-1 ring-slate-100/80">
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">{o.type}</span>
-        <span className="text-sm font-bold tabular-nums text-slate-900">
-          From ₹{Math.round(o.startingPriceInr).toLocaleString("en-IN")}
-        </span>
+    <li className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-md ring-1 ring-slate-900/[0.04] flex flex-col">
+      <div className="relative aspect-[16/10] w-full shrink-0 bg-gradient-to-br from-slate-100 to-emerald-50/30">
+        {cover ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={cover} alt="" className="h-full w-full object-cover" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-slate-950/10" />
+          </>
+        ) : (
+          <div className="flex h-full min-h-[140px] items-center justify-center">
+            <Package className="h-12 w-12 text-slate-200" aria-hidden />
+          </div>
+        )}
       </div>
-      <p className="mt-2 font-semibold text-slate-900 line-clamp-2">{o.title || "Offering"}</p>
-      {o.category ? <p className="mt-0.5 text-xs text-slate-500">{o.category}</p> : null}
-      {o.locationText ? (
-        <p className="mt-2 flex items-center gap-1 text-xs text-slate-500">
-          <MapPin className="h-3 w-3 shrink-0" />
-          <span className="line-clamp-1">{o.locationText}</span>
-        </p>
-      ) : null}
+      <div className="p-4 flex flex-col flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">{o.type}</span>
+          <span className="text-sm font-bold tabular-nums text-slate-900 shrink-0">
+            From ₹{Math.round(o.startingPriceInr).toLocaleString("en-IN")}
+          </span>
+        </div>
+        <p className="mt-2 font-semibold text-slate-900 line-clamp-2 leading-snug">{o.title || "Offering"}</p>
+        {o.category ? <p className="mt-1 text-xs text-slate-500">{o.category}</p> : null}
+        {o.locationText ? (
+          <p className="mt-2 flex items-center gap-1 text-xs text-slate-500">
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-emerald-600/70" />
+            <span className="line-clamp-1">{o.locationText}</span>
+          </p>
+        ) : null}
+
+        {showActions ? (
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <Button asChild className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 shadow-sm" size="sm">
+              <Link href={viewerId ? requestPath : signinNextPath(requestPath)}>
+                <CalendarCheck className="mr-2 h-4 w-4 shrink-0" />
+                Request booking
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full rounded-xl border-slate-200 shadow-sm" size="sm">
+              <Link href={viewerId ? messagePath : signinNextPath(messagePath)}>
+                <MessageSquare className="mr-2 h-4 w-4 shrink-0" />
+                Message
+              </Link>
+            </Button>
+          </div>
+        ) : viewerIsOwner ? (
+          <p className="mt-4 text-xs text-slate-500">This is your public listing — visitors see Request booking and Message.</p>
+        ) : null}
+      </div>
     </li>
   );
 }

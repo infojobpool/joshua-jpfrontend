@@ -2,7 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -20,12 +20,14 @@ import axiosInstance from "../../lib/axiosInstance";
 import useStore from "../../lib/Zustand";
 import axios, { AxiosError } from "axios";
 import { MobileSignIn } from "../../components/mobile/MobileAuth";
+import { getSafeRelativeNext } from "@/lib/safeNextRedirect";
 import { useIsMobile } from "../../components/mobile/MobileWrapper";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function SignInPage() {
   const { login, isAuthenticated, checkAuth } = useStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isMobile } = useIsMobile();
   const [formData, setFormData] = useState({
     email: "",
@@ -45,9 +47,10 @@ export default function SignInPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace("/dashboard");
+      const next = getSafeRelativeNext(searchParams.get("next"));
+      router.replace(next ?? "/dashboard");
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, searchParams]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -89,8 +92,9 @@ export default function SignInPage() {
 
         toast.success("Login successful!");
 
+        const next = getSafeRelativeNext(searchParams.get("next"));
         if (user.verification_status === 0) router.push("/verification");
-        else router.push("/dashboard");
+        else router.push(next ?? "/dashboard");
       } else {
         const errorMessage = response.data.message || "Login failed";
         // Check if error is related to email verification

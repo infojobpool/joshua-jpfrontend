@@ -15,6 +15,7 @@ const MOBILE_BOTTOM_NAV_HIDDEN_PREFIXES = [
   "/bankverification",
   "/payments",
   "/payment-callback",
+  "/listing-request",
   "/admin",
 ] as const;
 
@@ -39,5 +40,5 @@ export function isMobileBottomNavHidden(pathname: string | null): boolean {
 export function isAppFooterHidden(pathname: string | null): boolean {
   if (!pathname) return false;
   const p = normalizePathname(pathname);
-  return p === "/post-task" || p.startsWith("/post-task/");
+  return p === "/post-task" || p.startsWith("/post-task/") || p === "/listing-request";
 }

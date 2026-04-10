@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Star, MapPin, Briefcase, Package, Sparkles, History } from "lucide-react";
+import { Star, MapPin, Briefcase, Package, History } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
@@ -28,8 +28,8 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { PublicOfferingsList } from "@/components/profile/PublicOfferingsList";
+import { OfferingsPortfolioHero } from "@/components/profile/OfferingsPortfolioHero";
 import { RecentWorksChips } from "@/components/profile/RecentWorksChips";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 
@@ -232,31 +232,32 @@ export default function ProfilePageClient() {
 
           {/* Listings, recent work, reviews — collapsible */}
           <div className="md:col-span-2 space-y-4">
-            <Card className="border-0 shadow-xl rounded-2xl overflow-hidden ring-1 ring-slate-200/50">
-              <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-emerald-50/40 py-5">
+            <Card className="border-0 shadow-lg rounded-2xl overflow-hidden ring-1 ring-slate-200/80">
+              <CardHeader className="border-b border-slate-100/80 bg-gradient-to-b from-slate-50/95 via-white to-white py-6">
                 <CardTitle className="text-xl font-bold text-slate-800">About this member</CardTitle>
                 <CardDescription>
-                  Listings, recent work from reviews, and feedback from the community
+                  Portfolio and listings first — recent work and reviews below
                 </CardDescription>
               </CardHeader>
-              <CardContent className="pt-4 px-3 sm:px-6 pb-6">
+              <CardContent className="pt-5 px-3 sm:px-6 pb-6 space-y-6">
+                <OfferingsPortfolioHero userId={profileIdStr} viewerIsOwner={viewerIsOwner} />
                 <Accordion type="multiple" defaultValue={["listings", "recent"]} className="w-full space-y-3">
                   <AccordionItem
                     value="listings"
-                    className="rounded-2xl border-2 border-amber-400/40 bg-gradient-to-br from-amber-50/40 via-white to-emerald-50/20 px-3 sm:px-4 shadow-[0_0_0_1px_rgba(16,185,129,0.1)] border-b-0"
+                    className="rounded-2xl border border-emerald-200/60 bg-emerald-50/20 px-3 sm:px-4 border-b-0"
                   >
                     <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
                       <span className="flex flex-wrap items-center gap-2 pr-2">
-                        <Package className="h-5 w-5 text-amber-600 shrink-0" />
-                        <span className="text-base font-bold text-slate-900">Public listings</span>
-                        <Badge className="border-amber-300/60 bg-amber-100/90 text-amber-900 hover:bg-amber-100 gap-1">
-                          <Sparkles className="h-3 w-3" />
-                          Services &amp; products
-                        </Badge>
+                        <Package className="h-5 w-5 text-emerald-600 shrink-0" />
+                        <span className="text-base font-semibold text-slate-900">Public listings</span>
                       </span>
                     </AccordionTrigger>
                     <AccordionContent className="pb-4">
-                      <PublicOfferingsList profileUserId={profileIdStr} viewerIsOwner={viewerIsOwner} />
+                      <PublicOfferingsList
+                        profileUserId={profileIdStr}
+                        providerName={profileUser.name || "Member"}
+                        viewerIsOwner={viewerIsOwner}
+                      />
                     </AccordionContent>
                   </AccordionItem>
 

@@ -15,6 +15,8 @@ export interface Offering {
   locationText: string;
   /** Shown as "Starting from ₹…" */
   startingPriceInr: number;
+  /** Portfolio / catalogue images (data URLs or https), shown in listing cards and profile hero */
+  photoUrls: string[];
   status: OfferingStatus;
   createdAt: number;
   updatedAt: number;

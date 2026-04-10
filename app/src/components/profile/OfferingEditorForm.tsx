@@ -21,6 +21,19 @@ import {
 } from "@/lib/offerings/storage";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ImagePlus, X } from "lucide-react";
+
+const MAX_OFFERING_PHOTOS = 6;
+const MAX_PHOTO_BYTES = 650 * 1024;
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result ?? ""));
+    r.onerror = () => reject(new Error("read failed"));
+    r.readAsDataURL(file);
+  });
+}
 
 const PROFILE_FIELD_TEXT = {
   color: "#0f172a",
@@ -118,6 +131,39 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
     toast.success("Offering is live again");
   };
 
+  const addPhotosFromFiles = async (files: FileList | null) => {
+    if (!files?.length) return;
+    const current = o.photoUrls ?? [];
+    const room = MAX_OFFERING_PHOTOS - current.length;
+    if (room <= 0) {
+      toast.error(`You can add up to ${MAX_OFFERING_PHOTOS} photos per listing.`);
+      return;
+    }
+    const nextUrls = [...current];
+    for (const file of Array.from(files)) {
+      if (nextUrls.length >= MAX_OFFERING_PHOTOS) break;
+      if (!file.type.startsWith("image/")) {
+        toast.error(`${file.name} is not an image.`);
+        continue;
+      }
+      if (file.size > MAX_PHOTO_BYTES) {
+        toast.error(`${file.name} is too large (max ${Math.round(MAX_PHOTO_BYTES / 1024)} KB).`);
+        continue;
+      }
+      try {
+        nextUrls.push(await readFileAsDataUrl(file));
+      } catch {
+        toast.error(`Could not read ${file.name}.`);
+      }
+    }
+    update({ photoUrls: nextUrls });
+  };
+
+  const removePhotoAt = (index: number) => {
+    const next = (o.photoUrls ?? []).filter((_, i) => i !== index);
+    update({ photoUrls: next });
+  };
+
   return (
     <div className="mx-auto max-w-lg space-y-6 px-4 py-8 md:px-0">
       <div className="flex items-center justify-between gap-3">
@@ -182,6 +228,48 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
           className="rounded-xl resize-y min-h-[120px]"
           style={PROFILE_FIELD_TEXT}
         />
+      </div>
+
+      <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+        <div>
+          <Label className="text-base">Portfolio photos</Label>
+          <p className="text-xs text-slate-500 mt-1">
+            Shown in your profile catalogue and on listing cards. Up to {MAX_OFFERING_PHOTOS} images, max{" "}
+            {Math.round(MAX_PHOTO_BYTES / 1024)} KB each.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(o.photoUrls ?? []).map((url, i) => (
+            <div key={`${url.slice(0, 48)}_${i}`} className="relative h-20 w-20 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt="" className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => removePhotoAt(i)}
+                className="absolute top-1 right-1 rounded-full bg-slate-900/85 p-1 text-white hover:bg-slate-900"
+                aria-label={`Remove photo ${i + 1}`}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+          {(o.photoUrls ?? []).length < MAX_OFFERING_PHOTOS && (
+            <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-300 bg-white text-slate-500 hover:border-emerald-400 hover:text-emerald-700 transition-colors">
+              <ImagePlus className="h-6 w-6" aria-hidden />
+              <span className="text-[10px] font-semibold uppercase tracking-wide">Add</span>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="sr-only"
+                onChange={(e) => {
+                  void addPhotosFromFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          )}
+        </div>
       </div>
 
       <div className="space-y-2">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -19,25 +19,30 @@ export default function NewMessagePage() {
   const { userId, logout } = useStore()
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
-  
-  const senderId = searchParams.get('sender')
+  const contextSeeded = useRef(false)
+
   const receiverId = searchParams.get('receiver')
   const receiverName = searchParams.get('receiverName') || 'User'
+  const contextHint = searchParams.get('context') || ''
 
   useEffect(() => {
-    if (!userId) {
-      router.push('/signin');
-      return;
-    }
+    if (!userId) return;
 
-    if (!senderId || !receiverId) {
+    if (!receiverId) {
       router.push('/messages');
       return;
     }
-  }, [userId, senderId, receiverId, router]);
+  }, [userId, receiverId, router]);
+
+  useEffect(() => {
+    if (contextHint && !contextSeeded.current) {
+      contextSeeded.current = true
+      setMessage(contextHint)
+    }
+  }, [contextHint])
 
   const sendMessage = async () => {
-    if (!message.trim()) return;
+    if (!message.trim() || !userId || !receiverId) return;
 
     try {
       setLoading(true);
@@ -45,6 +50,12 @@ export default function NewMessagePage() {
       // Get or create chat ID – use create-or-get-chat when job_id present (assigned jobs)
       let chatId;
       const jobId = searchParams.get('job_id');
+      const senderId = userId;
+      if (senderId === receiverId) {
+        toast.error('Cannot message yourself');
+        setLoading(false);
+        return;
+      }
       try {
         if (jobId) {
           const chatResponse = await axiosInstance.get('/create-or-get-chat/', {
@@ -120,11 +131,15 @@ export default function NewMessagePage() {
   };
 
   if (!userId) {
+    const next = `/messages/new?${searchParams.toString()}`
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
+      <div className="flex h-screen items-center justify-center px-4">
+        <div className="text-center max-w-sm">
           <p className="text-lg mb-4">Please log in to send messages</p>
-          <Link href="/signin" className="text-blue-600 hover:underline">
+          <Link
+            href={`/signin?next=${encodeURIComponent(next)}`}
+            className="text-blue-600 font-medium hover:underline"
+          >
             Go to Sign In
           </Link>
         </div>
@@ -132,7 +147,7 @@ export default function NewMessagePage() {
     );
   }
 
-  if (!senderId || !receiverId) {
+  if (!receiverId) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
