@@ -587,7 +587,7 @@ export default function ProfilePage() {
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 via-slate-100/30 to-white">
       <Header user={{ ...profileuser, avatar: resolveAvatarUrl(profileuser.avatar) || profileuser.avatar }} onSignOut={handleSignOut} />
-      <main className="flex-1 container mx-auto max-w-6xl py-6 md:py-10 px-4 md:px-6 pb-28 md:pb-10">
+      <main className="flex-1 w-full min-w-0 max-w-6xl mx-auto box-border overflow-x-hidden py-6 md:py-10 px-4 md:px-6 pb-28 md:pb-10">
         <Link
           href="/dashboard"
           className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-emerald-600 transition-colors mb-6 font-medium"
@@ -595,9 +595,9 @@ export default function ProfilePage() {
           ← Back to Dashboard
         </Link>
 
-        <div className="grid gap-8 md:grid-cols-3 mt-2">
-          {/* Profile card — below workspace on small screens; left column on md+ */}
-          <Card className="order-2 md:order-1 md:col-span-1 border-0 rounded-2xl overflow-visible bg-white relative z-10 md:-mr-4 shadow-lg ring-1 ring-slate-200/80">
+        <div className="grid gap-6 md:gap-8 md:grid-cols-3 mt-2 min-w-0">
+          {/* Profile first on all breakpoints; was order-2 on mobile which pushed it below workspace */}
+          <Card className="order-1 md:col-span-1 border-0 rounded-2xl overflow-visible bg-white relative z-10 md:-mr-4 shadow-lg ring-1 ring-slate-200/80">
             <div
               className="h-32 rounded-t-2xl bg-cover bg-center bg-no-repeat relative"
               style={{
@@ -724,20 +724,20 @@ export default function ProfilePage() {
             <CardContent className="space-y-6 pt-2">
               {!profileuser.isEditing && (
                 <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-xl bg-slate-50/80 p-4 text-center border border-slate-100">
-                      <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
-                        <Calendar className="h-5 w-5 text-emerald-600" />
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    <div className="rounded-xl bg-slate-50/90 p-3 sm:p-3.5 text-center border border-slate-100/90">
+                      <div className="mx-auto mb-1.5 flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100/90">
+                        <Calendar className="h-4 w-4 text-emerald-700" />
                       </div>
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Member since</p>
-                      <p className="text-sm font-bold text-slate-800 mt-1 break-words">{profileuser.joinDate || "—"}</p>
+                      <p className="text-[11px] font-medium text-slate-500">Member since</p>
+                      <p className="text-sm font-semibold text-slate-900 mt-0.5 break-words leading-tight">{profileuser.joinDate || "—"}</p>
                     </div>
-                    <div className="rounded-xl bg-slate-50/80 p-4 text-center border border-slate-100">
-                      <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
-                        <Phone className="h-5 w-5 text-emerald-600" />
+                    <div className="rounded-xl bg-slate-50/90 p-3 sm:p-3.5 text-center border border-slate-100/90">
+                      <div className="mx-auto mb-1.5 flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100/90">
+                        <Phone className="h-4 w-4 text-emerald-700" />
                       </div>
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Contact</p>
-                      <p className="text-sm font-bold text-slate-800 mt-1 break-all">{profileuser.phone || "—"}</p>
+                      <p className="text-[11px] font-medium text-slate-500">Contact</p>
+                      <p className="text-sm font-semibold text-slate-900 mt-0.5 break-all leading-tight">{profileuser.phone || "—"}</p>
                     </div>
                   </div>
                   <TrustBadges
@@ -885,7 +885,7 @@ export default function ProfilePage() {
                 <>
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="contact" className="border-0">
-                      <AccordionTrigger className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3 hover:no-underline">
+                      <AccordionTrigger className="text-sm font-semibold text-slate-800 py-3 hover:no-underline">
                         Contact &amp; profile details
                       </AccordionTrigger>
                       <AccordionContent className="pb-2">
@@ -967,7 +967,7 @@ export default function ProfilePage() {
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="verification" className="border-0 border-t border-slate-100">
-                      <AccordionTrigger className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3 hover:no-underline">
+                      <AccordionTrigger className="text-sm font-semibold text-slate-800 py-3 hover:no-underline">
                         Verification status
                       </AccordionTrigger>
                       <AccordionContent className="pb-2">
@@ -1010,50 +1010,32 @@ export default function ProfilePage() {
               )}
             </CardContent>
           </Card>
-          <Card className="order-1 md:order-2 md:col-span-2 border-0 shadow-lg rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200/80 relative z-0 md:ml-[-1rem]">
-            <CardHeader className="border-b border-slate-100/80 bg-gradient-to-b from-slate-50/95 via-white to-white py-6">
-              <CardTitle className="text-xl font-bold text-slate-800 tracking-tight">Offerings &amp; workspace</CardTitle>
-              <CardDescription className="text-slate-500">
-                Portfolio showcase first — then listings, bank, and reviews
+          <Card className="order-2 md:col-span-2 border-0 shadow-lg rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200/80 relative z-0 md:ml-[-1rem]">
+            <CardHeader className="border-b border-slate-100/90 bg-white py-4 sm:py-5 px-4 sm:px-6">
+              <CardTitle className="text-lg sm:text-xl font-semibold text-slate-900 tracking-tight">
+                Listings &amp; workspace
+              </CardTitle>
+              <CardDescription className="text-slate-500 text-sm mt-1 leading-relaxed">
+                Your public services first — then portfolio, requests, bank, and reviews.
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-5 px-3 sm:px-6 space-y-6">
+            <CardContent className="pt-4 sm:pt-5 px-3 sm:px-6 space-y-4 sm:space-y-5">
               {userId ? (
                 <ProfilePortfolioSlider userId={userId} viewerIsOwner />
               ) : null}
-              <Accordion type="multiple" defaultValue={["offerings"]} className="w-full space-y-3">
-                <AccordionItem
-                  id="profile-portfolio"
-                  value="portfolio"
-                  className="rounded-2xl border border-slate-200/80 bg-white px-3 sm:px-4 border-b-0 scroll-mt-4"
-                >
-                  <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
-                    <span className="flex flex-wrap items-center gap-2 pr-2">
-                      <Images className="h-5 w-5 text-emerald-600 shrink-0" aria-hidden />
-                      <span className="text-base font-semibold text-slate-900">Portfolio showcase</span>
-                    </span>
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-4">
-                    {userId ? (
-                      <PortfolioEditorPanel userId={userId} />
-                    ) : (
-                      <p className="text-sm text-slate-500">Sign in to manage your portfolio.</p>
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
-
+              <Accordion type="multiple" defaultValue={["offerings"]} className="w-full space-y-2.5">
                 <AccordionItem
                   id="profile-offerings"
                   value="offerings"
-                  className="rounded-2xl border border-emerald-200/60 bg-emerald-50/20 px-3 sm:px-4 border-b-0 scroll-mt-4"
+                  className="rounded-xl border border-emerald-200/50 bg-emerald-50/15 px-3 sm:px-4 border-b-0 scroll-mt-4 shadow-sm"
                 >
-                  <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
+                  <AccordionTrigger className="hover:no-underline py-3.5 sm:py-4 text-left [&[data-state=open]]:pb-2">
                     <span className="flex flex-wrap items-center gap-2 pr-2">
                       <Package className="h-5 w-5 text-emerald-600 shrink-0" aria-hidden />
-                      <span className="text-base font-semibold text-slate-900">Offerings</span>
+                      <span className="text-[15px] font-semibold text-slate-900">Service listings</span>
                     </span>
                   </AccordionTrigger>
-                  <AccordionContent className="pb-4">
+                  <AccordionContent className="pb-4 pt-0">
                     {userId ? (
                       <ProfileOfferingsPanel userId={userId} />
                     ) : (
@@ -1063,13 +1045,33 @@ export default function ProfilePage() {
                 </AccordionItem>
 
                 <AccordionItem
-                  value="listing-requests"
-                  className="rounded-2xl border border-slate-200/80 bg-white px-3 sm:px-4 border-b-0"
+                  id="profile-portfolio"
+                  value="portfolio"
+                  className="rounded-xl border border-slate-200/80 bg-white px-3 sm:px-4 border-b-0 scroll-mt-4"
                 >
-                  <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
+                  <AccordionTrigger className="hover:no-underline py-3.5 sm:py-4 text-left [&[data-state=open]]:pb-2">
+                    <span className="flex flex-wrap items-center gap-2 pr-2">
+                      <Images className="h-5 w-5 text-slate-600 shrink-0" aria-hidden />
+                      <span className="text-[15px] font-semibold text-slate-900">Portfolio</span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-4 pt-0">
+                    {userId ? (
+                      <PortfolioEditorPanel userId={userId} />
+                    ) : (
+                      <p className="text-sm text-slate-500">Sign in to manage your portfolio.</p>
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem
+                  value="listing-requests"
+                  className="rounded-xl border border-slate-200/80 bg-white px-3 sm:px-4 border-b-0"
+                >
+                  <AccordionTrigger className="hover:no-underline py-3.5 sm:py-4 text-left [&[data-state=open]]:pb-2">
                     <span className="flex items-center gap-2">
-                      <Inbox className="h-5 w-5 text-emerald-600 shrink-0" aria-hidden />
-                      <span className="text-base font-semibold text-slate-900">Listing requests</span>
+                      <Inbox className="h-5 w-5 text-slate-600 shrink-0" aria-hidden />
+                      <span className="text-[15px] font-semibold text-slate-900">Listing requests</span>
                     </span>
                   </AccordionTrigger>
                   <AccordionContent className="pb-4">
@@ -1083,12 +1085,12 @@ export default function ProfilePage() {
 
                 <AccordionItem
                   value="bank"
-                  className="rounded-2xl border border-slate-200/80 bg-white px-3 sm:px-4 border-b-0"
+                  className="rounded-xl border border-slate-200/80 bg-white px-3 sm:px-4 border-b-0"
                 >
-                  <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
+                  <AccordionTrigger className="hover:no-underline py-3.5 sm:py-4 text-left [&[data-state=open]]:pb-2">
                     <span className="flex items-center gap-2">
-                      <Landmark className="h-5 w-5 text-emerald-600 shrink-0" aria-hidden />
-                      <span className="text-base font-semibold text-slate-900">Bank account</span>
+                      <Landmark className="h-5 w-5 text-slate-600 shrink-0" aria-hidden />
+                      <span className="text-[15px] font-semibold text-slate-900">Bank account</span>
                     </span>
                   </AccordionTrigger>
                   <AccordionContent className="pb-4">
@@ -1184,12 +1186,12 @@ export default function ProfilePage() {
 
                 <AccordionItem
                   value="reviews"
-                  className="rounded-2xl border border-slate-200/80 bg-white px-3 sm:px-4 border-b-0"
+                  className="rounded-xl border border-slate-200/80 bg-white px-3 sm:px-4 border-b-0"
                 >
-                  <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
+                  <AccordionTrigger className="hover:no-underline py-3.5 sm:py-4 text-left [&[data-state=open]]:pb-2">
                     <span className="flex items-center gap-2">
                       <Star className="h-5 w-5 text-amber-500 shrink-0 fill-amber-400/30" aria-hidden />
-                      <span className="text-base font-semibold text-slate-900">Reviews</span>
+                      <span className="text-[15px] font-semibold text-slate-900">Reviews</span>
                     </span>
                   </AccordionTrigger>
                   <AccordionContent className="pb-4">

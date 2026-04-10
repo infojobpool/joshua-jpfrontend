@@ -59,57 +59,66 @@ export function ProfileOfferingsPanel({ userId }: Props) {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm text-slate-600">
-            Public listings: <span className="font-semibold text-slate-800">{used}</span> / {maxSlots}
-            {readOfferingSubscriptionMock() ? " (subscription)" : " (free)"}
+    <div className="space-y-4">
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <p className="text-sm text-slate-700">
+            <span className="font-semibold text-slate-900">{used}</span>
+            <span className="text-slate-500"> / {maxSlots} live slots</span>
+            {readOfferingSubscriptionMock() ? (
+              <span className="text-slate-500"> · subscription</span>
+            ) : null}
           </p>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Drafts don&apos;t use a slot. Limits are enforced on the server — upgrade in Settings if you hit the cap.
+          <p className="text-xs text-slate-500 mt-0.5 leading-snug">
+            Drafts don&apos;t use a slot. Limits are enforced on the server.
           </p>
         </div>
-        <Button asChild className="rounded-xl bg-emerald-600 hover:bg-emerald-700 shrink-0">
+        <Button asChild size="sm" className="rounded-lg bg-emerald-600 hover:bg-emerald-700 shrink-0 w-full sm:w-auto">
           <Link href="/profile/offerings/new">
             <Plus className="mr-2 h-4 w-4" />
-            Add offering
+            Add listing
           </Link>
         </Button>
       </div>
 
       {list.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-10 text-center">
-          <Package className="mx-auto h-12 w-12 text-slate-300" />
-          <p className="mt-3 font-medium text-slate-700">No offerings yet</p>
-          <p className="mt-1 text-sm text-slate-500">Advertise a service or product — separate from tasks.</p>
-          <Button asChild className="mt-4 rounded-xl bg-emerald-600 hover:bg-emerald-700">
-            <Link href="/profile/offerings/new">Add your first offering</Link>
+        <div className="rounded-xl border border-dashed border-slate-200/90 bg-slate-50/40 px-4 py-6 sm:p-8 text-center">
+          <Package className="mx-auto h-10 w-10 text-slate-300" />
+          <p className="mt-2 text-sm font-semibold text-slate-800">No listings yet</p>
+          <p className="mt-1 text-xs sm:text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
+            Add a service or product clients can book from your public profile.
+          </p>
+          <Button asChild size="sm" className="mt-3 rounded-lg bg-emerald-600 hover:bg-emerald-700">
+            <Link href="/profile/offerings/new">Create listing</Link>
           </Button>
         </div>
       ) : (
-        <ul className="space-y-4">
+        <ul className="space-y-3">
           {list.map((o) => {
             const cover = o.photoUrls?.[0];
             return (
               <li
                 key={o.id}
-                className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-md ring-1 ring-slate-900/[0.04] sm:flex sm:min-h-[148px]"
+                className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/[0.03] sm:flex sm:min-h-[132px]"
               >
-                <div className="relative aspect-[16/10] sm:aspect-auto sm:w-44 sm:max-w-[40%] sm:shrink-0 bg-gradient-to-br from-slate-100 via-slate-50 to-emerald-50/40">
+                <div className="relative h-32 w-full sm:h-auto sm:min-h-[132px] sm:aspect-[4/3] sm:w-36 sm:max-w-[38%] sm:shrink-0 bg-gradient-to-br from-slate-100 via-slate-50 to-emerald-50/40 flex items-center justify-center overflow-hidden">
                   {cover ? (
                     <>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={cover} alt="" className="h-full w-full min-h-[120px] sm:min-h-0 object-cover" />
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-900/25 to-transparent sm:bg-gradient-to-r" />
+                      <img
+                        src={cover}
+                        alt=""
+                        className="max-h-full max-w-full object-contain sm:absolute sm:inset-0 sm:h-full sm:w-full sm:max-h-none sm:max-w-none sm:object-cover"
+                      />
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-900/20 to-transparent opacity-80 sm:opacity-100 sm:bg-gradient-to-r" />
                     </>
                   ) : (
-                    <div className="flex h-full min-h-[120px] sm:min-h-full items-center justify-center">
-                      <Package className="h-11 w-11 text-slate-200" aria-hidden />
+                    <div className="flex h-full w-full items-center justify-center py-6 sm:py-0">
+                      <Package className="h-9 w-9 text-slate-200" aria-hidden />
                     </div>
                   )}
                 </div>
-                <div className="flex min-w-0 flex-1 flex-col justify-center gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:pl-5">
+                <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 p-3 sm:gap-3 sm:p-4 sm:flex-row sm:items-center sm:justify-between sm:pl-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       {statusBadge(o.status)}

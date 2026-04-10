@@ -109,38 +109,8 @@ export function ProfilePortfolioSlider({ userId, viewerIsOwner, className }: Pro
   }
 
   if (items.length === 0) {
-    if (!viewerIsOwner) {
-      return null;
-    }
-    return (
-      <div
-        className={cn(
-          "rounded-2xl border border-dashed border-slate-200/90 bg-gradient-to-br from-slate-50/90 via-white to-emerald-50/25 p-5 sm:p-6",
-          className
-        )}
-      >
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex gap-4 min-w-0">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-md">
-              <Images className="h-6 w-6" aria-hidden />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-slate-900 tracking-tight">Portfolio showcase</h3>
-              <p className="mt-1 text-sm text-slate-600 max-w-lg">
-                Add photos that show your work, products, or results. This gallery is separate from individual listing
-                images.
-              </p>
-            </div>
-          </div>
-          <Link
-            href="/profile#profile-portfolio"
-            className="inline-flex shrink-0 items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-700 transition-colors"
-          >
-            Build portfolio
-          </Link>
-        </div>
-      </div>
-    );
+    /* Owner builds portfolio in the Profile → Portfolio accordion; avoid duplicate huge CTA above it */
+    return null;
   }
 
   return (
