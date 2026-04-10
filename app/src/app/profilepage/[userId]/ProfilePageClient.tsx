@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Star, MapPin, Briefcase, Package, History } from "lucide-react";
+import { Star, MapPin, Briefcase, Package } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
@@ -30,7 +30,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { PublicOfferingsList } from "@/components/profile/PublicOfferingsList";
 import { ProfilePortfolioSlider } from "@/components/profile/ProfilePortfolioSlider";
-import { RecentWorksChips } from "@/components/profile/RecentWorksChips";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 
 interface Address {
@@ -84,11 +83,6 @@ export default function ProfilePageClient() {
   const profileIdStr = String(userId ?? "");
   const viewerIsOwner =
     Boolean(loggedInUserId) && String(loggedInUserId) === profileIdStr;
-
-  const recentWorkFeed = useMemo(
-    () => reviews.map((r) => ({ project: r.project })),
-    [reviews]
-  );
 
   const avatarSrc = profileUser.avatar
     ? resolveProfileImageUrl(profileUser.avatar) || profileUser.avatar
@@ -230,18 +224,16 @@ export default function ProfilePageClient() {
             </CardHeader>
           </Card>
 
-          {/* Listings, recent work, reviews — collapsible */}
+          {/* Listings and reviews — collapsible */}
           <div className="md:col-span-2 space-y-4">
             <Card className="border-0 shadow-lg rounded-2xl overflow-hidden ring-1 ring-slate-200/80">
               <CardHeader className="border-b border-slate-100/80 bg-gradient-to-b from-slate-50/95 via-white to-white py-6">
                 <CardTitle className="text-xl font-bold text-slate-800">About this member</CardTitle>
-                <CardDescription>
-                  Portfolio showcase, then listings — recent work and reviews below
-                </CardDescription>
+                <CardDescription>Portfolio showcase, then listings and reviews below</CardDescription>
               </CardHeader>
               <CardContent className="pt-5 px-3 sm:px-6 pb-6 space-y-6">
                 <ProfilePortfolioSlider userId={profileIdStr} viewerIsOwner={viewerIsOwner} />
-                <Accordion type="multiple" defaultValue={["listings", "recent"]} className="w-full space-y-3">
+                <Accordion type="multiple" defaultValue={["listings"]} className="w-full space-y-3">
                   <AccordionItem
                     value="listings"
                     className="rounded-2xl border border-emerald-200/60 bg-emerald-50/20 px-3 sm:px-4 border-b-0"
@@ -258,24 +250,6 @@ export default function ProfilePageClient() {
                         providerName={profileUser.name || "Member"}
                         viewerIsOwner={viewerIsOwner}
                       />
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  <AccordionItem
-                    value="recent"
-                    className="rounded-2xl border border-slate-200/80 bg-white px-3 sm:px-4 border-b-0"
-                  >
-                    <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
-                      <span className="flex items-center gap-2">
-                        <History className="h-5 w-5 text-emerald-600 shrink-0" />
-                        <span className="text-base font-semibold text-slate-900">Recent work</span>
-                      </span>
-                    </AccordionTrigger>
-                    <AccordionContent className="pb-4">
-                      <p className="text-xs text-slate-500 mb-3">
-                        Based on completed tasks mentioned in reviews. Full history may come from your feed later.
-                      </p>
-                      <RecentWorksChips reviews={recentWorkFeed} />
                     </AccordionContent>
                   </AccordionItem>
 
