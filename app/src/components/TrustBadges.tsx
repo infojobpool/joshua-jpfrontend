@@ -21,6 +21,8 @@ interface TrustBadgesProps {
   /** Optional subtext */
   subtext?: string
   className?: string
+  /** Strip only: `emerald` matches profile / wallet accents; default stays blue */
+  stripAccent?: "blue" | "emerald"
 }
 
 export function TrustBadges({
@@ -29,33 +31,48 @@ export function TrustBadges({
   heading = "Your data is safe with JobPool",
   subtext = "Industry-standard security to protect your information",
   className = "",
+  stripAccent = "blue",
 }: TrustBadgesProps) {
   const isLanding = variant === "landing"
 
   if (variant === "strip") {
+    const isEmerald = stripAccent === "emerald"
     return (
       <div
         className={cn(
-          "rounded-xl border border-blue-100/90 bg-gradient-to-r from-blue-50/95 via-white to-sky-50/80",
-          "px-3 py-2 shadow-sm dark:border-blue-900/40 dark:from-slate-900/90 dark:via-slate-900/80 dark:to-slate-900/70",
+          "rounded-xl px-3 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.05)] ring-1",
+          isEmerald
+            ? "border-0 bg-gradient-to-r from-emerald-50/90 via-white to-slate-50/90 ring-emerald-100/80 dark:from-slate-900/90 dark:via-slate-900/80 dark:to-slate-900/70 dark:ring-emerald-900/30"
+            : "border border-blue-100/90 bg-gradient-to-r from-blue-50/95 via-white to-sky-50/80 dark:border-blue-900/40 dark:from-slate-900/90 dark:via-slate-900/80 dark:to-slate-900/70",
           className
         )}
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="shrink-0 rounded-lg bg-blue-600 p-1.5 dark:bg-blue-500">
+          <div
+            className={cn(
+              "shrink-0 rounded-lg p-1.5",
+              isEmerald
+                ? "bg-emerald-600 dark:bg-emerald-500"
+                : "bg-blue-600 dark:bg-blue-500"
+            )}
+          >
             <Shield className="h-4 w-4 text-white" strokeWidth={2} aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-slate-900 dark:text-white leading-tight truncate">
               {heading}
             </p>
-            <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug line-clamp-1">
+            <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug line-clamp-2 sm:line-clamp-1">
               {subtext}
             </p>
           </div>
           <Lock
-            className="shrink-0 h-3.5 w-3.5 text-blue-600/80 dark:text-blue-400"
-            strokeWidth={2}
+            className={cn(
+              "shrink-0 h-3.5 w-3.5 stroke-[2]",
+              isEmerald
+                ? "text-emerald-600/85 dark:text-emerald-400"
+                : "text-blue-600/80 dark:text-blue-400"
+            )}
             aria-hidden
           />
         </div>
