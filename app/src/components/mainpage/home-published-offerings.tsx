@@ -195,6 +195,14 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
     let lastTs = performance.now();
     let fracCarry = 0;
 
+    const clearProgrammaticSoon = () => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          scrollProgrammaticRef.current = false;
+        });
+      });
+    };
+
     const tick = (now: number) => {
       const dt = Math.min(48, Math.max(0, now - lastTs));
       lastTs = now;
@@ -209,9 +217,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
             scrollProgrammaticRef.current = true;
             el.scrollLeft += steps;
             if (el.scrollLeft >= half) el.scrollLeft -= half;
-            queueMicrotask(() => {
-              scrollProgrammaticRef.current = false;
-            });
+            clearProgrammaticSoon();
           }
         }
       }
@@ -245,6 +251,14 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
     let lastTs = performance.now();
     let fracCarry = 0;
 
+    const clearProgrammaticSoon = () => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          scrollProgrammaticRef.current = false;
+        });
+      });
+    };
+
     const tick = (now: number) => {
       const dt = Math.min(48, Math.max(0, now - lastTs));
       lastTs = now;
@@ -259,9 +273,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
             scrollProgrammaticRef.current = true;
             el.scrollLeft += steps;
             if (el.scrollLeft >= half) el.scrollLeft -= half;
-            queueMicrotask(() => {
-              scrollProgrammaticRef.current = false;
-            });
+            clearProgrammaticSoon();
           }
         }
       }
@@ -356,8 +368,6 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
           }}
           onTouchEnd={scheduleMarqueeResume}
           onTouchCancel={scheduleMarqueeResume}
-          onMouseEnter={() => setMarqueePaused(true)}
-          onMouseLeave={() => setMarqueePaused(false)}
           onWheel={registerUserHorizontalScroll}
         >
           <div className="flex w-max gap-4 pr-1 transform-gpu will-change-transform">
