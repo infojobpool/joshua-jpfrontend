@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 import {
@@ -12,13 +12,25 @@ import {
  * For logged-out users, returns incomplete=true (acquisition copy still applies).
  * For logged-in users, fetches profile + wallet and returns whether payout checklist has any missing items.
  */
-export function usePayoutSetupIncomplete(): { ready: boolean; incomplete: boolean } {
+export function usePayoutSetupIncomplete(): {
+  ready: boolean;
+  incomplete: boolean;
+  /** Logged in but fetch not finished — use for a stable placeholder, no image flash */
+  awaitingEligibility: boolean;
+} {
   const userId = useStore((s) => s.userId);
   const [ready, setReady] = useState(false);
   const [incomplete, setIncomplete] = useState(true);
+  const mountedRef = useRef(false);
+  const prevUserIdRef = useRef<string | null>(null);
+  const fetchGenRef = useRef(0);
 
   const run = useCallback(async () => {
+    const gen = ++fetchGenRef.current;
+    const isStale = () => gen !== fetchGenRef.current;
+
     if (!userId) {
+      if (isStale()) return;
       setIncomplete(true);
       setReady(true);
       return;
@@ -59,18 +71,26 @@ export function usePayoutSetupIncomplete(): { ready: boolean; incomplete: boolea
         hasAddressOnProfile: hasAddressFromList || hasFallbackAddress,
         upiVpa: upiVpa || undefined,
       });
+      if (isStale()) return;
       setIncomplete(missing.length > 0);
     } catch {
+      if (isStale()) return;
       setIncomplete(true);
     } finally {
-      setReady(true);
+      if (!isStale()) setReady(true);
     }
   }, [userId]);
 
   useEffect(() => {
-    setReady(false);
+    if (mountedRef.current && prevUserIdRef.current !== userId) {
+      setReady(false);
+    }
+    mountedRef.current = true;
+    prevUserIdRef.current = userId;
     void run();
-  }, [run]);
+  }, [run, userId]);
 
-  return { ready, incomplete };
+  const awaitingEligibility = Boolean(userId) && !ready;
+
+  return { ready, incomplete, awaitingEligibility };
 }
