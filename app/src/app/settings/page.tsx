@@ -22,7 +22,6 @@ import {
   UserX
 } from "lucide-react";
 import { toast } from "sonner";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import axiosInstance from "@/lib/axiosInstance";
 import {
   clearAllCache,
@@ -288,12 +287,8 @@ export default function SettingsPage() {
               Back
             </Button>
             
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">App Settings</h1>
-            <p className="text-gray-600 dark:text-slate-400 mt-2">Manage cache, storage, and performance</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600 dark:text-slate-400">Theme</span>
-            <ThemeToggle />
+            <h1 className="text-3xl font-bold text-gray-900">App Settings</h1>
+            <p className="text-gray-600 mt-2">Manage cache, storage, and performance</p>
           </div>
         </div>
 

@@ -51,7 +51,6 @@ import { resolveProfileImageUrl } from "@/lib/profileImage";
 import { storeTaskForNav, prefetchBidsForTask } from "@/lib/taskNavCache";
 import { useNotifications } from "@/lib/useNotifications";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { EmptyState } from "@/components/EmptyState";
 import { SearchEmptyIllustration, BriefcaseEmptyIllustration } from "@/components/empty-state-illustrations";
 import { ShareTaskButton } from "@/components/ShareTaskButton";
@@ -3786,18 +3785,15 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50/90 via-white to-slate-50/70 dark:bg-slate-950 overflow-x-hidden">
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50/90 via-white to-slate-50/70 overflow-x-hidden">
       <main className="flex-1 w-full max-w-none mx-auto py-3 md:py-10 px-4 md:px-8 lg:px-12 pb-28 md:pb-10">
         <div className="contents">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 md:mb-8 gap-3 md:gap-4 animate-fade-in-up">
           {/* Move profile block up on mobile */}
           {mobile && (
             <div className="w-full">
-              {/* Mobile top bar: theme (left) · notifications + profile (right) */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center shrink-0">
-                  <ThemeToggle />
-                </div>
+              {/* Mobile top bar: notifications + profile */}
+              <div className="flex items-center justify-end gap-2">
                 <div className="flex items-center gap-2 shrink-0 min-w-0">
                   <button
                     type="button"
@@ -3933,7 +3929,6 @@ export default function Dashboard() {
               <Home className="h-4 w-4" />
               Home
             </Link>
-            <ThemeToggle />
             {/* Enhanced Notifications with proper clickable functionality */}
             <div className="relative">
               <NotificationBar />

@@ -82,7 +82,7 @@ export default function RootLayout({
         <link rel="mask-icon" href="/icons/icon-192x192.png" color="#1e3a8a" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${archivo.variable} antialiased overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100`}
+        className={`${geistSans.variable} ${geistMono.variable} ${archivo.variable} antialiased overflow-x-hidden bg-slate-50 text-gray-900`}
       >
         <GoogleAnalytics />
         <PwaInstallTracker />
