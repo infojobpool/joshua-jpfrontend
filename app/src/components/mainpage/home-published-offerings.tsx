@@ -6,14 +6,16 @@ import { motion } from "framer-motion";
 import { MapPin, Package } from "lucide-react";
 import type { Offering } from "@/lib/offerings/types";
 import { getHomeOfferingsCached } from "@/lib/homeOfferingsCache";
+import { cn } from "@/lib/utils";
 
 const PLACEHOLDER = "/images/placeholder.svg";
 const DESKTOP_MAX = 12;
 const MOBILE_AUTO_SCROLL_PX_PER_SEC = 48;
 const DESKTOP_OFFERINGS_AUTO_SCROLL_PX_PER_SEC = 40;
 
-function formatFromPrice(n: number) {
-  return `From ₹${Math.round(n).toLocaleString("en-IN")}`;
+function formatFromPriceParts(n: number) {
+  const amount = `₹${Math.round(n).toLocaleString("en-IN")}`;
+  return { prefix: "From", amount };
 }
 
 function profileHref(o: Offering): string {
@@ -38,6 +40,91 @@ function OfferingCardImage({ url, alt }: { url: string; alt: string }) {
         }
       }}
     />
+  );
+}
+
+/** Distinct from task cards: editorial image ratio, emerald treatment, Archivo typography, price on image rail. */
+function PremiumOfferingCard({
+  o,
+  href,
+  widthClass,
+  scrollSnap,
+}: {
+  o: Offering;
+  href: string;
+  widthClass: string;
+  scrollSnap?: boolean;
+}) {
+  const category = o.category || (o.type === "product" ? "Product" : "Service");
+  const { prefix, amount } = formatFromPriceParts(o.startingPriceInr);
+  const archivo = { fontFamily: "var(--font-archivo), var(--font-geist-sans), system-ui, sans-serif" } as const;
+
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "group block shrink-0 overflow-hidden",
+        widthClass,
+        scrollSnap && "snap-start [scroll-snap-stop:always]",
+      )}
+    >
+      <article
+        className={cn(
+          "flex h-full flex-col overflow-hidden rounded-2xl bg-white md:rounded-[1.35rem]",
+          "shadow-[0_22px_52px_-30px_rgba(6,78,59,0.32)] ring-1 ring-emerald-950/[0.06]",
+          "transition-all duration-300 ease-out",
+          "hover:-translate-y-1 hover:shadow-[0_32px_64px_-28px_rgba(6,78,59,0.38)] hover:ring-emerald-800/12",
+        )}
+      >
+        <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-slate-200">
+          <OfferingCardImage url={o.photoUrls?.[0] || PLACEHOLDER} alt="" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-emerald-950/90 via-emerald-900/25 to-emerald-900/5" />
+          <div className="absolute inset-x-0 bottom-0 px-3 pb-2.5 pt-10 md:px-3.5 md:pb-3">
+            <div className="flex items-end justify-between gap-2 border-t border-white/25 pt-2">
+              <span className="text-[9px] font-semibold uppercase tracking-[0.22em] text-emerald-100/95 md:text-[10px]" style={archivo}>
+                {prefix}
+              </span>
+              <span
+                className="text-right text-base font-bold tabular-nums tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)] md:text-lg"
+                style={archivo}
+              >
+                {amount}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-1 flex-col gap-1 px-3.5 pb-3 pt-2.5 md:gap-1.5 md:px-4 md:pb-4 md:pt-3">
+          <p
+            className="text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-800/75 md:text-[10px] md:tracking-[0.2em]"
+            style={archivo}
+          >
+            {category}
+          </p>
+          <h3
+            className="line-clamp-2 min-w-0 text-[0.9375rem] font-bold leading-snug tracking-[-0.025em] text-slate-900 md:text-[1.0625rem]"
+            style={archivo}
+          >
+            {o.title || "Listing"}
+          </h3>
+          {o.providerDisplayName ? (
+            <p className="truncate text-[11px] font-semibold text-emerald-900/88 md:text-[0.8125rem]" style={archivo}>
+              {o.providerDisplayName}
+            </p>
+          ) : null}
+          {o.locationText ? (
+            <p className="mt-auto flex items-center gap-1 truncate pt-0.5 text-[10px] font-medium text-slate-500 md:text-xs">
+              <MapPin className="h-3 w-3 shrink-0 text-emerald-700/45" />
+              <span className="truncate">{o.locationText}</span>
+            </p>
+          ) : (
+            <p className="mt-auto flex items-center gap-1 pt-0.5 text-[10px] font-semibold text-emerald-800/75 md:text-xs">
+              <Package className="h-3 w-3 shrink-0 text-emerald-700/60" />
+              View profile to book
+            </p>
+          )}
+        </div>
+      </article>
+    </Link>
   );
 }
 
@@ -202,11 +289,14 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
   if (variant === "mobile") {
     if (loading) {
       return (
-        <div className="md:hidden px-4 py-4 bg-gray-50">
-          <div className="mb-3 h-5 w-56 animate-pulse rounded bg-gray-200" />
-          <div className="flex gap-3">
+        <div className="md:hidden border-t border-emerald-100/70 bg-gradient-to-b from-emerald-50/45 via-gray-50/90 to-gray-50 px-4 py-4">
+          <div className="mb-3 h-5 w-56 animate-pulse rounded bg-emerald-100/60" />
+          <div className="flex gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-44 w-64 shrink-0 animate-pulse rounded-2xl bg-gray-100" />
+              <div
+                key={i}
+                className="h-[17.5rem] w-[17.25rem] shrink-0 animate-pulse rounded-2xl bg-emerald-100/35 ring-1 ring-emerald-900/5"
+              />
             ))}
           </div>
         </div>
@@ -215,7 +305,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
 
     if (rows.length === 0) {
       return (
-        <div className="md:hidden px-4 py-5 bg-gray-50 border-t border-gray-100/80">
+        <div className="md:hidden border-t border-emerald-100/70 bg-gradient-to-b from-emerald-50/45 via-gray-50/90 to-gray-50 px-4 py-5">
           <h3 className="font-home-section-title text-lg text-gray-900">{title}</h3>
           <p className="font-home-section-desc mt-1 text-sm text-gray-500">{subtitle}</p>
           <div className="mt-4 rounded-2xl border border-dashed border-emerald-200/90 bg-white p-6 text-center shadow-sm">
@@ -247,7 +337,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
     };
 
     return (
-      <div className="md:hidden px-4 py-4 bg-gray-50">
+      <div className="md:hidden border-t border-emerald-100/70 bg-gradient-to-b from-emerald-50/45 via-gray-50/90 to-gray-50 px-4 py-4">
         <h3 className="font-home-section-title mb-1 text-lg text-gray-900">{title}</h3>
         <p className="font-home-section-desc mb-3 text-sm text-gray-500">{subtitle}</p>
         <div
@@ -270,42 +360,15 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
           onMouseLeave={() => setMarqueePaused(false)}
           onWheel={registerUserHorizontalScroll}
         >
-          <div className="flex w-max gap-3 pr-1 transform-gpu will-change-transform">
+          <div className="flex w-max gap-4 pr-1 transform-gpu will-change-transform">
             {loop.map((o, idx) => (
-              <Link
+              <PremiumOfferingCard
                 key={`${o.id}-${idx}`}
+                o={o}
                 href={profileHref(o)}
-                className="group w-64 shrink-0 snap-start overflow-hidden rounded-2xl border border-emerald-200/40 bg-white shadow-lg shadow-black/5 [scroll-snap-stop:always]"
-              >
-                <div className="relative h-32 w-full overflow-hidden bg-gray-50">
-                  <OfferingCardImage url={o.photoUrls?.[0] || PLACEHOLDER} alt="" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
-                  <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between gap-1">
-                    <span className="truncate rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-medium text-gray-800">
-                      {o.category || (o.type === "product" ? "Product" : "Service")}
-                    </span>
-                    <span className="shrink-0 text-[11px] font-semibold text-white drop-shadow">
-                      {formatFromPrice(o.startingPriceInr)}
-                    </span>
-                  </div>
-                </div>
-                <div className="p-3">
-                  <h4 className="task-title line-clamp-2 min-w-0 overflow-hidden break-words text-sm text-gray-900">
-                    {o.title || "Listing"}
-                  </h4>
-                  {o.providerDisplayName ? (
-                    <p className="mt-0.5 truncate text-[11px] font-medium text-emerald-700/90">
-                      {o.providerDisplayName}
-                    </p>
-                  ) : null}
-                  {o.locationText ? (
-                    <p className="mt-1 flex items-center gap-1 truncate text-xs text-gray-500">
-                      <MapPin className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{o.locationText}</span>
-                    </p>
-                  ) : null}
-                </div>
-              </Link>
+                widthClass="w-[17.25rem]"
+                scrollSnap
+              />
             ))}
           </div>
         </div>
@@ -316,12 +379,15 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
   // desktop
   if (loading) {
     return (
-      <section className="hidden py-12 md:block bg-white overflow-hidden">
+      <section className="hidden border-t border-emerald-100/60 py-12 md:block overflow-hidden bg-gradient-to-b from-emerald-50/40 via-white to-white">
         <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-          <div className="mx-auto mb-8 h-10 max-w-md animate-pulse rounded-lg bg-gray-200" />
-          <div className="mx-auto flex max-w-7xl justify-center gap-4">
+          <div className="mx-auto mb-8 h-10 max-w-md animate-pulse rounded-lg bg-emerald-100/50" />
+          <div className="mx-auto flex max-w-7xl justify-center gap-5">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-72 w-64 shrink-0 animate-pulse rounded-xl bg-gray-100" />
+              <div
+                key={i}
+                className="h-[19.5rem] w-[17.75rem] shrink-0 animate-pulse rounded-[1.35rem] bg-emerald-100/40 ring-1 ring-emerald-900/5 md:w-[18.5rem]"
+              />
             ))}
           </div>
         </div>
@@ -331,7 +397,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
 
   if (rows.length === 0) {
     return (
-      <section className="hidden py-10 md:block bg-white overflow-hidden border-t border-gray-100">
+      <section className="hidden border-t border-emerald-100/60 py-10 md:block overflow-hidden bg-gradient-to-b from-emerald-50/35 via-white to-white">
         <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
           <motion.div
             className="mb-6 text-center"
@@ -373,7 +439,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
   };
 
   return (
-    <section className="hidden py-12 md:block bg-white overflow-hidden">
+    <section className="hidden border-t border-emerald-100/60 py-12 md:block overflow-hidden bg-gradient-to-b from-emerald-50/40 via-white to-white">
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
         <motion.div
           className="mb-8 text-center"
@@ -408,46 +474,10 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
               onMouseLeave={() => setMarqueePaused(false)}
               onWheel={registerUserHorizontalScroll}
             >
-              <div className="flex w-max gap-4 transform-gpu will-change-transform">
+              <div className="flex w-max gap-5 md:gap-6 transform-gpu will-change-transform">
                 {loopDesktop.map((o, idx) => (
-                  <div
-                    key={`${o.id}-${idx}`}
-                    className="w-56 flex-shrink-0 scroll-snap-start sm:w-60 md:w-64"
-                  >
-                    <Link
-                      href={profileHref(o)}
-                      className="group block overflow-hidden rounded-xl border border-emerald-100 bg-white shadow-md transition-shadow duration-300 hover:shadow-lg hover:border-emerald-200/80"
-                    >
-                      <div className="relative h-32 overflow-hidden bg-gray-100">
-                        <OfferingCardImage url={o.photoUrls?.[0] || PLACEHOLDER} alt="" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
-                        <div className="absolute top-2 left-2 max-w-[calc(100%-1rem)] truncate rounded-full bg-white/90 px-2 py-0.5 text-xs font-medium text-gray-800 backdrop-blur-sm">
-                          {o.category || (o.type === "product" ? "Product" : "Service")}
-                        </div>
-                        <div className="absolute bottom-2 right-2 rounded-md bg-emerald-600/95 px-2 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-                          {formatFromPrice(o.startingPriceInr)}
-                        </div>
-                      </div>
-                      <div className="p-4">
-                        <h3 className="task-title line-clamp-2 min-w-0 overflow-hidden break-words text-base text-gray-900">
-                          {o.title || "Listing"}
-                        </h3>
-                        {o.providerDisplayName ? (
-                          <p className="mt-1 truncate text-xs font-medium text-emerald-700">{o.providerDisplayName}</p>
-                        ) : null}
-                        {o.locationText ? (
-                          <p className="mt-2 flex min-w-0 items-center gap-1 text-sm text-gray-500">
-                            <MapPin className="h-3.5 w-3.5 shrink-0" />
-                            <span className="truncate">{o.locationText}</span>
-                          </p>
-                        ) : (
-                          <p className="mt-2 flex items-center gap-1 text-xs font-medium text-emerald-700">
-                            <Package className="h-3.5 w-3.5 shrink-0" />
-                            View profile to book
-                          </p>
-                        )}
-                      </div>
-                    </Link>
+                  <div key={`${o.id}-${idx}`} className="flex-shrink-0 scroll-snap-start">
+                    <PremiumOfferingCard o={o} href={profileHref(o)} widthClass="w-[17.75rem] md:w-[18.5rem]" />
                   </div>
                 ))}
               </div>

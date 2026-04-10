@@ -12,7 +12,6 @@ import { MobileHeroBanner } from '../components/mobile/MobileHeroBanner'
 import { HowItWorks } from '../components/mainpage/how-it-works'
 import { Features } from '../components/mainpage/features'
 import { Testimonials } from '../components/mainpage/testimonials'
-import { AvailableTasksScroller } from '../components/mainpage/available-tasks-scroller'
 import { TrustBadgesSection } from '../components/mainpage/TrustBadgesSection'
 import { MobileWrapper } from '../components/mobile/MobileWrapper'
 
@@ -38,7 +37,6 @@ export default function Home() {
         <TrustBadgesSection />
         <RecentAvailableTasks variant="desktop" />
         <HomePublishedOfferings variant="desktop" />
-        <AvailableTasksScroller />
         <HowItWorks />
         <Features />
         <Testimonials />
