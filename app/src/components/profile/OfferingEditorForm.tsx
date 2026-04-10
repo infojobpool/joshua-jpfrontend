@@ -18,6 +18,8 @@ import {
   updateOfferingApi,
   isOfferingLimitError,
   OFFERING_LIMIT_TOAST,
+  filterHttpsPhotoUrls,
+  uploadOfferingImageApi,
 } from "@/lib/offerings/api";
 import { readOfferingSubscriptionMock } from "@/lib/offerings/storage";
 import { toast } from "sonner";
@@ -26,15 +28,6 @@ import { ImagePlus, X } from "lucide-react";
 
 const MAX_OFFERING_PHOTOS = 6;
 const MAX_PHOTO_BYTES = 650 * 1024;
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result ?? ""));
-    r.onerror = () => reject(new Error("read failed"));
-    r.readAsDataURL(file);
-  });
-}
 
 function isUnsyncedDraftId(id: string): boolean {
   return id.startsWith("of_");
@@ -60,10 +53,16 @@ type Props = {
   isNew: boolean;
 };
 
+function isDataUrl(url: string): boolean {
+  return url.trim().toLowerCase().startsWith("data:");
+}
+
 export function OfferingEditorForm({ userId, initial, isNew }: Props) {
   const router = useRouter();
   const [o, setO] = useState<Offering>(initial);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [imageUrlDraft, setImageUrlDraft] = useState("");
   const maxSlots = getMaxOfferingSlots(readOfferingSubscriptionMock());
 
   const update = useCallback((patch: Partial<Offering>) => {
@@ -74,6 +73,32 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
     toast.error(OFFERING_LIMIT_TOAST, {
       action: { label: "Settings", onClick: () => router.push("/settings") },
     });
+  };
+
+  const hasInvalidPhotoUrls = (): boolean => (o.photoUrls ?? []).some(isDataUrl);
+
+  const addImageFromUrl = () => {
+    const raw = imageUrlDraft.trim();
+    if (!raw) {
+      toast.error("Paste an image URL.");
+      return;
+    }
+    if (!/^https?:\/\//i.test(raw)) {
+      toast.error("URL must start with http:// or https://");
+      return;
+    }
+    const current = o.photoUrls ?? [];
+    if (current.length >= MAX_OFFERING_PHOTOS) {
+      toast.error(`Maximum ${MAX_OFFERING_PHOTOS} images.`);
+      return;
+    }
+    if (current.includes(raw)) {
+      toast.error("That URL is already added.");
+      return;
+    }
+    update({ photoUrls: [...current, raw] });
+    setImageUrlDraft("");
+    toast.success("Image link added");
   };
 
   const saveProgress = async () => {
@@ -90,6 +115,12 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
         toast.error(err);
         return;
       }
+    }
+    if (hasInvalidPhotoUrls()) {
+      toast.error(
+        "Remove images that are still local previews (data URLs). Re-upload those photos or use a hosted link."
+      );
+      return;
     }
     setSaving(true);
     try {
@@ -127,6 +158,12 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
     });
     if (err) {
       toast.error(err);
+      return;
+    }
+    if (hasInvalidPhotoUrls()) {
+      toast.error(
+        "Remove images that are still local previews (data URLs). Re-upload those photos or use a hosted link."
+      );
       return;
     }
     setSaving(true);
@@ -189,24 +226,33 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
       toast.error(`You can add up to ${MAX_OFFERING_PHOTOS} photos per listing.`);
       return;
     }
+    setUploadingPhotos(true);
     const nextUrls = [...current];
-    for (const file of Array.from(files)) {
-      if (nextUrls.length >= MAX_OFFERING_PHOTOS) break;
-      if (!file.type.startsWith("image/")) {
-        toast.error(`${file.name} is not an image.`);
-        continue;
+    try {
+      for (const file of Array.from(files)) {
+        if (nextUrls.length >= MAX_OFFERING_PHOTOS) break;
+        if (!file.type.startsWith("image/")) {
+          toast.error(`${file.name} is not an image.`);
+          continue;
+        }
+        if (file.size > MAX_PHOTO_BYTES) {
+          toast.error(`${file.name} is too large (max ${Math.round(MAX_PHOTO_BYTES / 1024)} KB).`);
+          continue;
+        }
+        try {
+          const url = await uploadOfferingImageApi(file);
+          nextUrls.push(url);
+        } catch (e) {
+          toast.error(apiErrorMessage(e) || `Upload failed for ${file.name}`);
+        }
       }
-      if (file.size > MAX_PHOTO_BYTES) {
-        toast.error(`${file.name} is too large (max ${Math.round(MAX_PHOTO_BYTES / 1024)} KB).`);
-        continue;
+      if (nextUrls.length > current.length) {
+        update({ photoUrls: nextUrls });
+        toast.success(`Added ${nextUrls.length - current.length} photo(s)`);
       }
-      try {
-        nextUrls.push(await readFileAsDataUrl(file));
-      } catch {
-        toast.error(`Could not read ${file.name}.`);
-      }
+    } finally {
+      setUploadingPhotos(false);
     }
-    update({ photoUrls: nextUrls });
   };
 
   const removePhotoAt = (index: number) => {
@@ -288,19 +334,52 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
         <div>
           <Label className="text-base">Listing photos</Label>
           <p className="text-xs text-slate-500 mt-1">
-            Shown on your listing cards. Up to {MAX_OFFERING_PHOTOS} images, max{" "}
-            {Math.round(MAX_PHOTO_BYTES / 1024)} KB each (use hosted URLs when the API supports uploads).
+            Upload photos from your device — each file is uploaded and a link is saved with your listing. You can also
+            paste a hosted image URL.
           </p>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="flex-1 space-y-1">
+            <Label htmlFor="off-img-url" className="text-xs text-slate-600">
+              Or paste image URL (optional)
+            </Label>
+            <Input
+              id="off-img-url"
+              value={imageUrlDraft}
+              onChange={(e) => setImageUrlDraft(e.target.value)}
+              placeholder="https://example.com/your-photo.jpg"
+              className="rounded-xl text-sm"
+              disabled={saving || uploadingPhotos}
+              style={PROFILE_FIELD_TEXT}
+            />
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            className="rounded-xl shrink-0"
+            disabled={saving || uploadingPhotos || (o.photoUrls ?? []).length >= MAX_OFFERING_PHOTOS}
+              onClick={addImageFromUrl}
+          >
+            Add link
+          </Button>
         </div>
         <div className="flex flex-wrap gap-2">
           {(o.photoUrls ?? []).map((url, i) => (
-            <div key={`${url.slice(0, 48)}_${i}`} className="relative h-20 w-20 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div
+              key={`${url.slice(0, 48)}_${i}`}
+              className="relative h-20 w-20 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={url} alt="" className="h-full w-full object-cover" />
+              {isDataUrl(url) ? (
+                <span className="absolute bottom-0 left-0 right-0 bg-amber-600/90 text-[8px] font-bold uppercase text-white text-center py-0.5">
+                  Preview
+                </span>
+              ) : null}
               <button
                 type="button"
                 onClick={() => removePhotoAt(i)}
-                disabled={saving}
+                disabled={saving || uploadingPhotos}
                 className="absolute top-1 right-1 rounded-full bg-slate-900/85 p-1 text-white hover:bg-slate-900"
                 aria-label={`Remove photo ${i + 1}`}
               >
@@ -309,15 +388,19 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
             </div>
           ))}
           {(o.photoUrls ?? []).length < MAX_OFFERING_PHOTOS && (
-            <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-300 bg-white text-slate-500 hover:border-emerald-400 hover:text-emerald-700 transition-colors">
+            <label
+              className={`flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-300 bg-white text-slate-500 hover:border-emerald-400 hover:text-emerald-800 transition-colors ${uploadingPhotos ? "pointer-events-none opacity-50" : ""}`}
+            >
               <ImagePlus className="h-6 w-6" aria-hidden />
-              <span className="text-[10px] font-semibold uppercase tracking-wide">Add</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-center leading-tight px-0.5">
+                {uploadingPhotos ? "…" : "Upload"}
+              </span>
               <input
                 type="file"
                 accept="image/*"
                 multiple
                 className="sr-only"
-                disabled={saving}
+                disabled={saving || uploadingPhotos}
                 onChange={(e) => {
                   void addPhotosFromFiles(e.target.files);
                   e.target.value = "";
@@ -348,8 +431,19 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
           type="number"
           min={0}
           step={1}
-          value={Number.isNaN(o.startingPriceInr) ? "" : o.startingPriceInr}
-          onChange={(e) => update({ startingPriceInr: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+          value={
+            o.status === "draft" && o.startingPriceInr === 0
+              ? ""
+              : Number.isNaN(o.startingPriceInr)
+                ? ""
+                : o.startingPriceInr
+          }
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "") update({ startingPriceInr: 0 });
+            else update({ startingPriceInr: Math.max(0, parseInt(v, 10) || 0) });
+          }}
+          placeholder="e.g. 500"
           className="rounded-xl"
           disabled={saving}
           style={PROFILE_FIELD_TEXT}

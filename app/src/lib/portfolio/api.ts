@@ -1,4 +1,5 @@
 import axiosInstance from "@/lib/axiosInstance";
+import { parseMediaUploadResponse } from "@/lib/parseMediaUploadResponse";
 import type { PortfolioSlide } from "./types";
 import { newSlideId } from "./storage";
 
@@ -56,4 +57,15 @@ export async function putMyPortfolioApi(slides: PortfolioSlide[]): Promise<void>
       sort_order: i,
     })),
   });
+}
+
+/** POST multipart; returns absolute URL for portfolio slide image_url. */
+export async function uploadPortfolioImageApi(file: File): Promise<string> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await axiosInstance.post("me/portfolio/upload-image/", fd, {
+    headers: { "Content-Type": "multipart/form-data" },
+    timeout: 120000,
+  });
+  return parseMediaUploadResponse(res);
 }

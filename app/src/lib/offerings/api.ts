@@ -1,4 +1,5 @@
 import axiosInstance from "@/lib/axiosInstance";
+import { parseMediaUploadResponse } from "@/lib/parseMediaUploadResponse";
 import type { Offering, OfferingStatus, OfferingType } from "./types";
 
 function pick(obj: Record<string, unknown>, ...keys: string[]): unknown {
@@ -70,6 +71,23 @@ export function mapOfferingFromApi(raw: unknown): Offering | null {
   };
 }
 
+/** API accepts remote http(s) URLs in photo_urls, not browser data: URLs. */
+export function filterHttpsPhotoUrls(urls: string[] | undefined): string[] {
+  if (!urls?.length) return [];
+  return urls.filter((u) => typeof u === "string" && /^https?:\/\//i.test(u.trim()));
+}
+
+/** POST multipart to store one listing image; returns absolute URL for photo_urls. */
+export async function uploadOfferingImageApi(file: File): Promise<string> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await axiosInstance.post("offerings/upload-image/", fd, {
+    headers: { "Content-Type": "multipart/form-data" },
+    timeout: 120000,
+  });
+  return parseMediaUploadResponse(res);
+}
+
 export function offeringToApiBody(o: Partial<Offering>): Record<string, unknown> {
   const body: Record<string, unknown> = {};
   if (o.type != null) body.type = o.type;
@@ -78,7 +96,7 @@ export function offeringToApiBody(o: Partial<Offering>): Record<string, unknown>
   if (o.description != null) body.description = o.description;
   if (o.locationText != null) body.location_text = o.locationText;
   if (o.startingPriceInr != null) body.starting_price_inr = o.startingPriceInr;
-  if (o.photoUrls != null) body.photo_urls = o.photoUrls;
+  if (o.photoUrls != null) body.photo_urls = filterHttpsPhotoUrls(o.photoUrls);
   if (o.status != null) body.status = o.status;
   if (o.attestationAccepted != null) body.attestation_accepted = o.attestationAccepted;
   return body;
