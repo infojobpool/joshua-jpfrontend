@@ -36,9 +36,11 @@ export function isMobileBottomNavHidden(pathname: string | null): boolean {
   );
 }
 
-/** Global marketing footer hidden on the post-task wizard for a cleaner flow. */
+/** Global marketing footer hidden on focused flows (wizard, profile editor, etc.). */
 export function isAppFooterHidden(pathname: string | null): boolean {
   if (!pathname) return false;
   const p = normalizePathname(pathname);
-  return p === "/post-task" || p.startsWith("/post-task/") || p === "/listing-request";
+  if (p === "/post-task" || p.startsWith("/post-task/") || p === "/listing-request") return true;
+  if (p === "/profile" || p.startsWith("/profile/")) return true;
+  return false;
 }
