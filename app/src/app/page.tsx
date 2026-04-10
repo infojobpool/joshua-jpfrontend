@@ -3,6 +3,7 @@ import { HeroSection } from '../components/mainpage/hero-section'
 import { MobileHeroSection } from '../components/mobile/MobileHeroSection'
 import { MobileWelcomeBonus } from '../components/mobile/MobileWelcomeBonus'
 import { RecentAvailableTasks } from '../components/mainpage/recent-available-tasks'
+import { HomePublishedOfferings } from '../components/mainpage/home-published-offerings'
 import { MobileTestimonials } from '../components/mobile/MobileTestimonials'
 import { MobileWhyChoose } from '../components/mobile/MobileWhyChoose'
 import { MobileEarnAsTasker } from '../components/mobile/MobileEarnAsTasker'
@@ -23,6 +24,7 @@ export default function Home() {
         <MobileHeroSection />
         <MobileWelcomeBonus />
         <RecentAvailableTasks variant="mobile" />
+        <HomePublishedOfferings variant="mobile" />
         <MobileHeroBanner />
         <MobileShowcase />
         <MobileEarnAsTasker />
@@ -35,6 +37,7 @@ export default function Home() {
         <HeroSection />
         <TrustBadgesSection />
         <RecentAvailableTasks variant="desktop" />
+        <HomePublishedOfferings variant="desktop" />
         <AvailableTasksScroller />
         <HowItWorks />
         <Features />

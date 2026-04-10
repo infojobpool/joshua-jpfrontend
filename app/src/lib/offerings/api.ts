@@ -102,11 +102,12 @@ export function offeringToApiBody(o: Partial<Offering>): Record<string, unknown>
   return body;
 }
 
-function unwrapResponseData<T = unknown>(res: { data?: unknown }): T | undefined {
+/** Unwrap `{ status_code, data }` API envelope; use `?? res.data` for flat bodies. */
+export function unwrapOfferingEnvelope(res: { data?: unknown }): unknown {
   const d = res.data as Record<string, unknown> | undefined;
   if (!d) return undefined;
   if (d.status_code != null && Number(d.status_code) !== 200) return undefined;
-  return d.data as T;
+  return d.data;
 }
 
 function hasOfferingShapeId(idVal: unknown): boolean {
@@ -161,8 +162,29 @@ export async function listOfferingsApi(profileUserId: string): Promise<Offering[
   const res = await axiosInstance.get("offerings/", {
     params: { user_id: profileUserId },
   });
-  const rows = extractOfferingsPayload(unwrapResponseData(res) ?? res.data);
+  const rows = extractOfferingsPayload(unwrapOfferingEnvelope(res) ?? res.data);
   return rows.map(mapOfferingFromApi).filter((x): x is Offering => x !== null);
+}
+
+/**
+ * Published listings for the marketing home page (no `user_id`).
+ * Backend should return public `published` rows for anonymous users when filtering by status.
+ * If the API only supports per-profile lists, this returns [] until the feed endpoint exists.
+ */
+export async function listPublishedOfferingsForHomeApi(limit = 24): Promise<Offering[]> {
+  try {
+    const res = await axiosInstance.get("offerings/", {
+      params: { status: "published" },
+    });
+    const rows = extractOfferingsPayload(unwrapOfferingEnvelope(res) ?? res.data);
+    const list = rows.map(mapOfferingFromApi).filter((x): x is Offering => x !== null);
+    return list
+      .filter((o) => o.status === "published" && o.userId)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, limit);
+  } catch {
+    return [];
+  }
 }
 
 export async function createOfferingApi(o: Offering): Promise<Offering> {
