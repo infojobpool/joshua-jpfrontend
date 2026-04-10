@@ -123,21 +123,26 @@ function PublicOfferingCard({
   const showActions = !viewerIsOwner && (!viewerId || viewerId !== providerId);
 
   return (
-    <li className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-md ring-1 ring-slate-900/[0.04] flex flex-col">
-      <div className="relative aspect-[16/10] w-full shrink-0 bg-gradient-to-br from-slate-100 to-emerald-50/30">
+    <li className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-md ring-1 ring-slate-900/[0.04] flex flex-col max-w-full">
+      {/* Mobile: short fixed band + contain (no aggressive crop). sm+: wider 16:10 hero + cover. */}
+      <div className="relative h-36 w-full shrink-0 overflow-hidden bg-gradient-to-br from-slate-100 to-emerald-50/30 px-2 py-1.5 sm:p-0 sm:h-auto sm:aspect-[16/10] flex items-center justify-center">
         {cover ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={cover} alt="" className="h-full w-full object-cover" />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-slate-950/10" />
+            <img
+              src={cover}
+              alt=""
+              className="max-h-full max-w-full object-contain sm:absolute sm:inset-0 sm:h-full sm:w-full sm:max-h-none sm:max-w-none sm:object-cover"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-slate-950/10 hidden sm:block" />
           </>
         ) : (
-          <div className="flex h-full min-h-[140px] items-center justify-center">
-            <Package className="h-12 w-12 text-slate-200" aria-hidden />
+          <div className="flex h-full min-h-[5.5rem] w-full items-center justify-center">
+            <Package className="h-10 w-10 text-slate-200 sm:h-12 sm:w-12" aria-hidden />
           </div>
         )}
       </div>
-      <div className="p-4 flex flex-col flex-1">
+      <div className="p-3 sm:p-4 flex flex-col flex-1">
         <div className="flex items-start justify-between gap-2">
           <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">{o.type}</span>
           <span className="text-sm font-bold tabular-nums text-slate-900 shrink-0">
