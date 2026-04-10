@@ -58,11 +58,11 @@ export function CategoryScroller() {
           transition={{ duration: 0.5 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-3">
-            We love a to-do
+          <h2 className="font-home-section-title text-2xl text-gray-900 md:text-3xl lg:text-[2rem] mb-3">
+            Browse by category
           </h2>
-          <p className="text-gray-600 text-base md:text-lg max-w-2xl mx-auto">
-            From odd jobs to serious renovations, the help you&apos;re looking for is on JobPool.
+          <p className="font-home-section-desc text-gray-600 text-base md:text-lg max-w-2xl mx-auto">
+            Explore open tasks and people offering help across the skills booked most often on JobPool.
           </p>
         </motion.div>
 
