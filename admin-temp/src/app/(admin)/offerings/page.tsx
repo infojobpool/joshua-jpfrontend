@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import axiosInstance from "@/lib/axiosInstance";
 import { getApiErrorMessage, formatAxiosApiError } from "@/lib/apiError";
+import { parseMediaUploadResponse } from "@/lib/parseMediaUploadResponse";
 import { useCanAdminWrite } from "@/lib/adminAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,9 +37,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Eye, EyeOff, Pencil } from "lucide-react";
+import { Loader2, Eye, EyeOff, Pencil, ImagePlus } from "lucide-react";
 
 const PAGE_LIMIT = 50;
+/** Match main app listing editor limits */
+const MAX_LISTING_PHOTOS = 6;
+const MAX_PHOTO_BYTES = 650 * 1024;
+
+function photoLinesFromText(text: string): string[] {
+  return text
+    .split(/[\n,]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 type StatusFilter = "all" | "draft" | "published" | "paused";
 type AdminHiddenFilter = "all" | "visible" | "hidden";
@@ -165,6 +176,8 @@ export default function AdminOfferingsPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const photoFileInputRef = useRef<HTMLInputElement>(null);
   const canWrite = useCanAdminWrite();
 
   /** Latest filter fields for fetchList (avoid refetch on every keystroke). */
@@ -279,6 +292,63 @@ export default function AdminOfferingsPage() {
       toast.error(formatAxiosApiError(err) || getApiErrorMessage(err) || "Update failed");
     } finally {
       setSavingEdit(false);
+    }
+  };
+
+  const onListingPhotoFilesSelected = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files?.length || !editDraft) return;
+    if (!canWrite) {
+      toast.error("Read-only access");
+      e.target.value = "";
+      return;
+    }
+    const existing = photoLinesFromText(editDraft.photo_urls_text);
+    let lines = [...existing];
+    setPhotoUploading(true);
+    try {
+      let added = 0;
+      for (const file of Array.from(files)) {
+        if (lines.length >= MAX_LISTING_PHOTOS) {
+          toast.error(`You can add up to ${MAX_LISTING_PHOTOS} photos per listing.`);
+          break;
+        }
+        if (!file.type.startsWith("image/")) {
+          toast.error(`${file.name} is not an image.`);
+          continue;
+        }
+        if (file.size > MAX_PHOTO_BYTES) {
+          toast.error(`${file.name} is too large (max ${Math.round(MAX_PHOTO_BYTES / 1024)} KB).`);
+          continue;
+        }
+        try {
+          const fd = new FormData();
+          fd.append("file", file);
+          const res = await axiosInstance.post("offerings/upload-image/", fd, {
+            headers: { "Content-Type": "multipart/form-data" },
+            timeout: 120000,
+          });
+          const url = parseMediaUploadResponse(res);
+          lines.push(url);
+          added += 1;
+        } catch (err) {
+          const status = (err as { response?: { status?: number } }).response?.status;
+          if (status === 403 || status === 401) {
+            toast.error(
+              "Upload not allowed for this admin token. Backend: allow admin on POST offerings/upload-image/ or add POST admin/offerings/upload-image/.",
+            );
+          } else {
+            toast.error(getApiErrorMessage(err) || `Upload failed for ${file.name}`);
+          }
+        }
+      }
+      if (added > 0) {
+        setEditDraft((d) => (d ? { ...d, photo_urls_text: lines.join("\n") } : d));
+        toast.success(`Added ${added} image URL(s) from upload.`);
+      }
+    } finally {
+      setPhotoUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -541,7 +611,8 @@ export default function AdminOfferingsPage() {
           <DialogHeader>
             <DialogTitle>Edit listing</DialogTitle>
             <DialogDescription>
-              Update fields as the tasker would. Uses writer admin auth. Photo URLs must be http(s), one per line.
+              Update fields as the tasker would (writer admin). Add photos by upload (same API as the main app) or
+              paste https URLs, one per line.
             </DialogDescription>
           </DialogHeader>
           {editDraft ? (
@@ -635,16 +706,53 @@ export default function AdminOfferingsPage() {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-photos">Photo URLs (https, one per line)</Label>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <Label htmlFor="edit-photos">Photos</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={photoFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="sr-only"
+                      disabled={savingEdit || photoUploading || !canWrite}
+                      onChange={(ev) => void onListingPhotoFilesSelected(ev)}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="gap-1.5"
+                      disabled={savingEdit || photoUploading || !canWrite}
+                      title={
+                        !canWrite
+                          ? "Read-only role"
+                          : `Upload images (max ${MAX_LISTING_PHOTOS}, ${Math.round(MAX_PHOTO_BYTES / 1024)} KB each)`
+                      }
+                      onClick={() => photoFileInputRef.current?.click()}
+                    >
+                      {photoUploading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ImagePlus className="h-4 w-4" />
+                      )}
+                      Upload images
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Uploads call <span className="font-mono">POST …/offerings/upload-image/</span>. If you see 403, the
+                  API must accept the admin JWT on that route (or provide an admin-only upload endpoint).
+                </p>
                 <Textarea
                   id="edit-photos"
                   value={editDraft.photo_urls_text}
                   onChange={(e) =>
                     setEditDraft((d) => (d ? { ...d, photo_urls_text: e.target.value } : d))
                   }
-                  disabled={savingEdit}
+                  disabled={savingEdit || photoUploading}
                   rows={3}
-                  placeholder="https://..."
+                  placeholder="https://... (one per line, or use Upload images)"
                 />
               </div>
               <div className="flex items-center gap-2">
