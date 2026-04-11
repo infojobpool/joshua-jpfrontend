@@ -26,7 +26,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { getApiErrorMessage, formatAxiosApiError } from "@/lib/apiError";
+import { Loader2, Eye, EyeOff, Pencil } from "lucide-react";
 
 const PAGE_LIMIT = 50;
 
@@ -102,6 +113,46 @@ function statusBadgeClass(status: string): string {
   return "bg-slate-100 text-slate-700 hover:bg-slate-100";
 }
 
+function filterHttpsPhotoUrls(urls: string[]): string[] {
+  return urls.filter((u) => typeof u === "string" && /^https?:\/\//i.test(u.trim()));
+}
+
+type OfferingStatusEdit = "draft" | "published" | "paused";
+type OfferingTypeEdit = "service" | "product";
+
+interface EditDraft {
+  offeringId: string;
+  type: OfferingTypeEdit;
+  title: string;
+  category: string;
+  description: string;
+  location_text: string;
+  starting_price_inr: string;
+  status: OfferingStatusEdit;
+  photo_urls_text: string;
+  attestation_accepted: boolean;
+}
+
+function rowToEditDraft(o: AdminOfferingRow): EditDraft {
+  const st = (o.status || "draft").toLowerCase();
+  let status: OfferingStatusEdit = "draft";
+  if (st === "published") status = "published";
+  else if (st === "paused") status = "paused";
+  const ty = (o.type || "service").toLowerCase() === "product" ? "product" : "service";
+  return {
+    offeringId: o.id,
+    type: ty,
+    title: o.title,
+    category: o.category,
+    description: o.description,
+    location_text: o.location_text,
+    starting_price_inr: String(Math.round(o.starting_price_inr) || 0),
+    status,
+    photo_urls_text: o.photo_urls.join("\n"),
+    attestation_accepted: o.attestation_accepted,
+  };
+}
+
 export default function AdminOfferingsPage() {
   const [rows, setRows] = useState<AdminOfferingRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -112,6 +163,9 @@ export default function AdminOfferingsPage() {
   const [userIdFilter, setUserIdFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [adminHiddenFilter, setAdminHiddenFilter] = useState<AdminHiddenFilter>("all");
+  const [editOpen, setEditOpen] = useState(false);
+  const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
   const canWrite = useCanAdminWrite();
 
   /** Latest filter fields for fetchList (avoid refetch on every keystroke). */
@@ -173,6 +227,60 @@ export default function AdminOfferingsPage() {
   const applyFilters = () => {
     setOffset(0);
     setQueryEpoch((e) => e + 1);
+  };
+
+  const openEdit = (o: AdminOfferingRow) => {
+    if (!canWrite) {
+      toast.error("Read-only access");
+      return;
+    }
+    setEditDraft(rowToEditDraft(o));
+    setEditOpen(true);
+  };
+
+  const saveEdit = async () => {
+    if (!canWrite || !editDraft) {
+      toast.error("Read-only access");
+      return;
+    }
+    const id = editDraft.offeringId;
+    const price = parseFloat(editDraft.starting_price_inr.replace(/,/g, ""));
+    if (!Number.isFinite(price) || price < 0) {
+      toast.error("Enter a valid starting price (₹).");
+      return;
+    }
+    const photoLines = editDraft.photo_urls_text
+      .split(/[\n,]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const photo_urls = filterHttpsPhotoUrls(photoLines);
+    const body: Record<string, unknown> = {
+      type: editDraft.type,
+      title: editDraft.title.trim(),
+      category: editDraft.category.trim(),
+      description: editDraft.description.trim(),
+      location_text: editDraft.location_text.trim(),
+      starting_price_inr: price,
+      status: editDraft.status,
+      photo_urls,
+      attestation_accepted: editDraft.attestation_accepted,
+    };
+    try {
+      setSavingEdit(true);
+      const res = await axiosInstance.patch(`/admin/offerings/${id}/`, body);
+      if (res.data?.status_code !== 200) {
+        toast.error(res.data?.message || "Update failed");
+        return;
+      }
+      toast.success(res.data?.message || "Offering updated");
+      setEditOpen(false);
+      setEditDraft(null);
+      await fetchList();
+    } catch (err) {
+      toast.error(formatAxiosApiError(err) || getApiErrorMessage(err) || "Update failed");
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
   const patchVisibility = async (offeringId: string, admin_hidden: boolean) => {
@@ -301,7 +409,7 @@ export default function AdminOfferingsPage() {
                   <TableHead className="w-[100px]">Admin</TableHead>
                   <TableHead className="min-w-[90px] text-right">Price ₹</TableHead>
                   <TableHead className="min-w-[100px]">Updated</TableHead>
-                  <TableHead className="min-w-[120px] text-right">Actions</TableHead>
+                  <TableHead className="min-w-[200px] text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -362,41 +470,55 @@ export default function AdminOfferingsPage() {
                           : "—"}
                       </TableCell>
                       <TableCell className="align-top text-right">
-                        {o.admin_hidden ? (
+                        <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:flex-wrap sm:justify-end">
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
                             className="gap-1"
-                            disabled={!canWrite || actionId === o.id}
-                            title={!canWrite ? "Read-only role" : "Show on public feed again"}
-                            onClick={() => patchVisibility(o.id, false)}
+                            disabled={!canWrite || savingEdit}
+                            title={!canWrite ? "Read-only role" : "Edit listing fields"}
+                            onClick={() => openEdit(o)}
                           >
-                            {actionId === o.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Eye className="h-3.5 w-3.5" />
-                            )}
-                            Unhide
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
                           </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="gap-1"
-                            disabled={!canWrite || actionId === o.id}
-                            title={!canWrite ? "Read-only role" : "Remove from public feed / others’ profile view"}
-                            onClick={() => patchVisibility(o.id, true)}
-                          >
-                            {actionId === o.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <EyeOff className="h-3.5 w-3.5" />
-                            )}
-                            Hide
-                          </Button>
-                        )}
+                          {o.admin_hidden ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="gap-1"
+                              disabled={!canWrite || actionId === o.id}
+                              title={!canWrite ? "Read-only role" : "Show on public feed again"}
+                              onClick={() => patchVisibility(o.id, false)}
+                            >
+                              {actionId === o.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Eye className="h-3.5 w-3.5" />
+                              )}
+                              Unhide
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="gap-1"
+                              disabled={!canWrite || actionId === o.id}
+                              title={!canWrite ? "Read-only role" : "Remove from public feed / others’ profile view"}
+                              onClick={() => patchVisibility(o.id, true)}
+                            >
+                              {actionId === o.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <EyeOff className="h-3.5 w-3.5" />
+                              )}
+                              Hide
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -406,6 +528,167 @@ export default function AdminOfferingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog
+        open={editOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditOpen(false);
+            setEditDraft(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit listing</DialogTitle>
+            <DialogDescription>
+              Update fields as the tasker would. Uses writer admin auth. Photo URLs must be http(s), one per line.
+            </DialogDescription>
+          </DialogHeader>
+          {editDraft ? (
+            <div className="grid gap-4 py-2">
+              <div className="grid gap-2">
+                <Label>Type</Label>
+                <Select
+                  value={editDraft.type}
+                  onValueChange={(v) =>
+                    setEditDraft((d) => (d ? { ...d, type: v as OfferingTypeEdit } : d))
+                  }
+                  disabled={savingEdit}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="service">Service</SelectItem>
+                    <SelectItem value="product">Product</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-title">Title</Label>
+                <Input
+                  id="edit-title"
+                  value={editDraft.title}
+                  onChange={(e) => setEditDraft((d) => (d ? { ...d, title: e.target.value } : d))}
+                  disabled={savingEdit}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-category">Category</Label>
+                <Input
+                  id="edit-category"
+                  value={editDraft.category}
+                  onChange={(e) => setEditDraft((d) => (d ? { ...d, category: e.target.value } : d))}
+                  disabled={savingEdit}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-desc">Description</Label>
+                <Textarea
+                  id="edit-desc"
+                  value={editDraft.description}
+                  onChange={(e) => setEditDraft((d) => (d ? { ...d, description: e.target.value } : d))}
+                  disabled={savingEdit}
+                  rows={4}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-loc">Location (text)</Label>
+                <Input
+                  id="edit-loc"
+                  value={editDraft.location_text}
+                  onChange={(e) => setEditDraft((d) => (d ? { ...d, location_text: e.target.value } : d))}
+                  disabled={savingEdit}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-price">Starting price (INR)</Label>
+                <Input
+                  id="edit-price"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={editDraft.starting_price_inr}
+                  onChange={(e) =>
+                    setEditDraft((d) => (d ? { ...d, starting_price_inr: e.target.value } : d))
+                  }
+                  disabled={savingEdit}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Status</Label>
+                <Select
+                  value={editDraft.status}
+                  onValueChange={(v) =>
+                    setEditDraft((d) => (d ? { ...d, status: v as OfferingStatusEdit } : d))
+                  }
+                  disabled={savingEdit}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="published">Published</SelectItem>
+                    <SelectItem value="paused">Paused</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-photos">Photo URLs (https, one per line)</Label>
+                <Textarea
+                  id="edit-photos"
+                  value={editDraft.photo_urls_text}
+                  onChange={(e) =>
+                    setEditDraft((d) => (d ? { ...d, photo_urls_text: e.target.value } : d))
+                  }
+                  disabled={savingEdit}
+                  rows={3}
+                  placeholder="https://..."
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="edit-attest"
+                  checked={editDraft.attestation_accepted}
+                  onCheckedChange={(c) =>
+                    setEditDraft((d) => (d ? { ...d, attestation_accepted: Boolean(c) } : d))
+                  }
+                  disabled={savingEdit}
+                />
+                <Label htmlFor="edit-attest" className="text-sm font-normal cursor-pointer">
+                  Attestation accepted
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground font-mono break-all">ID: {editDraft.offeringId}</p>
+            </div>
+          ) : null}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setEditOpen(false);
+                setEditDraft(null);
+              }}
+              disabled={savingEdit}
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={() => void saveEdit()} disabled={savingEdit || !editDraft}>
+              {savingEdit ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                "Save changes"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
