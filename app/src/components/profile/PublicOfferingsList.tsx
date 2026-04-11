@@ -6,6 +6,7 @@ import { MapPin, MessageSquare, Package, CalendarCheck } from "lucide-react";
 import type { Offering } from "@/lib/offerings/types";
 import { listOfferingsApi } from "@/lib/offerings/api";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import useStore from "@/lib/Zustand";
 
 type Props = {
@@ -144,7 +145,14 @@ function PublicOfferingCard({
       </div>
       <div className="p-3 sm:p-4 flex flex-col flex-1">
         <div className="flex items-start justify-between gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">{o.type}</span>
+          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">{o.type}</span>
+            {viewerIsOwner && o.adminHidden ? (
+              <Badge className="text-[10px] font-semibold bg-amber-100 text-amber-900 hover:bg-amber-100 border-amber-200/80">
+                Hidden by admin
+              </Badge>
+            ) : null}
+          </div>
           <span className="text-sm font-bold tabular-nums text-slate-900 shrink-0">
             From ₹{Math.round(o.startingPriceInr).toLocaleString("en-IN")}
           </span>
@@ -174,7 +182,11 @@ function PublicOfferingCard({
             </Button>
           </div>
         ) : viewerIsOwner ? (
-          <p className="mt-4 text-xs text-slate-500">This is your public listing — visitors see Request booking and Message.</p>
+          <p className="mt-4 text-xs text-slate-500">
+            {o.adminHidden
+              ? "Hidden by admin — visitors do not see this card until support restores visibility."
+              : "This is your public listing — visitors see Request booking and Message."}
+          </p>
         ) : null}
       </div>
     </li>

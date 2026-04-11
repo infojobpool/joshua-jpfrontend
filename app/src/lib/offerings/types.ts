@@ -24,6 +24,8 @@ export interface Offering {
   updatedAt: number;
   /** User attested honest listing (impersonation / authenticity) */
   attestationAccepted: boolean;
+  /** When true, admins removed this listing from public feed / non-owner profile views */
+  adminHidden?: boolean;
 }
 
 export type OfferingInput = Omit<Offering, "id" | "createdAt" | "updatedAt"> & {

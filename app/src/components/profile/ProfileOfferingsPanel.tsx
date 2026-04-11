@@ -127,6 +127,11 @@ export function ProfileOfferingsPanel({ userId }: Props) {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       {statusBadge(o.status)}
+                      {o.adminHidden ? (
+                        <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100 border-amber-200/80">
+                          Hidden by admin
+                        </Badge>
+                      ) : null}
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{o.type}</span>
                     </div>
                     <p className="mt-1.5 font-semibold text-slate-900 text-base leading-snug line-clamp-2">

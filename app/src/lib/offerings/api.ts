@@ -89,6 +89,7 @@ export function mapOfferingFromApi(raw: unknown): Offering | null {
     createdAt: toMs(pick(r, "created_at", "createdAt")),
     updatedAt: toMs(pick(r, "updated_at", "updatedAt")),
     attestationAccepted: Boolean(pick(r, "attestation_accepted", "attestationAccepted")),
+    adminHidden: Boolean(pick(r, "admin_hidden", "adminHidden")),
   };
 }
 
@@ -207,7 +208,9 @@ export async function listOfferingFeedApi(limit = 24, offset = 0): Promise<Offer
     const offerings = rows
       .map(mapOfferingFromApi)
       .filter((x): x is Offering => x !== null)
-      .filter((o) => o.userId.trim().length > 0 && o.status === "published");
+      .filter(
+        (o) => o.userId.trim().length > 0 && o.status === "published" && !o.adminHidden,
+      );
 
     let total = 0;
     if (payload && typeof payload === "object" && !Array.isArray(payload)) {

@@ -273,6 +273,19 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
         <p className="mt-1 text-sm text-slate-500">Service or product — saved to your account. Public when published.</p>
       </div>
 
+      {o.adminHidden ? (
+        <div
+          role="status"
+          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+        >
+          <p className="font-semibold">This listing is hidden by an administrator</p>
+          <p className="mt-1 text-amber-900/90 leading-relaxed">
+            It won&apos;t appear on the public feed or on your profile for others until support turns visibility back on.
+            You can still edit it here.
+          </p>
+        </div>
+      ) : null}
+
       <div className="flex rounded-xl bg-slate-100 p-1">
         {(["service", "product"] as OfferingType[]).map((t) => (
           <button
