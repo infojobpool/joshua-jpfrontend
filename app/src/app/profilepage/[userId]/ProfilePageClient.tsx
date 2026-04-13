@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Star, MapPin, Briefcase, Package } from "lucide-react";
+import { Star, MapPin, Briefcase, Package, BadgeCheck } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
@@ -46,6 +46,8 @@ interface UserProfile {
   phone: string;
   addresses: Address[];
   avatar: string;
+  /** 0–3 per API: 3 = PAN + Aadhaar + bank complete */
+  verification_status: number;
 }
 
 interface Review {
@@ -72,6 +74,7 @@ export default function ProfilePageClient() {
     phone: "",
     addresses: [],
     avatar: "",
+    verification_status: 0,
   });
   const [reviews, setReviews] = useState<Review[]>([]);
 
@@ -84,6 +87,8 @@ export default function ProfilePageClient() {
   const profileIdStr = String(userId ?? "");
   const viewerIsOwner =
     Boolean(loggedInUserId) && String(loggedInUserId) === profileIdStr;
+
+  const isFullyVerified = profileUser.verification_status >= 3;
 
   const avatarSrc = profileUser.avatar
     ? resolveProfileImageUrl(profileUser.avatar) || profileUser.avatar
@@ -116,6 +121,11 @@ export default function ProfilePageClient() {
         if (data?.status_code && data.status_code !== 200) {
           throw new Error(data?.message || "Failed to load profile");
         }
+        const vRaw = payload.verification_status ?? payload.verificationStatus;
+        const verification_status =
+          typeof vRaw === "number" && Number.isFinite(vRaw)
+            ? vRaw
+            : parseInt(String(vRaw ?? "0"), 10) || 0;
         setProfileUser({
           profile_id: payload.profile_id || "",
           name: payload.name || "",
@@ -129,6 +139,7 @@ export default function ProfilePageClient() {
               }))
             : [],
           avatar: payload.profile_img || "",
+          verification_status,
         });
 
         if (Array.isArray(payload.reviews)) {
@@ -171,19 +182,19 @@ export default function ProfilePageClient() {
       <main className="flex-1 w-full min-w-0 max-w-6xl mx-auto box-border py-6 md:py-10 px-4 md:px-6 overflow-x-hidden">
         <Link
           href="/dashboard"
-          className="text-sm text-slate-600 hover:text-emerald-600 font-medium mb-4 inline-block transition-colors"
+          className="text-sm text-slate-600 hover:text-blue-600 font-medium mb-4 inline-block transition-colors"
         >
           ← Back to Dashboard
         </Link>
         <div className="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-3 min-w-0 w-full max-w-full">
           {/* Plain div (not Card): shared Card uses flex + gap-6 + py-6 which still caused huge empty bands / odd alignment on mobile WebViews */}
-          <div className="md:col-span-1 w-full max-w-full min-w-0 rounded-2xl overflow-hidden relative bg-card text-card-foreground shadow-[0_24px_64px_-16px_rgba(15,118,110,0.38)] ring-1 ring-slate-900/[0.06] before:pointer-events-none before:absolute before:inset-x-5 before:top-0 before:z-10 before:h-1 before:rounded-full before:bg-gradient-to-r before:from-amber-300 before:via-emerald-400 before:to-cyan-500 before:content-['']">
-            <div className="h-[4.5rem] sm:h-24 shrink-0 bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-800" />
+          <div className="md:col-span-1 w-full max-w-full min-w-0 rounded-2xl overflow-hidden relative bg-card text-card-foreground shadow-[0_24px_64px_-16px_rgba(37,99,235,0.22)] ring-1 ring-slate-900/[0.06] before:pointer-events-none before:absolute before:inset-x-5 before:top-0 before:z-10 before:h-1 before:rounded-full before:bg-gradient-to-r before:from-sky-300 before:via-blue-500 before:to-indigo-600 before:content-['']">
+            <div className="h-[5rem] sm:h-28 shrink-0 bg-gradient-to-br from-blue-700 via-indigo-700 to-slate-900" />
             <div className="flex flex-col items-center justify-start text-center -mt-11 sm:-mt-14 relative z-0 px-3 sm:px-4 pb-4 sm:pb-5 pt-0 w-full max-w-full min-w-0 mx-auto">
               <div className="relative w-[5.75rem] h-[5.75rem] sm:w-[7.25rem] sm:h-[7.25rem] mb-2 sm:mb-3 shrink-0 mx-auto">
-                <Avatar className="w-full h-full ring-[3px] ring-white shadow-[0_12px_40px_-8px_rgba(0,0,0,0.25)]">
+                <Avatar className="w-full h-full ring-[3px] ring-white shadow-[0_12px_40px_-8px_rgba(15,23,42,0.35)]">
                   <AvatarImage src={avatarSrc} alt={profileUser.name} className="object-cover" />
-                  <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-lg sm:text-xl font-semibold">
+                  <AvatarFallback className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white text-lg sm:text-xl font-semibold">
                     {profileUser.name
                       .split(" ")
                       .map((n) => n[0])
@@ -191,12 +202,20 @@ export default function ProfilePageClient() {
                   </AvatarFallback>
                 </Avatar>
               </div>
-              <div className="inline-flex items-center rounded-full border border-emerald-200/90 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-900 mb-2">
-                JobPool profile
+              <div className="flex flex-wrap items-center justify-center gap-2 w-full max-w-full px-1 mb-1">
+                <CardTitle className="text-lg sm:text-2xl font-bold tracking-tight text-slate-900 break-words text-center mb-0">
+                  {profileUser.name || "Unknown User"}
+                </CardTitle>
+                {isFullyVerified ? (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-800 shadow-sm"
+                    title="PAN, Aadhaar, and bank verified on JobPool"
+                  >
+                    <BadgeCheck className="h-3.5 w-3.5 text-blue-600 shrink-0" aria-hidden />
+                    Verified
+                  </span>
+                ) : null}
               </div>
-              <CardTitle className="text-lg sm:text-2xl font-bold tracking-tight text-slate-900 w-full max-w-full px-1 break-words text-center">
-                {profileUser.name || "Unknown User"}
-              </CardTitle>
               <CardDescription className="mt-2 text-slate-600 text-sm w-full max-w-full px-1 flex flex-col items-center gap-1 sm:flex-row sm:justify-center sm:items-start sm:gap-1.5 sm:text-left">
                 <MapPin className="w-4 h-4 shrink-0 sm:mt-0.5" aria-hidden />
                 <span className="break-words min-w-0 text-center sm:text-left max-w-[min(100%,20rem)]">
@@ -237,11 +256,11 @@ export default function ProfilePageClient() {
                 <Accordion type="multiple" defaultValue={["listings"]} className="w-full space-y-3">
                   <AccordionItem
                     value="listings"
-                    className="rounded-2xl border border-emerald-200/60 bg-emerald-50/20 px-3 sm:px-4 border-b-0"
+                    className="rounded-2xl border border-blue-200/70 bg-blue-50/25 px-3 sm:px-4 border-b-0"
                   >
                     <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
                       <span className="flex flex-wrap items-center gap-2 pr-2">
-                        <Package className="h-5 w-5 text-emerald-600 shrink-0" />
+                        <Package className="h-5 w-5 text-blue-600 shrink-0" />
                         <span className="text-base font-semibold text-slate-900">Public listings</span>
                       </span>
                     </AccordionTrigger>
@@ -268,8 +287,8 @@ export default function ProfilePageClient() {
                       <p className="text-sm text-slate-600 mb-4">What others say about {profileUser.name}</p>
             <Tabs defaultValue="tasker">
               <TabsList className="w-full grid grid-cols-2 rounded-xl bg-slate-100 p-1.5 mb-6">
-                <TabsTrigger value="tasker" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">As Tasker</TabsTrigger>
-                <TabsTrigger value="taskmaster" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-emerald-700 data-[state=active]:font-semibold">As Taskmaster</TabsTrigger>
+                <TabsTrigger value="tasker" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-700 data-[state=active]:font-semibold">As Tasker</TabsTrigger>
+                <TabsTrigger value="taskmaster" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-700 data-[state=active]:font-semibold">As Taskmaster</TabsTrigger>
               </TabsList>
 
               <TabsContent value="tasker" className="space-y-4">
@@ -324,11 +343,11 @@ export default function ProfilePageClient() {
 
 function ReviewCard({ review }: { review: Review }) {
   return (
-    <div className="group rounded-2xl border border-slate-100 bg-gradient-to-br from-white to-slate-50/50 p-5 shadow-sm hover:shadow-lg hover:border-emerald-100 transition-all duration-300">
+    <div className="group rounded-2xl border border-slate-100 bg-gradient-to-br from-white to-slate-50/50 p-5 shadow-sm hover:shadow-lg hover:border-blue-100 transition-all duration-300">
       <div className="flex items-start gap-4">
         <Avatar className="h-14 w-14 shrink-0 ring-2 ring-white shadow-md">
           <AvatarImage src={review.avatar} alt={review.name} />
-          <AvatarFallback className="bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-700 text-lg font-semibold">
+          <AvatarFallback className="bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-800 text-lg font-semibold">
             {review.name.charAt(0)}
           </AvatarFallback>
         </Avatar>
@@ -351,12 +370,12 @@ function ReviewCard({ review }: { review: Review }) {
             <span className="text-sm font-medium text-slate-600 ml-1">{review.rating}/5</span>
           </div>
           {review.project && (
-            <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-100">
-              <Briefcase className="h-4 w-4 shrink-0 text-emerald-600" />
-              <span className="text-sm font-semibold text-emerald-800">{review.project}</span>
+            <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-100">
+              <Briefcase className="h-4 w-4 shrink-0 text-blue-600" />
+              <span className="text-sm font-semibold text-blue-900">{review.project}</span>
             </div>
           )}
-          <blockquote className="text-sm text-slate-600 leading-relaxed pl-2 border-l-2 border-emerald-200 italic">
+          <blockquote className="text-sm text-slate-600 leading-relaxed pl-2 border-l-2 border-blue-200 italic">
             {review.comment}
           </blockquote>
         </div>

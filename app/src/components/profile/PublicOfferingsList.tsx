@@ -57,7 +57,7 @@ export function PublicOfferingsList({ profileUserId, providerName = "Provider", 
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="h-9 w-9 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600" />
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
       </div>
     );
   }
@@ -75,7 +75,7 @@ export function PublicOfferingsList({ profileUserId, providerName = "Provider", 
         {viewerIsOwner ? (
           <Link
             href="/profile"
-            className="mt-4 inline-block text-sm font-semibold text-emerald-700 hover:underline"
+            className="mt-4 inline-block text-sm font-semibold text-blue-700 hover:underline"
           >
             Go to Profile → Offerings
           </Link>
@@ -126,7 +126,7 @@ function PublicOfferingCard({
   return (
     <li className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-md ring-1 ring-slate-900/[0.04] flex flex-col max-w-full">
       {/* Mobile: short fixed band + contain (no aggressive crop). sm+: wider 16:10 hero + cover. */}
-      <div className="relative h-36 w-full shrink-0 overflow-hidden bg-gradient-to-br from-slate-100 to-emerald-50/30 px-2 py-1.5 sm:p-0 sm:h-auto sm:aspect-[16/10] flex items-center justify-center">
+      <div className="relative h-36 w-full shrink-0 overflow-hidden bg-gradient-to-br from-slate-100 to-blue-50/40 px-2 py-1.5 sm:p-0 sm:h-auto sm:aspect-[16/10] flex items-center justify-center">
         {cover ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -146,7 +146,7 @@ function PublicOfferingCard({
       <div className="p-3 sm:p-4 flex flex-col flex-1">
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">{o.type}</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700">{o.type}</span>
             {viewerIsOwner && o.adminHidden ? (
               <Badge className="text-[10px] font-semibold bg-amber-100 text-amber-900 hover:bg-amber-100 border-amber-200/80">
                 Hidden by admin
@@ -161,14 +161,14 @@ function PublicOfferingCard({
         {o.category ? <p className="mt-1 text-xs text-slate-500">{o.category}</p> : null}
         {o.locationText ? (
           <p className="mt-2 flex items-center gap-1 text-xs text-slate-500">
-            <MapPin className="h-3.5 w-3.5 shrink-0 text-emerald-600/70" />
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-blue-600/80" />
             <span className="line-clamp-1">{o.locationText}</span>
           </p>
         ) : null}
 
         {showActions ? (
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            <Button asChild className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 shadow-sm" size="sm">
+            <Button asChild className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 shadow-sm" size="sm">
               <Link href={viewerId ? requestPath : signinNextPath(requestPath)}>
                 <CalendarCheck className="mr-2 h-4 w-4 shrink-0" />
                 Request booking

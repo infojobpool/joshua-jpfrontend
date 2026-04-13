@@ -57,7 +57,10 @@ export default function ListingRequestPage() {
   const [step, setStep] = useState(1);
   const [preferredDate, setPreferredDate] = useState("");
   const [timeWindow, setTimeWindow] = useState<string>("flexible");
-  const [proposedBudgetInr, setProposedBudgetInr] = useState(listingStartingInr || 0);
+  /** String so the field can be cleared while typing; avoid `parseInt('') || 0` snapping back to 0 */
+  const [budgetInput, setBudgetInput] = useState(() =>
+    listingStartingInr > 0 ? String(listingStartingInr) : "",
+  );
   const [notes, setNotes] = useState("");
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [submittedId, setSubmittedId] = useState<string | null>(null);
@@ -67,15 +70,20 @@ export default function ListingRequestPage() {
   }, [checkAuth]);
 
   useEffect(() => {
-    setProposedBudgetInr(listingStartingInr || 0);
+    setBudgetInput(listingStartingInr > 0 ? String(listingStartingInr) : "");
   }, [listingStartingInr]);
+
+  const proposedBudgetInr = useMemo(() => {
+    const n = parseInt(budgetInput.replace(/\s/g, ""), 10);
+    return Number.isNaN(n) ? 0 : Math.max(0, n);
+  }, [budgetInput]);
 
   const canProceed = useMemo(() => {
     if (step === 2) return Boolean(preferredDate.trim());
-    if (step === 3) return proposedBudgetInr >= 0 && !Number.isNaN(proposedBudgetInr);
+    if (step === 3) return budgetInput.trim() !== "" && proposedBudgetInr > 0;
     if (step === 4) return policyAccepted;
     return true;
-  }, [step, preferredDate, proposedBudgetInr, policyAccepted]);
+  }, [step, preferredDate, budgetInput, proposedBudgetInr, policyAccepted]);
 
   const startMessageUrl = useMemo(() => {
     if (!userId || !providerId) return "/messages";
@@ -162,7 +170,7 @@ export default function ListingRequestPage() {
           <p className="mt-2 text-sm text-slate-600">
             Listing requests are separate from posting a task. You’ll confirm schedule and payment with the provider.
           </p>
-          <Button asChild className="mt-6 rounded-xl bg-emerald-600 hover:bg-emerald-700">
+          <Button asChild className="mt-6 rounded-xl bg-blue-600 hover:bg-blue-700">
             <Link href={`/signin?next=${encodeURIComponent(next)}`}>Sign in</Link>
           </Button>
         </div>
@@ -191,8 +199,8 @@ export default function ListingRequestPage() {
         <Header user={headerUser} onSignOut={handleSignOut} />
         <div className="container max-w-lg mx-auto px-4 py-10 pb-24">
           <Card className="border-0 shadow-lg rounded-2xl ring-1 ring-slate-200/80 overflow-hidden">
-            <CardHeader className="bg-gradient-to-br from-emerald-50 to-white border-b border-slate-100">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-md">
+            <CardHeader className="bg-gradient-to-br from-blue-50 to-white border-b border-slate-100">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-md">
                 <ShieldCheck className="h-7 w-7" />
               </div>
               <CardTitle className="text-xl mt-4">Request sent</CardTitle>
@@ -216,7 +224,7 @@ export default function ListingRequestPage() {
               </p>
             </CardContent>
             <CardFooter className="flex flex-col gap-2 sm:flex-row">
-              <Button asChild className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700">
+              <Button asChild className="w-full rounded-xl bg-blue-600 hover:bg-blue-700">
                 <Link href={startMessageUrl}>
                   <MessageSquare className="mr-2 h-4 w-4" />
                   Message {providerName}
@@ -240,7 +248,7 @@ export default function ListingRequestPage() {
         <div className="mb-6">
           <Link
             href={providerId ? `/profilepage/${providerId}` : "/dashboard"}
-            className="inline-flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-emerald-700"
+            className="inline-flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-blue-700"
           >
             <ChevronLeft className="h-4 w-4" />
             Back
@@ -256,7 +264,7 @@ export default function ListingRequestPage() {
           {STEPS.map((s) => (
             <div
               key={s.n}
-              className={`flex-1 h-1 rounded-full transition-colors ${step >= s.n ? "bg-emerald-500" : "bg-slate-200"}`}
+              className={`flex-1 h-1 rounded-full transition-colors ${step >= s.n ? "bg-blue-600" : "bg-slate-200"}`}
               aria-hidden
             />
           ))}
@@ -271,10 +279,10 @@ export default function ListingRequestPage() {
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">{listingType}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-blue-700">{listingType}</p>
                   <p className="mt-1 font-semibold text-slate-900 text-base">{offeringTitle}</p>
                   {locationText ? <p className="mt-2 text-slate-600">{locationText}</p> : null}
-                  <p className="mt-2 font-bold text-emerald-800 tabular-nums">
+                  <p className="mt-2 font-bold text-blue-800 tabular-nums">
                     Starting from ₹{Math.round(listingStartingInr).toLocaleString("en-IN")}
                   </p>
                 </div>
@@ -290,7 +298,7 @@ export default function ListingRequestPage() {
             <>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-emerald-600" />
+                  <Calendar className="h-5 w-5 text-blue-600" />
                   Schedule
                 </CardTitle>
                 <CardDescription>Pick a preferred date and time window.</CardDescription>
@@ -314,7 +322,7 @@ export default function ListingRequestPage() {
                         key={tw.value}
                         className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
                           timeWindow === tw.value
-                            ? "border-emerald-500 bg-emerald-50/50"
+                            ? "border-blue-600 bg-blue-50/50"
                             : "border-slate-200 hover:border-slate-300"
                         }`}
                       >
@@ -324,7 +332,7 @@ export default function ListingRequestPage() {
                           value={tw.value}
                           checked={timeWindow === tw.value}
                           onChange={() => setTimeWindow(tw.value)}
-                          className="text-emerald-600"
+                          className="text-blue-600"
                         />
                         {tw.label}
                       </label>
@@ -339,7 +347,7 @@ export default function ListingRequestPage() {
             <>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <IndianRupee className="h-5 w-5 text-emerald-600" />
+                  <IndianRupee className="h-5 w-5 text-blue-600" />
                   Budget line
                 </CardTitle>
                 <CardDescription>
@@ -351,11 +359,15 @@ export default function ListingRequestPage() {
                   <Label htmlFor="budget">Proposed amount (₹)</Label>
                   <Input
                     id="budget"
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={Number.isNaN(proposedBudgetInr) ? "" : proposedBudgetInr}
-                    onChange={(e) => setProposedBudgetInr(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    placeholder={listingStartingInr > 0 ? String(listingStartingInr) : "e.g. 500"}
+                    value={budgetInput}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, "");
+                      setBudgetInput(digits);
+                    }}
                     className="rounded-xl"
                   />
                 </div>
@@ -413,7 +425,7 @@ export default function ListingRequestPage() {
             {step < 4 ? (
               <Button
                 type="button"
-                className="rounded-xl bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto"
+                className="rounded-xl bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
                 disabled={!canProceed}
                 onClick={() => setStep((s) => Math.min(4, s + 1))}
               >
@@ -423,7 +435,7 @@ export default function ListingRequestPage() {
             ) : (
               <Button
                 type="button"
-                className="rounded-xl bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto"
+                className="rounded-xl bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
                 disabled={!canProceed}
                 onClick={submit}
               >

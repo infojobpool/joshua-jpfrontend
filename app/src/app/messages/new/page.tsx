@@ -116,8 +116,12 @@ export default function NewMessagePage() {
           localStorage.setItem("userChats", JSON.stringify(chatIds));
         }
         
-        // Redirect to the chat
-        router.push(`/messages/${chatId}`);
+        // Redirect to the chat (pass display name so header shows name before /profile resolves)
+        const q = new URLSearchParams();
+        if (receiverName && receiverName.trim() && receiverName.trim() !== "User") {
+          q.set("receiverName", receiverName.trim());
+        }
+        router.push(`/messages/${chatId}${q.toString() ? `?${q.toString()}` : ""}`);
       }
     } catch (error: any) {
       console.error('Error sending message:', error);

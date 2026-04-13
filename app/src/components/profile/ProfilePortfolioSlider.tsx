@@ -123,7 +123,7 @@ export function ProfilePortfolioSlider({ userId, viewerIsOwner, className }: Pro
         {viewerIsOwner ? (
           <Link
             href="/profile#profile-portfolio"
-            className="text-xs font-semibold text-emerald-700 hover:underline shrink-0"
+            className="text-xs font-semibold text-blue-700 hover:underline shrink-0"
           >
             Edit portfolio
           </Link>
@@ -161,7 +161,7 @@ export function ProfilePortfolioSlider({ userId, viewerIsOwner, className }: Pro
               key={item.id}
               type="button"
               onClick={() => openAt(idx)}
-              className="group relative shrink-0 snap-start overflow-hidden rounded-2xl ring-1 ring-slate-900/10 shadow-md w-[min(92vw,300px)] aspect-[4/3] bg-slate-100 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+              className="group relative shrink-0 snap-start overflow-hidden rounded-2xl ring-1 ring-slate-900/10 shadow-md w-[min(92vw,300px)] aspect-[4/3] bg-slate-100 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img

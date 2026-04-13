@@ -105,15 +105,38 @@ export default function ChatPageClient() {
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, [userId, chatId]);
 
-  const fetchUserInfo = async (userId: string) => {
+  const fetchUserInfo = async (uid: string): Promise<string | null> => {
     try {
-      if (!userId || userId === "undefined" || userId === "unknown") return null;
-      const response = await axiosInstance.get(`/profile?user_id=${userId}`);
-      if (response.data && response.data.name) return response.data.name;
+      if (!uid || uid === "undefined" || uid === "unknown") return null;
+      const response = await axiosInstance.get(`/profile?user_id=${uid}`);
+      const root = response.data as Record<string, unknown> | undefined;
+      if (root?.status_code != null && Number(root.status_code) !== 200) return null;
+      const payload = (root?.data ?? root) as Record<string, unknown> | undefined;
+      if (!payload || typeof payload !== "object") return null;
+      const name =
+        (typeof payload.name === "string" && payload.name.trim()) ||
+        (typeof payload.user_fullname === "string" && payload.user_fullname.trim()) ||
+        (typeof payload.full_name === "string" && payload.full_name.trim()) ||
+        "";
+      return name || null;
     } catch {
-      // Ignore profile fetch errors
+      return null;
     }
-    return null;
+  };
+
+  /** Replace "User xyz", Unknown, or missing names with /profile display name when possible */
+  const resolveDisplayName = async (oid: string, tentative: string): Promise<string> => {
+    const t = (tentative || "").trim();
+    const looksPlaceholder =
+      !t ||
+      t === "Unknown User" ||
+      t === "unknown" ||
+      t === oid ||
+      /^User\s+/i.test(t);
+    if (!looksPlaceholder) return t;
+    const fromApi = await fetchUserInfo(oid);
+    if (fromApi) return fromApi;
+    return t || "Unknown User";
   };
 
   const fetchMessages = async (showLoading = true) => {
@@ -212,23 +235,23 @@ export default function ChatPageClient() {
           }
         }
         
-        // If we don't have a proper name, try to fetch it from the profile API
-        if (!otherUserName || otherUserName === "Unknown User" || otherUserName === "unknown") {
-          const fetchedName = await fetchUserInfo(otherUserId);
-          if (fetchedName) {
-            otherUserName = fetchedName;
-          }
+        otherUserName = await resolveDisplayName(otherUserId, otherUserName);
+
+        // Query hint from /messages/new?receiverName=… (listing / task flows)
+        const nameHint = searchParams?.get("receiverName")?.trim();
+        if (
+          nameHint &&
+          nameHint !== "User" &&
+          (/^User\s+/i.test(otherUserName) ||
+            otherUserName === "Unknown User" ||
+            !otherUserName.trim())
+        ) {
+          otherUserName = nameHint;
         }
-        
-        // Final fallback - create a name from user ID
-        if (!otherUserName || otherUserName === "Unknown User" || otherUserName === "unknown") {
-          if (otherUserId && otherUserId !== "unknown") {
-            otherUserName = otherUserId.length > 3 
-              ? otherUserId.charAt(0).toUpperCase() + otherUserId.slice(1)
-              : "User " + otherUserId;
-          } else {
-            otherUserName = "Unknown User";
-          }
+
+        if (!otherUserName?.trim() || otherUserName === "Unknown User") {
+          otherUserName =
+            otherUserId && otherUserId !== "unknown" ? `User ${otherUserId}` : "Unknown User";
         }
         
         setOtherUserName(otherUserName);
