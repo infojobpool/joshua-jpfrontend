@@ -37,7 +37,7 @@ export function MobileHeroSection() {
 
   return (
     <section className="md:hidden w-full bg-white -mt-px">
-      <div className="relative w-full overflow-hidden rounded-b-[1.25rem] bg-gradient-to-b from-blue-500 via-blue-700 to-[#0c1e4a] text-white shadow-[0_16px_48px_-12px_rgba(30,64,175,0.55)] ring-1 ring-white/10 sm:rounded-b-3xl">
+      <div className="relative w-full overflow-hidden rounded-none bg-gradient-to-b from-blue-500 via-blue-700 to-[#0c1e4a] text-white shadow-[0_16px_48px_-12px_rgba(30,64,175,0.55)] ring-1 ring-white/10">
         {/* Depth: soft top highlight + vignette */}
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_100%_70%_at_50%_-30%,rgba(255,255,255,0.22),transparent_50%)]"

@@ -10,13 +10,21 @@ import { Send, ArrowLeft } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import axiosInstance from "@/lib/axiosInstance"
 import useStore from "@/lib/Zustand"
+import {
+  compareMessagesByTime,
+  formatChatTimestamp,
+  getMessageTimeRaw,
+  parseMessageToMs,
+} from "@/lib/chatMessageTime"
 
 
 interface Message {
   id: string;
   messagesid?: string;
   description: string;
-  tstamp: string;
+  tstamp?: string;
+  timestamp?: string;
+  created_at?: string;
   sender_id?: string;
   receiver_id?: string;
   sender_name?: string;
@@ -156,7 +164,7 @@ export default function ChatPageClient() {
         fetchedMessages = response.data.data;
       }
       
-      setMessages(fetchedMessages);
+      setMessages([...fetchedMessages].sort(compareMessagesByTime));
       
       // Determine other user info
       if (fetchedMessages.length > 0) {
@@ -431,7 +439,7 @@ export default function ChatPageClient() {
           is_read: false,
         };
 
-        setMessages(prev => [...prev, newMessage]);
+        setMessages((prev) => [...prev, newMessage].sort(compareMessagesByTime));
         setMessage("");
         
         // Mark message as read
@@ -624,7 +632,10 @@ export default function ChatPageClient() {
                     <p className="text-[15px] leading-snug">{msg.description}</p>
                   </div>
                   <p className={`text-[11px] text-slate-400 mt-1 ${isOwnMessage ? 'text-right mr-1' : 'ml-1'}`}>
-                    {new Date(msg.tstamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                    {(() => {
+                      const ms = parseMessageToMs(getMessageTimeRaw(msg));
+                      return ms != null ? formatChatTimestamp(ms) : "—";
+                    })()}
                   </p>
                 </div>
               </div>
