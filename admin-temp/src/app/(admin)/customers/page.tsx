@@ -315,11 +315,16 @@ interface Customer {
   /** From all-user-details/ after profile reminder tracking (optional). */
   profile_reminder_send_count?: number;
   last_profile_reminder_at?: string;
-  /** True once payout is confirmed: backend should set when admin marks the relevant wallet (UPI) withdrawal as paid. */
+  /**
+   * Admin snapshot: true only after admin completes the matching UPI withdrawal
+   * (`signup_bonus_payout_completed` on backend). Not the same as wallet credit.
+   */
   signup_bonus_claimed?: boolean;
   signup_bonus_eligible?: boolean;
   signup_bonus_missing?: string[];
   signup_bonus_amount?: number;
+  /** Optional explicit flag from API: bonus path is waiting on admin UPI completion. */
+  signup_bonus_awaiting_admin_payout?: boolean;
 }
 
 export default function CustomersPage() {
@@ -460,7 +465,8 @@ export default function CustomersPage() {
     Object.prototype.hasOwnProperty.call(c, "signup_bonus_claimed") ||
     Object.prototype.hasOwnProperty.call(c, "signup_bonus_eligible") ||
     Object.prototype.hasOwnProperty.call(c, "signup_bonus_missing") ||
-    Object.prototype.hasOwnProperty.call(c, "signup_bonus_amount");
+    Object.prototype.hasOwnProperty.call(c, "signup_bonus_amount") ||
+    Object.prototype.hasOwnProperty.call(c, "signup_bonus_awaiting_admin_payout");
 
   const renderSignupBonus = (customer: Customer) => {
     if (!hasSignupBonusApi(customer)) {
@@ -475,12 +481,14 @@ export default function CustomersPage() {
     const rupees = Number.isFinite(amount) && amount > 0 ? amount : 100;
     const label = `₹${rupees.toLocaleString("en-IN")}`;
 
+    const missing = Array.isArray(customer.signup_bonus_missing) ? customer.signup_bonus_missing : [];
+
     if (customer.signup_bonus_claimed === true) {
       return (
         <div className="flex flex-col gap-1">
           <Badge
             className="border border-emerald-200 bg-emerald-100 font-medium text-emerald-900 hover:bg-emerald-100"
-            title="API marked paid out — intended when admin has marked the related wallet withdrawal as paid (UPI)."
+            title="Admin completed the matching UPI wallet withdrawal (backend: signup_bonus_payout_completed)."
           >
             Credited
           </Badge>
@@ -489,18 +497,6 @@ export default function CustomersPage() {
       );
     }
 
-    if (customer.signup_bonus_eligible === true) {
-      return (
-        <Badge
-          className="border border-sky-200 bg-sky-100 font-medium text-sky-950 hover:bg-sky-100"
-          title={`Eligible (${label}). Credited appears after admin marks the related wallet withdrawal paid — API must set signup_bonus_claimed.`}
-        >
-          Ready · {label}
-        </Badge>
-      );
-    }
-
-    const missing = Array.isArray(customer.signup_bonus_missing) ? customer.signup_bonus_missing : [];
     if (missing.length > 0) {
       return (
         <div className="flex max-w-[240px] flex-col gap-1.5">
@@ -520,8 +516,40 @@ export default function CustomersPage() {
       );
     }
 
+    if (customer.signup_bonus_eligible === true) {
+      return (
+        <Badge
+          className="border border-sky-200 bg-sky-100 font-medium text-sky-950 hover:bg-sky-100"
+          title={`Eligible for ${label}. User may withdraw from wallet; Credited shows only after admin marks that withdrawal paid.`}
+        >
+          Ready · {label}
+        </Badge>
+      );
+    }
+
+    const awaitingPayout =
+      customer.signup_bonus_awaiting_admin_payout === true ||
+      (customer.signup_bonus_eligible === false &&
+        customer.signup_bonus_claimed !== true &&
+        missing.length === 0);
+
+    if (awaitingPayout) {
+      return (
+        <div className="flex max-w-[220px] flex-col gap-1">
+          <Badge
+            variant="outline"
+            className="border-violet-200 bg-violet-50 font-medium text-violet-950 hover:bg-violet-50"
+            title="Wallet bonus may be credited; waiting for admin to mark the matching UPI withdrawal completed. Backend: empty missing[], eligible false, or signup_bonus_awaiting_admin_payout."
+          >
+            Awaiting payout
+          </Badge>
+          <span className="text-xs text-gray-500 tabular-nums">{label}</span>
+        </div>
+      );
+    }
+
     return (
-      <span className="text-sm text-gray-400" title="No blockers listed; check API">
+      <span className="text-sm text-gray-400" title="No signup bonus snapshot for this row; check API">
         —
       </span>
     );
@@ -664,7 +692,7 @@ export default function CustomersPage() {
                 </th>
                 <th
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]"
-                  title="Missing/Ready from API. Credited should mean admin marked the relevant wallet (UPI) withdrawal as paid — backend must set signup_bonus_claimed then."
+                  title="Credited = admin completed matching UPI withdrawal. Ready = eligible to withdraw. Awaiting payout = wallet stage done, UPI not marked paid yet. Missing = requirements from API."
                 >
                   Signup bonus
                 </th>
