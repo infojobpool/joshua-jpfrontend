@@ -315,7 +315,7 @@ interface Customer {
   /** From all-user-details/ after profile reminder tracking (optional). */
   profile_reminder_send_count?: number;
   last_profile_reminder_at?: string;
-  /** Signup bonus snapshot — same rules as wallet credit (optional until backend ships). */
+  /** True once payout is confirmed: backend should set when admin marks the relevant wallet (UPI) withdrawal as paid. */
   signup_bonus_claimed?: boolean;
   signup_bonus_eligible?: boolean;
   signup_bonus_missing?: string[];
@@ -478,7 +478,10 @@ export default function CustomersPage() {
     if (customer.signup_bonus_claimed === true) {
       return (
         <div className="flex flex-col gap-1">
-          <Badge className="border border-emerald-200 bg-emerald-100 font-medium text-emerald-900 hover:bg-emerald-100">
+          <Badge
+            className="border border-emerald-200 bg-emerald-100 font-medium text-emerald-900 hover:bg-emerald-100"
+            title="API marked paid out — intended when admin has marked the related wallet withdrawal as paid (UPI)."
+          >
             Credited
           </Badge>
           <span className="text-xs text-gray-500 tabular-nums">{label}</span>
@@ -490,7 +493,7 @@ export default function CustomersPage() {
       return (
         <Badge
           className="border border-sky-200 bg-sky-100 font-medium text-sky-950 hover:bg-sky-100"
-          title={`Eligible for signup bonus (${label}); same rules as wallet credit`}
+          title={`Eligible (${label}). Credited appears after admin marks the related wallet withdrawal paid — API must set signup_bonus_claimed.`}
         >
           Ready · {label}
         </Badge>
@@ -661,7 +664,7 @@ export default function CustomersPage() {
                 </th>
                 <th
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]"
-                  title="Matches wallet signup bonus rules (profile phone, KYC, UPI, address, etc.)"
+                  title="Missing/Ready from API. Credited should mean admin marked the relevant wallet (UPI) withdrawal as paid — backend must set signup_bonus_claimed then."
                 >
                   Signup bonus
                 </th>
