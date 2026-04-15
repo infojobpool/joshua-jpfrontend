@@ -23,6 +23,7 @@ import axiosInstance from "@/lib/axiosInstance";
 import axios from "axios";
 import { TrustBadges } from "@/components/TrustBadges";
 import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint";
+import { setPendingEmailVerifyFromSignupClient } from "@/lib/pendingEmailVerifySignin";
 import { isValidProfilePhone, normalizeProfilePhone } from "@/lib/profilePhone";
 
 type AccountType = "tasker" | "poster" | "both";
@@ -190,7 +191,11 @@ export default function SignUpPage() {
                 </ol>
                 <WelcomeBonusProcessHint variant="compact" className="text-left" />
               </div>
-              <Link href="/signin?from=signup&pending=email" className="block">
+              <Link
+                href="/signin?from=signup&pending=email"
+                className="block"
+                onClick={() => setPendingEmailVerifyFromSignupClient()}
+              >
                 <Button className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium">
                   Go to Sign In
                   <ArrowRight className="ml-2 h-5 w-5" />

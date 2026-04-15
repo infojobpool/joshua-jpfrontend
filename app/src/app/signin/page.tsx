@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "../../components/ui/button";
@@ -25,6 +25,10 @@ import { useIsMobile } from "../../components/mobile/MobileWrapper";
 import { Eye, EyeOff } from "lucide-react";
 import { SignInVerificationOuterTip } from "@/components/auth/SignInEmailVerificationGuide";
 import { messageSuggestsEmailVerification } from "@/lib/emailVerificationLogin";
+import {
+  clearPendingEmailVerifyFromSignupClient,
+  readPendingEmailVerifyFromSignupClient,
+} from "@/lib/pendingEmailVerifySignin";
 
 export default function SignInPage() {
   const { login, isAuthenticated, checkAuth } = useStore();
@@ -42,6 +46,20 @@ export default function SignInPage() {
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
+  const [pendingFromSignupSession, setPendingFromSignupSession] = useState(false);
+
+  useEffect(() => {
+    setPendingFromSignupSession(readPendingEmailVerifyFromSignupClient());
+  }, []);
+
+  const showVerifyEmailBanner =
+    !verifyBannerDismissed && (emphasizeFromSignup || pendingFromSignupSession);
+
+  const dismissVerifyEmailBanner = () => {
+    setVerifyBannerDismissed(true);
+    clearPendingEmailVerifyFromSignupClient();
+  };
 
   // Hydrate auth state and redirect away if already logged in
   useEffect(() => {
@@ -92,6 +110,7 @@ export default function SignInPage() {
         }
 
         login(token, user);
+        clearPendingEmailVerifyFromSignupClient();
         import("@/lib/firebase-push").then(({ registerPushToken }) => registerPushToken(token));
 
         toast.success("Login successful!");
@@ -232,7 +251,11 @@ export default function SignInPage() {
 
   // Show mobile version on mobile devices
   if (isMobile) {
-    return <MobileSignIn emphasizeFromSignup={emphasizeFromSignup} />;
+    return (
+      <Suspense fallback={null}>
+        <MobileSignIn />
+      </Suspense>
+    );
   }
 
   return (
@@ -259,6 +282,8 @@ export default function SignInPage() {
         </div>
 
         <SignInVerificationOuterTip
+          open={showVerifyEmailBanner}
+          onDismiss={dismissVerifyEmailBanner}
           variant="desktop"
           hasEmail={!!formData.email.trim()}
           onResend={handleResendVerification}
@@ -289,9 +314,6 @@ export default function SignInPage() {
                   required
                   className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200"
                 />
-                <p className="text-xs text-slate-600">
-                  Use the email you signed up with — it must be verified before sign-in works.
-                </p>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">

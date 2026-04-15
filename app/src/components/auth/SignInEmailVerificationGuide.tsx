@@ -1,26 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Mail, RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const OUTER_DISMISS_KEY = "jobpool_signin_verify_outer_dismissed_v1";
-
 type OuterBannerProps = {
+  /** When false, nothing is rendered (parent decides who sees this). */
+  open: boolean;
+  onDismiss: () => void;
   variant: "desktop" | "mobile";
   hasEmail: boolean;
   onResend: () => void;
   isResending: boolean;
-  /** Slightly stronger frame when user arrives from signup success. */
+  /** Slightly stronger frame (e.g. explicit ?from=signup in URL). */
   emphasize?: boolean;
-  /** Optional: refresh page after user taps the link in their inbox. */
   onVerifiedRefresh?: () => void;
 };
 
 /**
- * Single dismissible strip — main email-verification guidance (keep copy short).
+ * Dismissible strip for users who still need to verify email after signup.
+ * Shown only when parent sets `open` (URL and/or session flag from signup flow).
  */
 export function SignInVerificationOuterTip({
+  open,
+  onDismiss,
   variant,
   hasEmail,
   onResend,
@@ -28,26 +30,7 @@ export function SignInVerificationOuterTip({
   emphasize = false,
   onVerifiedRefresh,
 }: OuterBannerProps) {
-  const [hidden, setHidden] = useState(true);
-
-  useEffect(() => {
-    try {
-      setHidden(localStorage.getItem(OUTER_DISMISS_KEY) === "1");
-    } catch {
-      setHidden(false);
-    }
-  }, []);
-
-  const dismiss = () => {
-    try {
-      localStorage.setItem(OUTER_DISMISS_KEY, "1");
-    } catch {
-      /* ignore */
-    }
-    setHidden(true);
-  };
-
-  if (hidden) return null;
+  if (!open) return null;
 
   const isMobile = variant === "mobile";
 
@@ -107,7 +90,7 @@ export function SignInVerificationOuterTip({
           ) : null}
           <button
             type="button"
-            onClick={dismiss}
+            onClick={onDismiss}
             className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-amber-900/80 hover:bg-amber-100/80"
           >
             <X className="h-3.5 w-3.5" aria-hidden />

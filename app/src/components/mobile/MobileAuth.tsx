@@ -2,9 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { SignInVerificationOuterTip } from "@/components/auth/SignInEmailVerificationGuide";
 import { messageSuggestsEmailVerification } from "@/lib/emailVerificationLogin";
+import {
+  clearPendingEmailVerifyFromSignupClient,
+  readPendingEmailVerifyFromSignupClient,
+} from "@/lib/pendingEmailVerifySignin";
 import { useIsMobile } from "./MobileWrapper";
 import { MobileForm, MobileInput, MobileButton } from "./MobileForm";
 import { MobileCard, MobileCardHeader, MobileCardContent } from "./MobileCard";
@@ -15,9 +19,12 @@ import { toast, Toaster } from "sonner";
 const REMEMBER_EMAIL_KEY = "jobpool_signin_remember_email";
 const REMEMBER_PASSWORD_KEY = "jobpool_signin_remember_password";
 
-export function MobileSignIn({ emphasizeFromSignup = false }: { emphasizeFromSignup?: boolean }) {
+export function MobileSignIn() {
   const { isMobile } = useIsMobile();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const emphasizeFromSignup =
+    searchParams.get("from") === "signup" || searchParams.get("pending") === "email";
   const { login, isAuthenticated } = useStore();
   const [formData, setFormData] = useState({
     email: "",
@@ -27,6 +34,20 @@ export function MobileSignIn({ emphasizeFromSignup = false }: { emphasizeFromSig
   const [isLoading, setIsLoading] = useState(false);
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
+  const [pendingFromSignupSession, setPendingFromSignupSession] = useState(false);
+
+  useEffect(() => {
+    setPendingFromSignupSession(readPendingEmailVerifyFromSignupClient());
+  }, []);
+
+  const showVerifyEmailBanner =
+    !verifyBannerDismissed && (emphasizeFromSignup || pendingFromSignupSession);
+
+  const dismissVerifyEmailBanner = () => {
+    setVerifyBannerDismissed(true);
+    clearPendingEmailVerifyFromSignupClient();
+  };
 
   // Pre-fill email and password from localStorage if we previously saved them (remember me)
   useEffect(() => {
@@ -65,6 +86,7 @@ export function MobileSignIn({ emphasizeFromSignup = false }: { emphasizeFromSig
         }
 
         login(token, user);
+        clearPendingEmailVerifyFromSignupClient();
         import("@/lib/firebase-push").then(({ registerPushToken }) => registerPushToken(token));
         if (rememberMe && normalizedEmail) {
           try {
@@ -220,6 +242,8 @@ export function MobileSignIn({ emphasizeFromSignup = false }: { emphasizeFromSig
       </div>
       <div className="relative w-full max-w-md">
         <SignInVerificationOuterTip
+          open={showVerifyEmailBanner}
+          onDismiss={dismissVerifyEmailBanner}
           variant="mobile"
           hasEmail={!!formData.email.trim()}
           onResend={handleResendVerification}
@@ -249,9 +273,6 @@ export function MobileSignIn({ emphasizeFromSignup = false }: { emphasizeFromSig
                   style={{ color: '#000000', WebkitTextFillColor: '#000000', caretColor: '#000000', fontWeight: 600 }}
                   className="w-full h-11 px-4 border border-slate-200 rounded-xl text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all"
                 />
-                <p className="text-[11px] leading-snug text-slate-600">
-                  Use the email you signed up with — it must be verified before sign-in works.
-                </p>
               </div>
 
               <div className="space-y-1.5">
