@@ -10,7 +10,7 @@ import { ExpandableTaskLocationSection } from "@/components/TaskLocationMap";
 import { Toaster } from "@/components/ui/sonner";
 import axiosInstance from "@/lib/axiosInstance";
 import { jobIdVariants } from "@/lib/jobIdVariants";
-import { resolveProfileImageUrl } from "@/lib/profileImage";
+import { resolveApiMediaUrl, resolveProfileImageUrl } from "@/lib/profileImage";
 import { isProfileComplete, getProfileImageFromUser } from "@/lib/profileUtils";
 import { storeBidsInCache } from "@/lib/taskNavCache";
 import useStore from "@/lib/Zustand";
@@ -823,7 +823,10 @@ export default function TaskDetailPage() {
           images: job.job_images?.urls?.length
             ? job.job_images.urls.map((url: string, index: number) => ({
                 id: `img${index + 1}`,
-                url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url,
+                url:
+                  typeof url === "string" && url.includes("placeholder.com")
+                    ? "/images/placeholder.svg"
+                    : resolveApiMediaUrl(url),
                 alt: `Job image ${index + 1}`,
               }))
             : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],

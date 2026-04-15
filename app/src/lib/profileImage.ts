@@ -9,3 +9,11 @@ export function resolveProfileImageUrl(url: string | undefined | null): string |
   const base = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/api\/v1\/?$/, "") || "https://api.jobpool.in";
   return url.startsWith("/") ? `${base}${url}` : `${base}/${url}`;
 }
+
+/** Full URL for task/portfolio images in `<img>` (Next/Image already handles relative via config). */
+export function resolveApiMediaUrl(url: string | undefined | null): string {
+  const resolved = resolveProfileImageUrl(url);
+  if (resolved) return resolved;
+  if (typeof url === "string" && url.trim().startsWith("/images/")) return url.trim();
+  return "/images/placeholder.svg";
+}
