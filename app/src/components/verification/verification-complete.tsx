@@ -354,6 +354,8 @@ export default function VerificationComplete({
   const allSkipped =
     verificationStatus.pan.skipped && verificationStatus.aadhar.skipped
 
+  const payoutSetupComplete = missingPayoutItems.length === 0
+
   // Animation variants for the checkmark and content
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -404,14 +406,40 @@ export default function VerificationComplete({
           </motion.div>
 
           <motion.div className="text-center" variants={itemVariants}>
-            <h3 className="text-2xl font-bold text-green-700">All Set, {user?.name}!</h3>
-            <p className="mt-2 text-lg text-gray-700">You've successfully completed all verification steps.</p>
-            <p className="mt-1 text-gray-600">
-              Your account is now fully verified and you have access to all features.
-            </p>
+            <h3 className="text-2xl font-bold text-green-700">
+              {payoutSetupComplete
+                ? `All Set${user?.name ? `, ${user.name}` : ""}!`
+                : `Identity verified${user?.name ? `, ${user.name}` : ""}!`}
+            </h3>
+            {payoutSetupComplete ? (
+              <>
+                <p className="mt-2 text-lg text-gray-700">
+                  You’re all set for identity and payout setup on Jobpool.
+                </p>
+                <p className="mt-1 text-gray-600">
+                  PAN and Aadhaar are verified and your payout checklist is complete. Use the app as usual, including
+                  withdrawals where your balance and approvals allow.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mt-2 text-lg text-gray-700">
+                  PAN and Aadhaar verification on Jobpool is complete.
+                </p>
+                <p className="mt-1 text-gray-600">
+                  Withdrawals and your ₹100 welcome bonus still depend on the payout checklist below (for example bank
+                  details and profile info). Tap each item to finish.
+                </p>
+              </>
+            )}
           </motion.div>
 
           <motion.div className="w-full max-w-md space-y-3" variants={itemVariants}>
+            {!payoutSetupComplete && (
+              <p className="text-center text-xs font-medium uppercase tracking-wide text-slate-500">
+                Identity checks complete
+              </p>
+            )}
             <div className="rounded-lg border bg-white p-4 shadow-sm">
               <div className="flex items-start space-x-3">
                 <div className="rounded-full bg-green-100 p-1">

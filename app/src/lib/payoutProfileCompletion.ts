@@ -21,7 +21,8 @@ export function getMissingPayoutEligibilityItems(input: {
   const v = input.verificationLevel;
   if (v < 1) items.push({ id: "pan", label: "Verify PAN card", href: "/verification" });
   else if (v < 2) items.push({ id: "aadhaar", label: "Verify Aadhaar (UID)", href: "/verification" });
-  else if (v < 3) items.push({ id: "bank", label: "Add bank account details", href: "/verification" });
+  else if (v < 3)
+    items.push({ id: "bank", label: "Add bank account details", href: "/bankverification" });
   if (!input.hasProfilePhoto) {
     items.push({ id: "photo", label: "Add a profile photo", href: "/profile" });
   }

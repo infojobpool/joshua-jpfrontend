@@ -448,7 +448,8 @@ export default function WalletPage() {
                     Next steps
                   </CardTitle>
                   <CardDescription className="text-amber-900/80">
-                    Tap an item to complete it.
+                    Bank, profile, and UPI as needed for withdrawals and your welcome bonus where eligible. Tap an item
+                    to continue.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-0">
