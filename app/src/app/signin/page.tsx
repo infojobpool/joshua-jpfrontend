@@ -23,11 +23,18 @@ import { MobileSignIn } from "../../components/mobile/MobileAuth";
 import { getSafeRelativeNext } from "@/lib/safeNextRedirect";
 import { useIsMobile } from "../../components/mobile/MobileWrapper";
 import { Eye, EyeOff } from "lucide-react";
+import {
+  SignInVerificationCardBanner,
+  SignInVerificationOuterTip,
+} from "@/components/auth/SignInEmailVerificationGuide";
+import { messageSuggestsEmailVerification } from "@/lib/emailVerificationLogin";
 
 export default function SignInPage() {
   const { login, isAuthenticated, checkAuth } = useStore();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const emphasizeFromSignup =
+    searchParams.get("from") === "signup" || searchParams.get("pending") === "email";
   const { isMobile } = useIsMobile();
   const [formData, setFormData] = useState({
     email: "",
@@ -97,10 +104,7 @@ export default function SignInPage() {
         else router.push(next ?? "/dashboard");
       } else {
         const errorMessage = response.data.message || "Login failed";
-        // Check if error is related to email verification
-        if (errorMessage.toLowerCase().includes("verify") || 
-            errorMessage.toLowerCase().includes("verification") ||
-            errorMessage.toLowerCase().includes("email") && errorMessage.toLowerCase().includes("not")) {
+        if (messageSuggestsEmailVerification(errorMessage)) {
           setShowResendVerification(true);
         }
         toast.error(errorMessage);
@@ -136,10 +140,7 @@ export default function SignInPage() {
               : "Account not found, or your email may not be verified yet. If you just signed up, please verify your email first—check your inbox (and spam folder) for the verification link."
           );
         } else if (status === 403 || status === 401) {
-          // Check if error is related to email verification
-          if (errorMessage.toLowerCase().includes("verify") || 
-              errorMessage.toLowerCase().includes("verification") ||
-              errorMessage.toLowerCase().includes("email") && errorMessage.toLowerCase().includes("not")) {
+          if (messageSuggestsEmailVerification(errorMessage)) {
             setShowResendVerification(true);
           }
           toast.error(errorMessage || "Invalid email or password");
@@ -234,7 +235,7 @@ export default function SignInPage() {
 
   // Show mobile version on mobile devices
   if (isMobile) {
-    return <MobileSignIn />;
+    return <MobileSignIn emphasizeFromSignup={emphasizeFromSignup} />;
   }
 
   return (
@@ -260,12 +261,12 @@ export default function SignInPage() {
           </Link>
         </div>
 
-        {/* Info banner for new users */}
-        <div className="mb-4 rounded-xl bg-blue-50/90 dark:bg-slate-800/80 border border-blue-200/80 dark:border-slate-600 px-4 py-3 text-center">
-          <p className="text-sm text-slate-700 dark:text-slate-300">
-            <strong>New to JobPool?</strong> Verify your email before signing in—check your inbox (and spam) for the verification link.
-          </p>
-        </div>
+        <SignInVerificationOuterTip
+          variant="desktop"
+          hasEmail={!!formData.email.trim()}
+          onResend={handleResendVerification}
+          isResending={isResending}
+        />
 
         {/* Main Card */}
         <Card className="backdrop-blur-sm bg-white/90 border-0 shadow-2xl">
@@ -277,6 +278,14 @@ export default function SignInPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 px-6">
+              <SignInVerificationCardBanner
+                variant="desktop"
+                emphasizeFromSignup={emphasizeFromSignup}
+                hasEmail={!!formData.email.trim()}
+                onResend={handleResendVerification}
+                isResending={isResending}
+                onVerifiedRefresh={() => router.refresh()}
+              />
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email Address</Label>
                 <Input
@@ -289,6 +298,10 @@ export default function SignInPage() {
                   required
                   className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200"
                 />
+                <p className="text-xs text-amber-900/90 rounded-lg bg-amber-50/80 border border-amber-100 px-3 py-2">
+                  Use the <strong>same email you registered with</strong>. It must be <strong>verified</strong> before
+                  sign-in will work.
+                </p>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -342,26 +355,40 @@ export default function SignInPage() {
                 </div>
               </div>
               {showResendVerification && (
-                <div className="rounded-md bg-yellow-50 border border-yellow-200 p-4">
-                  <p className="text-sm text-yellow-800 mb-3">
-                    Your email address hasn't been verified yet. Please check your inbox for the verification link, or click below to resend it.
+                <div
+                  className="rounded-xl border-2 border-amber-400 bg-amber-50 p-4 shadow-sm"
+                  role="alert"
+                >
+                  <p className="text-sm font-semibold text-amber-950">Sign-in blocked: email not verified</p>
+                  <p className="mt-2 text-sm text-amber-900 leading-relaxed">
+                    We still do not see a verified email for this address. Open the verification link from JobPool
+                    (check spam), or resend a new link below. Password will not work until email is verified.
                   </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleResendVerification}
-                    disabled={isResending}
-                    className="w-full border-yellow-300 text-yellow-700 hover:bg-yellow-100"
-                  >
-                    {isResending ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-yellow-300 border-t-yellow-700 rounded-full animate-spin"></div>
-                        Sending...
-                      </div>
-                    ) : (
-                      "Resend Verification Email"
-                    )}
-                  </Button>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <Button
+                      type="button"
+                      className="flex-1 bg-amber-600 text-white hover:bg-amber-700"
+                      onClick={handleResendVerification}
+                      disabled={isResending}
+                    >
+                      {isResending ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                          Sending…
+                        </span>
+                      ) : (
+                        "Resend verification email"
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1 border-amber-400 bg-white text-amber-950 hover:bg-amber-100"
+                      onClick={() => router.refresh()}
+                    >
+                      I verified — try again
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>

@@ -23,6 +23,7 @@ import axiosInstance from "@/lib/axiosInstance";
 import axios from "axios";
 import { TrustBadges } from "@/components/TrustBadges";
 import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint";
+import { isValidProfilePhone, normalizeProfilePhone } from "@/lib/profilePhone";
 
 type AccountType = "tasker" | "poster" | "both";
 
@@ -85,10 +86,17 @@ export default function SignUpPage() {
       return;
     }
 
+    if (phone_number?.trim() && !isValidProfilePhone(phone_number)) {
+      toast.error(
+        "Invalid phone number. Use 10 digits, or 11 digits starting with 0 (for example 09876543210). +91 optional."
+      );
+      return;
+    }
+
     const payload = {
       user_fullname,
       user_email,
-      phone_number: phone_number?.trim() || undefined,
+      phone_number: phone_number?.trim() ? normalizeProfilePhone(phone_number) : undefined,
       password,
       confirm_password,
 
@@ -182,7 +190,7 @@ export default function SignUpPage() {
                 </ol>
                 <WelcomeBonusProcessHint variant="compact" className="text-left" />
               </div>
-              <Link href="/signin" className="block">
+              <Link href="/signin?from=signup&pending=email" className="block">
                 <Button className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium">
                   Go to Sign In
                   <ArrowRight className="ml-2 h-5 w-5" />

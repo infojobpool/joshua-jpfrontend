@@ -55,6 +55,7 @@ import { ProfileOfferingsPanel } from "@/components/profile/ProfileOfferingsPane
 import { ProfilePortfolioSlider } from "@/components/profile/ProfilePortfolioSlider";
 import { PortfolioEditorPanel } from "@/components/profile/PortfolioEditorPanel";
 import { ListingRequestsPanel } from "@/components/profile/ListingRequestsPanel";
+import { isValidProfilePhone, normalizeProfilePhone } from "@/lib/profilePhone";
 
 /** Android WebView: force visible text in fields (avoids white-on-white). */
 const PROFILE_FIELD_TEXT = {
@@ -524,6 +525,15 @@ export default function ProfilePage() {
       return;
     }
 
+    const phoneRaw = String(formData.get("phone") ?? "");
+    if (!isValidProfilePhone(phoneRaw)) {
+      toast.error(
+        "Enter a valid phone number: 10 digits, or 11 digits starting with 0 (for example 08247009219). +91 optional."
+      );
+      return;
+    }
+    const phoneForApi = normalizeProfilePhone(phoneRaw);
+
     try {
       setIsLoading(true);
       const addresses = profileuser.addresses.map((addr) => ({
@@ -534,7 +544,7 @@ export default function ProfilePage() {
       const updateFormData = new FormData();
       updateFormData.append("profile_id", profileuser.profile_id);
       updateFormData.append("name", formData.get("name") as string);
-      updateFormData.append("phone_number", formData.get("phone") as string);
+      updateFormData.append("phone_number", phoneForApi);
       updateFormData.append("addresses", JSON.stringify(addresses));
       if (fileInputRef.current?.files?.[0]) {
         updateFormData.append("file", fileInputRef.current.files[0]);
@@ -832,10 +842,17 @@ export default function ProfilePage() {
                     <input
                       id="phone"
                       name="phone"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
                       style={PROFILE_FIELD_TEXT}
                       className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                       defaultValue={profileuser.phone}
+                      placeholder="9876543210 or 09876543210"
                     />
+                    <p className="text-xs text-slate-500">
+                      10-digit mobile is standard. Numbers starting with 0 (then 10 digits) are accepted and stored without the leading 0.
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700" htmlFor="upi_vpa">

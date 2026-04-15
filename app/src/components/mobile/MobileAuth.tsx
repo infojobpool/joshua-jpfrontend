@@ -3,6 +3,11 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  SignInVerificationCardBanner,
+  SignInVerificationOuterTip,
+} from "@/components/auth/SignInEmailVerificationGuide";
+import { messageSuggestsEmailVerification } from "@/lib/emailVerificationLogin";
 import { useIsMobile } from "./MobileWrapper";
 import { MobileForm, MobileInput, MobileButton } from "./MobileForm";
 import { MobileCard, MobileCardHeader, MobileCardContent } from "./MobileCard";
@@ -13,7 +18,7 @@ import { toast, Toaster } from "sonner";
 const REMEMBER_EMAIL_KEY = "jobpool_signin_remember_email";
 const REMEMBER_PASSWORD_KEY = "jobpool_signin_remember_password";
 
-export function MobileSignIn() {
+export function MobileSignIn({ emphasizeFromSignup = false }: { emphasizeFromSignup?: boolean }) {
   const { isMobile } = useIsMobile();
   const router = useRouter();
   const { login, isAuthenticated } = useStore();
@@ -86,10 +91,7 @@ export function MobileSignIn() {
         }
       } else {
         const errorMessage = response.data.message || "Login failed";
-        // Check if error is related to email verification
-        if (errorMessage.toLowerCase().includes("verify") || 
-            errorMessage.toLowerCase().includes("verification") ||
-            (errorMessage.toLowerCase().includes("email") && errorMessage.toLowerCase().includes("not"))) {
+        if (messageSuggestsEmailVerification(errorMessage)) {
           setShowResendVerification(true);
         }
         toast.error(errorMessage);
@@ -119,12 +121,8 @@ export function MobileSignIn() {
           ? `Status ${status}${dataMsg ? `: ${dataMsg}` : ''}`
           : networkMsg || 'Unknown error';
         
-        // Check if error is related to email verification; 404 can mean unverified user (backend may hide them)
-        if (status === 404 || status === 403 || status === 401 || (dataMsg && (
-          dataMsg.toLowerCase().includes("verify") || 
-          dataMsg.toLowerCase().includes("verification") ||
-          (dataMsg.toLowerCase().includes("email") && dataMsg.toLowerCase().includes("not"))
-        ))) {
+        // 404 often means “no account” or hidden unverified user; other statuses only if copy mentions verification
+        if (status === 404 || messageSuggestsEmailVerification(dataMsg)) {
           setShowResendVerification(true);
         }
         
@@ -224,11 +222,12 @@ export function MobileSignIn() {
         <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-indigo-200/40 rounded-full blur-3xl" />
       </div>
       <div className="relative w-full max-w-md">
-        <div className="mb-3 rounded-xl bg-blue-50/90 border border-blue-200/80 px-3 py-2.5 text-center">
-          <p className="text-xs text-slate-700">
-            <strong>New to JobPool?</strong> Verify your email before signing in—check inbox &amp; spam for the link.
-          </p>
-        </div>
+        <SignInVerificationOuterTip
+          variant="mobile"
+          hasEmail={!!formData.email.trim()}
+          onResend={handleResendVerification}
+          isResending={isResending}
+        />
         <MobileCard className="overflow-hidden border-0 shadow-xl shadow-slate-200/50 rounded-2xl bg-white/95 backdrop-blur-sm">
           <MobileCardHeader className="pb-2 pt-5">
             <div className="text-center">
@@ -239,6 +238,14 @@ export function MobileSignIn() {
 
           <MobileCardContent className="px-5 pb-5 pt-0 space-y-3">
             <MobileForm onSubmit={handleSubmit} className="space-y-3">
+              <SignInVerificationCardBanner
+                variant="mobile"
+                emphasizeFromSignup={emphasizeFromSignup}
+                hasEmail={!!formData.email.trim()}
+                onResend={handleResendVerification}
+                isResending={isResending}
+                onVerifiedRefresh={() => router.refresh()}
+              />
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-slate-700">Email Address <span className="text-red-500">*</span></label>
                 <input
@@ -251,6 +258,9 @@ export function MobileSignIn() {
                   style={{ color: '#000000', WebkitTextFillColor: '#000000', caretColor: '#000000', fontWeight: 600 }}
                   className="w-full h-11 px-4 border border-slate-200 rounded-xl text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all"
                 />
+                <p className="text-[11px] leading-relaxed text-amber-950/90 rounded-lg border border-amber-100 bg-amber-50/90 px-2.5 py-2">
+                  Same email as registration — it must be <strong>verified</strong> before sign-in works.
+                </p>
               </div>
 
               <div className="space-y-1.5">
@@ -291,23 +301,35 @@ export function MobileSignIn() {
               </div>
 
               {showResendVerification && (
-                <div className="rounded-xl bg-amber-50 border border-amber-200/80 p-3">
-                  <p className="text-xs text-amber-800 mb-2">Email not verified. Check inbox or resend below.</p>
-                  <button
-                    type="button"
-                    onClick={handleResendVerification}
-                    disabled={isResending}
-                    className="w-full px-3 py-2 text-sm font-medium text-amber-800 bg-white border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50"
-                  >
-                    {isResending ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <span className="w-3.5 h-3.5 border-2 border-amber-400 border-t-amber-700 rounded-full animate-spin" />
-                        Sending...
-                      </span>
-                    ) : (
-                      "Resend Verification Email"
-                    )}
-                  </button>
+                <div className="rounded-xl border-2 border-amber-400 bg-amber-50 p-3 shadow-sm" role="alert">
+                  <p className="text-xs font-semibold text-amber-950">Sign-in blocked: email not verified</p>
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-amber-900">
+                    Open the JobPool email and tap the link (check spam). Password will not work until verified.
+                  </p>
+                  <div className="mt-2 flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={isResending}
+                      className="w-full px-3 py-2.5 text-sm font-semibold text-white bg-amber-600 rounded-xl hover:bg-amber-700 disabled:opacity-50"
+                    >
+                      {isResending ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                          Sending…
+                        </span>
+                      ) : (
+                        "Resend verification email"
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => router.refresh()}
+                      className="w-full px-3 py-2 text-sm font-medium text-amber-950 bg-white border border-amber-300 rounded-xl hover:bg-amber-100"
+                    >
+                      I verified — try again
+                    </button>
+                  </div>
                 </div>
               )}
 
