@@ -3,10 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  SignInVerificationCardBanner,
-  SignInVerificationOuterTip,
-} from "@/components/auth/SignInEmailVerificationGuide";
+import { SignInVerificationOuterTip } from "@/components/auth/SignInEmailVerificationGuide";
 import { messageSuggestsEmailVerification } from "@/lib/emailVerificationLogin";
 import { useIsMobile } from "./MobileWrapper";
 import { MobileForm, MobileInput, MobileButton } from "./MobileForm";
@@ -227,6 +224,8 @@ export function MobileSignIn({ emphasizeFromSignup = false }: { emphasizeFromSig
           hasEmail={!!formData.email.trim()}
           onResend={handleResendVerification}
           isResending={isResending}
+          emphasize={emphasizeFromSignup}
+          onVerifiedRefresh={() => router.refresh()}
         />
         <MobileCard className="overflow-hidden border-0 shadow-xl shadow-slate-200/50 rounded-2xl bg-white/95 backdrop-blur-sm">
           <MobileCardHeader className="pb-2 pt-5">
@@ -238,14 +237,6 @@ export function MobileSignIn({ emphasizeFromSignup = false }: { emphasizeFromSig
 
           <MobileCardContent className="px-5 pb-5 pt-0 space-y-3">
             <MobileForm onSubmit={handleSubmit} className="space-y-3">
-              <SignInVerificationCardBanner
-                variant="mobile"
-                emphasizeFromSignup={emphasizeFromSignup}
-                hasEmail={!!formData.email.trim()}
-                onResend={handleResendVerification}
-                isResending={isResending}
-                onVerifiedRefresh={() => router.refresh()}
-              />
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-slate-700">Email Address <span className="text-red-500">*</span></label>
                 <input
@@ -258,8 +249,8 @@ export function MobileSignIn({ emphasizeFromSignup = false }: { emphasizeFromSig
                   style={{ color: '#000000', WebkitTextFillColor: '#000000', caretColor: '#000000', fontWeight: 600 }}
                   className="w-full h-11 px-4 border border-slate-200 rounded-xl text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all"
                 />
-                <p className="text-[11px] leading-relaxed text-amber-950/90 rounded-lg border border-amber-100 bg-amber-50/90 px-2.5 py-2">
-                  Same email as registration — it must be <strong>verified</strong> before sign-in works.
+                <p className="text-[11px] leading-snug text-slate-600">
+                  Use the email you signed up with — it must be verified before sign-in works.
                 </p>
               </div>
 
@@ -302,9 +293,9 @@ export function MobileSignIn({ emphasizeFromSignup = false }: { emphasizeFromSig
 
               {showResendVerification && (
                 <div className="rounded-xl border-2 border-amber-400 bg-amber-50 p-3 shadow-sm" role="alert">
-                  <p className="text-xs font-semibold text-amber-950">Sign-in blocked: email not verified</p>
-                  <p className="mt-1.5 text-[11px] leading-relaxed text-amber-900">
-                    Open the JobPool email and tap the link (check spam). Password will not work until verified.
+                  <p className="text-xs font-semibold text-amber-950">Email not verified yet</p>
+                  <p className="mt-1 text-[11px] leading-snug text-amber-900">
+                    Tap the link in the JobPool verification email (check spam), or resend, then try again.
                   </p>
                   <div className="mt-2 flex flex-col gap-2">
                     <button

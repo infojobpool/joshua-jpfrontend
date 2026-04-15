@@ -23,10 +23,7 @@ import { MobileSignIn } from "../../components/mobile/MobileAuth";
 import { getSafeRelativeNext } from "@/lib/safeNextRedirect";
 import { useIsMobile } from "../../components/mobile/MobileWrapper";
 import { Eye, EyeOff } from "lucide-react";
-import {
-  SignInVerificationCardBanner,
-  SignInVerificationOuterTip,
-} from "@/components/auth/SignInEmailVerificationGuide";
+import { SignInVerificationOuterTip } from "@/components/auth/SignInEmailVerificationGuide";
 import { messageSuggestsEmailVerification } from "@/lib/emailVerificationLogin";
 
 export default function SignInPage() {
@@ -266,6 +263,8 @@ export default function SignInPage() {
           hasEmail={!!formData.email.trim()}
           onResend={handleResendVerification}
           isResending={isResending}
+          emphasize={emphasizeFromSignup}
+          onVerifiedRefresh={() => router.refresh()}
         />
 
         {/* Main Card */}
@@ -278,14 +277,6 @@ export default function SignInPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 px-6">
-              <SignInVerificationCardBanner
-                variant="desktop"
-                emphasizeFromSignup={emphasizeFromSignup}
-                hasEmail={!!formData.email.trim()}
-                onResend={handleResendVerification}
-                isResending={isResending}
-                onVerifiedRefresh={() => router.refresh()}
-              />
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email Address</Label>
                 <Input
@@ -298,9 +289,8 @@ export default function SignInPage() {
                   required
                   className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200"
                 />
-                <p className="text-xs text-amber-900/90 rounded-lg bg-amber-50/80 border border-amber-100 px-3 py-2">
-                  Use the <strong>same email you registered with</strong>. It must be <strong>verified</strong> before
-                  sign-in will work.
+                <p className="text-xs text-slate-600">
+                  Use the email you signed up with — it must be verified before sign-in works.
                 </p>
               </div>
               <div className="space-y-2">
@@ -359,10 +349,9 @@ export default function SignInPage() {
                   className="rounded-xl border-2 border-amber-400 bg-amber-50 p-4 shadow-sm"
                   role="alert"
                 >
-                  <p className="text-sm font-semibold text-amber-950">Sign-in blocked: email not verified</p>
-                  <p className="mt-2 text-sm text-amber-900 leading-relaxed">
-                    We still do not see a verified email for this address. Open the verification link from JobPool
-                    (check spam), or resend a new link below. Password will not work until email is verified.
+                  <p className="text-sm font-semibold text-amber-950">Email not verified yet</p>
+                  <p className="mt-1.5 text-sm text-amber-900 leading-snug">
+                    Tap the link in the JobPool verification email (check spam), or resend below, then try signing in again.
                   </p>
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                     <Button

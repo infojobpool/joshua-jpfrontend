@@ -11,14 +11,22 @@ type OuterBannerProps = {
   hasEmail: boolean;
   onResend: () => void;
   isResending: boolean;
+  /** Slightly stronger frame when user arrives from signup success. */
+  emphasize?: boolean;
+  /** Optional: refresh page after user taps the link in their inbox. */
+  onVerifiedRefresh?: () => void;
 };
 
-/** Optional thin strip (dismissible) — repeat visitors can hide; card inside still has full guidance. */
+/**
+ * Single dismissible strip — main email-verification guidance (keep copy short).
+ */
 export function SignInVerificationOuterTip({
   variant,
   hasEmail,
   onResend,
   isResending,
+  emphasize = false,
+  onVerifiedRefresh,
 }: OuterBannerProps) {
   const [hidden, setHidden] = useState(true);
 
@@ -46,9 +54,13 @@ export function SignInVerificationOuterTip({
   return (
     <div
       className={
-        isMobile
-          ? "mb-3 flex items-start gap-2 rounded-xl border border-amber-300/90 bg-amber-50 px-3 py-2.5 shadow-sm ring-1 ring-amber-200/60"
-          : "mb-4 flex items-start gap-3 rounded-xl border border-amber-300/90 bg-gradient-to-r from-amber-50 to-orange-50/90 px-4 py-3 shadow-md ring-1 ring-amber-200/70"
+        emphasize
+          ? isMobile
+            ? "mb-3 flex items-start gap-2 rounded-xl border-2 border-amber-400 bg-amber-50 px-3 py-2.5 shadow-sm"
+            : "mb-4 flex items-start gap-3 rounded-xl border-2 border-amber-400 bg-amber-50 px-4 py-3 shadow-md"
+          : isMobile
+            ? "mb-3 flex items-start gap-2 rounded-xl border border-amber-300/90 bg-amber-50 px-3 py-2.5 shadow-sm ring-1 ring-amber-200/60"
+            : "mb-4 flex items-start gap-3 rounded-xl border border-amber-300/90 bg-gradient-to-r from-amber-50 to-orange-50/90 px-4 py-3 shadow-md ring-1 ring-amber-200/70"
       }
     >
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-800">
@@ -56,10 +68,10 @@ export function SignInVerificationOuterTip({
       </span>
       <div className="min-w-0 flex-1 text-left">
         <p className={`font-semibold text-amber-950 ${isMobile ? "text-xs" : "text-sm"}`}>
-          Verify your email before you sign in
+          Verify your email, then sign in
         </p>
-        <p className={`mt-0.5 text-amber-900/90 ${isMobile ? "text-[11px] leading-snug" : "text-xs leading-relaxed"}`}>
-          New accounts must open the JobPool email and tap the link (check spam). Sign-in will not work until then.
+        <p className={`mt-0.5 text-amber-900/90 ${isMobile ? "text-[11px] leading-snug" : "text-xs leading-snug"}`}>
+          After sign-up, open the email from JobPool and tap the verification link (check spam). Same email as below.
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <Button
@@ -82,101 +94,25 @@ export function SignInVerificationOuterTip({
               </>
             )}
           </Button>
+          {onVerifiedRefresh ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 border-amber-300 bg-white/80 text-amber-950 hover:bg-white"
+              onClick={onVerifiedRefresh}
+            >
+              I verified — try again
+            </Button>
+          ) : null}
           <button
             type="button"
             onClick={dismiss}
             className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-amber-900/80 hover:bg-amber-100/80"
           >
             <X className="h-3.5 w-3.5" aria-hidden />
-            Hide this tip
+            Hide
           </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-type CardBannerProps = {
-  variant: "desktop" | "mobile";
-  emphasizeFromSignup?: boolean;
-  hasEmail: boolean;
-  onResend: () => void;
-  isResending: boolean;
-  onVerifiedRefresh?: () => void;
-};
-
-/** Always-on guidance inside the sign-in card (primary). */
-export function SignInVerificationCardBanner({
-  variant,
-  emphasizeFromSignup,
-  hasEmail,
-  onResend,
-  isResending,
-  onVerifiedRefresh,
-}: CardBannerProps) {
-  const isMobile = variant === "mobile";
-
-  return (
-    <div
-      className={
-        emphasizeFromSignup
-          ? isMobile
-            ? "rounded-xl border-2 border-amber-400 bg-amber-50/95 p-3 shadow-sm"
-            : "rounded-xl border-2 border-amber-400 bg-gradient-to-br from-amber-50 via-orange-50/40 to-amber-50 p-4 shadow-sm"
-          : isMobile
-            ? "rounded-xl border border-amber-200/90 bg-amber-50/90 p-3 ring-1 ring-amber-100"
-            : "rounded-xl border border-amber-200/90 bg-amber-50/95 p-4 ring-1 ring-amber-100/80"
-      }
-    >
-      <div className="flex gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800 shadow-inner">
-          <Mail className="h-5 w-5" aria-hidden />
-        </div>
-        <div className="min-w-0 flex-1 space-y-2 text-left">
-          <div>
-            <p className={`font-bold text-amber-950 ${isMobile ? "text-sm" : "text-base"}`}>
-              Verify your email first — then sign in
-            </p>
-            <p className={`mt-1 text-amber-900/95 ${isMobile ? "text-xs leading-relaxed" : "text-sm leading-relaxed"}`}>
-              Just created your account? Open the email from <strong>JobPool</strong>, tap{" "}
-              <strong>Verify</strong> (or the button in that message). You cannot sign in until that step is done.
-            </p>
-            <p className={`mt-1.5 text-amber-900/85 ${isMobile ? "text-[11px] leading-relaxed" : "text-xs leading-relaxed"}`}>
-              Check <strong>Inbox</strong> and <strong>Spam / Promotions</strong>. Use the same email address below.
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-            <Button
-              type="button"
-              size="sm"
-              className="h-9 bg-amber-600 text-white hover:bg-amber-700"
-              disabled={!hasEmail || isResending}
-              onClick={onResend}
-            >
-              {isResending ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Sending verification…
-                </>
-              ) : (
-                <>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Resend verification email
-                </>
-              )}
-            </Button>
-            {onVerifiedRefresh ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-9 border-amber-300 bg-white/80 text-amber-950 hover:bg-white"
-                onClick={onVerifiedRefresh}
-              >
-                I verified — try again
-              </Button>
-            ) : null}
-          </div>
         </div>
       </div>
     </div>
