@@ -9,6 +9,7 @@ import { MobileWhyChoose } from '../components/mobile/MobileWhyChoose'
 import { MobileEarnAsTasker } from '../components/mobile/MobileEarnAsTasker'
 import { MobileShowcase } from '../components/mobile/MobileShowcase'
 import { MobileHeroBanner } from '../components/mobile/MobileHeroBanner'
+import { BlogArticlesSection } from '../components/blog/BlogArticlesSection'
 import { HowItWorks } from '../components/mainpage/how-it-works'
 import { Features } from '../components/mainpage/features'
 import { Testimonials } from '../components/mainpage/testimonials'
@@ -29,6 +30,7 @@ export default function Home() {
         <MobileEarnAsTasker />
         <MobileWhyChoose />
         <MobileTestimonials />
+        <BlogArticlesSection />
       </div>
 
       {/* Desktop landing (md and up) */}
@@ -40,6 +42,7 @@ export default function Home() {
         <HowItWorks />
         <Features />
         <Testimonials />
+        <BlogArticlesSection />
       </div>
     </div>
   )

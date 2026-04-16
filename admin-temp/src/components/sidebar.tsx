@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { BarChart3, Users, Tags, CreditCard, CheckSquare, User2Icon, Ban, Gavel, XCircle, Wallet, Bell, Star, Store } from "lucide-react"
+import { BarChart3, Users, Tags, CreditCard, CheckSquare, User2Icon, Ban, Gavel, XCircle, Wallet, Bell, Star, Store, Newspaper } from "lucide-react"
 import { cn } from "../lib/utils"
 import { useEffect, useState } from "react"
 import axiosInstance from "@/lib/axiosInstance"
@@ -35,6 +35,11 @@ const sidebarNavItems = [
     title: "Testimonials",
     href: "/testimonials",
     icon: Star,
+  },
+  {
+    title: "Blog posts",
+    href: "/blog-posts",
+    icon: Newspaper,
   },
   {
     title: "Tasks",
