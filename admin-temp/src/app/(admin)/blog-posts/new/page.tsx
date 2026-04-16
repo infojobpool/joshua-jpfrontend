@@ -16,6 +16,7 @@ import { useCanAdminWrite } from "@/lib/adminAuth";
 import { AdminReadOnlyBanner } from "@/components/AdminReadOnlyBanner";
 import { parseMediaUploadResponse } from "@/lib/parseMediaUploadResponse";
 import { formatAxiosApiError } from "@/lib/apiError";
+import { BlogMarkdownBodyField } from "@/components/blog/BlogMarkdownBodyField";
 
 export default function AdminNewBlogPostPage() {
   const router = useRouter();
@@ -86,7 +87,7 @@ export default function AdminNewBlogPostPage() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
+    <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
       <Toaster />
       <AdminReadOnlyBanner />
       <Button variant="ghost" size="sm" asChild className="w-fit gap-2">
@@ -119,17 +120,13 @@ export default function AdminNewBlogPostPage() {
           <Label htmlFor="excerpt">Excerpt</Label>
           <Textarea id="excerpt" rows={3} value={excerpt} onChange={(e) => setExcerpt(e.target.value)} disabled={!canWrite} />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="body">Body (Markdown)</Label>
-          <Textarea
-            id="body"
-            rows={14}
-            value={bodyMarkdown}
-            onChange={(e) => setBodyMarkdown(e.target.value)}
-            disabled={!canWrite}
-            className="font-mono text-sm"
-          />
-        </div>
+        <BlogMarkdownBodyField
+          id="body"
+          label="Body (Markdown)"
+          value={bodyMarkdown}
+          onChange={setBodyMarkdown}
+          disabled={!canWrite}
+        />
         <div className="space-y-2">
           <Label htmlFor="hero">Hero image URL</Label>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
