@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Menu, X, User, Plus } from "lucide-react";
+import { Menu, X, User, Plus, MessageSquare } from "lucide-react";
 import useStore from "@/lib/Zustand";
 import { cn } from "@/lib/utils";
 
@@ -104,6 +104,11 @@ const MainHeader: React.FC = () => {
             <Link href="/support" className="text-gray-600 hover:text-blue-600 transition-colors">
               Support
             </Link>
+            {isAuthenticated ? (
+              <Link href="/messages" className="text-gray-600 hover:text-blue-600 transition-colors">
+                Messages
+              </Link>
+            ) : null}
           </nav>
 
           {/* Desktop Auth Section */}
@@ -118,7 +123,13 @@ const MainHeader: React.FC = () => {
                 </Link>
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-gray-600">Welcome, {user?.name}</span>
-                  <Link href="/dashboard">
+                  <Link href="/messages">
+                    <Button variant="outline" className="border-gray-300 hover:bg-gray-50">
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Messages
+                    </Button>
+                  </Link>
+                <Link href="/dashboard">
                     <Button variant="outline" className="border-gray-300 hover:bg-gray-50">
                       <User className="h-4 w-4 mr-2" />
                       Dashboard
@@ -202,6 +213,12 @@ const MainHeader: React.FC = () => {
                       <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2">
                         <Plus className="h-4 w-4" />
                         Post Task
+                      </Button>
+                    </Link>
+                    <Link href="/messages" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Button variant="outline" className="w-full border-gray-300 hover:bg-gray-50">
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Messages
                       </Button>
                     </Link>
                     <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>
