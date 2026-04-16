@@ -150,7 +150,9 @@ export default function ChatPageClient() {
   const fetchMessages = async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
-      const response = await axiosInstance.get(`/get-messages/${chatId}`);
+      const response = await axiosInstance.get(`/get-messages/${chatId}`, {
+        params: userId ? { user_id: userId } : undefined,
+      });
       
       // Handle different API response formats
       let fetchedMessages = [];
@@ -339,7 +341,10 @@ export default function ChatPageClient() {
         });
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to load messages');
+      const reason =
+        (error.response?.data as { reason?: string } | undefined)?.reason ||
+        error.response?.data?.message;
+      toast.error(reason || "Failed to load messages");
       setOtherUserName("Unknown User");
       setChatInfo({
         chatId,
@@ -444,13 +449,16 @@ export default function ChatPageClient() {
         
         // Mark message as read
         try {
-          await axiosInstance.put(`/mark-as-read/${newMessage.id}`);
+          await axiosInstance.put(`/mark-as-read/${newMessage.id}`, undefined, {
+            params: userId ? { user_id: userId } : undefined,
+          });
         } catch {
           // Ignore
         }
       }
       } catch (error: any) {
-        toast.error(error.response?.data?.message || 'Failed to send message');
+        const data = error.response?.data as { reason?: string; message?: string } | undefined;
+        toast.error(data?.reason || data?.message || "Failed to send message");
       } finally {
         setSending(false);
       }

@@ -54,6 +54,64 @@ interface ChatSummary {
   lastMessage: string;
   lastMessageTime: string;
   taskTitle?: string;
+  /** From GET /my-chats/ when supported */
+  chatKind?: "job" | "listing";
+  jobId?: string;
+}
+
+type MyChatsInboxResult =
+  | { ok: true; chats: ChatSummary[]; chatIds: string[] }
+  | { ok: false };
+
+async function fetchInboxFromMyChats(uid: string): Promise<MyChatsInboxResult> {
+  try {
+    const res = await axiosInstance.get("/my-chats/", {
+      params: { user_id: uid, limit: 50, offset: 0 },
+    });
+    const root = res.data as Record<string, unknown> | undefined;
+    if (root == null) return { ok: false };
+    if (root.status_code != null && Number(root.status_code) !== 200) return { ok: false };
+    const payload = (root.data ?? root) as Record<string, unknown>;
+    const rawChats = payload?.chats;
+    if (!Array.isArray(rawChats)) return { ok: false };
+
+    const chats: ChatSummary[] = rawChats
+      .map((c: Record<string, unknown>) => {
+      const chatKind = (String(c.chat_kind ?? c.chatKind ?? "job").toLowerCase() === "listing"
+        ? "listing"
+        : "job") as "job" | "listing";
+      const jobTitleRaw = String(c.job_title ?? c.jobTitle ?? "").trim();
+      const otherName = String(c.other_user_name ?? c.otherUserName ?? "User").trim() || "User";
+      const preview = String(c.last_message_preview ?? c.lastMessagePreview ?? "").trim();
+      const at = String(c.last_message_at ?? c.lastMessageAt ?? "");
+      const jid = c.job_id ?? c.jobId;
+      const hasJob = jid != null && String(jid).trim() !== "";
+      const taskLine =
+        chatKind === "listing" || !hasJob
+          ? jobTitleRaw || (chatKind === "listing" ? "Listing" : "Task")
+          : jobTitleRaw || "Task";
+
+      return {
+        chatid: String(c.chat_id ?? c.chatId ?? ""),
+        otherUserId: String(c.other_user_id ?? c.otherUserId ?? ""),
+        otherUser: otherName,
+        lastMessage: preview || "No messages yet",
+        lastMessageTime: at,
+        taskTitle: taskLine,
+        chatKind,
+        jobId: hasJob ? String(jid) : undefined,
+      };
+    })
+      .filter((row) => Boolean(row.chatid));
+
+    return {
+      ok: true,
+      chats,
+      chatIds: chats.map((x) => x.chatid),
+    };
+  } catch {
+    return { ok: false };
+  }
 }
 
 export default function MessagesPage() {
@@ -90,6 +148,25 @@ export default function MessagesPage() {
     const fetchChats = async () => {
       try {
         setLoading(true)
+        const uid = userId?.toString() || ""
+
+        if (uid) {
+          const inbox = await fetchInboxFromMyChats(uid)
+          if (inbox.ok) {
+            const sorted = [...inbox.chats].sort((a, b) => {
+              const ta = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0
+              const tb = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0
+              return tb - ta
+            })
+            setChats(sorted)
+            try {
+              localStorage.setItem("chatSummaries", JSON.stringify(sorted))
+              localStorage.setItem("userChats", JSON.stringify(inbox.chatIds))
+            } catch {}
+            return
+          }
+        }
+
         const taskChatOtherUser: Record<string, string> = {}
         const taskChatTaskTitle: Record<string, string> = {}
 
@@ -100,7 +177,6 @@ export default function MessagesPage() {
         // 2. Also derive chat IDs from in-progress, completed, and assigned tasks (taskmaster + tasker)
         const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-        const uid = userId?.toString() || "";
 
         if (token && uid) {
           try {
@@ -193,7 +269,11 @@ export default function MessagesPage() {
         for (let i = 0; i < chatIds.length; i += BATCH_SIZE) {
           const batch = chatIds.slice(i, i + BATCH_SIZE);
           const results = await Promise.allSettled(
-            batch.map((cid) => axiosInstance.get(`/get-messages/${cid}`))
+            batch.map((cid) =>
+              axiosInstance.get(`/get-messages/${cid}`, {
+                params: uid ? { user_id: uid } : undefined,
+              })
+            )
           );
           for (let j = 0; j < batch.length; j++) {
             const chatId = batch[j];
@@ -479,7 +559,14 @@ export default function MessagesPage() {
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">{displayTitle}</p>
+                          <div className="flex min-w-0 items-center gap-2">
+                            <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">{displayTitle}</p>
+                            {chat.chatKind === "listing" && (
+                              <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                Listing
+                              </span>
+                            )}
+                          </div>
                           {chat.lastMessageTime && (
                             <p className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap shrink-0">
                               {new Date(chat.lastMessageTime).toLocaleString('en-US', {

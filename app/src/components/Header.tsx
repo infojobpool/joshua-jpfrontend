@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, MessageSquare } from "lucide-react";
 
 interface User {
   name: string;
@@ -62,6 +62,12 @@ const Header: React.FC<HeaderProps> = ({ user, onSignOut }) => {
               <DropdownMenuItem asChild>
                 <Link href="/profile" className="w-full">
                   Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/messages" className="w-full flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+                  Messages
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>

@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Home, Search, Plus, Wallet, LayoutList } from "lucide-react";
+import { Home, Search, Plus, MessageSquare, LayoutList } from "lucide-react";
 import { isMobileBottomNavHidden } from "@/lib/mobileNavVisibility";
 
 type NavLinkItem = {
@@ -36,7 +36,7 @@ export function MobileBottomNav() {
     { href: "/", icon: Home, label: "Home" },
     { href: "/dashboard", icon: Search, label: "Browse" },
     { type: "post" },
-    { href: "/wallet", icon: Wallet, label: "Wallet" },
+    { href: "/messages", icon: MessageSquare, label: "Chat" },
     {
       href: "/profile?tab=listings",
       icon: LayoutList,

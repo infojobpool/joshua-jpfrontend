@@ -39,6 +39,7 @@ import {
   Package,
   Inbox,
   Images,
+  ChevronRight,
 } from "lucide-react";
 import useStore from "../../lib/Zustand";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
@@ -632,6 +633,22 @@ export default function ProfilePage() {
           className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-emerald-600 transition-colors mb-6 font-medium"
         >
           ← Back to Dashboard
+        </Link>
+
+        <Link
+          href="/wallet"
+          className="mb-4 flex w-full min-w-0 items-center justify-between gap-3 rounded-xl border border-emerald-100/80 bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200/60 transition-colors hover:bg-emerald-50/40 active:scale-[0.99]"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+              <Wallet className="h-5 w-5 text-emerald-600" aria-hidden />
+            </span>
+            <span className="min-w-0 text-left">
+              <span className="block text-sm font-semibold text-slate-900">Wallet</span>
+              <span className="block text-xs text-slate-500">Balance, UPI, and withdrawals</span>
+            </span>
+          </span>
+          <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />
         </Link>
 
         <Tabs value={mainTab} onValueChange={onMainTabChange} className="mt-2 w-full min-w-0">
