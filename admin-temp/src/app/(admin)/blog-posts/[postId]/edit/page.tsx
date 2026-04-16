@@ -104,6 +104,11 @@ export default function AdminEditBlogPostPage() {
 
   const save = async () => {
     if (!canWrite || !postId) return;
+    if (typeof window !== "undefined" && !localStorage.getItem("token")) {
+      toast.error("Admin session missing. Sign in on the admin home page (admin login), then try again.");
+      router.push("/");
+      return;
+    }
     if (!title.trim()) {
       toast.error("Title is required.");
       return;
