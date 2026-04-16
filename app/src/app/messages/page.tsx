@@ -68,9 +68,13 @@ interface ChatSummary {
   lastMessage: string;
   lastMessageTime: string;
   taskTitle?: string;
+  /** Listing headline from my-chats when backend sends listing_title */
+  listingTitle?: string;
   /** From GET /my-chats/ when supported */
   chatKind?: "job" | "listing";
   jobId?: string;
+  /** Server unread count (my-chats); legacy path uses 0 */
+  unreadCount?: number;
 }
 
 /** Pull listing name from auto message copy when API did not send job_title. */
@@ -143,17 +147,26 @@ async function fetchInboxFromMyChats(uid: string): Promise<MyChatsInboxResult> {
         ? "listing"
         : "job") as "job" | "listing";
       const jobTitleRaw = String(c.job_title ?? c.jobTitle ?? "").trim();
+      const listingTitleRaw = String(c.listing_title ?? c.listingTitle ?? "").trim();
       const otherName = String(c.other_user_name ?? c.otherUserName ?? "User").trim() || "User";
       const preview = String(c.last_message_preview ?? c.lastMessagePreview ?? "").trim();
       const at = String(c.last_message_at ?? c.lastMessageAt ?? "");
       const jid = c.job_id ?? c.jobId;
       const hasJob = jid != null && String(jid).trim() !== "";
+      const unreadRaw = c.unread_count ?? c.unreadCount ?? 0;
+      const unreadCount =
+        typeof unreadRaw === "number" && Number.isFinite(unreadRaw)
+          ? Math.max(0, Math.floor(unreadRaw))
+          : Math.max(0, parseInt(String(unreadRaw), 10) || 0);
+
       const inferredListing =
-        chatKind === "listing" && !jobTitleRaw ? inferListingTitleFromPreview(preview) : null;
-      const listingOrContextTitle = jobTitleRaw || inferredListing || "";
+        chatKind === "listing" && !listingTitleRaw && !jobTitleRaw
+          ? inferListingTitleFromPreview(preview)
+          : null;
+
       const taskLine =
-        chatKind === "listing" || !hasJob
-          ? listingOrContextTitle || (chatKind === "listing" ? "Listing inquiry" : "Task")
+        chatKind === "listing"
+          ? listingTitleRaw || jobTitleRaw || inferredListing || "Listing inquiry"
           : jobTitleRaw || "Task";
 
       return {
@@ -163,8 +176,10 @@ async function fetchInboxFromMyChats(uid: string): Promise<MyChatsInboxResult> {
         lastMessage: preview || "No messages yet",
         lastMessageTime: at,
         taskTitle: taskLine,
+        listingTitle: listingTitleRaw || undefined,
         chatKind,
         jobId: hasJob ? String(jid) : undefined,
+        unreadCount,
       };
     })
       .filter((row) => Boolean(row.chatid));
@@ -357,6 +372,7 @@ export default function MessagesPage() {
                     lastMessage: lastMessage.description,
                     lastMessageTime: lastMessage.tstamp,
                     taskTitle: taskChatTaskTitle[chatId] || undefined,
+                    unreadCount: 0,
                   });
                   validChatIds.push(chatId);
                 } else if (taskChatOtherUser[chatId]) {
@@ -367,6 +383,7 @@ export default function MessagesPage() {
                     lastMessage: "No messages yet",
                     lastMessageTime: "",
                     taskTitle: taskChatTaskTitle[chatId] || undefined,
+                    unreadCount: 0,
                   });
                   validChatIds.push(chatId);
                 }
@@ -389,6 +406,7 @@ export default function MessagesPage() {
                   lastMessage: "No messages yet",
                   lastMessageTime: "",
                   taskTitle: taskChatTaskTitle[chatId] || undefined,
+                  unreadCount: 0,
                 });
                 validChatIds.push(chatId);
               }
@@ -598,9 +616,13 @@ export default function MessagesPage() {
                 .filter((chat) => {
                   const q = searchTerm.toLowerCase();
                   if (!q) return true;
+                  const listingHead = (chat.listingTitle || "").trim();
                   const topic =
                     chat.chatKind === "listing"
-                      ? inferListingTitleFromPreview(chat.lastMessage) || chat.taskTitle || ""
+                      ? listingHead ||
+                        inferListingTitleFromPreview(chat.lastMessage) ||
+                        chat.taskTitle ||
+                        ""
                       : chat.taskTitle || "";
                   return (
                     chat.otherUser.toLowerCase().includes(q) ||
@@ -610,16 +632,34 @@ export default function MessagesPage() {
                 })
                 .map((chat) => {
                   const isListing = chat.chatKind === "listing";
+                  const unreadCount = chat.unreadCount ?? 0;
+                  const hasUnread = unreadCount > 0;
+
                   const jobTitle =
-                    chat.taskTitle && chat.taskTitle !== "Task" && chat.taskTitle !== "Listing inquiry"
+                    !isListing &&
+                    chat.taskTitle &&
+                    chat.taskTitle !== "Task" &&
+                    chat.taskTitle !== "Listing inquiry"
                       ? chat.taskTitle
                       : null;
-                  const listingTopic =
-                    isListing && (!jobTitle || jobTitle === "Listing inquiry")
-                      ? inferListingTitleFromPreview(chat.lastMessage) || jobTitle
-                      : isListing
-                        ? jobTitle
-                        : null;
+
+                  const apiListingHead = (chat.listingTitle || "").trim();
+                  const listingUsesApiTitle = Boolean(apiListingHead);
+                  const listingPrimaryTitle = listingUsesApiTitle
+                    ? apiListingHead
+                    : chat.otherUser;
+                  const listingSubtitle =
+                    isListing && listingUsesApiTitle
+                      ? `With ${chat.otherUser}`
+                      : null;
+                  const listingInferredTopic =
+                    isListing && !listingUsesApiTitle
+                      ? inferListingTitleFromPreview(chat.lastMessage) ||
+                        (chat.taskTitle && chat.taskTitle !== "Listing inquiry"
+                          ? chat.taskTitle
+                          : null)
+                      : null;
+
                   const avatarSeed = (chat.otherUserId || chat.otherUser || chat.chatid).trim();
                   const initials = initialsFromName(chat.otherUser);
                   const grad = pickAvatarGradient(avatarSeed);
@@ -645,6 +685,7 @@ export default function MessagesPage() {
                         isListing
                           ? "ring-1 ring-violet-500/10 dark:ring-violet-500/15"
                           : "ring-1 ring-blue-500/10 dark:ring-blue-500/15",
+                        hasUnread && "border-slate-300 dark:border-slate-600",
                       )}
                       onClick={() => {
                         try {
@@ -662,46 +703,81 @@ export default function MessagesPage() {
                         aria-hidden
                       />
                       <div className="flex min-w-0 flex-1 items-start gap-3 p-3.5 sm:gap-4 sm:p-4">
-                        <Avatar className="h-12 w-12 shrink-0 rounded-xl ring-2 ring-slate-100 dark:ring-slate-800">
-                          <AvatarFallback
-                            className={cn(
-                              "rounded-xl bg-gradient-to-br text-[13px] font-bold text-white",
-                              grad,
-                            )}
-                          >
-                            {initials}
-                          </AvatarFallback>
-                        </Avatar>
+                        <div className="relative shrink-0">
+                          <Avatar className="h-12 w-12 rounded-xl ring-2 ring-slate-100 dark:ring-slate-800">
+                            <AvatarFallback
+                              className={cn(
+                                "rounded-xl bg-gradient-to-br text-[13px] font-bold text-white",
+                                grad,
+                              )}
+                            >
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          {hasUnread ? (
+                            <span
+                              className={cn(
+                                "absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-slate-900",
+                                isListing ? "bg-violet-500" : "bg-blue-500",
+                              )}
+                              aria-hidden
+                            />
+                          ) : null}
+                        </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
                               {isListing ? (
                                 <>
                                   <div className="flex flex-wrap items-center gap-1.5">
-                                    <p className="truncate text-[15px] font-semibold text-slate-900 dark:text-slate-100">
-                                      {chat.otherUser}
+                                    <p
+                                      className={cn(
+                                        "truncate text-[15px] text-slate-900 dark:text-slate-100",
+                                        hasUnread ? "font-bold" : "font-semibold",
+                                      )}
+                                    >
+                                      {listingPrimaryTitle}
                                     </p>
                                     <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-800 dark:bg-violet-950/80 dark:text-violet-200">
                                       <Store className="h-3 w-3" aria-hidden />
                                       Listing
                                     </span>
+                                    {hasUnread && unreadCount > 1 ? (
+                                      <span className="rounded-full bg-violet-600 px-1.5 py-0.5 text-[10px] font-bold tabular-nums leading-none text-white dark:bg-violet-500">
+                                        {unreadCount > 99 ? "99+" : unreadCount}
+                                      </span>
+                                    ) : null}
                                   </div>
-                                  {listingTopic && listingTopic !== "Listing inquiry" ? (
+                                  {listingSubtitle ? (
+                                    <p className="mt-0.5 truncate text-sm text-slate-600 dark:text-slate-400">
+                                      {listingSubtitle}
+                                    </p>
+                                  ) : listingInferredTopic ? (
                                     <p className="mt-0.5 truncate text-sm font-medium text-violet-700 dark:text-violet-300">
-                                      {listingTopic}
+                                      {listingInferredTopic}
                                     </p>
                                   ) : null}
                                 </>
                               ) : (
                                 <>
                                   <div className="flex flex-wrap items-center gap-1.5">
-                                    <p className="truncate text-[15px] font-semibold text-slate-900 dark:text-slate-100">
+                                    <p
+                                      className={cn(
+                                        "truncate text-[15px] text-slate-900 dark:text-slate-100",
+                                        hasUnread ? "font-bold" : "font-semibold",
+                                      )}
+                                    >
                                       {jobTitle || chat.otherUser}
                                     </p>
                                     <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-800 dark:bg-blue-950/80 dark:text-blue-200">
                                       <Briefcase className="h-3 w-3" aria-hidden />
                                       Task
                                     </span>
+                                    {hasUnread && unreadCount > 1 ? (
+                                      <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold tabular-nums leading-none text-white dark:bg-blue-500">
+                                        {unreadCount > 99 ? "99+" : unreadCount}
+                                      </span>
+                                    ) : null}
                                   </div>
                                   {jobTitle ? (
                                     <p className="mt-0.5 truncate text-sm text-slate-600 dark:text-slate-400">
@@ -720,7 +796,12 @@ export default function MessagesPage() {
                               </time>
                             ) : null}
                           </div>
-                          <p className="mt-1.5 line-clamp-2 text-sm leading-snug text-slate-700 dark:text-slate-300">
+                          <p
+                            className={cn(
+                              "mt-1.5 line-clamp-2 text-sm leading-snug text-slate-700 dark:text-slate-300",
+                              hasUnread && "font-medium text-slate-900 dark:text-slate-100",
+                            )}
+                          >
                             {chat.lastMessage}
                           </p>
                         </div>

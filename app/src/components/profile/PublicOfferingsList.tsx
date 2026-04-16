@@ -118,6 +118,7 @@ function PublicOfferingCard({
   const messagePath = `/messages/new?${new URLSearchParams({
     receiver: providerId,
     receiverName: providerName,
+    offering_id: o.id,
     context: `Hi — I'm interested in "${(o.title || "your listing").slice(0, 80)}". `,
   }).toString()}`;
 

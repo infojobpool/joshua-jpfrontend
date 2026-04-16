@@ -24,6 +24,9 @@ export default function NewMessagePage() {
   const receiverId = searchParams.get('receiver')
   const receiverName = searchParams.get('receiverName') || 'User'
   const contextHint = searchParams.get('context') || ''
+  /** Listing-scoped thread when set; omit for generic profile DM */
+  const offeringId =
+    (searchParams.get('offering_id') || searchParams.get('offeringId') || '').trim() || undefined
 
   useEffect(() => {
     if (!userId) return;
@@ -68,9 +71,14 @@ export default function NewMessagePage() {
           }
         } else {
           let directId: string | undefined;
+          const directParams: Record<string, string> = {
+            sender: senderId,
+            receiver: receiverId,
+          };
+          if (offeringId) directParams.offering_id = offeringId;
           try {
             const r1 = await axiosInstance.get('/create-or-get-direct-chat/', {
-              params: { sender: senderId, receiver: receiverId },
+              params: directParams,
             });
             if (r1.data?.status_code === 200 && r1.data?.data?.chat_id) {
               directId = r1.data.data.chat_id;
@@ -80,7 +88,7 @@ export default function NewMessagePage() {
           }
           if (!directId) {
             const r2 = await axiosInstance.get('/get-direct-chat-id/', {
-              params: { sender: senderId, receiver: receiverId },
+              params: directParams,
             });
             if (r2.data?.status_code === 200 && r2.data?.data?.chat_id) {
               directId = r2.data.data.chat_id;
@@ -125,7 +133,8 @@ export default function NewMessagePage() {
       }
     } catch (error: any) {
       console.error('Error sending message:', error);
-      toast.error(error.response?.data?.message || 'Failed to send message');
+      const data = error.response?.data as { reason?: string; message?: string } | undefined;
+      toast.error(data?.reason || data?.message || 'Failed to send message');
     } finally {
       setLoading(false);
     }

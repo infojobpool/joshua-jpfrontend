@@ -91,9 +91,10 @@ export default function ListingRequestPage() {
       receiver: providerId,
       receiverName: providerName,
     });
+    if (offeringId) q.set("offering_id", offeringId);
     if (offeringTitle) q.set("context", `Hi — I'm interested in "${offeringTitle.slice(0, 80)}". `);
     return `/messages/new?${q.toString()}`;
-  }, [userId, providerId, providerName, offeringTitle]);
+  }, [userId, providerId, providerName, offeringId, offeringTitle]);
 
   const handleSignOut = useCallback(() => {
     logout();
