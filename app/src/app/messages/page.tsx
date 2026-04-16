@@ -6,13 +6,27 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, Paperclip, MoreVertical, Search, MessageSquare, Plus, List } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import {
+  Search,
+  MessageSquare,
+  Plus,
+  List,
+  Briefcase,
+  Store,
+} from "lucide-react"
+import {
+  differenceInCalendarDays,
+  differenceInYears,
+  format,
+  formatDistanceToNow,
+  isToday,
+  isYesterday,
+} from "date-fns"
 import { toast, Toaster } from "sonner"
 import axiosInstance from "@/lib/axiosInstance"
 import useStore from "@/lib/Zustand"
+import { cn } from "@/lib/utils"
 
 // Define proper TypeScript interfaces
 interface User {
@@ -59,6 +73,54 @@ interface ChatSummary {
   jobId?: string;
 }
 
+/** Pull listing name from auto message copy when API did not send job_title. */
+function inferListingTitleFromPreview(preview: string): string | null {
+  const m = preview.match(/interested in\s+["'「]([^"'」]+)["'」]/i);
+  if (m?.[1]?.trim()) return m[1].trim();
+  if (/interested|about|for/i.test(preview)) {
+    const m2 = preview.match(/"([^"]{2,120})"/);
+    if (m2?.[1]?.trim()) return m2[1].trim();
+  }
+  return null;
+}
+
+function initialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2)
+    return `${parts[0][0] ?? ""}${parts[parts.length - 1][0] ?? ""}`.toUpperCase();
+  const w = parts[0] ?? "";
+  if (w.length >= 2) return w.slice(0, 2).toUpperCase();
+  return (w[0] || "?").toUpperCase();
+}
+
+const AVATAR_GRADIENTS = [
+  "from-sky-500 to-blue-600",
+  "from-violet-500 to-purple-600",
+  "from-emerald-500 to-teal-600",
+  "from-amber-500 to-orange-600",
+  "from-rose-500 to-pink-600",
+  "from-cyan-500 to-indigo-600",
+  "from-fuchsia-500 to-purple-600",
+] as const;
+
+function pickAvatarGradient(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+  return AVATAR_GRADIENTS[Math.abs(h) % AVATAR_GRADIENTS.length];
+}
+
+function formatChatListTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const now = new Date();
+  if (isToday(d)) return format(d, "h:mm a");
+  if (isYesterday(d)) return "Yesterday";
+  const days = differenceInCalendarDays(now, d);
+  if (days >= 0 && days < 6) return formatDistanceToNow(d, { addSuffix: true });
+  if (differenceInYears(now, d) === 0) return format(d, "MMM d");
+  return format(d, "MMM d, yyyy");
+}
+
 type MyChatsInboxResult =
   | { ok: true; chats: ChatSummary[]; chatIds: string[] }
   | { ok: false };
@@ -86,9 +148,12 @@ async function fetchInboxFromMyChats(uid: string): Promise<MyChatsInboxResult> {
       const at = String(c.last_message_at ?? c.lastMessageAt ?? "");
       const jid = c.job_id ?? c.jobId;
       const hasJob = jid != null && String(jid).trim() !== "";
+      const inferredListing =
+        chatKind === "listing" && !jobTitleRaw ? inferListingTitleFromPreview(preview) : null;
+      const listingOrContextTitle = jobTitleRaw || inferredListing || "";
       const taskLine =
         chatKind === "listing" || !hasJob
-          ? jobTitleRaw || (chatKind === "listing" ? "Listing" : "Task")
+          ? listingOrContextTitle || (chatKind === "listing" ? "Listing inquiry" : "Task")
           : jobTitleRaw || "Task";
 
       return {
@@ -470,19 +535,27 @@ export default function MessagesPage() {
       <Toaster position="top-right" />
       <main className="flex-1 container py-6 md:py-10 px-4 md:px-6">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Your Messages</h1>
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-gray-100 md:text-3xl">
+                Messages
+              </h1>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Task chats and listing messages in one place
+              </p>
+            </div>
             {chats.length > 0 && (
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Search conversations..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 w-64"
-                  />
-                </div>
+              <div className="relative w-full sm:max-w-xs shrink-0">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                  aria-hidden
+                />
+                <Input
+                  placeholder="Search name or task…"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="h-11 rounded-xl border-slate-200 bg-white pl-10 shadow-sm dark:border-slate-700 dark:bg-slate-900"
+                />
               </div>
             )}
           </div>
@@ -517,71 +590,143 @@ export default function MessagesPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {loading && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 animate-pulse">Updating...</p>
+                <p className="animate-pulse text-xs text-slate-500 dark:text-slate-400">Updating…</p>
               )}
               {chats
-                .filter(chat => {
+                .filter((chat) => {
                   const q = searchTerm.toLowerCase();
                   if (!q) return true;
+                  const topic =
+                    chat.chatKind === "listing"
+                      ? inferListingTitleFromPreview(chat.lastMessage) || chat.taskTitle || ""
+                      : chat.taskTitle || "";
                   return (
                     chat.otherUser.toLowerCase().includes(q) ||
                     chat.lastMessage.toLowerCase().includes(q) ||
-                    (chat.taskTitle || "").toLowerCase().includes(q)
+                    topic.toLowerCase().includes(q)
                   );
                 })
                 .map((chat) => {
-                  const displayTitle = chat.taskTitle && chat.taskTitle !== "Task"
-                    ? chat.taskTitle
-                    : chat.otherUser;
-                  const displaySubtitle = chat.taskTitle && chat.taskTitle !== "Task"
-                    ? (chat.lastMessage === "No messages yet" ? `with ${chat.otherUser}` : chat.lastMessage)
-                    : chat.lastMessage;
+                  const isListing = chat.chatKind === "listing";
+                  const jobTitle =
+                    chat.taskTitle && chat.taskTitle !== "Task" && chat.taskTitle !== "Listing inquiry"
+                      ? chat.taskTitle
+                      : null;
+                  const listingTopic =
+                    isListing && (!jobTitle || jobTitle === "Listing inquiry")
+                      ? inferListingTitleFromPreview(chat.lastMessage) || jobTitle
+                      : isListing
+                        ? jobTitle
+                        : null;
+                  const avatarSeed = (chat.otherUserId || chat.otherUser || chat.chatid).trim();
+                  const initials = initialsFromName(chat.otherUser);
+                  const grad = pickAvatarGradient(avatarSeed);
+                  const timeLabel = chat.lastMessageTime
+                    ? formatChatListTime(chat.lastMessageTime)
+                    : "";
+
                   return (
-                <div
-                  key={chat.chatid}
-                  className="group rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900/50 shadow-sm hover:shadow-md active:scale-[0.99] transition-all duration-200 cursor-pointer"
-                  onClick={() => {
-                    try {
-                      sessionStorage.setItem('messagesScrollY', String(window.scrollY));
-                      sessionStorage.setItem('messagesLastChatId', chat.chatid);
-                    } catch {}
-                    router.push(`/messages/${chat.chatid}`);
-                  }}
-                >
-                  <div className="p-4">
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-12 w-12 rounded-xl ring-2 ring-gray-100 dark:ring-slate-800 shrink-0">
-                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold rounded-xl">
-                          {chat.otherUser.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">{displayTitle}</p>
-                            {chat.chatKind === "listing" && (
-                              <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                Listing
-                              </span>
+                    <div
+                      key={chat.chatid}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          ;(e.currentTarget as HTMLDivElement).click();
+                        }
+                      }}
+                      className={cn(
+                        "group flex cursor-pointer overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-200",
+                        "border-slate-200/90 hover:border-slate-300 hover:shadow-md active:scale-[0.99]",
+                        "dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-slate-600",
+                        isListing
+                          ? "ring-1 ring-violet-500/10 dark:ring-violet-500/15"
+                          : "ring-1 ring-blue-500/10 dark:ring-blue-500/15",
+                      )}
+                      onClick={() => {
+                        try {
+                          sessionStorage.setItem("messagesScrollY", String(window.scrollY));
+                          sessionStorage.setItem("messagesLastChatId", chat.chatid);
+                        } catch {}
+                        router.push(`/messages/${chat.chatid}`);
+                      }}
+                    >
+                      <div
+                        className={cn(
+                          "w-1 shrink-0 self-stretch",
+                          isListing ? "bg-violet-500" : "bg-blue-500",
+                        )}
+                        aria-hidden
+                      />
+                      <div className="flex min-w-0 flex-1 items-start gap-3 p-3.5 sm:gap-4 sm:p-4">
+                        <Avatar className="h-12 w-12 shrink-0 rounded-xl ring-2 ring-slate-100 dark:ring-slate-800">
+                          <AvatarFallback
+                            className={cn(
+                              "rounded-xl bg-gradient-to-br text-[13px] font-bold text-white",
+                              grad,
                             )}
+                          >
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              {isListing ? (
+                                <>
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <p className="truncate text-[15px] font-semibold text-slate-900 dark:text-slate-100">
+                                      {chat.otherUser}
+                                    </p>
+                                    <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-800 dark:bg-violet-950/80 dark:text-violet-200">
+                                      <Store className="h-3 w-3" aria-hidden />
+                                      Listing
+                                    </span>
+                                  </div>
+                                  {listingTopic && listingTopic !== "Listing inquiry" ? (
+                                    <p className="mt-0.5 truncate text-sm font-medium text-violet-700 dark:text-violet-300">
+                                      {listingTopic}
+                                    </p>
+                                  ) : null}
+                                </>
+                              ) : (
+                                <>
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <p className="truncate text-[15px] font-semibold text-slate-900 dark:text-slate-100">
+                                      {jobTitle || chat.otherUser}
+                                    </p>
+                                    <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-800 dark:bg-blue-950/80 dark:text-blue-200">
+                                      <Briefcase className="h-3 w-3" aria-hidden />
+                                      Task
+                                    </span>
+                                  </div>
+                                  {jobTitle ? (
+                                    <p className="mt-0.5 truncate text-sm text-slate-600 dark:text-slate-400">
+                                      With {chat.otherUser}
+                                    </p>
+                                  ) : null}
+                                </>
+                              )}
+                            </div>
+                            {timeLabel ? (
+                              <time
+                                dateTime={chat.lastMessageTime}
+                                className="shrink-0 pt-0.5 text-right text-[11px] font-medium tabular-nums text-slate-500 dark:text-slate-400"
+                              >
+                                {timeLabel}
+                              </time>
+                            ) : null}
                           </div>
-                          {chat.lastMessageTime && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap shrink-0">
-                              {new Date(chat.lastMessageTime).toLocaleString('en-US', {
-                                dateStyle: 'short',
-                                timeStyle: 'short'
-                              })}
-                            </p>
-                          )}
+                          <p className="mt-1.5 line-clamp-2 text-sm leading-snug text-slate-700 dark:text-slate-300">
+                            {chat.lastMessage}
+                          </p>
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 truncate mt-0.5">{displaySubtitle}</p>
                       </div>
                     </div>
-                  </div>
-                </div>
-              );
+                  );
                 })}
             </div>
           )}
