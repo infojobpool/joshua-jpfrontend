@@ -331,14 +331,25 @@ export function HowItWorksPage() {
                   transition={{ duration: 0.5 }}
                   viewport={{ once: true }}
                 >
-                  <div className="relative w-full aspect-[4/3] md:h-[400px] rounded-xl overflow-hidden order-2 md:order-1">
-                    <Image
-                      src="/images/image1.jpeg"
-                      fill
-                      alt="Post a task - describe what you need"
-                      className="object-cover"
-                      sizes="(max-width: 768px) 100vw, 50vw"
+                  <div className="relative w-full max-w-lg mx-auto md:mx-0 order-2 md:order-1">
+                    <div
+                      className="absolute inset-0 -m-2 sm:-m-3 rounded-2xl opacity-95"
+                      style={{
+                        background:
+                          "repeating-conic-gradient(from 12deg at 50% 40%, #1d4ed8 0deg 18deg, #faf6ec 18deg 36deg)",
+                      }}
+                      aria-hidden
                     />
+                    <div className="relative overflow-hidden rounded-xl shadow-xl ring-1 ring-slate-900/10 bg-white">
+                      <Image
+                        src="/images/how-it-works-budget-step.png"
+                        width={866}
+                        height={1024}
+                        alt="Set your rough budget when posting a task"
+                        className="w-full h-auto object-cover object-top"
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                      />
+                    </div>
                   </div>
                   <div className="order-1 md:order-2">
                     <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Tips for posting a great task</h2>
