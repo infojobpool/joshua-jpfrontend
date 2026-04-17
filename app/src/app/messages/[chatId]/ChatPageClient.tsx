@@ -197,18 +197,21 @@ export default function ChatPageClient() {
   };
 
   const fetchMessages = async (showLoading = true) => {
+    const getMessagesOnce = () =>
+      axiosInstance.get(`/get-messages/${encodeURIComponent(chatId)}`, {
+        params: userId ? { user_id: String(userId) } : undefined,
+      });
+
     try {
       if (showLoading) setLoading(true);
-      const response = await axiosInstance.get(`/get-messages/${chatId}`, {
-        params: {
-          ...(userId ? { user_id: userId } : {}),
-          _ts: Date.now(),
-        },
-        headers: {
-          "Cache-Control": "no-store",
-          Pragma: "no-cache",
-        },
-      });
+      let response;
+      try {
+        response = await getMessagesOnce();
+      } catch (firstErr) {
+        if (!showLoading) throw firstErr;
+        await new Promise((r) => setTimeout(r, 700));
+        response = await getMessagesOnce();
+      }
 
       let fetchedMessages: Message[] = [];
       if (Array.isArray(response.data)) {
@@ -414,11 +417,14 @@ export default function ChatPageClient() {
         });
       }
     } catch (error: any) {
+      const status = error.response?.status;
       const reason =
         (error.response?.data as { reason?: string } | undefined)?.reason ||
-        error.response?.data?.message;
+        error.response?.data?.message ||
+        (typeof error.message === "string" ? error.message : undefined);
       if (showLoading) {
-        toast.error(reason || "Failed to load messages");
+        const hint = status ? ` (HTTP ${status})` : "";
+        toast.error((reason || "Failed to load messages") + hint);
         setOtherUserName("Unknown User");
         setChatInfo({
           chatId,

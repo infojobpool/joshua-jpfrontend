@@ -68,6 +68,8 @@ const axiosInstance = axios.create({
 // Add a request interceptor to include JWT in headers and deduplicate requests
 axiosInstance.interceptors.request.use(
   (config) => {
+    const urlStr = String(config.url || "");
+
     // Check circuit breaker
     if (circuitBreaker.isOpen) {
       const timeSinceLastFailure = Date.now() - circuitBreaker.lastFailureTime;
@@ -84,7 +86,6 @@ axiosInstance.interceptors.request.use(
     
     // Check request throttling (disabled for development)
     if (!isDev) {
-      const urlStr = String(config.url || '');
       const skipThrottle = isChatInboxLightRead(urlStr);
       const now = Date.now();
       if (now - requestThrottle.windowStart > requestThrottle.windowSize) {
@@ -110,24 +111,35 @@ axiosInstance.interceptors.request.use(
       config.headers['Authorization'] = `Bearer ${token}`;
       config.headers['X-Access-Token'] = token;
     }
-    // Create a unique key for request deduplication (no cache-busting to allow HTTP caching)
-    const requestKey = `${config.method?.toUpperCase()}_${config.url}_${JSON.stringify(config.params)}`;
-    
-    // Check if the same request is already pending
-    if (pendingRequests.has(requestKey)) {
-      console.log(`Request deduplication: Reusing pending request for ${requestKey}`);
-      return pendingRequests.get(requestKey)!;
+
+    /** GET/HEAD with Content-Type: application/json is non-simple and triggers CORS preflight on many APIs. */
+    const method = String(config.method || "get").toLowerCase();
+    if (method === "get" || method === "head") {
+      const h = config.headers;
+      if (h && typeof (h as { delete?: (n: string) => void }).delete === "function") {
+        (h as { delete: (n: string) => void }).delete("Content-Type");
+        (h as { delete: (n: string) => void }).delete("content-type");
+      } else if (h && typeof h === "object") {
+        delete (h as Record<string, unknown>)["Content-Type"];
+        delete (h as Record<string, unknown>)["content-type"];
+      }
     }
-    
-    // Store the request promise
-    const requestPromise = Promise.resolve(config);
-    pendingRequests.set(requestKey, requestPromise);
-    
-    // Clean up after request completes (success or failure)
-    requestPromise.finally(() => {
-      pendingRequests.delete(requestKey);
-    });
-    
+
+    // Request deduplication (skip for chat/inbox reads — polling changes params; broken promise was not a real in-flight dedupe)
+    const skipDedupe = isChatInboxLightRead(urlStr);
+    if (!skipDedupe) {
+      const requestKey = `${config.method?.toUpperCase()}_${config.url}_${JSON.stringify(config.params)}`;
+      if (pendingRequests.has(requestKey)) {
+        console.log(`Request deduplication: Reusing pending request for ${requestKey}`);
+        return pendingRequests.get(requestKey)!;
+      }
+      const requestPromise = Promise.resolve(config);
+      pendingRequests.set(requestKey, requestPromise);
+      requestPromise.finally(() => {
+        pendingRequests.delete(requestKey);
+      });
+    }
+
     return config;
   },
   (error) => {
