@@ -134,14 +134,21 @@ export default function ChatPageClient() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
   }, [messages, loading]);
 
-  // Refetch when user returns to tab
+  // Refetch when user returns to tab or window (immediate catch-up)
   useEffect(() => {
     if (!userId || !chatId) return;
     const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") fetchMessages(false);
+      if (document.visibilityState === "visible") void fetchMessagesRef.current?.(false);
+    };
+    const onFocus = () => {
+      if (document.visibilityState === "visible") void fetchMessagesRef.current?.(false);
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [userId, chatId]);
 
   /** Poll while chat is open so received messages appear without manual refresh. */
@@ -151,7 +158,7 @@ export default function ChatPageClient() {
       if (document.visibilityState !== "visible") return;
       void fetchMessagesRef.current?.(false);
     };
-    const id = window.setInterval(tick, 4500);
+    const id = window.setInterval(tick, 2000);
     return () => window.clearInterval(id);
   }, [userId, chatId, loading]);
 
@@ -193,7 +200,14 @@ export default function ChatPageClient() {
     try {
       if (showLoading) setLoading(true);
       const response = await axiosInstance.get(`/get-messages/${chatId}`, {
-        params: userId ? { user_id: userId } : undefined,
+        params: {
+          ...(userId ? { user_id: userId } : {}),
+          _ts: Date.now(),
+        },
+        headers: {
+          "Cache-Control": "no-store",
+          Pragma: "no-cache",
+        },
       });
 
       let fetchedMessages: Message[] = [];

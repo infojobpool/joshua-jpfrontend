@@ -3,6 +3,13 @@
 import axios from 'axios';
 import { notifyTokenUpdated, parseRefreshTokenBody } from './tokenRefresh';
 
+/** Light polling endpoints — must not consume the global throttle budget (was delaying chat by minutes). */
+function isChatInboxLightRead(url: string | undefined): boolean {
+  if (!url) return false;
+  const u = url.toLowerCase();
+  return u.includes('get-messages') || u.includes('my-chats');
+}
+
 function shouldSkip401Refresh(url: string): boolean {
   const u = url.toLowerCase();
   if (u.includes('refresh-token')) return true;
@@ -77,17 +84,21 @@ axiosInstance.interceptors.request.use(
     
     // Check request throttling (disabled for development)
     if (!isDev) {
+      const urlStr = String(config.url || '');
+      const skipThrottle = isChatInboxLightRead(urlStr);
       const now = Date.now();
       if (now - requestThrottle.windowStart > requestThrottle.windowSize) {
         // Reset window
         requestThrottle.requests = 0;
         requestThrottle.windowStart = now;
       }
-      if (requestThrottle.requests >= requestThrottle.maxRequests) {
+      if (!skipThrottle && requestThrottle.requests >= requestThrottle.maxRequests) {
         console.log(`🚨 Request throttled - too many requests (${requestThrottle.requests}/${requestThrottle.maxRequests})`);
         return Promise.reject(new Error('Too many requests - please slow down'));
       }
-      requestThrottle.requests++;
+      if (!skipThrottle) {
+        requestThrottle.requests++;
+      }
     }
     
     // Token from localStorage or sessionStorage (PWA/mobile fallback)
