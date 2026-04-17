@@ -1,10 +1,8 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Send, ArrowLeft } from "lucide-react"
 import { toast, Toaster } from "sonner"
@@ -16,7 +14,31 @@ import {
   getMessageTimeRaw,
   parseMessageToMs,
 } from "@/lib/chatMessageTime"
+import {
+  sameChatUserId,
+  isSendMessageSuccess,
+  extractSentMessageId,
+} from "@/lib/chatSendResponse"
 
+/** Match auto intro copy like: interested in 'Event & Wedding Photography' */
+function inferTopicFromMessageText(text: string): string {
+  const m = text.match(/interested in\s+["'「]([^"'」]+)["'」]/i)
+  if (m?.[1]?.trim()) return m[1].trim()
+  if (/interested|about|for/i.test(text)) {
+    const m2 = text.match(/"([^"]{2,120})"/)
+    if (m2?.[1]?.trim()) return m2[1].trim()
+  }
+  return ""
+}
+
+const QUICK_REPLY_SUGGESTIONS = [
+  "Is this still available?",
+  "What's your availability like?",
+  "Could you share a bit more detail?",
+  "Thanks — I'll get back to you soon.",
+]
+
+type LooseSendPayload = Record<string, unknown>
 
 interface Message {
   id: string;
@@ -61,6 +83,8 @@ export default function ChatPageClient() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const [otherUserName, setOtherUserName] = useState("")
   const inputRef = useRef<HTMLInputElement | null>(null)
+  /** After initial fetch (with loading spinner), do not snap to bottom — user reads from the top. */
+  const suppressNextScrollAfterLoad = useRef(false)
 
 
 
@@ -100,8 +124,14 @@ export default function ChatPageClient() {
   }, [chatId, userId, router]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (loading) return
+    if (suppressNextScrollAfterLoad.current) {
+      suppressNextScrollAfterLoad.current = false
+      return
+    }
+    if (messages.length === 0) return
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
+  }, [messages, loading]);
 
   // Refetch when user returns to tab (no auto-refresh interval)
   useEffect(() => {
@@ -354,7 +384,10 @@ export default function ChatPageClient() {
         }
       });
     } finally {
-      if (showLoading) setLoading(false);
+      if (showLoading) {
+        setLoading(false)
+        suppressNextScrollAfterLoad.current = true
+      }
     }
   };
 
@@ -432,29 +465,44 @@ export default function ChatPageClient() {
         }
       }
 
-      if (response.data.status_code === 200) {
+      const body = response.data as LooseSendPayload
+      if (isSendMessageSuccess(response)) {
+        const mid = extractSentMessageId(body)
+        const sid = String(currentUserId ?? "")
+        const rid = String(chatInfo.otherUser.id ?? "")
+        const displayName = (user?.name || "You").trim() || "You"
         const newMessage: Message = {
-          id: response.data.data.message_id || Date.now().toString(),
+          id: mid,
+          messagesid: mid,
           description: message.trim(),
           tstamp: new Date().toISOString(),
-          sender_id: userId || "",
-          receiver_id: chatInfo?.otherUser?.id || "",
-          sender_name: "You",
-          receiver_name: chatInfo?.otherUser?.name || "Unknown User",
+          timestamp: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          sender_id: sid,
+          receiver_id: rid,
+          sender_name: displayName,
+          receiver_name: chatInfo.otherUser.name || "Unknown User",
+          userrefid: sid,
+          username: displayName,
           is_read: false,
-        };
+        }
 
-        setMessages((prev) => [...prev, newMessage].sort(compareMessagesByTime));
-        setMessage("");
-        
-        // Mark message as read
+        setMessages((prev) => [...prev, newMessage].sort(compareMessagesByTime))
+        setMessage("")
+
         try {
-          await axiosInstance.put(`/mark-as-read/${newMessage.id}`, undefined, {
+          await axiosInstance.put(`/mark-as-read/${encodeURIComponent(mid)}`, undefined, {
             params: userId ? { user_id: userId } : undefined,
-          });
+          })
         } catch {
           // Ignore
         }
+      } else {
+        const reason =
+          (typeof body?.reason === "string" && body.reason) ||
+          (typeof body?.message === "string" && body.message) ||
+          "Failed to send message"
+        toast.error(reason)
       }
       } catch (error: any) {
         const data = error.response?.data as { reason?: string; message?: string } | undefined;
@@ -465,8 +513,8 @@ export default function ChatPageClient() {
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
+  }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -483,6 +531,24 @@ export default function ChatPageClient() {
     logout();
     router.push('/');
   };
+
+  const listingTitleParam = (searchParams?.get("listing_title") || "").trim()
+  const taskTitleParam = (searchParams?.get("task_title") || chatInfo?.task?.title || "").trim()
+  const taskIdParam = (searchParams?.get("task_id") || chatInfo?.task?.id || "").trim()
+
+  const inferredTopic = useMemo(() => {
+    const first = messages[0]?.description
+    return first ? inferTopicFromMessageText(String(first)) : ""
+  }, [messages])
+
+  const conversationTopic = listingTitleParam || taskTitleParam || inferredTopic
+  const topicBadge: "listing" | "task" | "topic" | null = listingTitleParam
+    ? "listing"
+    : taskTitleParam
+      ? "task"
+      : inferredTopic
+        ? "topic"
+        : null
 
   if (loading) {
     return (
@@ -508,21 +574,18 @@ export default function ChatPageClient() {
     );
   }
 
-  // optional context from URL
-  const taskTitle = searchParams?.get('task_title') || chatInfo?.task?.title || ''
-  const taskId = searchParams?.get('task_id') || chatInfo?.task?.id || ''
-
   return (
-    <div className="flex flex-col bg-[#f8fafc] overflow-hidden h-[calc(100dvh-env(safe-area-inset-bottom)-72px)] md:h-screen md:fixed md:inset-0 md:z-50">
+    <div className="fixed inset-0 z-40 flex min-h-0 w-full flex-col overflow-hidden bg-[#f4f7fb] md:z-50">
       <Toaster position="top-right" />
       
-      {/* Chat Header */}
-      <header className="bg-white border-b border-slate-200/80 flex-shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-        <div className="flex h-14 md:h-16 items-center px-4 gap-3">
-          <button
+      {/* Chat Header — topic first (listing / task), then participant */}
+      <header className="flex-shrink-0 border-b border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+        <div className="flex flex-col gap-2 px-4 py-2.5 md:py-3">
+          <div className="flex items-start gap-2">
+            <button
             onClick={() => {
               // Check if we came from a task page
-              const backTaskId = searchParams?.get('task_id') || chatInfo?.task?.id || ''
+              const backTaskId = taskIdParam || ""
               if (backTaskId) {
                 router.push(`/tasks/${backTaskId}`)
                 return
@@ -547,45 +610,70 @@ export default function ChatPageClient() {
                 router.push('/messages')
               }
             }}
-            className="p-2.5 -ml-1 rounded-xl hover:bg-slate-100 active:bg-slate-200 transition-colors touch-manipulation flex-shrink-0"
+            className="mt-0.5 shrink-0 rounded-xl p-2.5 -ml-1 hover:bg-slate-100 active:bg-slate-200 touch-manipulation"
             aria-label="Back"
           >
             <ArrowLeft className="h-5 w-5 text-slate-700" />
           </button>
-          
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="relative flex-shrink-0">
-              <div className="h-11 w-11 rounded-full flex items-center justify-center text-white font-semibold text-lg shadow-md bg-gradient-to-br from-indigo-500 to-violet-600 ring-2 ring-white">
-                {otherUserName?.charAt(0)?.toUpperCase() || "U"}
-              </div>
-              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></div>
-            </div>
-            
-            <div className="flex-1 min-w-0">
-              <h2 className="font-semibold text-slate-900 text-base truncate">
-                {otherUserName || chatInfo?.otherUser?.name || "Unknown User"}
-              </h2>
-              {taskTitle ? (
-                <div className="text-xs text-slate-500 flex items-center gap-1.5 truncate mt-0.5">
-                  <span className="px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 font-medium">Task</span>
-                  <Link href={taskId ? `/tasks/${taskId}` : '#'} className="text-slate-600 hover:text-indigo-600 truncate">
-                    {taskTitle}
-                  </Link>
+
+            <div className="min-w-0 flex-1 space-y-1.5">
+              {conversationTopic ? (
+                <div className="min-w-0">
+                  <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
+                    {topicBadge === "listing" ? (
+                      <span className="shrink-0 rounded-md bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-800">
+                        Listing
+                      </span>
+                    ) : topicBadge === "task" ? (
+                      <span className="shrink-0 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-800">
+                        Task
+                      </span>
+                    ) : (
+                      <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                        Topic
+                      </span>
+                    )}
+                    {taskIdParam && topicBadge !== "listing" ? (
+                      <Link
+                        href={`/tasks/${taskIdParam}`}
+                        className="line-clamp-2 text-left text-[13px] font-semibold leading-snug text-slate-800 hover:text-indigo-600 md:text-sm"
+                      >
+                        {conversationTopic}
+                      </Link>
+                    ) : (
+                      <p className="line-clamp-2 text-[13px] font-semibold leading-snug text-slate-800 md:text-sm">
+                        {conversationTopic}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <p className="text-xs text-emerald-600 flex items-center gap-1.5 font-medium mt-0.5">
-                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                  Active now
-                </p>
-              )}
+              ) : null}
+
+              <div className="flex items-center gap-2.5">
+                <div className="relative shrink-0">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-base font-semibold text-white shadow-md ring-2 ring-white md:h-11 md:w-11 md:text-lg">
+                    {otherUserName?.charAt(0)?.toUpperCase() || "U"}
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="truncate text-[15px] font-semibold text-slate-900 md:text-base">
+                    {otherUserName || chatInfo?.otherUser?.name || "Unknown User"}
+                  </h2>
+                  <p className="mt-0.5 flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+                    <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-emerald-500" />
+                    Active now
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
       {/* Messages Area */}
-      <ScrollArea className="flex-1 min-h-0 bg-[#f1f5f9]/50">
-        <div className="px-4 py-4 space-y-3 h-full max-w-3xl mx-auto" style={{ paddingBottom: '140px' }}>
+      <ScrollArea className="min-h-0 flex-1 bg-gradient-to-b from-slate-100/90 to-[#eef2f7]">
+        <div className="mx-auto max-w-3xl space-y-2.5 px-3 py-3 sm:space-y-3 sm:px-4 sm:py-4" style={{ paddingBottom: "11rem" }}>
           
           {messages.length === 0 && (
             <div className="text-center py-16 space-y-5">
@@ -609,37 +697,35 @@ export default function ChatPageClient() {
             let isOwnMessage = false;
             let senderName = "Unknown User";
             
-            if (msg.userrefid && msg.username) {
-              // New API format
-              isOwnMessage = msg.userrefid === currentUserId;
-              senderName = msg.username;
-            } else if (msg.sender_id) {
-              // Old API format
-              isOwnMessage = msg.sender_id === currentUserId;
-              senderName = msg.sender_name || "Unknown User";
+            if (msg.userrefid != null && String(msg.userrefid).trim() !== "" && msg.username) {
+              isOwnMessage = sameChatUserId(msg.userrefid, currentUserId)
+              senderName = msg.username
+            } else if (msg.sender_id != null && String(msg.sender_id).trim() !== "") {
+              isOwnMessage = sameChatUserId(msg.sender_id, currentUserId)
+              senderName = msg.sender_name || "Unknown User"
             }
             
             return (
               <div
                 key={msg.id || msg.messagesid || `msg-${index}`}
-                className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} items-end gap-2`}
+                className={`flex ${isOwnMessage ? "justify-end" : "justify-start"} items-end gap-1.5 sm:gap-2`}
               >
                 {!isOwnMessage && (
-                  <div className="h-8 w-8 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0 bg-gradient-to-br from-emerald-500 to-teal-600 shadow">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-xs font-medium text-white shadow-sm sm:h-8 sm:w-8 sm:text-sm">
                     {senderName?.charAt(0)?.toUpperCase() || "U"}
                   </div>
                 )}
-                <div className={`max-w-[80%] sm:max-w-[70%] ${isOwnMessage ? 'order-1' : 'order-2'}`}>
+                <div className={`max-w-[85%] sm:max-w-[72%] ${isOwnMessage ? "order-1" : "order-2"}`}>
                   <div
-                    className={`rounded-2xl px-4 py-2.5 ${
+                    className={`rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 ${
                       isOwnMessage
-                        ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md'
-                        : 'bg-white text-slate-800 border border-slate-200/80 shadow-sm'
+                        ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md"
+                        : "border border-slate-200/90 bg-white text-slate-800 shadow-sm"
                     }`}
                   >
                     <p className="text-[15px] leading-snug">{msg.description}</p>
                   </div>
-                  <p className={`text-[11px] text-slate-400 mt-1 ${isOwnMessage ? 'text-right mr-1' : 'ml-1'}`}>
+                  <p className={`mt-0.5 text-[10px] text-slate-400 sm:text-[11px] ${isOwnMessage ? "mr-0.5 text-right" : "ml-0.5"}`}>
                     {(() => {
                       const ms = parseMessageToMs(getMessageTimeRaw(msg));
                       return ms != null ? formatChatTimestamp(ms) : "—";
@@ -654,30 +740,42 @@ export default function ChatPageClient() {
         </div>
       </ScrollArea>
 
-      {/* Message Input */}
-      <div className="bg-white border-t border-slate-200/80 p-3 flex-shrink-0 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
-        <div className="max-w-3xl mx-auto">
-          <div className="flex items-center gap-2">
+      {/* Quick replies + composer (extra bottom padding so content clears iOS home indicator) */}
+      <div className="flex-shrink-0 border-t border-slate-200/80 bg-white/95 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_24px_rgba(15,23,42,0.06)] backdrop-blur-sm">
+        <div className="mx-auto max-w-3xl px-3 pt-2 sm:px-4">
+          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">Suggestions</p>
+          <div className="-mx-1 mb-2 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {QUICK_REPLY_SUGGESTIONS.map((line) => (
+              <button
+                key={line}
+                type="button"
+                onClick={() => {
+                  setMessage(line)
+                  inputRef.current?.focus({ preventScroll: true })
+                }}
+                className="shrink-0 rounded-full border border-slate-200/90 bg-slate-50 px-3 py-1.5 text-left text-xs font-medium text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50/80 active:scale-[0.98]"
+              >
+                {line}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-end gap-2 pb-2">
             <input
               type="text"
               placeholder="Type a message..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              onFocus={() => {
-                setTimeout(() => {
-                  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                }, 100);
-              }}
+              onKeyDown={handleKeyPress}
               ref={inputRef}
-              className="flex-1 px-4 py-3 border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 rounded-xl bg-slate-50 focus:bg-white text-base transition-all outline-none"
-              style={{ fontSize: '16px' }}
+              className="min-h-[48px] flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+              style={{ fontSize: "16px" }}
               disabled={sending}
+              enterKeyHint="send"
             />
             <button
               onClick={sendMessage}
               disabled={!message.trim() || sending}
-              className="p-3 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl disabled:opacity-50 shadow-md hover:shadow-lg transition-all active:scale-95 touch-manipulation flex-shrink-0"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md transition hover:from-indigo-600 hover:to-violet-700 active:scale-95 disabled:opacity-50 touch-manipulation"
               aria-label="Send message"
             >
               {sending ? (

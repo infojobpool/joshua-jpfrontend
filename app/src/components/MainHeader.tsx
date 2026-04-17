@@ -64,10 +64,10 @@ const MainHeader: React.FC = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div
           className={cn(
-            "flex items-center justify-between gap-3 md:min-h-0 md:h-24 md:py-0 lg:h-28 md:pt-4 md:pb-0 lg:pt-5 lg:pb-0",
+            "flex items-center justify-between gap-3 md:min-h-0 md:h-[4.25rem] md:py-2 lg:h-[4.5rem] lg:py-2.5",
             isMarketingHome
               ? "max-md:min-h-0 max-md:py-0.5 max-md:pb-1"
-              : "min-h-[5.75rem] py-2.5",
+              : "min-h-[5.75rem] py-2.5 md:min-h-0 md:py-2",
           )}
         >
           {/* Logo — mobile: full JOB POOL lockup PNG; desktop: wide mark */}
@@ -90,52 +90,45 @@ const MainHeader: React.FC = () => {
             />
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/how-it-works" className="text-gray-600 hover:text-blue-600 transition-colors">
+          {/* Desktop: marketing links only (Messages lives in the action cluster) */}
+          <nav className="hidden min-w-0 md:flex flex-1 items-center justify-center gap-x-5 gap-y-1 px-4 text-sm font-medium text-slate-600 lg:gap-x-7">
+            <Link href="/how-it-works" className="shrink-0 whitespace-nowrap transition-colors hover:text-blue-600">
               How It Works
             </Link>
-            <Link href="/categories" className="text-gray-600 hover:text-blue-600 transition-colors">
+            <Link href="/categories" className="shrink-0 whitespace-nowrap transition-colors hover:text-blue-600">
               Categories
             </Link>
-            <Link href="/aboutus" className="text-gray-600 hover:text-blue-600 transition-colors">
+            <Link href="/aboutus" className="shrink-0 whitespace-nowrap transition-colors hover:text-blue-600">
               About Us
             </Link>
-            <Link href="/support" className="text-gray-600 hover:text-blue-600 transition-colors">
+            <Link href="/support" className="shrink-0 whitespace-nowrap transition-colors hover:text-blue-600">
               Support
             </Link>
-            {isAuthenticated ? (
-              <Link href="/messages" className="text-gray-600 hover:text-blue-600 transition-colors">
-                Messages
-              </Link>
-            ) : null}
           </nav>
 
-          {/* Desktop Auth Section */}
-          <div className="hidden md:flex items-center space-x-4">
+          {/* Desktop auth: single primary CTA + compact icon actions (name shown on home hero, not repeated here) */}
+          <div className="hidden shrink-0 md:flex items-center gap-2 lg:gap-2.5">
             {isAuthenticated ? (
               <>
                 <Link href="/post-task">
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2">
+                  <Button size="sm" className="bg-blue-600 px-4 hover:bg-blue-700 text-white shadow-sm">
                     <Plus className="h-4 w-4" />
-                    Post Task
+                    <span className="hidden lg:inline">Post Task</span>
+                    <span className="lg:hidden">Post</span>
                   </Button>
                 </Link>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-600">Welcome, {user?.name}</span>
-                  <Link href="/messages">
-                    <Button variant="outline" className="border-gray-300 hover:bg-gray-50">
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Messages
+                <div className="ml-1 flex items-center gap-1 border-l border-slate-200/90 pl-2 lg:ml-2 lg:pl-3">
+                  <Link href="/messages" title="Messages" aria-label="Messages">
+                    <Button type="button" variant="outline" size="icon" className="rounded-lg border-slate-200 text-slate-700 shadow-none hover:bg-slate-50">
+                      <MessageSquare className="h-4 w-4" />
                     </Button>
                   </Link>
-                <Link href="/dashboard">
-                    <Button variant="outline" className="border-gray-300 hover:bg-gray-50">
-                      <User className="h-4 w-4 mr-2" />
-                      Dashboard
+                  <Link href="/dashboard" title="Dashboard" aria-label="Dashboard">
+                    <Button type="button" variant="outline" size="icon" className="rounded-lg border-slate-200 text-slate-700 shadow-none hover:bg-slate-50">
+                      <User className="h-4 w-4" />
                     </Button>
                   </Link>
-                  <Button variant="ghost" onClick={handleLogout} className="text-gray-600 hover:text-red-600">
+                  <Button variant="ghost" size="sm" onClick={handleLogout} className="px-2.5 text-slate-600 hover:text-red-600">
                     Logout
                   </Button>
                 </div>

@@ -1668,7 +1668,11 @@ export default function TaskDetailPage() {
           chatIds.push(chatId);
           localStorage.setItem("userChats", JSON.stringify(chatIds));
         }
-        router.push(`/messages/${chatId}`);
+        const tq = new URLSearchParams();
+        const title = (task?.title || "").trim();
+        if (title) tq.set("task_title", title);
+        tq.set("task_id", String(id));
+        router.push(`/messages/${chatId}?${tq.toString()}`);
       } else {
         router.push(
           `/messages/new?sender=${senderId}&receiver=${targetReceiverId}&job_id=${id}`

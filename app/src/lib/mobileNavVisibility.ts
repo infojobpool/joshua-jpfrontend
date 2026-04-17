@@ -42,5 +42,7 @@ export function isAppFooterHidden(pathname: string | null): boolean {
   const p = normalizePathname(pathname);
   if (p === "/post-task" || p.startsWith("/post-task/") || p === "/listing-request") return true;
   if (p === "/profile" || p.startsWith("/profile/")) return true;
+  /** Inbox + threads: full-height messaging (no marketing footer). */
+  if (p === "/messages" || p.startsWith("/messages/")) return true;
   return false;
 }

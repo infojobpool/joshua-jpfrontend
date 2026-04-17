@@ -12,6 +12,7 @@ import { ArrowLeft, Send } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import axiosInstance from "@/lib/axiosInstance"
 import useStore from "@/lib/Zustand"
+import { isSendMessageSuccess } from "@/lib/chatSendResponse"
 
 export default function NewMessagePage() {
   const router = useRouter()
@@ -113,7 +114,7 @@ export default function NewMessagePage() {
         description: message.trim(),
       });
 
-      if (response.data.status_code === 200) {
+      if (isSendMessageSuccess(response)) {
         toast.success('Message sent successfully!');
         
         // Store chat ID in localStorage

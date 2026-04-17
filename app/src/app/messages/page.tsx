@@ -460,18 +460,16 @@ export default function MessagesPage() {
     fetchChats();
     }
     
-    // Refresh when page becomes visible (user returns from chat)
+    // Refresh when page becomes visible so new messages show without a full reload
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && fetchChatsRef.current) {
-        try {
-          const shouldRefresh = sessionStorage.getItem('messagesReturnFromChat');
-          if (shouldRefresh === '1') {
-            sessionStorage.removeItem('messagesReturnFromChat');
-            fetchChatsRef.current(); // Refresh the chat list
-          }
-        } catch {}
-      }
-    };
+      if (document.visibilityState !== "visible" || !fetchChatsRef.current) return
+      try {
+        if (sessionStorage.getItem("messagesReturnFromChat") === "1") {
+          sessionStorage.removeItem("messagesReturnFromChat")
+        }
+      } catch {}
+      fetchChatsRef.current()
+    }
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
@@ -692,7 +690,24 @@ export default function MessagesPage() {
                           sessionStorage.setItem("messagesScrollY", String(window.scrollY));
                           sessionStorage.setItem("messagesLastChatId", chat.chatid);
                         } catch {}
-                        router.push(`/messages/${chat.chatid}`);
+                        const q = new URLSearchParams();
+                        if (isListing) {
+                          const lt =
+                            (chat.listingTitle || "").trim() ||
+                            listingInferredTopic ||
+                            (chat.taskTitle && chat.taskTitle !== "Listing inquiry"
+                              ? chat.taskTitle
+                              : "");
+                          if (lt) q.set("listing_title", lt);
+                        } else {
+                          const tt =
+                            jobTitle ||
+                            (chat.taskTitle && chat.taskTitle !== "Task" ? chat.taskTitle : "");
+                          if (tt) q.set("task_title", tt);
+                          if (chat.jobId) q.set("task_id", chat.jobId);
+                        }
+                        const qs = q.toString();
+                        router.push(`/messages/${chat.chatid}${qs ? `?${qs}` : ""}`);
                       }}
                     >
                       <div

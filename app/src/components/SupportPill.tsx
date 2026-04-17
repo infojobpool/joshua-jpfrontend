@@ -1,9 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Headphones } from "lucide-react";
 
+function normalizePathname(pathname: string): string {
+  if (pathname.length > 1 && pathname.endsWith("/")) return pathname.slice(0, -1);
+  return pathname;
+}
+
+/** Support FAB overlaps chat composer on mobile; hide throughout /messages. */
+function isMessagesRoute(pathname: string | null): boolean {
+  if (!pathname) return false;
+  const p = normalizePathname(pathname);
+  return p === "/messages" || p.startsWith("/messages/");
+}
+
 export function SupportPill() {
+  const pathname = usePathname();
+  if (isMessagesRoute(pathname)) return null;
+
   return (
     <Link
       href="/supportpage"
