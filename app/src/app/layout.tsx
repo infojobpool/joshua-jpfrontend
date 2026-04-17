@@ -65,6 +65,8 @@ export const viewport = {
   maximumScale: 1,
   userScalable: false,
   themeColor: "#3b82f6",
+  /** Helps Android Chrome resize the layout when the keyboard opens instead of covering inputs. */
+  interactiveWidget: "resizes-content" as const,
 };
 
 export default function RootLayout({

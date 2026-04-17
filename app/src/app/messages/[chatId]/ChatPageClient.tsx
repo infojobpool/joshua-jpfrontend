@@ -85,6 +85,7 @@ export default function ChatPageClient() {
   const inputRef = useRef<HTMLInputElement | null>(null)
   /** After initial fetch (with loading spinner), do not snap to bottom — user reads from the top. */
   const suppressNextScrollAfterLoad = useRef(false)
+  const fetchMessagesRef = useRef<((showLoading?: boolean) => Promise<void>) | null>(null)
 
 
 
@@ -133,7 +134,7 @@ export default function ChatPageClient() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
   }, [messages, loading]);
 
-  // Refetch when user returns to tab (no auto-refresh interval)
+  // Refetch when user returns to tab
   useEffect(() => {
     if (!userId || !chatId) return;
     const onVisibilityChange = () => {
@@ -142,6 +143,17 @@ export default function ChatPageClient() {
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, [userId, chatId]);
+
+  /** Poll while chat is open so received messages appear without manual refresh. */
+  useEffect(() => {
+    if (!userId || !chatId || loading) return;
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      void fetchMessagesRef.current?.(false);
+    };
+    const id = window.setInterval(tick, 4500);
+    return () => window.clearInterval(id);
+  }, [userId, chatId, loading]);
 
   const fetchUserInfo = async (uid: string): Promise<string | null> => {
     try {
@@ -183,17 +195,34 @@ export default function ChatPageClient() {
       const response = await axiosInstance.get(`/get-messages/${chatId}`, {
         params: userId ? { user_id: userId } : undefined,
       });
-      
+
+      let fetchedMessages: Message[] = [];
+      if (Array.isArray(response.data)) {
+        fetchedMessages = response.data as Message[];
+      }
+
+      const body = response.data as Record<string, unknown> | undefined;
+      const sc = body?.status_code;
+      const okGet =
+        Number(sc) === 200 ||
+        sc === "200" ||
+        sc === 200 ||
+        (response.status === 200 &&
+          body != null &&
+          !Array.isArray(body) &&
+          (typeof body.reason !== "string" || !String(body.reason).trim()));
+
       // Handle different API response formats
-      let fetchedMessages = [];
-      if (response.data.status_code === 200 && response.data.data?.messages) {
-        fetchedMessages = response.data.data.messages;
-      } else if (response.data.messages) {
-        fetchedMessages = response.data.messages;
-      } else if (Array.isArray(response.data)) {
-        fetchedMessages = response.data;
-      } else if (response.data.data && Array.isArray(response.data.data)) {
-        fetchedMessages = response.data.data;
+      if (fetchedMessages.length === 0 && okGet && body?.data != null && typeof body.data === "object") {
+        const data = body.data as Record<string, unknown>;
+        if (Array.isArray(data.messages)) fetchedMessages = data.messages as Message[];
+      }
+      if (fetchedMessages.length === 0 && body && !Array.isArray(body) && body.messages && Array.isArray(body.messages)) {
+        fetchedMessages = body.messages as Message[];
+      }
+      if (fetchedMessages.length === 0 && body?.data != null && typeof body.data === "object") {
+        const data = body.data as Record<string, unknown>;
+        if (Array.isArray(data)) fetchedMessages = data as unknown as Message[];
       }
       
       setMessages([...fetchedMessages].sort(compareMessagesByTime));
@@ -391,6 +420,8 @@ export default function ChatPageClient() {
     }
   };
 
+  fetchMessagesRef.current = fetchMessages;
+
   const sendMessage = async () => {
     if (!message.trim() || !chatInfo) return;
 
@@ -575,7 +606,7 @@ export default function ChatPageClient() {
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex min-h-0 w-full flex-col overflow-hidden bg-[#f4f7fb] md:z-50">
+    <div className="fixed inset-0 z-40 flex h-[100dvh] max-h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-[#f4f7fb] md:z-50">
       <Toaster position="top-right" />
       
       {/* Chat Header — topic first (listing / task), then participant */}
@@ -654,16 +685,12 @@ export default function ChatPageClient() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-base font-semibold text-white shadow-md ring-2 ring-white md:h-11 md:w-11 md:text-lg">
                     {otherUserName?.charAt(0)?.toUpperCase() || "U"}
                   </div>
-                  <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <h2 className="truncate text-[15px] font-semibold text-slate-900 md:text-base">
                     {otherUserName || chatInfo?.otherUser?.name || "Unknown User"}
                   </h2>
-                  <p className="mt-0.5 flex items-center gap-1.5 text-xs font-medium text-emerald-600">
-                    <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-emerald-500" />
-                    Active now
-                  </p>
+                  <p className="mt-0.5 text-xs font-medium text-slate-500">Direct message</p>
                 </div>
               </div>
             </div>
@@ -672,8 +699,8 @@ export default function ChatPageClient() {
       </header>
 
       {/* Messages Area */}
-      <ScrollArea className="min-h-0 flex-1 bg-gradient-to-b from-slate-100/90 to-[#eef2f7]">
-        <div className="mx-auto max-w-3xl space-y-2.5 px-3 py-3 sm:space-y-3 sm:px-4 sm:py-4" style={{ paddingBottom: "11rem" }}>
+      <ScrollArea className="min-h-0 flex-1 bg-gradient-to-b from-slate-100/90 to-[#eef2f7] overscroll-y-contain">
+        <div className="mx-auto max-w-3xl space-y-2.5 px-3 py-3 pb-8 sm:space-y-3 sm:px-4 sm:py-4 sm:pb-10">
           
           {messages.length === 0 && (
             <div className="text-center py-16 space-y-5">
@@ -740,8 +767,8 @@ export default function ChatPageClient() {
         </div>
       </ScrollArea>
 
-      {/* Quick replies + composer (extra bottom padding so content clears iOS home indicator) */}
-      <div className="flex-shrink-0 border-t border-slate-200/80 bg-white/95 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_24px_rgba(15,23,42,0.06)] backdrop-blur-sm">
+      {/* Composer: extra bottom padding for Android gesture nav + safe area (inset-0 ignores system bars). */}
+      <div className="flex-shrink-0 border-t border-slate-200/80 bg-white/95 pb-[max(1.25rem,calc(12px+env(safe-area-inset-bottom,0px)))] shadow-[0_-4px_24px_rgba(15,23,42,0.06)] backdrop-blur-sm">
         <div className="mx-auto max-w-3xl px-3 pt-2 sm:px-4">
           <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">Suggestions</p>
           <div className="-mx-1 mb-2 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

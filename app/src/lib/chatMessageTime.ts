@@ -31,33 +31,30 @@ export function parseMessageToMs(raw: unknown): number | null {
   }
   const d = new Date(normalized);
   if (!Number.isNaN(d.getTime())) return d.getTime();
+
+  const d2 = new Date(s);
+  if (!Number.isNaN(d2.getTime())) return d2.getTime();
+
   return null;
 }
 
+/** One line per bubble: always month + day + time (same style for today and older). */
 export function formatChatTimestamp(ms: number): string {
   const d = new Date(ms);
   if (Number.isNaN(d.getTime())) return "";
 
   const now = new Date();
-  const sameDay =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
-
-  if (sameDay) {
-    return d.toLocaleTimeString(undefined, {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  }
-  return d.toLocaleString(undefined, {
+  const opts: Intl.DateTimeFormatOptions = {
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-  });
+  };
+  if (d.getFullYear() !== now.getFullYear()) {
+    opts.year = "numeric";
+  }
+  return d.toLocaleString(undefined, opts);
 }
 
 export function compareMessagesByTime(
