@@ -417,15 +417,20 @@ export default function ChatPageClient() {
       const reason =
         (error.response?.data as { reason?: string } | undefined)?.reason ||
         error.response?.data?.message;
-      toast.error(reason || "Failed to load messages");
-      setOtherUserName("Unknown User");
-      setChatInfo({
-        chatId,
-        otherUser: {
-          id: "unknown",
-          name: "Unknown User",
-        }
-      });
+      if (showLoading) {
+        toast.error(reason || "Failed to load messages");
+        setOtherUserName("Unknown User");
+        setChatInfo({
+          chatId,
+          otherUser: {
+            id: "unknown",
+            name: "Unknown User",
+          },
+        });
+      } else {
+        // Background poll: do not toast (would fire every few seconds) or wipe chat state
+        console.warn("[chat] get-messages poll failed:", reason || error?.message || error);
+      }
     } finally {
       if (showLoading) {
         setLoading(false)
