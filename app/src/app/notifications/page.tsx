@@ -81,14 +81,14 @@ function linkDestinationHint(href: string): string | undefined {
 
 function NotificationRowSkeleton() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white/70 p-4 shadow-sm sm:p-5">
+    <div className="overflow-hidden rounded-[1.25rem] border border-white/70 bg-white/50 p-4 shadow-[0_12px_40px_-20px_rgba(15,23,42,0.12)] backdrop-blur-md ring-1 ring-slate-200/30 sm:p-5">
       <div className="flex gap-3 sm:gap-4">
-        <div className="h-12 w-12 shrink-0 animate-pulse rounded-2xl bg-slate-200/70 sm:h-14 sm:w-14" />
+        <div className="h-12 w-12 shrink-0 animate-pulse rounded-2xl bg-gradient-to-br from-slate-200/90 to-slate-100/50 sm:h-14 sm:w-14" />
         <div className="min-w-0 flex-1 space-y-3">
-          <div className="h-4 max-w-[min(100%,280px)] animate-pulse rounded-md bg-slate-200/70" />
-          <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
-          <div className="h-3 max-w-[65%] animate-pulse rounded bg-slate-100" />
-          <div className="mt-4 h-8 max-w-[120px] animate-pulse rounded-full bg-slate-200/60" />
+          <div className="h-4 max-w-[min(100%,280px)] animate-pulse rounded-md bg-slate-200/60" />
+          <div className="h-3 w-full animate-pulse rounded bg-slate-100/80" />
+          <div className="h-3 max-w-[65%] animate-pulse rounded bg-slate-100/80" />
+          <div className="mt-4 h-9 max-w-[108px] animate-pulse rounded-full bg-slate-200/50" />
         </div>
       </div>
     </div>
@@ -165,13 +165,13 @@ export default function NotificationsPage() {
   const iconShellClass = (type: string) => {
     switch (type) {
       case "bid":
-        return "bg-gradient-to-br from-amber-50 to-orange-100/80 ring-1 ring-amber-200/80 shadow-inner";
+        return "bg-gradient-to-br from-amber-50/95 to-orange-100/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] ring-1 ring-amber-200/50";
       case "message":
-        return "bg-gradient-to-br from-blue-50 to-sky-100/80 ring-1 ring-blue-200/80 shadow-inner";
+        return "bg-gradient-to-br from-white/90 to-sky-50/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ring-1 ring-blue-200/40";
       case "system":
-        return "bg-gradient-to-br from-violet-50 to-purple-100/70 ring-1 ring-violet-200/70 shadow-inner";
+        return "bg-gradient-to-br from-violet-50/95 to-purple-100/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] ring-1 ring-violet-200/45";
       default:
-        return "bg-slate-100 ring-1 ring-slate-200/80";
+        return "bg-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ring-1 ring-slate-200/60";
     }
   };
 
@@ -201,45 +201,55 @@ export default function NotificationsPage() {
   const hasMoreMenu = sortedNotifications.length > 0;
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(165deg,#eff6ff_0%,#f8fafc_38%,#f5f3ff_100%)] pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
-      <div className="mx-auto max-w-2xl px-4 pt-4 sm:px-5 sm:pt-8">
+    <div className="relative min-h-screen bg-slate-100 pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
+      <div
+        className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(59,130,246,0.14),transparent_50%),radial-gradient(ellipse_90%_60%_at_100%_0%,rgba(139,92,246,0.1),transparent_45%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_55%,#f1f5f9_100%)]"
+        aria-hidden
+      />
+
+      <div className="relative mx-auto max-w-2xl px-4 pt-4 sm:px-5 sm:pt-8">
         <Button
           type="button"
           variant="ghost"
           onClick={() => router.back()}
-          className="-ml-2 mb-3 h-10 gap-1.5 rounded-xl text-slate-600 hover:bg-white/80 hover:text-slate-900"
+          className="-ml-2 mb-3 h-10 gap-1.5 rounded-full border border-transparent text-slate-600 hover:border-slate-200/80 hover:bg-white/70 hover:text-slate-900"
         >
           <ArrowLeft className="h-4 w-4 shrink-0" />
           Back
         </Button>
 
-        <div className="mb-5 overflow-hidden rounded-2xl border border-white/90 bg-white/85 shadow-[0_8px_30px_-12px_rgba(30,64,175,0.2)] backdrop-blur-sm ring-1 ring-slate-200/40">
-          <div className="border-b border-slate-100/90 bg-gradient-to-r from-blue-600/5 via-indigo-50/40 to-violet-600/5 px-4 py-4 sm:px-5 sm:py-5">
-            <h1 className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl">
+        <div className="mb-6 overflow-hidden rounded-[1.35rem] border border-white/80 bg-white/70 shadow-[0_20px_50px_-24px_rgba(30,58,138,0.28)] backdrop-blur-xl ring-1 ring-slate-200/50">
+          <div className="relative border-b border-slate-200/40 bg-gradient-to-br from-white/90 via-blue-50/30 to-indigo-50/40 px-4 py-5 sm:px-6 sm:py-6">
+            <div
+              className="pointer-events-none absolute inset-0 bg-[linear-gradient(105deg,transparent_40%,rgba(255,255,255,0.35)_50%,transparent_60%)] opacity-60"
+              aria-hidden
+            />
+            <h1 className="relative bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-800 bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-[1.75rem]">
               Notifications
             </h1>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm ring-1 ring-slate-200/80">
+            <p className="relative mt-1 text-xs font-medium uppercase tracking-[0.2em] text-slate-400">Inbox</p>
+            <div className="relative mt-4 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center rounded-full border border-slate-200/60 bg-white/80 px-3.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm">
                 {sortedNotifications.length} total
               </span>
               {unreadCount > 0 ? (
-                <span className="inline-flex items-center rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white shadow-sm ring-1 ring-blue-500/30">
+                <span className="inline-flex items-center rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-blue-500/25">
                   {unreadCount} unread
                 </span>
               ) : (
-                <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800 ring-1 ring-emerald-200/80">
+                <span className="inline-flex items-center rounded-full border border-emerald-200/80 bg-emerald-50/90 px-3.5 py-1.5 text-xs font-medium text-emerald-900">
                   All caught up
                 </span>
               )}
             </div>
           </div>
 
-          <div className="flex flex-col gap-2 p-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-2 sm:p-4">
+          <div className="flex flex-col gap-2 bg-white/40 p-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-2 sm:p-4">
             {unreadCount > 0 ? (
               <Button
                 type="button"
                 onClick={() => void handleMarkAllRead()}
-                className="h-10 w-full justify-center gap-2 rounded-xl bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 sm:w-auto sm:min-w-[9.5rem]"
+                className="h-10 w-full justify-center gap-2 rounded-full border border-emerald-600/20 bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/20 transition hover:from-emerald-700 hover:to-teal-700 sm:w-auto sm:min-w-[10rem]"
               >
                 <CheckCheck className="h-4 w-4 shrink-0" />
                 Mark all read
@@ -252,7 +262,7 @@ export default function NotificationsPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-10 w-full gap-2 rounded-xl border-slate-200 bg-white/90 hover:bg-slate-50 sm:w-auto sm:min-w-[10rem]"
+                    className="h-10 w-full gap-2 rounded-full border-slate-200/80 bg-white/90 shadow-sm hover:bg-white sm:w-auto sm:min-w-[10rem]"
                     aria-label="More notification actions"
                   >
                     <MoreVertical className="h-4 w-4 shrink-0 text-slate-600" />
@@ -297,23 +307,26 @@ export default function NotificationsPage() {
               ))}
             </div>
           ) : sortedNotifications.length === 0 ? (
-            <Card className="overflow-hidden rounded-2xl border-slate-200/80 bg-white/90 shadow-sm">
-              <CardContent className="flex flex-col items-center px-6 py-14 text-center">
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 ring-1 ring-slate-200/80">
-                  <Inbox className="h-8 w-8 text-slate-400" aria-hidden />
+            <Card className="overflow-hidden rounded-[1.25rem] border border-white/80 bg-white/60 shadow-[0_16px_48px_-24px_rgba(15,23,42,0.15)] backdrop-blur-md ring-1 ring-slate-200/40">
+              <CardContent className="flex flex-col items-center px-6 py-16 text-center">
+                <div className="mb-5 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-3xl bg-gradient-to-br from-slate-100 to-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ring-1 ring-slate-200/60">
+                  <Inbox className="h-9 w-9 text-slate-400" aria-hidden />
                 </div>
-                <h2 className="text-lg font-semibold text-slate-800">You are all set</h2>
+                <h2 className="text-lg font-semibold tracking-tight text-slate-900">You are all set</h2>
                 <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
-                  New bids, messages, and task updates will show up here when they arrive.
+                  New bids, messages, and task updates will appear here when they arrive.
                 </p>
               </CardContent>
             </Card>
           ) : (
             groupedSections.map(({ label, items }) => (
               <section key={label} className="space-y-3 sm:space-y-4">
-                <h2 className="sticky top-0 z-[1] -mx-1 px-1 py-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-500 backdrop-blur-sm sm:text-[0.7rem]">
-                  {label}
-                </h2>
+                <div className="sticky top-0 z-[1] -mx-0.5 flex items-center gap-3 bg-[linear-gradient(180deg,rgba(248,250,252,0.92)_60%,transparent)] py-2 backdrop-blur-sm">
+                  <h2 className="shrink-0 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                    {label}
+                  </h2>
+                  <div className="h-px min-w-0 flex-1 bg-gradient-to-r from-slate-300/80 to-transparent" aria-hidden />
+                </div>
                 <div className="space-y-3 sm:space-y-4">
                   {items.map((notification) => {
                     const n = notification as ApiNotificationRow & Record<string, unknown>;
@@ -328,23 +341,23 @@ export default function NotificationsPage() {
                       <Card
                         key={String(n.id)}
                         className={cn(
-                          "overflow-hidden rounded-2xl border transition-shadow duration-200 hover:shadow-md",
+                          "group relative overflow-hidden rounded-[1.25rem] border transition-all duration-300",
                           unread
-                            ? "border-blue-200/90 bg-gradient-to-br from-white via-white to-blue-50/50 shadow-[0_4px_20px_-8px_rgba(37,99,235,0.25)] ring-1 ring-blue-500/10"
-                            : "border-slate-200/70 bg-white/95 shadow-sm ring-1 ring-slate-100/80"
+                            ? "border-blue-200/50 bg-white/55 shadow-[0_16px_44px_-18px_rgba(37,99,235,0.35)] backdrop-blur-md ring-1 ring-blue-500/10 hover:border-blue-300/60 hover:shadow-[0_20px_48px_-18px_rgba(37,99,235,0.4)]"
+                            : "border-white/70 bg-white/45 shadow-[0_12px_36px_-20px_rgba(15,23,42,0.12)] backdrop-blur-md ring-1 ring-slate-200/30 hover:border-slate-200/90 hover:bg-white/60 hover:shadow-[0_16px_40px_-20px_rgba(15,23,42,0.14)]"
                         )}
                       >
-                        <div
-                          className={cn(
-                            "h-1 w-full",
-                            unread ? "bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500" : "bg-transparent"
-                          )}
-                        />
-                        <CardContent className="p-4 sm:p-5">
+                        {unread ? (
+                          <div
+                            className="pointer-events-none absolute left-0 top-0 h-full w-[3px] rounded-l-[1.25rem] bg-gradient-to-b from-blue-500 via-indigo-500 to-violet-500 opacity-95"
+                            aria-hidden
+                          />
+                        ) : null}
+                        <CardContent className="relative p-4 pl-5 sm:p-5 sm:pl-6">
                           <div className="flex gap-3 sm:gap-4">
                             <div
                               className={cn(
-                                "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl sm:h-14 sm:w-14",
+                                "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-sm sm:h-[3.25rem] sm:w-[3.25rem]",
                                 iconShellClass(type)
                               )}
                             >
@@ -355,20 +368,25 @@ export default function NotificationsPage() {
                               <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                                 <div className="min-w-0 flex-1">
                                   <div className="flex flex-wrap items-center gap-2">
-                                    <h3 className="text-[0.95rem] font-semibold leading-snug text-slate-900 sm:text-base">
+                                    <h3 className="text-[0.95rem] font-semibold leading-snug tracking-tight text-slate-900 sm:text-[1.02rem]">
                                       {n.title || "Notification"}
                                     </h3>
                                     {unread ? (
-                                      <Badge className="h-5 border-0 bg-blue-600 px-2 text-[10px] font-semibold uppercase tracking-wide text-white">
+                                      <Badge className="h-5 rounded-full border-0 bg-gradient-to-r from-blue-600 to-indigo-600 px-2.5 text-[9px] font-bold uppercase tracking-[0.12em] text-white shadow-sm">
                                         New
                                       </Badge>
                                     ) : null}
                                   </div>
                                   {desc ? (
-                                    <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-slate-600">{desc}</p>
+                                    <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-slate-600 sm:text-sm">
+                                      {desc}
+                                    </p>
                                   ) : null}
                                   {hint ? (
-                                    <p className="mt-1.5 text-xs font-medium text-slate-500">{hint}</p>
+                                    <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400">
+                                      <span className="h-1 w-1 rounded-full bg-slate-300" aria-hidden />
+                                      {hint}
+                                    </p>
                                   ) : null}
                                 </div>
 
@@ -377,7 +395,7 @@ export default function NotificationsPage() {
                                     <Button
                                       type="button"
                                       size="sm"
-                                      className="mt-2 h-9 w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 text-sm font-semibold text-white shadow-md transition hover:from-blue-700 hover:to-indigo-700 hover:shadow-lg sm:mt-0 sm:w-auto sm:rounded-full"
+                                      className="mt-2 h-10 w-full rounded-full bg-gradient-to-r from-blue-600 via-blue-600 to-indigo-600 px-6 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 ring-2 ring-white/40 transition hover:shadow-xl hover:shadow-blue-600/30 active:scale-[0.98] sm:mt-0 sm:h-9 sm:w-auto"
                                     >
                                       Open
                                     </Button>
@@ -385,14 +403,16 @@ export default function NotificationsPage() {
                                 ) : null}
                               </div>
 
-                              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500">
-                                <span className="font-medium text-slate-600">{relative}</span>
+                              <div className="mt-3.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-slate-200/50 pt-3 text-[11px] text-slate-500">
+                                <span className="font-semibold text-slate-700">{relative}</span>
                                 {absolute ? (
                                   <>
-                                    <span className="hidden text-slate-300 sm:inline" aria-hidden>
+                                    <span className="text-slate-300" aria-hidden>
                                       ·
                                     </span>
-                                    <span className="hidden text-slate-500 sm:inline">{absolute}</span>
+                                    <span className="hidden font-medium tabular-nums tracking-wide text-slate-400 sm:inline">
+                                      {absolute}
+                                    </span>
                                   </>
                                 ) : null}
                               </div>
@@ -408,8 +428,8 @@ export default function NotificationsPage() {
           )}
         </div>
 
-        <p className="mx-auto mt-10 max-w-md pb-6 text-center text-xs leading-relaxed text-slate-500 sm:text-sm">
-          Updates sync automatically. Open any item to jump to the task or message.
+        <p className="mx-auto mt-10 max-w-md pb-6 text-center text-[11px] leading-relaxed text-slate-500 sm:text-sm">
+          Updates sync in the background. Tap Open to go to the task or conversation.
         </p>
       </div>
     </div>

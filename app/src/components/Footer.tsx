@@ -27,95 +27,15 @@ const socialLinks = [
   { name: "LinkedIn", href: "https://www.linkedin.com/company/job-pool/posts/?feedView=all", icon: Linkedin },
 ];
 
-/** Minimal footer for native iOS/Android shell — legal, support, brand only. */
-function AppShellFooter() {
-  return (
-    <footer className="border-t border-white/[0.06] bg-gradient-to-b from-slate-900 to-slate-950 text-white">
-      <div className="mx-auto max-w-md px-6 py-10 sm:py-12">
-        <div className="flex flex-col items-center text-center">
-          <Link
-            href="/"
-            className="inline-flex rounded-xl bg-white/95 p-2 shadow-sm ring-1 ring-white/10 transition hover:bg-white"
-          >
-            <img src="/images/new-logo.png" alt="JobPool" className="h-9 w-auto" />
-          </Link>
-          <div className="mt-8 flex w-full items-center justify-center gap-2">
-            <a
-              href={PLAY_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => analytics.appDownloadClick("play_store")}
-              className="block w-[48%] max-w-[172px] rounded-lg transition hover:opacity-95"
-            >
-              <Image
-                src="/images/store/footer-google-play.png"
-                alt="Get it on Google Play"
-                width={536}
-                height={160}
-                className="h-auto w-full object-contain opacity-90 saturate-75"
-              />
-            </a>
-            <a
-              href={APP_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => analytics.appDownloadClick("app_store")}
-              className="block w-[48%] max-w-[172px] rounded-lg transition hover:opacity-95"
-            >
-              <Image
-                src="/images/store/footer-app-store.png"
-                alt="Download on the App Store"
-                width={510}
-                height={160}
-                className="h-auto w-full object-contain opacity-90 saturate-75"
-              />
-            </a>
-          </div>
-          <div className="mt-7 flex items-center gap-3">
-            {socialLinks.map(({ name, href, icon: Icon }) => (
-              <a
-                key={name}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-slate-300 ring-1 ring-white/10 transition hover:bg-blue-600 hover:text-white"
-                aria-label={name}
-              >
-                <Icon className="h-4 w-4" />
-              </a>
-            ))}
-          </div>
-          <nav
-            className="mt-7 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[13px] font-medium tracking-wide text-slate-400"
-            aria-label="Legal and support"
-          >
-            <Link href="/privacy-policy" className="transition hover:text-white">
-              Privacy
-            </Link>
-            <Link href="/termsandconditions" className="transition hover:text-white">
-              Terms
-            </Link>
-            <Link href="/support" className="transition hover:text-white">
-              Support
-            </Link>
-          </nav>
-          <p className="mt-10 text-[11px] font-medium uppercase tracking-[0.2em] text-slate-600">
-            © {new Date().getFullYear()} Klughire Pvt Limited
-          </p>
-        </div>
-      </div>
-    </footer>
-  );
-}
-
 const Footer: React.FC = () => {
   const pathname = usePathname();
+  const compact = useCompactAppFooter();
   if (isAppFooterHidden(pathname)) {
     return null;
   }
-  const compact = useCompactAppFooter();
+  /** Mobile / PWA / native shell: no marketing footer above the tab bar (legal links stay in Settings, Support, etc.). */
   if (compact) {
-    return <AppShellFooter />;
+    return null;
   }
 
   return (
