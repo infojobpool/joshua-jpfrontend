@@ -1,4 +1,5 @@
 import axiosInstance from "@/lib/axiosInstance";
+import { resolveProfileImageUrl } from "@/lib/profileImage";
 
 /** Fresh window: serve from memory without hitting the network. */
 const TTL_MS = 120_000;
@@ -110,18 +111,71 @@ function parsePostedAtMs(job: RawJob): number {
   return Number.isFinite(t) ? t : 0;
 }
 
+function firstNonEmptyStringUrl(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t.length > 0 ? t : null;
+}
+
+function firstUrlFromStringArray(arr: unknown): string | null {
+  if (!Array.isArray(arr)) return null;
+  for (const el of arr) {
+    const s = firstNonEmptyStringUrl(el);
+    if (s) return s;
+  }
+  return null;
+}
+
+/**
+ * First task image URL from a job row. Supports full `get-all-jobs` shape plus slim
+ * `recent-open-jobs` fields (often omit `job_images.urls` or use a flat thumbnail).
+ */
 function firstJobImageUrl(job: RawJob): string | null {
-  const ji = job.job_images as { urls?: string[] } | string[] | undefined;
+  const ji = job.job_images as { urls?: unknown[] } | unknown[] | string | undefined;
   if (ji) {
-    const urls = Array.isArray(ji) ? ji : ji.urls;
-    if (Array.isArray(urls) && urls.length > 0) {
-      const u = urls[0];
-      if (typeof u === "string" && u.trim()) return u.trim();
+    if (typeof ji === "string") {
+      const s = firstNonEmptyStringUrl(ji);
+      if (s) return s;
+    } else {
+      const urls = Array.isArray(ji) ? ji : ji.urls;
+      const fromArr = firstUrlFromStringArray(urls);
+      if (fromArr) return fromArr;
     }
   }
-  const single = job.image_url ?? job.job_image_url ?? job.thumbnail_url;
-  if (typeof single === "string" && single.trim()) return single.trim();
-  return null;
+
+  const fromArrays = firstUrlFromStringArray(
+    job.photo_urls ?? job.photos ?? job.images ?? job.task_images ?? job.media_urls,
+  );
+  if (fromArrays) return fromArrays;
+
+  const flat =
+    firstNonEmptyStringUrl(job.image_url) ??
+    firstNonEmptyStringUrl(job.job_image_url) ??
+    firstNonEmptyStringUrl(job.thumbnail_url) ??
+    firstNonEmptyStringUrl(job.thumbnail) ??
+    firstNonEmptyStringUrl(job.cover_image) ??
+    firstNonEmptyStringUrl(job.cover_image_url) ??
+    firstNonEmptyStringUrl(job.primary_image_url) ??
+    firstNonEmptyStringUrl(job.preview_image) ??
+    firstNonEmptyStringUrl(job.preview_image_url) ??
+    firstNonEmptyStringUrl(job.photo_url) ??
+    firstNonEmptyStringUrl(job.picture) ??
+    firstNonEmptyStringUrl(job.image) ??
+    firstNonEmptyStringUrl(job.banner_url) ??
+    firstNonEmptyStringUrl(job.job_image) ??
+    firstNonEmptyStringUrl(job.task_image) ??
+    firstNonEmptyStringUrl(job.hero_image) ??
+    firstNonEmptyStringUrl(job.main_image) ??
+    firstNonEmptyStringUrl(job.media_url);
+
+  return flat;
+}
+
+/** Absolute URL for `<img src>` (slim APIs often return `/media/...` paths). */
+function resolveHomeCardImageUrl(raw: string | null): string | null {
+  if (!raw) return null;
+  if (/placeholder\.com/i.test(raw)) return null;
+  return resolveProfileImageUrl(raw) ?? raw;
 }
 
 /**
@@ -168,7 +222,7 @@ export function selectOpenRecentTaskCards(jobs: RawJob[], limit: number): HomeTa
       category_name: String(
         (job.job_category_name as string) || (job.job_category as string) || "General"
       ),
-      imageUrl: firstJobImageUrl(job),
+      imageUrl: resolveHomeCardImageUrl(firstJobImageUrl(job)),
     }))
     .filter((t) => t.id.length > 0);
 }
