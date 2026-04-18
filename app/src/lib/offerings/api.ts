@@ -303,9 +303,12 @@ function newIdempotencyKey(): string {
 export async function createOfferingApi(o: Offering): Promise<Offering> {
   const body = offeringToApiBody(o);
   body.status = o.status;
-  const res = await axiosInstance.post("offerings/", body, {
-    headers: { "Idempotency-Key": newIdempotencyKey() },
-  });
+  /** Send only after API CORS allows `Idempotency-Key`; otherwise WebView/browsers often fail preflight → "Network Error". */
+  const extra =
+    process.env.NEXT_PUBLIC_OFFERINGS_SEND_IDEMPOTENCY_KEY === "1"
+      ? { headers: { "Idempotency-Key": newIdempotencyKey() } }
+      : {};
+  const res = await axiosInstance.post("offerings/", body, extra);
   try {
     return parseOfferingResponse(res);
   } catch {

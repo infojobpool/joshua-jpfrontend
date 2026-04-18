@@ -21,6 +21,7 @@ import {
   uploadOfferingImageApi,
 } from "@/lib/offerings/api";
 import { readOfferingSubscriptionMock } from "@/lib/offerings/storage";
+import { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ImagePlus, X } from "lucide-react";
@@ -33,6 +34,15 @@ function isUnsyncedDraftId(id: string): boolean {
 }
 
 function apiErrorMessage(e: unknown): string {
+  if (isAxiosError(e)) {
+    if (e.code === "ERR_NETWORK" || e.message === "Network Error") {
+      return "Can't reach the server. Check your connection, or try again in a moment.";
+    }
+    const d = e.response?.data as { message?: string; detail?: string } | undefined;
+    const m = d?.message ?? d?.detail;
+    if (m) return String(m);
+    if (e.message) return e.message;
+  }
   const ax = e as { response?: { data?: { message?: string; detail?: string } } };
   const m = ax.response?.data?.message ?? ax.response?.data?.detail;
   if (m) return String(m);
