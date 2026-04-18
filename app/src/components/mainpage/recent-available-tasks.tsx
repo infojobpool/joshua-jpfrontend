@@ -12,7 +12,6 @@ import {
 } from "@/lib/homeJobsCache";
 import { prefetchBidsForTask } from "@/lib/taskNavCache";
 
-const PLACEHOLDER = "/images/placeholder.svg";
 const DESKTOP_MAX = 12;
 /** Mobile recent-tasks strip: auto-scroll speed (px/s) — time-based; keep modest so swipe still feels natural */
 const MOBILE_RECENT_AUTO_SCROLL_PX_PER_SEC = 52;
@@ -20,26 +19,6 @@ const DESKTOP_RECENT_AUTO_SCROLL_PX_PER_SEC = 42;
 
 function formatBudget(n: number) {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
-}
-
-function TaskCardImage({ url, alt }: { url: string; alt: string }) {
-  return (
-    <img
-      src={url}
-      alt={alt}
-      className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-      loading="lazy"
-      decoding="async"
-      referrerPolicy="no-referrer"
-      onError={(e) => {
-        const el = e.currentTarget;
-        if (el.src !== PLACEHOLDER && !el.dataset.fallback) {
-          el.dataset.fallback = "1";
-          el.src = PLACEHOLDER;
-        }
-      }}
-    />
-  );
 }
 
 export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop" }) {
@@ -231,7 +210,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-44 w-64 shrink-0 animate-pulse rounded-2xl bg-gray-100"
+                className="h-32 w-64 shrink-0 animate-pulse rounded-2xl bg-gray-100"
               />
             ))}
           </div>
@@ -292,7 +271,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
               <Link
                 key={`${t.id}-${idx}`}
                 href={`/tasks/${t.id}`}
-                className="group w-64 shrink-0 overflow-hidden rounded-2xl border border-gray-200/60 bg-white shadow-lg shadow-black/5"
+                className="group w-64 shrink-0 overflow-hidden rounded-2xl border border-gray-200/60 bg-white shadow-lg shadow-black/5 transition-shadow hover:shadow-xl"
                 onMouseEnter={() => {
                   try {
                     prefetchBidsForTask(t.id);
@@ -308,27 +287,20 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
                   }
                 }}
               >
-                <div className="relative h-32 w-full overflow-hidden bg-gray-50">
-                  <TaskCardImage
-                    url={t.imageUrl || PLACEHOLDER}
-                    alt=""
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
-                  <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between gap-1">
-                    <span className="truncate rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-medium text-gray-800">
+                <div className="flex flex-col gap-2 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="min-w-0 truncate rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800">
                       {t.category_name}
                     </span>
-                    <span className="shrink-0 text-[11px] font-semibold text-white drop-shadow">
+                    <span className="shrink-0 text-[11px] font-semibold text-blue-700">
                       {formatBudget(t.budget)}
                     </span>
                   </div>
-                </div>
-                <div className="p-3">
                   <h4 className="task-title line-clamp-2 min-w-0 overflow-hidden break-words text-sm text-gray-900">
                     {t.title}
                   </h4>
                   {t.location ? (
-                    <p className="mt-1 flex items-center gap-1 truncate text-xs text-gray-500">
+                    <p className="flex items-center gap-1 truncate text-xs text-gray-500">
                       <MapPin className="h-3 w-3 shrink-0" />
                       <span className="truncate">{t.location}</span>
                     </p>
@@ -352,7 +324,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="h-72 w-64 shrink-0 animate-pulse rounded-xl bg-gray-200"
+                className="h-44 w-64 shrink-0 animate-pulse rounded-xl bg-gray-200"
               />
             ))}
           </div>
@@ -469,20 +441,15 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
                       }
                     }}
                   >
-                    <div className="relative h-32 overflow-hidden bg-gray-100">
-                      <TaskCardImage
-                        url={task.imageUrl || PLACEHOLDER}
-                        alt=""
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
-                      <div className="absolute top-2 left-2 max-w-[calc(100%-1rem)] truncate rounded-full bg-white/90 px-2 py-0.5 text-xs font-medium text-gray-800 backdrop-blur-sm">
-                        {task.category_name}
-                      </div>
-                      <div className="absolute bottom-2 right-2 rounded-md bg-white/90 px-2 py-1 text-xs font-semibold text-blue-700 backdrop-blur-sm">
-                        {formatBudget(task.budget)}
-                      </div>
-                    </div>
                     <div className="p-4">
+                      <div className="mb-3 flex items-start justify-between gap-2">
+                        <span className="min-w-0 max-w-[65%] truncate rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-800">
+                          {task.category_name}
+                        </span>
+                        <span className="shrink-0 rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">
+                          {formatBudget(task.budget)}
+                        </span>
+                      </div>
                       <h3 className="task-title line-clamp-2 min-w-0 overflow-hidden break-words text-base text-gray-900">
                         {task.title}
                       </h3>
