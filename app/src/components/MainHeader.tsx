@@ -4,13 +4,14 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Menu, X, User, Plus, MessageSquare } from "lucide-react";
+import { Menu, X, User, Plus, MessageSquare, Bell } from "lucide-react";
 import useStore from "@/lib/Zustand";
 import { cn } from "@/lib/utils";
 
 const MainHeader: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { isAuthenticated, user, logout, checkAuth } = useStore();
+  const unreadCount = useStore((s) => s.unreadCount);
   const [isHydrated, setIsHydrated] = useState(false);
   const pathname = usePathname();
   const isMarketingHome = pathname === "/" || pathname === "";
@@ -149,20 +150,37 @@ const MainHeader: React.FC = () => {
             )}
           </div>
 
-          {/* Mobile menu — larger tap target, clearer affordance */}
-          <button
-            type="button"
-            className="md:hidden flex h-12 min-w-[3rem] shrink-0 items-center justify-center rounded-2xl border-2 border-blue-100 bg-gradient-to-b from-white to-blue-50/80 text-blue-800 shadow-[0_2px_12px_rgba(37,99,235,0.12)] ring-1 ring-blue-200/40 hover:border-blue-200 hover:from-blue-50 hover:to-blue-100/90 hover:text-blue-900 active:scale-[0.97] transition-all"
-            onClick={toggleMobileMenu}
-            aria-expanded={isMobileMenuOpen}
-            aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
-          >
-            {isMobileMenuOpen ? (
-              <X className="h-6 w-6 stroke-[2.5]" />
-            ) : (
-              <Menu className="h-6 w-6 stroke-[2.5]" />
-            )}
-          </button>
+          {/* Mobile: notifications + menu (same visual language) */}
+          <div className="md:hidden flex shrink-0 items-center gap-2">
+            {isAuthenticated ? (
+              <Link
+                href="/notifications"
+                className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-blue-100 bg-gradient-to-b from-white to-blue-50/80 text-blue-800 shadow-[0_2px_12px_rgba(37,99,235,0.12)] ring-1 ring-blue-200/40 hover:border-blue-200 hover:from-blue-50 hover:to-blue-100/90 hover:text-blue-900 active:scale-[0.97] transition-all"
+                aria-label="Notifications"
+                title="Notifications"
+              >
+                <Bell className="h-5 w-5" aria-hidden />
+                {unreadCount > 0 ? (
+                  <span className="absolute -right-0.5 -top-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-semibold leading-none text-white shadow-sm">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                ) : null}
+              </Link>
+            ) : null}
+            <button
+              type="button"
+              className="flex h-12 min-w-[3rem] shrink-0 items-center justify-center rounded-2xl border-2 border-blue-100 bg-gradient-to-b from-white to-blue-50/80 text-blue-800 shadow-[0_2px_12px_rgba(37,99,235,0.12)] ring-1 ring-blue-200/40 hover:border-blue-200 hover:from-blue-50 hover:to-blue-100/90 hover:text-blue-900 active:scale-[0.97] transition-all"
+              onClick={toggleMobileMenu}
+              aria-expanded={isMobileMenuOpen}
+              aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+            >
+              {isMobileMenuOpen ? (
+                <X className="h-6 w-6 stroke-[2.5]" />
+              ) : (
+                <Menu className="h-6 w-6 stroke-[2.5]" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Navigation Menu */}

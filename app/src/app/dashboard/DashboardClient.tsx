@@ -418,11 +418,17 @@ function getCardPostedAt(task: { id: string; postedAt: string }): string {
 export default function Dashboard() {
   const router = useRouter();
   const { user, userId, isAuthenticated, logout, addNotifications, updateUserProfileImage, checkAuth } = useStore();
-  const { items: notificationItems, unreadCount, markAsRead, clearOldKeepLatest, bellAnimating } = useNotifications(!!isAuthenticated);
-  const bellUnreadItems = useMemo(
-    () => notificationItems.filter((n) => !n.read),
-    [notificationItems]
-  );
+  const { items: notificationItems, unreadCount, markAsRead, clearOldKeepLatest, clearAll, bellAnimating } = useNotifications(!!isAuthenticated);
+  /** Recent preview in the bell panel (not unread-only, so "View all" / read items still make sense). */
+  const bellPreviewItems = useMemo(() => {
+    return [...notificationItems]
+      .sort(
+        (a, b) =>
+          new Date((b as { created_at?: string }).created_at ?? (b as { createdAt?: string }).createdAt ?? 0).getTime() -
+          new Date((a as { created_at?: string }).created_at ?? (a as { createdAt?: string }).createdAt ?? 0).getTime()
+      )
+      .slice(0, 20);
+  }, [notificationItems]);
   // Inline mobile detection to avoid useIsMobile (potential React #310 cause on desktop)
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -4209,19 +4215,19 @@ export default function Dashboard() {
               </button>
             </div>
             <div className="max-h-[60vh] overflow-auto">
-              {bellUnreadItems.length === 0 ? (
+              {bellPreviewItems.length === 0 ? (
                 <div className="px-4 py-8 text-center text-gray-500 dark:text-slate-400 text-sm">
-                  {notificationItems.length > 0 ? "You're all caught up" : "No notifications yet"}
+                  No notifications yet
                 </div>
               ) : (
-                bellUnreadItems.map((n) => {
+                bellPreviewItems.map((n) => {
                   const href = n.link || "/notifications";
                   const Icon = n.type === "bid" ? Gavel : n.type === "message" ? MessageSquare : Bell;
                   const iconBg = n.type === "bid" ? "bg-amber-500" : n.type === "message" ? "bg-blue-500" : "bg-purple-500";
                   const createdAt = n.created_at ?? (n as any).createdAt ?? new Date().toISOString();
                   return (
                     <Link
-                      key={n.id}
+                      key={String(n.id)}
                       href={href}
                       onClick={(e) => {
                         e.preventDefault();
@@ -4253,7 +4259,7 @@ export default function Dashboard() {
             </div>
             <div className="px-4 py-3 border-t bg-gray-50 flex flex-wrap gap-2">
               {unreadCount > 0 && (
-                <Button variant="outline" className="h-9 px-3 border-gray-300" onClick={() => { markAsRead(null); setShowNotifications(false); }}>
+                <Button variant="outline" className="h-9 px-3 border-gray-300" onClick={() => { void markAsRead(null); setShowNotifications(false); }}>
                   Mark all read
                 </Button>
               )}
@@ -4268,6 +4274,19 @@ export default function Dashboard() {
                   }}
                 >
                   Clear old
+                </Button>
+              )}
+              {notificationItems.length > 0 && (
+                <Button
+                  variant="outline"
+                  className="h-9 px-3 border-gray-300"
+                  title="Clears this list on this device; new items will appear again after the next refresh from the server."
+                  onClick={() => {
+                    clearAll();
+                    setShowNotifications(false);
+                  }}
+                >
+                  Clear all
                 </Button>
               )}
               <Link href="/notifications" onClick={() => setShowNotifications(false)}>

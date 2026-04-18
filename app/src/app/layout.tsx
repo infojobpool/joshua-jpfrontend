@@ -11,6 +11,7 @@ import { AppMain } from "@/components/mobile/AppMain";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { InAppNotificationProvider } from "@/components/InAppNotificationProvider";
 import { NotificationPoller } from "@/components/NotificationPoller";
+import { NotificationBadgeSync } from "@/components/NotificationBadgeSync";
 import { SessionExpiredHandler } from "@/components/SessionExpiredHandler";
 import { PromoPopup } from "@/components/PromoPopup";
 import { AppEntranceWrapper } from "@/components/mobile/AppEntranceWrapper";
@@ -92,6 +93,9 @@ export default function RootLayout({
           <InAppNotificationProvider />
           <SessionExpiredHandler />
           <NotificationPoller />
+          <Suspense fallback={null}>
+            <NotificationBadgeSync />
+          </Suspense>
           <PromoPopup />
           <MobileLayout>
             <AppEntranceWrapper>

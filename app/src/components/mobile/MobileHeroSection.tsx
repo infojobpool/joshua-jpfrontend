@@ -1,9 +1,7 @@
 "use client";
 
 import React, { FormEvent, useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell } from "lucide-react";
 import useStore from "@/lib/Zustand";
 
 /**
@@ -15,26 +13,9 @@ export function MobileHeroSection() {
   const checkAuth = useStore((s) => s.checkAuth);
   const isAuthenticated = useStore((s) => s.isAuthenticated);
   const user = useStore((s) => s.user);
-  const unreadCount = useStore((s) => s.unreadCount);
-  const [bellAnimating, setBellAnimating] = useState(false);
-
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
-
-  useEffect(() => {
-    let tid: ReturnType<typeof setTimeout> | undefined;
-    const handler = () => {
-      setBellAnimating(true);
-      if (tid) window.clearTimeout(tid);
-      tid = window.setTimeout(() => setBellAnimating(false), 1500);
-    };
-    window.addEventListener("notification-arrived", handler);
-    return () => {
-      window.removeEventListener("notification-arrived", handler);
-      if (tid) window.clearTimeout(tid);
-    };
-  }, []);
 
   const firstName =
     user?.name?.trim().split(/\s+/)[0] || (isAuthenticated ? "there" : "");
@@ -68,34 +49,16 @@ export function MobileHeroSection() {
 
         <div className="relative z-10 mx-auto max-w-lg px-4 pb-5 pt-3 sm:px-5 sm:pb-6 sm:pt-4">
           {isAuthenticated && firstName ? (
-            <div className="mb-3 flex items-start justify-between gap-3 sm:mb-4">
-              <div
-                className="min-w-0 flex-1 border-l-[3px] border-white/40 pl-3.5 text-left sm:pl-4"
-                style={{ fontFamily: "var(--font-archivo), var(--font-geist-sans), system-ui, sans-serif" }}
-              >
-                <p className="text-[0.625rem] font-semibold uppercase tracking-[0.22em] text-white/70">
-                  Welcome back
-                </p>
-                <p className="mt-1 text-[1.25rem] font-bold leading-snug tracking-[-0.02em] text-white [text-shadow:0_1px_20px_rgba(0,0,0,0.35)] sm:text-[1.5rem]">
-                  {firstName}
-                </p>
-              </div>
-              <Link
-                href="/notifications"
-                className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/35 bg-white/12 shadow-[0_10px_28px_rgba(0,0,0,0.22)] backdrop-blur-md transition-[transform,background-color,border-color] hover:border-white/50 hover:bg-white/18 active:scale-[0.97]"
-                aria-label="Notifications"
-                title="Notifications"
-              >
-                <Bell
-                  className={`h-5 w-5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)] ${bellAnimating ? "animate-bell-ring" : ""}`}
-                  aria-hidden
-                />
-                {unreadCount > 0 ? (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-emerald-400 px-1 text-[0.625rem] font-semibold leading-none text-emerald-950 shadow-sm ring-2 ring-blue-900/30">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                ) : null}
-              </Link>
+            <div
+              className="mb-3 border-l-[3px] border-white/40 pl-3.5 text-left sm:mb-4 sm:pl-4"
+              style={{ fontFamily: "var(--font-archivo), var(--font-geist-sans), system-ui, sans-serif" }}
+            >
+              <p className="text-[0.625rem] font-semibold uppercase tracking-[0.22em] text-white/70">
+                Welcome back
+              </p>
+              <p className="mt-1 text-[1.25rem] font-bold leading-snug tracking-[-0.02em] text-white [text-shadow:0_1px_20px_rgba(0,0,0,0.35)] sm:text-[1.5rem]">
+                {firstName}
+              </p>
             </div>
           ) : null}
 

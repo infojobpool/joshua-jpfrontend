@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import axiosInstance from "./axiosInstance";
 import { playNotificationSound } from "./notificationSound";
+import useStore from "./Zustand";
 
 export interface NotificationItem {
   id: string;
@@ -19,7 +20,36 @@ const POLL_INTERVAL_MS = 10000; // 10 seconds - in sync with emails
 const CLEARED_IDS_KEY = "notification_cleared_ids";
 const KEEP_LATEST = 10;
 
-export function useNotifications(isAuthenticated: boolean) {
+function toIsoSafe(raw: unknown): string {
+  const s = raw != null && raw !== "" ? String(raw) : "";
+  const t = Date.parse(s);
+  if (Number.isFinite(t)) return new Date(t).toISOString();
+  return new Date().toISOString();
+}
+
+/** Map API row to Zustand notification shape (for /notifications + header bell). */
+function apiRowToZustandItem(n: NotificationItem) {
+  const id = String(n.id ?? (n as any).notification_id ?? "");
+  const raw = String((n as any).type ?? (n as any).notification_type ?? "system").toLowerCase();
+  const type = raw === "bid" ? "bid" : raw === "message" ? "message" : "system";
+  return {
+    id,
+    type,
+    title: n.title || "Notification",
+    description: String((n as any).description ?? (n as any).body ?? ""),
+    createdAt: toIsoSafe((n as any).created_at ?? (n as any).createdAt),
+    read: Boolean(n.read ?? (n as any).is_read),
+    link: ((n as any).link ?? (n as any).url) || undefined,
+    direction: type === "bid" ? ("received" as const) : undefined,
+    taskId: (n as any).task_id != null ? String((n as any).task_id) : undefined,
+    bidId: (n as any).bid_id != null ? String((n as any).bid_id) : undefined,
+    status: (n as any).status != null ? String((n as any).status) : undefined,
+    deleted: Boolean((n as any).deleted),
+  };
+}
+
+/** When true, polls `/get-notifications/` and syncs badge + list into Zustand (marketing header, home hero). */
+export function useNotifications(enabled: boolean) {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -28,7 +58,7 @@ export function useNotifications(isAuthenticated: boolean) {
   const firstFetchDoneRef = useRef(false);
 
   const fetchNotifications = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!enabled) return;
     const token =
       (typeof window !== "undefined" && localStorage.getItem("token")) ||
       (typeof window !== "undefined" && sessionStorage.getItem("token"));
@@ -40,7 +70,7 @@ export function useNotifications(isAuthenticated: boolean) {
         data?: NotificationItem[] | { data?: NotificationItem[]; unread_count?: number };
       }>("/get-notifications/");
 
-      if (data?.status_code === 200 && data?.data) {
+      if ((Number(data?.status_code) === 200 || data?.status_code === 200) && data?.data) {
         const payload = data.data;
         let list: NotificationItem[] = [];
         if (Array.isArray(payload)) {
@@ -73,8 +103,18 @@ export function useNotifications(isAuthenticated: boolean) {
             firstFetchDoneRef.current = true;
             prevUnreadRef.current = newUnread;
             setUnreadCount(newUnread);
+            try {
+              useStore.getState().setNotifications(merged.map(apiRowToZustandItem));
+            } catch {
+              /* ignore store sync */
+            }
             if (hadNew) {
               playNotificationSound();
+              try {
+                window.dispatchEvent(new CustomEvent("notification-arrived"));
+              } catch {
+                /* ignore */
+              }
               setTimeout(() => setBellAnimating(true), 0);
               setTimeout(() => setBellAnimating(false), 1500);
             }
@@ -83,6 +123,11 @@ export function useNotifications(isAuthenticated: boolean) {
         } else {
           firstFetchDoneRef.current = true;
           prevUnreadRef.current = 0;
+          try {
+            useStore.getState().setNotifications([]);
+          } catch {
+            /* ignore */
+          }
         }
       }
     } catch {
@@ -90,10 +135,10 @@ export function useNotifications(isAuthenticated: boolean) {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [enabled]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!enabled) {
       setItems([]);
       setUnreadCount(0);
       return;
@@ -109,11 +154,11 @@ export function useNotifications(isAuthenticated: boolean) {
       clearInterval(interval);
       window.removeEventListener("notification-arrived", onArrival);
     };
-  }, [isAuthenticated, fetchNotifications]);
+  }, [enabled, fetchNotifications]);
 
   const markAsRead = useCallback(
     async (notificationId?: number | null) => {
-      if (!isAuthenticated) return;
+      if (!enabled) return;
       try {
         await axiosInstance.patch("/notifications/mark-read/", {
           notification_id: notificationId ?? null,
@@ -123,12 +168,17 @@ export function useNotifications(isAuthenticated: boolean) {
         // Ignore
       }
     },
-    [isAuthenticated, fetchNotifications]
+    [enabled, fetchNotifications]
   );
 
   const clearAll = useCallback(() => {
     setItems([]);
     setUnreadCount(0);
+    try {
+      useStore.getState().setNotifications([]);
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const clearOldKeepLatest = useCallback(() => {
@@ -148,6 +198,13 @@ export function useNotifications(isAuthenticated: boolean) {
       const newUnread = kept.filter((n) => !n.read).length;
       prevUnreadRef.current = newUnread;
       setUnreadCount(newUnread);
+      queueMicrotask(() => {
+        try {
+          useStore.getState().setNotifications(kept.map(apiRowToZustandItem));
+        } catch {
+          /* ignore */
+        }
+      });
       return kept;
     });
   }, []);
