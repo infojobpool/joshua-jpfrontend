@@ -40,6 +40,7 @@ export function isGetAllJobsResponseOk(
 export function extractJobsArray(data: unknown): RawJob[] {
   if (!data || typeof data !== "object") return [];
   const d = data as Record<string, unknown>;
+  if (Array.isArray(d.data)) return d.data as RawJob[];
   const inner = d.data;
   if (inner && typeof inner === "object") {
     const j = (inner as { jobs?: unknown }).jobs;
@@ -74,6 +75,26 @@ function persistJobs(jobs: RawJob[]): void {
   } catch {
     /* quota / private mode */
   }
+}
+
+/** Map `GET /recent-open-jobs/` slim rows into the shape used by home cards (legacy uses job_* keys). */
+function coerceRecentRowToRawJob(row: RawJob): RawJob {
+  const legacy = row.job_id != null || row.job_title != null;
+  if (legacy) {
+    return row.status !== undefined ? row : { ...row, status: false };
+  }
+  const jobId = String(row.job_id ?? row.id ?? row.pk ?? "").trim();
+  if (!jobId) return { ...row, status: row.status ?? false };
+  return {
+    ...row,
+    job_id: jobId,
+    job_title: String(row.job_title ?? row.title ?? "Task"),
+    job_description: String(row.job_description ?? row.description ?? ""),
+    job_budget: Number(row.job_budget ?? row.budget ?? 0) || 0,
+    job_location: String(row.job_location ?? row.location ?? row.location_text ?? ""),
+    job_category_name: String(row.job_category_name ?? row.job_category ?? row.category ?? "General"),
+    status: row.status ?? false,
+  };
 }
 
 function parsePostedAtMs(job: RawJob): number {
@@ -194,6 +215,26 @@ export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
   }
   inflight = (async () => {
     try {
+      try {
+        const recent = await axiosInstance.get("/recent-open-jobs/", { params: { limit: 24 } });
+        const rd = recent?.data;
+        if (isGetAllJobsResponseOk(rd, recent?.status)) {
+          let jobs = extractJobsArray(rd);
+          if (jobs.length === 0 && rd && typeof rd === "object") {
+            const r = rd as Record<string, unknown>;
+            if (Array.isArray(r.results)) jobs = r.results as RawJob[];
+          }
+          if (jobs.length > 0) {
+            const coerced = jobs.map(coerceRecentRowToRawJob);
+            cache = { jobs: coerced, fetchedAt: Date.now() };
+            persistJobs(coerced);
+            return coerced;
+          }
+        }
+      } catch {
+        /* Older API without recent-open-jobs */
+      }
+
       const response = await axiosInstance.get("/get-all-jobs/");
       const data = response?.data;
       if (isGetAllJobsResponseOk(data, response?.status)) {
@@ -220,7 +261,7 @@ export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
   }
 }
 
-/** Start fetch early (e.g. from header) so `/get-all-jobs/` overlaps first paint. */
+/** Start fetch early so `recent-open-jobs` (or `get-all-jobs`) overlaps first paint. */
 export function warmHomeJobsCache(): void {
   if (typeof window === "undefined") return;
   tryHydrateCacheFromDisk();

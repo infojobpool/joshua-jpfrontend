@@ -182,6 +182,12 @@ function extractOfferingRawFromAxiosResponse(res: { data?: unknown }): unknown {
   if (!d || typeof d !== "object" || Array.isArray(d)) return undefined;
   if (d.status_code != null && Number(d.status_code) !== 200) return undefined;
 
+  /** Some APIs mirror the payload as `offering` next to `status_code`. */
+  if (d.offering && typeof d.offering === "object" && !Array.isArray(d.offering)) {
+    const off = d.offering as Record<string, unknown>;
+    if (hasOfferingShapeId(off.id) || hasOfferingShapeId(off.pk)) return d.offering;
+  }
+
   const inner = d.data;
   if (inner != null && typeof inner === "object" && !Array.isArray(inner)) {
     const io = inner as Record<string, unknown>;
@@ -283,10 +289,23 @@ export async function listPublishedOfferingsForHomeApi(limit = 24): Promise<Offe
   return offerings.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, limit);
 }
 
+function newIdempotencyKey(): string {
+  try {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+  } catch {
+    /* ignore */
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
 export async function createOfferingApi(o: Offering): Promise<Offering> {
   const body = offeringToApiBody(o);
   body.status = o.status;
-  const res = await axiosInstance.post("offerings/", body);
+  const res = await axiosInstance.post("offerings/", body, {
+    headers: { "Idempotency-Key": newIdempotencyKey() },
+  });
   try {
     return parseOfferingResponse(res);
   } catch {

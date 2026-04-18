@@ -14,7 +14,7 @@ function isChatInboxLightRead(url: string | undefined): boolean {
 function isHomePublicRead(url: string | undefined): boolean {
   if (!url) return false;
   const u = url.toLowerCase();
-  return u.includes('get-all-jobs') || u.includes('offerings/feed');
+  return u.includes('get-all-jobs') || u.includes('recent-open-jobs') || u.includes('offerings/feed');
 }
 
 function shouldSkip401Refresh(url: string): boolean {
