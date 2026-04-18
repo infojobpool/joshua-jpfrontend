@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,6 @@ import {
   updateOfferingApi,
   isOfferingLimitError,
   OFFERING_LIMIT_TOAST,
-  filterHttpsPhotoUrls,
   uploadOfferingImageApi,
 } from "@/lib/offerings/api";
 import { readOfferingSubscriptionMock } from "@/lib/offerings/storage";
@@ -61,6 +60,8 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
   const router = useRouter();
   const [o, setO] = useState<Offering>(initial);
   const [saving, setSaving] = useState(false);
+  /** Prevents double Publish / Save while the first request is in flight (avoids duplicate listings). */
+  const saveLockRef = useRef(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [imageUrlDraft, setImageUrlDraft] = useState("");
   const maxSlots = getMaxOfferingSlots(readOfferingSubscriptionMock());
@@ -102,6 +103,7 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
   };
 
   const saveProgress = async () => {
+    if (saveLockRef.current) return;
     if (o.status !== "draft") {
       const err = validateForPublish({
         title: o.title,
@@ -122,6 +124,7 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
       );
       return;
     }
+    saveLockRef.current = true;
     setSaving(true);
     try {
       const payload: Offering = {
@@ -143,11 +146,13 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
       if (isOfferingLimitError(e)) handleLimitError();
       else toast.error(apiErrorMessage(e));
     } finally {
+      saveLockRef.current = false;
       setSaving(false);
     }
   };
 
   const publish = async () => {
+    if (saveLockRef.current) return;
     const err = validateForPublish({
       title: o.title,
       description: o.description,
@@ -166,6 +171,7 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
       );
       return;
     }
+    saveLockRef.current = true;
     setSaving(true);
     try {
       const payload: Offering = { ...o, userId, status: "published", updatedAt: Date.now() };
@@ -182,6 +188,7 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
       if (isOfferingLimitError(e)) handleLimitError();
       else toast.error(apiErrorMessage(e));
     } finally {
+      saveLockRef.current = false;
       setSaving(false);
     }
   };

@@ -10,6 +10,13 @@ function isChatInboxLightRead(url: string | undefined): boolean {
   return u.includes('get-messages') || u.includes('my-chats');
 }
 
+/** Public marketing / home reads — should not queue behind the global throttle (first paint). */
+function isHomePublicRead(url: string | undefined): boolean {
+  if (!url) return false;
+  const u = url.toLowerCase();
+  return u.includes('get-all-jobs') || u.includes('offerings/feed');
+}
+
 function shouldSkip401Refresh(url: string): boolean {
   const u = url.toLowerCase();
   if (u.includes('refresh-token')) return true;
@@ -86,7 +93,7 @@ axiosInstance.interceptors.request.use(
     
     // Check request throttling (disabled for development)
     if (!isDev) {
-      const skipThrottle = isChatInboxLightRead(urlStr);
+      const skipThrottle = isChatInboxLightRead(urlStr) || isHomePublicRead(urlStr);
       const now = Date.now();
       if (now - requestThrottle.windowStart > requestThrottle.windowSize) {
         // Reset window

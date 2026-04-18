@@ -43,7 +43,8 @@ export function extractOfferingsPayload(res: unknown): unknown[] {
 export function mapOfferingFromApi(raw: unknown): Offering | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
-  const id = String(pick(r, "id") ?? "");
+  const idRaw = pick(r, "id", "pk", "uuid", "offering_id", "listing_id");
+  const id = idRaw != null && idRaw !== "" ? String(idRaw).trim() : "";
   if (!id) return null;
   const statusRaw = String(pick(r, "status") ?? "draft").toLowerCase().replace(/\s+/g, "_");
   let status: OfferingStatus = "draft";
@@ -134,9 +135,42 @@ export function unwrapOfferingEnvelope(res: { data?: unknown }): unknown {
 
 function hasOfferingShapeId(idVal: unknown): boolean {
   return (
-    (typeof idVal === "string" && idVal.length > 0) ||
+    (typeof idVal === "string" && idVal.trim().length > 0) ||
     (typeof idVal === "number" && Number.isFinite(idVal))
   );
+}
+
+/** Deep scan for an id/pk when the API returns 200 but a non-standard envelope (POST create). */
+function extractIdLoose(root: unknown): string | null {
+  const seen = new Set<unknown>();
+  const walk = (x: unknown, depth: number): string | null => {
+    if (depth > 8 || x == null) return null;
+    if (typeof x !== "object") return null;
+    if (seen.has(x)) return null;
+    seen.add(x);
+    if (Array.isArray(x)) {
+      for (const el of x) {
+        const id = walk(el, depth + 1);
+        if (id) return id;
+      }
+      return null;
+    }
+    const r = x as Record<string, unknown>;
+    for (const k of ["id", "pk", "offering_id", "listing_id", "uuid"]) {
+      const v = r[k];
+      if (typeof v === "number" && Number.isFinite(v)) return String(v);
+      if (typeof v === "string") {
+        const t = v.trim();
+        if (t.length > 0 && !t.startsWith("of_")) return t;
+      }
+    }
+    for (const v of Object.values(r)) {
+      const id = walk(v, depth + 1);
+      if (id) return id;
+    }
+    return null;
+  };
+  return walk(root, 0);
 }
 
 /**
@@ -153,10 +187,23 @@ function extractOfferingRawFromAxiosResponse(res: { data?: unknown }): unknown {
     const io = inner as Record<string, unknown>;
     if (io.offering && typeof io.offering === "object" && !Array.isArray(io.offering)) return io.offering;
     if (io.Offering && typeof io.Offering === "object" && !Array.isArray(io.Offering)) return io.Offering;
-    if (hasOfferingShapeId(io.id)) return inner;
+    if (hasOfferingShapeId(io.id) || hasOfferingShapeId(io.pk)) return inner;
+    const nested = io.data;
+    if (nested != null && typeof nested === "object" && !Array.isArray(nested)) {
+      const n = nested as Record<string, unknown>;
+      if (hasOfferingShapeId(n.id) || hasOfferingShapeId(n.pk)) return nested;
+    }
   }
 
-  if (hasOfferingShapeId(d.id)) return d;
+  if (hasOfferingShapeId(d.id) || hasOfferingShapeId(d.pk)) return d;
+
+  for (const key of ["offering", "listing", "result", "item", "object"]) {
+    const v = d[key];
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      const vo = v as Record<string, unknown>;
+      if (hasOfferingShapeId(vo.id) || hasOfferingShapeId(vo.pk)) return v;
+    }
+  }
 
   return undefined;
 }
@@ -166,7 +213,11 @@ function applyOfferingPatch(base: Offering, patch: Partial<Offering>): Offering 
   (Object.entries(patch) as [keyof Offering, Offering[keyof Offering]][]).forEach(([k, v]) => {
     if (v !== undefined) (out as Record<string, unknown>)[k as string] = v;
   });
-  out.id = base.id;
+  if (patch.id != null && String(patch.id).trim().length > 0) {
+    out.id = String(patch.id).trim();
+  } else {
+    out.id = base.id;
+  }
   if (patch.photoUrls !== undefined) {
     out.photoUrls = filterHttpsPhotoUrls(patch.photoUrls);
   }
@@ -236,7 +287,41 @@ export async function createOfferingApi(o: Offering): Promise<Offering> {
   const body = offeringToApiBody(o);
   body.status = o.status;
   const res = await axiosInstance.post("offerings/", body);
-  return parseOfferingResponse(res);
+  try {
+    return parseOfferingResponse(res);
+  } catch {
+    const httpStatus = (res as { status?: number }).status ?? 0;
+    if (httpStatus < 200 || httpStatus >= 300) {
+      throw new Error("Invalid offering response from server");
+    }
+    const raw = extractOfferingRawFromAxiosResponse(res);
+    if (raw) {
+      const m = mapOfferingFromApi(raw);
+      if (m) return m;
+    }
+    const root = res.data as Record<string, unknown> | undefined;
+    if (root && typeof root.data === "string") {
+      const sid = root.data.trim();
+      if (sid.length > 0) {
+        return applyOfferingPatch(o, {
+          id: sid,
+          userId: o.userId,
+          status: o.status,
+          updatedAt: Date.now(),
+        });
+      }
+    }
+    const id = extractIdLoose(res.data);
+    if (id) {
+      return applyOfferingPatch(o, {
+        id,
+        userId: o.userId,
+        status: o.status,
+        updatedAt: Date.now(),
+      });
+    }
+    throw new Error("Invalid offering response from server");
+  }
 }
 
 export async function updateOfferingApi(

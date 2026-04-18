@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { MapPin, Briefcase } from "lucide-react";
 import {
   getAllJobsForHomeCached,
+  readPersistedHomeSnapshot,
   selectOpenRecentTaskCards,
   type HomeTaskCard,
 } from "@/lib/homeJobsCache";
@@ -44,6 +45,15 @@ function TaskCardImage({ url, alt }: { url: string; alt: string }) {
 export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop" }) {
   const [tasks, setTasks] = useState<HomeTaskCard[]>([]);
   const [loading, setLoading] = useState(true);
+
+  /** Apply last session snapshot before paint (client-only; avoids SSR hydration mismatch). */
+  useLayoutEffect(() => {
+    const snap = readPersistedHomeSnapshot(DESKTOP_MAX);
+    if (snap.fromCache) {
+      setTasks(snap.tasks);
+      setLoading(false);
+    }
+  }, []);
   /** Pause auto-scroll while user touches / hovers the strip */
   const [marqueePaused, setMarqueePaused] = useState(false);
   const resumeMarqueeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

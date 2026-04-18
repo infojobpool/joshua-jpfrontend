@@ -12,6 +12,7 @@ import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { InAppNotificationProvider } from "@/components/InAppNotificationProvider";
 import { NotificationPoller } from "@/components/NotificationPoller";
 import { NotificationBadgeSync } from "@/components/NotificationBadgeSync";
+import { HomeJobsPrefetch } from "@/components/HomeJobsPrefetch";
 import { SessionExpiredHandler } from "@/components/SessionExpiredHandler";
 import { PromoPopup } from "@/components/PromoPopup";
 import { AppEntranceWrapper } from "@/components/mobile/AppEntranceWrapper";
@@ -95,6 +96,7 @@ export default function RootLayout({
           <NotificationPoller />
           <Suspense fallback={null}>
             <NotificationBadgeSync />
+            <HomeJobsPrefetch />
           </Suspense>
           <PromoPopup />
           <MobileLayout>

@@ -1,12 +1,29 @@
 import axiosInstance from "@/lib/axiosInstance";
 
-const TTL_MS = 45_000;
+/** Fresh window: serve from memory without hitting the network. */
+const TTL_MS = 120_000;
+/** Persist at most this many raw rows to keep sessionStorage small and fast. */
+const PERSIST_JOB_CAP = 100;
+const STORAGE_KEY = "jobpool_home_get_all_jobs_v1";
+/** Ignore disk snapshot older than this. */
+const DISK_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 let inflight: Promise<RawJob[]> | null = null;
 let cache: { jobs: RawJob[]; fetchedAt: number } | null = null;
 
 /** Raw job row from GET /get-all-jobs/ */
 export type RawJob = Record<string, unknown>;
+
+/** Normalized card for homepage task rows (open listings, recent first). */
+export type HomeTaskCard = {
+  id: string;
+  title: string;
+  description: string;
+  budget: number;
+  location: string;
+  category_name: string;
+  imageUrl: string | null;
+};
 
 /** True when GET /get-all-jobs/ body indicates success (handles string/number status_code). */
 export function isGetAllJobsResponseOk(
@@ -32,50 +49,32 @@ export function extractJobsArray(data: unknown): RawJob[] {
   return [];
 }
 
-/**
- * Single-flight cached fetch for homepage sections (recent tasks + scroller).
- * Avoids duplicate /get-all-jobs/ when both components mount (mobile + desktop hidden siblings).
- */
-export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
-  const now = Date.now();
-  if (cache && now - cache.fetchedAt < TTL_MS) {
-    return cache.jobs;
-  }
-  if (inflight) {
-    return inflight;
-  }
-  inflight = (async () => {
-    try {
-      const response = await axiosInstance.get("/get-all-jobs/");
-      const data = response?.data;
-      if (isGetAllJobsResponseOk(data, response?.status)) {
-        const jobs = extractJobsArray(data);
-        cache = { jobs, fetchedAt: Date.now() };
-        return jobs;
-      }
-    } catch {
-      /* ignore */
-    }
-    cache = { jobs: [], fetchedAt: Date.now() };
-    return [];
-  })();
+function tryHydrateCacheFromDisk(): void {
+  if (typeof window === "undefined" || cache) return;
   try {
-    return await inflight;
-  } finally {
-    inflight = null;
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const p = JSON.parse(raw) as { jobs?: RawJob[]; fetchedAt?: number };
+    if (!p || typeof p.fetchedAt !== "number" || !Array.isArray(p.jobs)) return;
+    if (Date.now() - p.fetchedAt > DISK_MAX_AGE_MS) return;
+    cache = { jobs: p.jobs, fetchedAt: p.fetchedAt };
+  } catch {
+    /* ignore */
   }
 }
 
-/** Normalized card for homepage task rows (open listings, recent first). */
-export type HomeTaskCard = {
-  id: string;
-  title: string;
-  description: string;
-  budget: number;
-  location: string;
-  category_name: string;
-  imageUrl: string | null;
-};
+function persistJobs(jobs: RawJob[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    const slice = jobs.slice(0, PERSIST_JOB_CAP);
+    sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ jobs: slice, fetchedAt: Date.now() })
+    );
+  } catch {
+    /* quota / private mode */
+  }
+}
 
 function parsePostedAtMs(job: RawJob): number {
   const raw =
@@ -151,4 +150,79 @@ export function selectOpenRecentTaskCards(jobs: RawJob[], limit: number): HomeTa
       imageUrl: firstJobImageUrl(job),
     }))
     .filter((t) => t.id.length > 0);
+}
+
+/**
+ * Synchronous read for first paint: hydrate task cards from last session fetch.
+ * Returns `fromCache: true` only when a valid snapshot existed (even if zero open tasks).
+ */
+export function readPersistedHomeSnapshot(limit: number): {
+  tasks: HomeTaskCard[];
+  fromCache: boolean;
+} {
+  if (typeof window === "undefined") {
+    return { tasks: [], fromCache: false };
+  }
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return { tasks: [], fromCache: false };
+    const p = JSON.parse(raw) as { jobs?: RawJob[]; fetchedAt?: number };
+    if (!p || typeof p.fetchedAt !== "number" || !Array.isArray(p.jobs)) {
+      return { tasks: [], fromCache: false };
+    }
+    if (Date.now() - p.fetchedAt > DISK_MAX_AGE_MS) return { tasks: [], fromCache: false };
+    const cards = selectOpenRecentTaskCards(p.jobs, limit);
+    return { tasks: cards, fromCache: true };
+  } catch {
+    return { tasks: [], fromCache: false };
+  }
+}
+
+/**
+ * Single-flight cached fetch for homepage sections (recent tasks + scroller).
+ * Avoids duplicate /get-all-jobs/ when both components mount (mobile + desktop hidden siblings).
+ */
+export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
+  tryHydrateCacheFromDisk();
+
+  const now = Date.now();
+  if (cache && now - cache.fetchedAt < TTL_MS) {
+    return cache.jobs;
+  }
+  if (inflight) {
+    return inflight;
+  }
+  inflight = (async () => {
+    try {
+      const response = await axiosInstance.get("/get-all-jobs/");
+      const data = response?.data;
+      if (isGetAllJobsResponseOk(data, response?.status)) {
+        const jobs = extractJobsArray(data);
+        cache = { jobs, fetchedAt: Date.now() };
+        persistJobs(jobs);
+        return jobs;
+      }
+    } catch {
+      /* ignore */
+    }
+    cache = { jobs: [], fetchedAt: Date.now() };
+    try {
+      persistJobs([]);
+    } catch {
+      /* ignore */
+    }
+    return [];
+  })();
+  try {
+    return await inflight;
+  } finally {
+    inflight = null;
+  }
+}
+
+/** Start fetch early (e.g. from header) so `/get-all-jobs/` overlaps first paint. */
+export function warmHomeJobsCache(): void {
+  if (typeof window === "undefined") return;
+  tryHydrateCacheFromDisk();
+  void getAllJobsForHomeCached();
 }
