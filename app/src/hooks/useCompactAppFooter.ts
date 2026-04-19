@@ -14,32 +14,40 @@ export function useCompactAppFooter(): boolean {
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_MOBILE_SHELL === "true") return;
 
-    const checkCompact = () => {
-      const smallScreen = window.matchMedia("(max-width: 768px)").matches;
+    let isNative = false;
+
+    const recompute = () => {
+      /** Align with Tailwind `md` (min-width 768px): compact only below that. */
+      const narrow = window.matchMedia("(max-width: 767px)").matches;
       const standalone =
         window.matchMedia("(display-mode: standalone)").matches ||
         (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-      if (smallScreen || standalone) {
-        setCompact(true);
-      }
+      setCompact(isNative || narrow || standalone);
     };
 
-    checkCompact();
-    window.addEventListener("resize", checkCompact);
+    recompute();
+
+    const mq = window.matchMedia("(max-width: 767px)");
+    mq.addEventListener("change", recompute);
+    window.addEventListener("resize", recompute);
 
     let cancelled = false;
     void import("@capacitor/core")
       .then(({ Capacitor }) => {
         if (cancelled) return;
-        if (Capacitor.isNativePlatform()) setCompact(true);
+        if (Capacitor.isNativePlatform()) {
+          isNative = true;
+          recompute();
+        }
       })
       .catch(() => {
-        // Keep compact mode based on mobile viewport / standalone fallback.
+        /* web: keep narrow / standalone only */
       });
 
     return () => {
       cancelled = true;
-      window.removeEventListener("resize", checkCompact);
+      mq.removeEventListener("change", recompute);
+      window.removeEventListener("resize", recompute);
     };
   }, []);
 
