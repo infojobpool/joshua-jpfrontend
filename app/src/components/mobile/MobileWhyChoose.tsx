@@ -29,46 +29,42 @@ const FEATURES = [
 
 export function MobileWhyChoose() {
   return (
-    <section className="md:hidden px-4 py-8 bg-slate-50">
-      <div className="max-w-lg mx-auto">
-        <h2 className="text-2xl font-bold tracking-tight text-gray-900">
-          Why Choose JobPool?
-        </h2>
-        <p className="mt-2 text-gray-500 text-sm">
-          Safe, reliable, and easy to use - everything you need to get tasks done.
-        </p>
+    <section className="md:hidden bg-slate-50 px-4 py-4">
+      <div className="mx-auto max-w-lg">
+        <h2 className="text-lg font-bold tracking-tight text-gray-900">Why JobPool?</h2>
+        <p className="mt-0.5 text-xs text-gray-500">Safe payments, fair pricing, verified helpers.</p>
 
-        <div className="grid grid-cols-2 gap-3 mt-6">
+        <div className="mt-3 grid grid-cols-2 gap-2">
           {FEATURES.map((feature) => {
             const Icon = feature.icon;
             return (
               <div
                 key={feature.title}
-                className="bg-white p-4 rounded-xl shadow-sm border border-gray-100"
+                className="rounded-xl border border-gray-100 bg-white p-2.5 shadow-sm"
               >
-                <div className="p-2 bg-blue-50 rounded-full inline-block mb-3">
-                  <Icon className="h-6 w-6 text-blue-600" />
+                <div className="inline-flex rounded-full bg-blue-50 p-1.5">
+                  <Icon className="h-4 w-4 text-blue-600" />
                 </div>
-                <h3 className="text-sm font-bold text-gray-900">{feature.title}</h3>
-                <p className="text-xs text-gray-500 mt-1">{feature.description}</p>
+                <h3 className="mt-1.5 text-xs font-bold leading-tight text-gray-900">{feature.title}</h3>
+                <p className="mt-0.5 text-[10px] leading-snug text-gray-500 line-clamp-3">{feature.description}</p>
               </div>
             );
           })}
         </div>
 
-        <div className="relative mt-6 rounded-2xl overflow-hidden shadow-lg w-full min-h-[240px] h-64 bg-gray-200">
+        <div className="relative mt-3 aspect-[16/9] w-full overflow-hidden rounded-xl bg-gray-200 shadow-md">
           <Image
             src="/images/image2.jpeg"
             alt="Join our community"
             fill
-            className="object-cover object-top"
+            className="object-cover object-[50%_40%]"
             sizes="(max-width: 768px) 100vw, 400px"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex items-end justify-center">
-            <div className="p-5 text-white w-full text-center">
-              <h3 className="text-lg font-bold">Join our community</h3>
-              <p className="text-sm text-white/90 mt-1">
-                Connect with thousands of Taskers and customers in your area
+          <div className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/65 via-black/15 to-transparent">
+            <div className="w-full px-3 py-2.5 text-center text-white">
+              <h3 className="text-sm font-bold">Join our community</h3>
+              <p className="mt-0.5 text-[10px] text-white/90 line-clamp-2">
+                Taskers and customers near you
               </p>
             </div>
           </div>

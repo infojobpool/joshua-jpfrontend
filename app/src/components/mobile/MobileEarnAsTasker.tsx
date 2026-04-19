@@ -11,79 +11,79 @@ const CARDS = [
     iconColor: "text-blue-600",
     bgColor: "bg-blue-50",
     title: "Download the JobPool App",
-    description:
-      "Download the JobPool App and get the tasks you need completed with just a tap of the button. You can also browse available tasks and earn money wherever you go!",
-    cta: "Earn up to ₹50,000 per month completing tasks",
+    description: "Post tasks or browse offers on the go.",
+    cta: "Earn up to ₹50,000/mo",
   },
   {
     icon: Clock,
     iconColor: "text-green-600",
     bgColor: "bg-green-50",
     title: "All on your terms",
-    description:
-      "Saw a job that fits your skills and timeframe? Go for it. JobPool's flexible to your schedule.",
-    cta: "Work when you want, where you want",
+    description: "Pick jobs that fit your schedule.",
+    cta: "Flexible work",
   },
   {
     icon: IndianRupee,
     iconColor: "text-amber-600",
     bgColor: "bg-amber-50",
     title: "Payments on lock",
-    description:
-      "Nobody likes chasing money, so we secure customer payments upfront. When a task is marked complete, your bank account will know about it.",
-    cta: "Get paid quickly and securely",
+    description: "Funds held until the task is done.",
+    cta: "Paid securely",
   },
   {
     icon: Shield,
     iconColor: "text-violet-600",
     bgColor: "bg-violet-50",
     title: "Peace of mind, insured",
-    description:
-      "Liability insurance is sorted for Taskers performing most Tasks. JobPool Insurance is provided by reputable insurance brands.",
-    cta: "Work with confidence and protection",
+    description: "Coverage for eligible Task work.",
+    cta: "Work protected",
   },
 ];
 
 export function MobileEarnAsTasker() {
   return (
-    <section className="md:hidden px-4 py-8 bg-slate-100">
-      <div className="max-w-lg mx-auto">
-        <h2 className="text-2xl font-bold tracking-tight text-gray-900 text-center">
-          Earn Money as a Tasker
-        </h2>
-        <p className="mt-2 text-gray-600 text-sm text-center">
-          Join thousands of Taskers who are earning money by helping others with their tasks.
+    <section className="md:hidden bg-slate-100 px-4 py-4">
+      <div className="mx-auto max-w-lg">
+        <h2 className="text-center text-lg font-bold tracking-tight text-gray-900">Earn as a Tasker</h2>
+        <p className="mt-1 text-center text-xs text-gray-600">
+          Help others locally and get paid for your skills.
         </p>
 
-        <div className="grid grid-cols-1 gap-4 mt-6">
+        <div className="mt-3 flex gap-2.5 overflow-x-auto pb-1 pt-0.5 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {CARDS.map((card) => {
             const Icon = card.icon;
             return (
               <div
                 key={card.title}
-                className="bg-white p-4 rounded-xl shadow-sm border border-gray-100"
+                className="snap-center shrink-0 w-[min(17.5rem,calc(100vw-3.5rem))] rounded-xl border border-gray-100 bg-white p-3 shadow-sm"
               >
-                <div className={`p-2 ${card.bgColor} rounded-full inline-block mb-3`}>
-                  <Icon className={`h-6 w-6 ${card.iconColor}`} />
+                <div className={`inline-flex rounded-full p-1.5 ${card.bgColor}`}>
+                  <Icon className={`h-4 w-4 ${card.iconColor}`} />
                 </div>
-                <h3 className="text-base font-bold text-gray-900">{card.title}</h3>
-                <p className="text-sm text-gray-600 mt-2">{card.description}</p>
-                <p className="text-sm font-medium text-green-600 mt-2">{card.cta}</p>
+                <h3 className="mt-2 text-sm font-bold leading-snug text-gray-900">{card.title}</h3>
+                <p className="mt-1 text-[11px] leading-relaxed text-gray-600">{card.description}</p>
+                <p className="mt-1.5 text-[11px] font-semibold text-green-700">{card.cta}</p>
               </div>
             );
           })}
         </div>
 
-        <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-          <Button asChild className="bg-green-600 hover:bg-green-700 text-white rounded-xl">
-            <Link href="/signup" className="inline-flex items-center gap-2">
-              Join JobPool <ArrowRight className="h-4 w-4" />
+        <div className="mt-3 flex flex-col gap-2">
+          <Button asChild className="h-10 rounded-xl bg-green-600 text-sm hover:bg-green-700">
+            <Link href="/signup" className="inline-flex items-center justify-center gap-2">
+              Join JobPool <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </Button>
-          <Button asChild variant="outline" className="border-green-600 text-green-600 hover:bg-green-50 rounded-xl">
+          <Button asChild variant="outline" className="h-10 rounded-xl border-green-600 text-sm text-green-700 hover:bg-green-50">
             <Link href="/signup">Earn Money</Link>
           </Button>
         </div>
+
+        <p className="mt-2 text-center">
+          <Link href="/how-it-works" className="text-[11px] font-medium text-slate-500 hover:text-blue-600">
+            Full Tasker guide
+          </Link>
+        </p>
       </div>
     </section>
   );

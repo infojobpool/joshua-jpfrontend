@@ -5,8 +5,8 @@ import Image from "next/image";
 
 export function MobileHeroBanner() {
   return (
-    <div className="md:hidden px-4 pt-4 bg-white">
-      <div className="relative w-full aspect-[21/9] min-h-[11rem] max-h-56 rounded-2xl overflow-hidden shadow-md bg-[#0a1744]">
+    <div className="md:hidden bg-white px-4 pt-2">
+      <div className="relative aspect-[2/1] max-h-40 w-full min-h-[7.5rem] overflow-hidden rounded-xl bg-[#0a1744] shadow-md">
         <Image
           src="/images/mobile-hero-get-hired-24h.png"
           alt="Get hired in 24 hours – JobPool"
