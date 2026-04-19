@@ -48,8 +48,7 @@ export function MobileTestimonials() {
     <div className="md:hidden relative overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50/90 px-4 pb-6 pt-8">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-200/80 to-transparent" />
       <div className="mb-5 text-center">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-600/90">Social proof</p>
-        <h3 className="mt-1 font-[family-name:var(--font-archivo)] text-xl font-bold tracking-tight text-slate-900 sm:text-[1.35rem]">
+        <h3 className="font-[family-name:var(--font-archivo)] text-xl font-bold tracking-tight text-slate-900 sm:text-[1.35rem]">
           What people say
         </h3>
         <p className="mt-1.5 text-xs leading-relaxed text-slate-500">Real stories from customers and Helpers on JobPool</p>
