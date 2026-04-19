@@ -1,8 +1,10 @@
 "use client"
 
-import { motion } from "framer-motion"
+import { useCallback, useEffect, useState } from "react"
+import { AnimatePresence, motion } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
+import { cn } from "@/lib/utils"
 import { Button } from "../../../components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
 import {
@@ -18,7 +20,34 @@ import {
 } from "lucide-react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../../../components/ui/accordion"
 
+const HERO_SLIDES = [
+  {
+    src: "/images/how-it-works-start-title.png",
+    alt: "Post a task: start with a short title, like Guitar Classes",
+  },
+  {
+    src: "/images/how-it-works-budget-slide.png",
+    alt: "Set your rough budget when posting a task",
+  },
+] as const
+
 export function HowItWorksPage() {
+  const [heroSlide, setHeroSlide] = useState(0)
+  const [heroPaused, setHeroPaused] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    if (heroPaused) return
+    const id = window.setInterval(() => {
+      setHeroSlide((i) => (i + 1) % HERO_SLIDES.length)
+    }, 5500)
+    return () => window.clearInterval(id)
+  }, [heroPaused])
+
+  const goHeroSlide = useCallback((index: number) => {
+    if (index >= 0 && index < HERO_SLIDES.length) setHeroSlide(index)
+  }, [])
   const posterSteps = [
     {
       icon: <ClipboardList className="h-12 w-12 text-blue-600" />,
@@ -251,16 +280,53 @@ export function HowItWorksPage() {
                   }}
                   aria-hidden
                 />
-                <div className="relative overflow-hidden rounded-2xl shadow-2xl ring-1 ring-slate-900/10 bg-white">
-                  <Image
-                    src="/images/how-it-works-start-title.png"
-                    alt="Post a task: start with a short title, like Guitar Classes"
-                    width={866}
-                    height={1024}
-                    className="w-full h-auto object-cover object-top"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1280px) 42vw, 520px"
-                    priority
-                  />
+                <div
+                  className="relative overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10"
+                  onMouseEnter={() => setHeroPaused(true)}
+                  onMouseLeave={() => setHeroPaused(false)}
+                >
+                  <div className="relative aspect-[866/1024] w-full">
+                    <AnimatePresence initial={false} mode="wait">
+                      <motion.div
+                        key={heroSlide}
+                        className="absolute inset-0"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.38 }}
+                      >
+                        <Image
+                          src={HERO_SLIDES[heroSlide].src}
+                          alt={HERO_SLIDES[heroSlide].alt}
+                          fill
+                          className="object-cover object-top"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 42vw, 520px"
+                          priority={heroSlide === 0}
+                          draggable={false}
+                        />
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+                  <div
+                    className="flex justify-center gap-2 border-t border-slate-100 bg-white py-2.5"
+                    role="tablist"
+                    aria-label="Hero illustration slides"
+                  >
+                    {HERO_SLIDES.map((_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        role="tab"
+                        aria-selected={heroSlide === i}
+                        aria-label={`Slide ${i + 1}`}
+                        className={cn(
+                          "h-2 w-2 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600",
+                          heroSlide === i ? "bg-blue-600" : "bg-slate-300 hover:bg-slate-400",
+                        )}
+                        onClick={() => goHeroSlide(i)}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             </motion.div>
