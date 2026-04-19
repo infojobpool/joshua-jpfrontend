@@ -6,8 +6,6 @@ import { RecentAvailableTasks } from '../components/mainpage/recent-available-ta
 import { HomePublishedOfferings } from '../components/mainpage/home-published-offerings'
 import { MobileTestimonials } from '../components/mobile/MobileTestimonials'
 import { MobileWhyChoose } from '../components/mobile/MobileWhyChoose'
-import { MobileEarnAsTasker } from '../components/mobile/MobileEarnAsTasker'
-import { MobileShowcase } from '../components/mobile/MobileShowcase'
 import { MobileHeroBanner } from '../components/mobile/MobileHeroBanner'
 import { BlogArticlesSection } from '../components/blog/BlogArticlesSection'
 import { HowItWorks } from '../components/mainpage/how-it-works'
@@ -26,8 +24,6 @@ export default function Home() {
         <RecentAvailableTasks variant="mobile" />
         <HomePublishedOfferings variant="mobile" />
         <MobileHeroBanner />
-        <MobileShowcase />
-        <MobileEarnAsTasker />
         <MobileWhyChoose />
         <MobileTestimonials />
         <BlogArticlesSection />
