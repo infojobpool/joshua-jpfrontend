@@ -269,7 +269,7 @@ export function HowItWorksPage() {
       </section>
 
       <section className="py-8 sm:py-12 md:py-16">
-        <div className="container px-4 md:px-6 max-w-6xl mx-auto">
+        <div className="mx-auto w-full max-w-6xl px-4 md:px-6">
           <Tabs defaultValue="poster" className="w-full">
             <TabsList className="mb-6 sm:mb-8 flex flex-wrap justify-center gap-2 w-full sm:w-auto">
               <TabsTrigger value="poster" className="flex-1 sm:flex-none px-4 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base">
@@ -331,7 +331,7 @@ export function HowItWorksPage() {
                   transition={{ duration: 0.5 }}
                   viewport={{ once: true }}
                 >
-                  <div className="relative w-full max-w-lg mx-auto md:mx-0 order-2 md:order-1">
+                  <div className="relative w-full max-w-lg mx-auto order-2 md:order-1">
                     <div
                       className="absolute inset-0 -m-2 sm:-m-3 rounded-2xl opacity-95"
                       style={{
@@ -342,17 +342,19 @@ export function HowItWorksPage() {
                     />
                     <div className="relative overflow-hidden rounded-xl shadow-xl ring-1 ring-slate-900/10 bg-white">
                       <Image
-                        src="/images/how-it-works-budget-step.png"
+                        src="/images/how-it-works-job-completed.png"
                         width={866}
                         height={1024}
-                        alt="Set your rough budget when posting a task"
+                        alt="Job completed: release payment when the task is done to your satisfaction"
                         className="w-full h-auto object-cover object-top"
                         sizes="(max-width: 768px) 100vw, 50vw"
                       />
                     </div>
                   </div>
-                  <div className="order-1 md:order-2">
-                    <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Tips for posting a great task</h2>
+                  <div className="order-1 md:order-2 max-w-xl mx-auto md:mx-0 lg:max-w-none">
+                    <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">
+                      Tips for posting — and paying when you are happy
+                    </h2>
                     <ul className="space-y-4">
                       <li className="flex items-start">
                         <div className="bg-blue-100 p-2 rounded-full mr-4 mt-1">
@@ -513,7 +515,7 @@ export function HowItWorksPage() {
       </section>
 
       <section className="py-16 bg-slate-50">
-        <div className="container px-4 md:px-6">
+        <div className="mx-auto w-full max-w-6xl px-4 md:px-6">
           <motion.div
             className="text-center mb-12"
             initial={{ opacity: 0, y: -20 }}
@@ -527,7 +529,7 @@ export function HowItWorksPage() {
             </p>
           </motion.div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {features.map((feature, index) => (
               <motion.div
                 key={index}
@@ -554,7 +556,7 @@ export function HowItWorksPage() {
       </section>
 
       <section className="py-16">
-        <div className="container px-4 md:px-6">
+        <div className="mx-auto w-full max-w-6xl px-4 md:px-6">
           <motion.div
             className="text-center mb-12"
             initial={{ opacity: 0, y: -20 }}
@@ -582,9 +584,10 @@ export function HowItWorksPage() {
       </section>
 
       <section className="py-16 bg-blue-600 text-white">
-        <div className="container px-4 md:px-6">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+        <div className="mx-auto w-full max-w-6xl px-4 md:px-6">
+          <div className="grid grid-cols-1 gap-12 md:grid-cols-2 md:items-center">
             <motion.div
+              className="text-center md:text-left"
               initial={{ opacity: 0, x: -50 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
@@ -594,13 +597,13 @@ export function HowItWorksPage() {
               <p className="text-xl text-blue-100 mb-8">
                 Join thousands of satisfied customers and Helpers on JobPool today.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="/post-task">
+              <div className="flex flex-col items-stretch justify-center gap-4 sm:flex-row sm:justify-start">
+                <Link href="/post-task" className="sm:inline-flex">
                   <Button className="bg-white text-blue-600 hover:bg-blue-50 px-8 py-6 text-lg w-full sm:w-auto">
                     Post a Task
                   </Button>
                 </Link>
-                <Link href="/signup">
+                <Link href="/signup" className="sm:inline-flex">
                   <Button
                     variant="outline"
                     className="bg-white text-blue-600 hover:bg-blue-50 px-8 py-6 text-lg w-full sm:w-auto"
