@@ -177,7 +177,7 @@ export default function ProfilePageClient() {
   if (error) return <div>Error: {error}</div>;
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 via-slate-100/30 to-white overflow-x-hidden w-full min-w-0">
+    <div className="flex min-h-0 flex-col bg-gradient-to-b from-slate-50 via-slate-100/30 to-white overflow-x-hidden w-full min-w-0 md:min-h-screen">
       {/* Main content — min-w-0 + overflow-x-hidden stop wide children (e.g. portfolio strip) from shifting layout on mobile */}
       <main className="flex-1 w-full min-w-0 max-w-6xl mx-auto box-border py-6 md:py-10 px-4 md:px-6 overflow-x-hidden">
         <Link

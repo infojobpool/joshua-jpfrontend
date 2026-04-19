@@ -1874,7 +1874,7 @@ export default function TaskDetailPage() {
       );
     }
     return (
-      <div className="min-h-screen p-4 md:p-6 animate-in fade-in duration-200">
+      <div className="min-h-0 md:min-h-screen p-4 md:p-6 animate-in fade-in duration-200">
         <div className="mx-auto max-w-3xl">
           <div className="h-10 w-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse mb-6" />
           <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
@@ -1956,7 +1956,7 @@ export default function TaskDetailPage() {
   const totalAmount = Math.max(bidAmountNumber - handlingCharges, 0); // amount user receives after charges
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+    <div className="min-h-0 bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 md:min-h-screen">
       <Toaster position="top-right" />
       <Header user={headerUser} onSignOut={handleSignOut} />
       
@@ -1987,7 +1987,7 @@ export default function TaskDetailPage() {
         </div>
       </div>
 
-      <main className="container mx-auto max-w-6xl px-4 md:px-6 py-4 md:py-6 min-h-[60vh]">
+      <main className="container mx-auto max-w-6xl px-4 md:px-6 py-4 md:py-6 md:min-h-[60vh]">
         <div className="grid gap-4 lg:grid-cols-3 lg:min-h-[400px]">
           {/* Main Content - Left Column */}
           <div className="lg:col-span-2 space-y-4">

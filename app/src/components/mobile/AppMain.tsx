@@ -16,7 +16,7 @@ export function AppMain({ children }: { children: React.ReactNode }) {
       className={cn(
         hideNav
           ? "min-h-screen pb-[env(safe-area-inset-bottom)]"
-          : "min-h-0 pb-[calc(env(safe-area-inset-bottom)+96px)] md:min-h-screen md:pb-0",
+          : "min-h-0 pb-[calc(env(safe-area-inset-bottom)+5.25rem)] md:min-h-screen md:pb-0",
       )}
     >
       {children}
