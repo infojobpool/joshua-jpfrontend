@@ -22,12 +22,19 @@ function apiBase(): string {
 }
 
 /** Matches backend public testimonial JSON (snake_case avatar_url → camelCase). */
+function cleanLabel(s: string): string {
+  return s.replace(/^[\s.,\-_:;]+/, "").replace(/\s+/g, " ").trim();
+}
+
 function mapPublicRow(row: Record<string, unknown>, index: number): MarketingTestimonial | null {
   const id = typeof row.id === "string" ? row.id : `fallback-${index}`;
-  const name = typeof row.name === "string" ? row.name : "";
-  const role = typeof row.role === "string" ? row.role : "";
-  const text = typeof row.text === "string" ? row.text : "";
-  const rating = typeof row.rating === "number" && row.rating >= 1 && row.rating <= 5 ? row.rating : 5;
+  const name = typeof row.name === "string" ? cleanLabel(row.name) : "";
+  const role = typeof row.role === "string" ? cleanLabel(row.role) : "";
+  const text = typeof row.text === "string" ? row.text.trim() : "";
+  const rating =
+    typeof row.rating === "number" && Number.isFinite(row.rating)
+      ? Math.min(5, Math.max(0, row.rating))
+      : 5;
   const category =
     row.category === null || row.category === undefined
       ? null
