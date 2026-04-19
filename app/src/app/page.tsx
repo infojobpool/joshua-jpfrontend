@@ -5,7 +5,6 @@ import { MobileWelcomeBonus } from '../components/mobile/MobileWelcomeBonus'
 import { RecentAvailableTasks } from '../components/mainpage/recent-available-tasks'
 import { HomePublishedOfferings } from '../components/mainpage/home-published-offerings'
 import { MobileTestimonials } from '../components/mobile/MobileTestimonials'
-import { MobileWhyChoose } from '../components/mobile/MobileWhyChoose'
 import { MobileHeroBanner } from '../components/mobile/MobileHeroBanner'
 import { BlogArticlesSection } from '../components/blog/BlogArticlesSection'
 import { HowItWorks } from '../components/mainpage/how-it-works'
@@ -24,7 +23,6 @@ export default function Home() {
         <RecentAvailableTasks variant="mobile" />
         <HomePublishedOfferings variant="mobile" />
         <MobileHeroBanner />
-        <MobileWhyChoose />
         <MobileTestimonials />
         <BlogArticlesSection />
       </div>
