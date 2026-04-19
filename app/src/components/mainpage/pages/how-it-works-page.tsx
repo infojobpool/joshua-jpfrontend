@@ -31,9 +31,23 @@ const HERO_SLIDES = [
   },
 ] as const
 
+/** Job completed + accept bids — beside “Tips for posting” (poster tab). */
+const POSTER_TIPS_SLIDES = [
+  {
+    src: "/images/how-it-works-job-completed.png",
+    alt: "Job completed: release payment when the task is done to your satisfaction",
+  },
+  {
+    src: "/images/how-it-works-bidding-slide.png",
+    alt: "Review bids and accept the best Helper for your task",
+  },
+] as const
+
 export function HowItWorksPage() {
   const [heroSlide, setHeroSlide] = useState(0)
   const [heroPaused, setHeroPaused] = useState(false)
+  const [tipsSlide, setTipsSlide] = useState(0)
+  const [tipsPaused, setTipsPaused] = useState(false)
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -45,8 +59,22 @@ export function HowItWorksPage() {
     return () => window.clearInterval(id)
   }, [heroPaused])
 
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    if (tipsPaused) return
+    const id = window.setInterval(() => {
+      setTipsSlide((i) => (i + 1) % POSTER_TIPS_SLIDES.length)
+    }, 6000)
+    return () => window.clearInterval(id)
+  }, [tipsPaused])
+
   const goHeroSlide = useCallback((index: number) => {
     if (index >= 0 && index < HERO_SLIDES.length) setHeroSlide(index)
+  }, [])
+
+  const goTipsSlide = useCallback((index: number) => {
+    if (index >= 0 && index < POSTER_TIPS_SLIDES.length) setTipsSlide(index)
   }, [])
   const posterSteps = [
     {
@@ -406,15 +434,53 @@ export function HowItWorksPage() {
                       }}
                       aria-hidden
                     />
-                    <div className="relative overflow-hidden rounded-xl shadow-xl ring-1 ring-slate-900/10 bg-white">
-                      <Image
-                        src="/images/how-it-works-job-completed.png"
-                        width={866}
-                        height={1024}
-                        alt="Job completed: release payment when the task is done to your satisfaction"
-                        className="w-full h-auto object-cover object-top"
-                        sizes="(max-width: 768px) 100vw, 50vw"
-                      />
+                    <div
+                      className="relative overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-slate-900/10"
+                      onMouseEnter={() => setTipsPaused(true)}
+                      onMouseLeave={() => setTipsPaused(false)}
+                    >
+                      <div className="relative aspect-[866/1024] w-full">
+                        <AnimatePresence initial={false} mode="wait">
+                          <motion.div
+                            key={tipsSlide}
+                            className="absolute inset-0"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.38 }}
+                          >
+                            <Image
+                              src={POSTER_TIPS_SLIDES[tipsSlide].src}
+                              alt={POSTER_TIPS_SLIDES[tipsSlide].alt}
+                              fill
+                              className="object-cover object-top"
+                              sizes="(max-width: 768px) 100vw, 50vw"
+                              priority={tipsSlide === 0}
+                              draggable={false}
+                            />
+                          </motion.div>
+                        </AnimatePresence>
+                      </div>
+                      <div
+                        className="flex justify-center gap-2 border-t border-slate-100 bg-white py-2.5"
+                        role="tablist"
+                        aria-label="Task flow illustration slides"
+                      >
+                        {POSTER_TIPS_SLIDES.map((_, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            role="tab"
+                            aria-selected={tipsSlide === i}
+                            aria-label={`Slide ${i + 1}`}
+                            className={cn(
+                              "h-2 w-2 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600",
+                              tipsSlide === i ? "bg-blue-600" : "bg-slate-300 hover:bg-slate-400",
+                            )}
+                            onClick={() => goTipsSlide(i)}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
                   <div className="order-1 md:order-2 max-w-xl mx-auto md:mx-0 lg:max-w-none">
