@@ -298,7 +298,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
   }, []);
 
   const title = "Service listings & direct hire";
-  const subtitle = "Book pros at listed prices.";
+  const subtitle = "Hire at shown prices.";
 
   if (variant === "mobile") {
     if (loading) {
@@ -321,7 +321,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
       const feedEmpty = rows.length === 0;
       return (
         <div className="md:hidden border-t border-emerald-100/70 bg-gradient-to-b from-emerald-50/45 via-gray-50/90 to-gray-50 px-4 py-5">
-          <h3 className="font-home-section-title border-l-[3px] border-blue-600 pl-2.5 text-lg text-slate-900">{title}</h3>
+          <h3 className="font-home-section-title border-l-[3px] border-blue-500 pl-2.5 text-lg text-slate-900">{title}</h3>
           <p className="font-home-section-desc mt-1 text-sm text-gray-500">{subtitle}</p>
           <div className="mt-4 rounded-2xl border border-dashed border-emerald-200/90 bg-white p-6 text-center shadow-sm">
             <Package className="mx-auto h-10 w-10 text-emerald-200" />
@@ -364,7 +364,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
 
     return (
       <div className="md:hidden w-full min-w-0 max-w-full border-t border-emerald-100/70 bg-gradient-to-b from-emerald-50/45 via-gray-50/90 to-gray-50 px-4 py-4">
-        <h3 className="font-home-section-title mb-1 border-l-[3px] border-blue-600 pl-2.5 text-lg text-slate-900">
+        <h3 className="font-home-section-title mb-1 border-l-[3px] border-blue-500 pl-2.5 text-lg text-slate-900">
           {title}
         </h3>
         <p className="font-home-section-desc mb-3 text-sm text-gray-500">{subtitle}</p>
@@ -433,7 +433,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
             viewport={{ once: true }}
           >
             <h2 className="font-home-section-title mb-2 text-2xl text-slate-900 md:text-3xl">
-              <span className="border-b-[3px] border-blue-600 pb-0.5">{title}</span>
+              <span className="border-b-[3px] border-blue-500 pb-0.5">{title}</span>
             </h2>
             <p className="font-home-section-desc mx-auto max-w-2xl text-sm text-gray-600 md:text-base">{subtitle}</p>
           </motion.div>
@@ -488,7 +488,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
           viewport={{ once: true }}
         >
           <h2 className="font-home-section-title mb-2 text-2xl text-slate-900 md:text-3xl">
-            <span className="border-b-[3px] border-blue-600 pb-0.5">{title}</span>
+            <span className="border-b-[3px] border-blue-500 pb-0.5">{title}</span>
           </h2>
           <p className="font-home-section-desc mx-auto max-w-2xl text-sm text-gray-600 md:text-base">{subtitle}</p>
         </motion.div>

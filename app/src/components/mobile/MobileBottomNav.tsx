@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Home, Search, Plus, MessageSquare, LayoutList } from "lucide-react";
 import { isMobileBottomNavHidden } from "@/lib/mobileNavVisibility";
+import { HOME_BROWSE_ALL_TASKS_HREF } from "@/lib/homeSectionNav";
 
 type NavLinkItem = {
   href: string;
@@ -34,7 +35,7 @@ export function MobileBottomNav() {
 
   const navItems: (NavLinkItem | { type: "post" })[] = [
     { href: "/", icon: Home, label: "Home" },
-    { href: "/dashboard", icon: Search, label: "Browse" },
+    { href: HOME_BROWSE_ALL_TASKS_HREF, icon: Search, label: "Browse" },
     { type: "post" },
     { href: "/messages", icon: MessageSquare, label: "Chat" },
     {

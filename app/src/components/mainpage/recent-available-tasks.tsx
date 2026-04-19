@@ -11,9 +11,10 @@ import {
   type HomeTaskCard,
 } from "@/lib/homeJobsCache";
 import { prefetchBidsForTask } from "@/lib/taskNavCache";
+import { HOME_BROWSE_ALL_TASKS_HREF, HOME_EXPLORE_ALL_TASKS_LABEL } from "@/lib/homeSectionNav";
 
 const DESKTOP_MAX = 12;
-const SECTION_SUBTITLE = "Browse tasks and apply.";
+const SECTION_SUBTITLE = "See open tasks and apply.";
 /** Mobile recent-tasks strip: auto-scroll speed (px/s) — time-based; keep modest so swipe still feels natural */
 const MOBILE_RECENT_AUTO_SCROLL_PX_PER_SEC = 52;
 const DESKTOP_RECENT_AUTO_SCROLL_PX_PER_SEC = 42;
@@ -222,7 +223,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     if (tasks.length === 0) {
       return (
         <div className="md:hidden px-4 py-6 bg-white">
-          <h3 className="font-home-section-title border-l-[3px] border-blue-600 pl-2.5 text-lg text-slate-900">
+          <h3 className="font-home-section-title border-l-[3px] border-blue-500 pl-2.5 text-lg text-slate-900">
             Recent available tasks
           </h3>
           <p className="font-home-section-desc mt-1 text-sm text-gray-500">{SECTION_SUBTITLE}</p>
@@ -237,7 +238,8 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
                 ·
               </span>
               <Link
-                href="/dashboard"
+                href={HOME_BROWSE_ALL_TASKS_HREF}
+                aria-label={HOME_EXPLORE_ALL_TASKS_LABEL}
                 className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98]"
               >
                 Explore more
@@ -263,13 +265,14 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
         <div className="md:hidden w-full min-w-0 max-w-full px-4 py-4 bg-white">
           <div className="mb-3 flex items-end justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <h3 className="font-home-section-title border-l-[3px] border-blue-600 pl-2.5 text-lg text-slate-900">
+              <h3 className="font-home-section-title border-l-[3px] border-blue-500 pl-2.5 text-lg text-slate-900">
                 Recent available tasks
               </h3>
               <p className="font-home-section-desc mt-0.5 text-sm text-gray-500">{SECTION_SUBTITLE}</p>
             </div>
             <Link
-              href="/dashboard"
+              href={HOME_BROWSE_ALL_TASKS_HREF}
+              aria-label={HOME_EXPLORE_ALL_TASKS_LABEL}
               className="group/explore inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full bg-blue-600 py-1 pl-2 pr-1.5 text-[8px] font-semibold uppercase leading-none tracking-[0.06em] text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] min-[360px]:gap-1 min-[360px]:py-1.5 min-[360px]:pl-2.5 min-[360px]:pr-2 min-[360px]:text-[9px] min-[400px]:text-[10px]"
             >
               <span>Explore more</span>
@@ -373,7 +376,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
             viewport={{ once: true }}
           >
             <h2 className="font-home-section-title mb-2 text-2xl text-slate-900 md:text-3xl">
-              <span className="border-b-[3px] border-blue-600 pb-0.5">Recent available tasks</span>
+              <span className="border-b-[3px] border-blue-500 pb-0.5">Recent available tasks</span>
             </h2>
             <p className="font-home-section-desc mx-auto max-w-2xl text-sm text-gray-600 md:text-base">
               {SECTION_SUBTITLE}
@@ -388,7 +391,8 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
                 Post a task
               </Link>
               <Link
-                href="/dashboard"
+                href={HOME_BROWSE_ALL_TASKS_HREF}
+                aria-label={HOME_EXPLORE_ALL_TASKS_LABEL}
                 className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98]"
               >
                 Explore more
@@ -422,13 +426,14 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
           viewport={{ once: true }}
         >
           <h2 className="font-home-section-title mb-2 text-2xl text-slate-900 md:text-3xl">
-            <span className="border-b-[3px] border-blue-600 pb-0.5">Recent available tasks</span>
+            <span className="border-b-[3px] border-blue-500 pb-0.5">Recent available tasks</span>
           </h2>
           <p className="font-home-section-desc mx-auto max-w-2xl text-sm text-gray-600 md:text-base">
             {SECTION_SUBTITLE}
           </p>
           <Link
-            href="/dashboard"
+            href={HOME_BROWSE_ALL_TASKS_HREF}
+            aria-label={HOME_EXPLORE_ALL_TASKS_LABEL}
             className="group/explore-desk mt-4 inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white shadow-md transition hover:bg-blue-700 active:scale-[0.98]"
           >
             Explore more
