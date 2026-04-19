@@ -719,8 +719,26 @@ export function HowItWorksPage() {
         <div className="mx-auto w-full max-w-6xl px-4 md:px-6">
           <div className="grid grid-cols-1 gap-12 md:grid-cols-2 md:items-center">
             <motion.div
+              initial={{ opacity: 0, x: -40 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+              viewport={{ once: true }}
+              className="relative mx-auto w-full max-w-md md:max-w-lg"
+            >
+              <div className="relative overflow-hidden rounded-xl shadow-xl ring-1 ring-white/20">
+                <Image
+                  src="/images/how-it-works-job-completed.png"
+                  width={866}
+                  height={1024}
+                  alt="Job completed: release payment when the task is done to your satisfaction"
+                  className="w-full h-auto object-cover object-top"
+                  sizes="(max-width: 768px) 100vw, 45vw"
+                />
+              </div>
+            </motion.div>
+            <motion.div
               className="text-center md:text-left"
-              initial={{ opacity: 0, x: -50 }}
+              initial={{ opacity: 0, x: 40 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
               viewport={{ once: true }}
@@ -744,21 +762,6 @@ export function HowItWorksPage() {
                   </Button>
                 </Link>
               </div>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
-              className="relative w-full aspect-[4/3] md:h-[400px] rounded-xl overflow-hidden"
-            >
-              <Image
-                src="/images/image1.jpeg"
-                fill
-                alt="JobPool - get started"
-                className="object-cover rounded-xl"
-                sizes="(max-width: 768px) 100vw, 50vw"
-              />
             </motion.div>
           </div>
         </div>
