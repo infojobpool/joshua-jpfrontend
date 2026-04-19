@@ -13,6 +13,7 @@ import {
 import { prefetchBidsForTask } from "@/lib/taskNavCache";
 
 const DESKTOP_MAX = 12;
+const SECTION_SUBTITLE = "Browse tasks and apply.";
 /** Mobile recent-tasks strip: auto-scroll speed (px/s) — time-based; keep modest so swipe still feels natural */
 const MOBILE_RECENT_AUTO_SCROLL_PX_PER_SEC = 52;
 const DESKTOP_RECENT_AUTO_SCROLL_PX_PER_SEC = 42;
@@ -221,8 +222,10 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     if (tasks.length === 0) {
       return (
         <div className="md:hidden px-4 py-6 bg-white">
-          <h3 className="font-home-section-title text-lg text-gray-900">Recent available tasks</h3>
-          <p className="font-home-section-desc mt-1 text-sm text-gray-500">Open tasks you can apply for right now</p>
+          <h3 className="font-home-section-title border-l-[3px] border-blue-600 pl-2.5 text-lg text-slate-900">
+            Recent available tasks
+          </h3>
+          <p className="font-home-section-desc mt-1 text-sm text-gray-500">{SECTION_SUBTITLE}</p>
           <div className="mt-4 flex flex-col items-center rounded-2xl border border-gray-100 bg-gray-50 py-8">
             <Briefcase className="mb-2 h-10 w-10 text-gray-300" />
             <p className="text-sm font-medium text-gray-600">No open tasks yet</p>
@@ -235,10 +238,10 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
               </span>
               <Link
                 href="/dashboard"
-                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-300 hover:text-blue-700"
+                className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98]"
               >
                 Explore more
-                <ArrowRight className="h-3.5 w-3.5" />
+                <ArrowRight className="h-3 w-3" aria-hidden />
               </Link>
             </div>
           </div>
@@ -260,17 +263,17 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
         <div className="md:hidden w-full min-w-0 max-w-full px-4 py-4 bg-white">
           <div className="mb-3 flex items-end justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <h3 className="font-home-section-title text-lg text-gray-900">Recent available tasks</h3>
-              <p className="font-home-section-desc mt-0.5 text-sm text-gray-500">
-                Open tasks you can apply for right now
-              </p>
+              <h3 className="font-home-section-title border-l-[3px] border-blue-600 pl-2.5 text-lg text-slate-900">
+                Recent available tasks
+              </h3>
+              <p className="font-home-section-desc mt-0.5 text-sm text-gray-500">{SECTION_SUBTITLE}</p>
             </div>
             <Link
               href="/dashboard"
-              className="group/explore inline-flex max-w-[46%] shrink-0 items-center gap-1 rounded-full border border-slate-200/90 bg-gradient-to-b from-white to-slate-50 py-2 pl-3 pr-2.5 text-[10px] font-semibold uppercase leading-none tracking-[0.12em] text-slate-700 shadow-[0_2px_12px_rgba(15,23,42,0.06)] ring-1 ring-slate-900/[0.04] transition active:scale-[0.98] hover:border-blue-300/80 hover:text-blue-700 hover:shadow-[0_4px_16px_rgba(37,99,235,0.12)] min-[400px]:max-w-none min-[400px]:gap-1.5 min-[400px]:pl-3.5 min-[400px]:pr-3 min-[400px]:text-[11px] min-[400px]:tracking-[0.14em]"
+              className="group/explore inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full bg-blue-600 py-1 pl-2 pr-1.5 text-[8px] font-semibold uppercase leading-none tracking-[0.06em] text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] min-[360px]:gap-1 min-[360px]:py-1.5 min-[360px]:pl-2.5 min-[360px]:pr-2 min-[360px]:text-[9px] min-[400px]:text-[10px]"
             >
-              <span className="truncate text-left">Explore more</span>
-              <ArrowRight className="h-3.5 w-3.5 shrink-0 transition group-hover/explore:translate-x-0.5" aria-hidden />
+              <span>Explore more</span>
+              <ArrowRight className="h-2.5 w-2.5 shrink-0 opacity-95 transition group-hover/explore:translate-x-0.5 min-[360px]:h-3 min-[360px]:w-3" aria-hidden />
             </Link>
           </div>
         <div
@@ -369,11 +372,11 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
           >
-            <h2 className="font-home-section-title mb-2 text-2xl text-gray-900 md:text-3xl">
-              Recent available tasks
+            <h2 className="font-home-section-title mb-2 text-2xl text-slate-900 md:text-3xl">
+              <span className="border-b-[3px] border-blue-600 pb-0.5">Recent available tasks</span>
             </h2>
             <p className="font-home-section-desc mx-auto max-w-2xl text-sm text-gray-600 md:text-base">
-              Open tasks you can browse and apply for right now
+              {SECTION_SUBTITLE}
             </p>
           </motion.div>
           <div className="mx-auto max-w-7xl rounded-2xl border border-gray-100 bg-white py-12 text-center">
@@ -386,10 +389,10 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
               </Link>
               <Link
                 href="/dashboard"
-                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-300 hover:text-blue-700"
+                className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98]"
               >
                 Explore more
-                <ArrowRight className="h-3.5 w-3.5" />
+                <ArrowRight className="h-3 w-3" aria-hidden />
               </Link>
             </div>
           </div>
@@ -418,18 +421,18 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <h2 className="font-home-section-title mb-2 text-2xl text-gray-900 md:text-3xl">
-            Recent available tasks
+          <h2 className="font-home-section-title mb-2 text-2xl text-slate-900 md:text-3xl">
+            <span className="border-b-[3px] border-blue-600 pb-0.5">Recent available tasks</span>
           </h2>
           <p className="font-home-section-desc mx-auto max-w-2xl text-sm text-gray-600 md:text-base">
-            Open tasks you can browse and apply for right now
+            {SECTION_SUBTITLE}
           </p>
           <Link
             href="/dashboard"
-            className="group/explore-desk mt-5 inline-flex items-center gap-2 rounded-full border border-slate-200/90 bg-gradient-to-b from-white to-slate-50 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-700 shadow-md ring-1 ring-slate-900/[0.04] transition hover:border-blue-300/80 hover:text-blue-700 hover:shadow-lg"
+            className="group/explore-desk mt-4 inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white shadow-md transition hover:bg-blue-700 active:scale-[0.98]"
           >
             Explore more
-            <ArrowRight className="h-4 w-4 transition group-hover/explore-desk:translate-x-0.5" aria-hidden />
+            <ArrowRight className="h-3.5 w-3.5 transition group-hover/explore-desk:translate-x-0.5" aria-hidden />
           </Link>
         </motion.div>
 
