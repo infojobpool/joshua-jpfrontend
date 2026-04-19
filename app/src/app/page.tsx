@@ -18,7 +18,7 @@ import { MobileWrapper } from '../components/mobile/MobileWrapper'
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen min-w-0 w-full flex-col">
+    <div className="flex min-w-0 w-full flex-col">
       {/* Mobile landing (default on small screens) */}
       <div className="md:hidden min-w-0 w-full">
         <MobileHeroSection />

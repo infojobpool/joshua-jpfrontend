@@ -9,13 +9,8 @@ interface MobileLayoutProps {
 }
 
 export function MobileLayout({ children, className = "" }: MobileLayoutProps) {
-  const { isMobile } = useIsMobile();
-
-  return (
-    <div className={`${isMobile ? 'mobile-content' : ''} ${className}`}>
-      {children}
-    </div>
-  );
+  /** Bottom inset is handled by `AppMain` only — avoid stacking with legacy `.mobile-content` (was ~88px + 96px). */
+  return <div className={className}>{children}</div>;
 }
 
 // Mobile-specific page wrapper
