@@ -102,7 +102,10 @@ export default function AdminEditBlogPostPage() {
       });
       const url = parseMediaUploadResponse(res);
       setHeroImageUrl(url);
-      toast.success("Image uploaded — URL applied to hero.");
+      toast.success("Hero image uploaded", {
+        description:
+          "The URL is in the Hero image field (post banner). For pictures inside the article, use Body → Image → Upload.",
+      });
     } catch (e: unknown) {
       toast.error(formatAxiosApiError(e) || "Upload failed.");
     } finally {
@@ -224,6 +227,9 @@ export default function AdminEditBlogPostPage() {
           />
           <div className="space-y-2">
             <Label htmlFor="hero">Hero image URL</Label>
+            <p className="text-xs text-muted-foreground">
+              Post banner (above the article). For images inside the text, use Body → Image → Upload.
+            </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Input
                 id="hero"

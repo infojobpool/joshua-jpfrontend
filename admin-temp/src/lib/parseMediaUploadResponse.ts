@@ -5,7 +5,22 @@
 function tryPickUrl(o: unknown): string | null {
   if (!o || typeof o !== "object") return null;
   const x = o as Record<string, unknown>;
-  for (const k of ["url", "image_url", "photo_url", "file_url"]) {
+  for (const k of [
+    "url",
+    "image_url",
+    "photo_url",
+    "file_url",
+    "hero_image_url",
+    "imageUrl",
+    "fileUrl",
+    "signed_url",
+    "secure_url",
+    "media_url",
+    "asset_url",
+    "link",
+    "src",
+    "path",
+  ]) {
     const v = x[k];
     if (typeof v === "string" && v.trim().length > 0) return v.trim();
   }

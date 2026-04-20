@@ -31,6 +31,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { blogMarkdownRehypePlugins } from "@/lib/blogMarkdownPipeline";
+import { formatAxiosApiError } from "@/lib/apiError";
+import { toast } from "sonner";
 import type { ComponentPropsWithoutRef } from "react";
 
 const PREVIEW_MD_CLASS =
@@ -262,9 +264,13 @@ export function BlogMarkdownBodyField({
       const pos = el.selectionStart;
       const snippet = `\n\n![${alt.trim() || "Image"}](${url})\n\n`;
       const next = replaceRange(value, pos, pos, snippet);
-      applyChange(next, pos + snippet.length, pos + snippet.length);
-    } catch {
-      /* parent toast */
+      const endSel = pos + snippet.length;
+      applyChange(next, pos, endSel);
+      toast.success("Image inserted in body", {
+        description: "Selected text is the new Markdown. Switch to Preview to see the photo, or scroll the textarea.",
+      });
+    } catch (e: unknown) {
+      toast.error(formatAxiosApiError(e) || "Image upload failed.");
     } finally {
       setUploadingInline(false);
       if (inlineImgRef.current) inlineImgRef.current.value = "";
@@ -305,8 +311,12 @@ export function BlogMarkdownBodyField({
         <span className="text-xs text-muted-foreground">{wordCount} words</span>
       </div>
       <p className="text-xs text-muted-foreground">
-        Use <strong className="font-medium text-foreground">Image</strong> for upload or URL. Colored text uses a small
-        HTML span — it shows the same in Preview and on the live blog.
+        <strong className="font-medium text-foreground">Write</strong> shows Markdown only — you will not see embedded
+        pictures here, only text like <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">![]()</code>.
+        Open <strong className="font-medium text-foreground">Preview</strong> to see images and layout. Use the{" "}
+        <strong className="font-medium text-foreground">Image</strong> menu for upload or URL. The{" "}
+        <strong className="font-medium text-foreground">Hero image</strong> field below is the banner above the article,
+        not inside this body.
       </p>
 
       <input

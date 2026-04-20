@@ -48,7 +48,10 @@ export default function AdminNewBlogPostPage() {
       });
       const url = parseMediaUploadResponse(res);
       setHeroImageUrl(url);
-      toast.success("Image uploaded — URL applied to hero.");
+      toast.success("Hero image uploaded", {
+        description:
+          "The URL is in the Hero image field below (post banner). It is not inserted into the body text — use Body → Image → Upload for in-article pictures.",
+      });
     } catch (e: unknown) {
       toast.error(formatAxiosApiError(e) || "Upload failed.");
     } finally {
@@ -166,6 +169,10 @@ export default function AdminNewBlogPostPage() {
         />
         <div className="space-y-2">
           <Label htmlFor="hero">Hero image URL</Label>
+          <p className="text-xs text-muted-foreground">
+            Large cover image at the top of the published post. This is separate from images inside the body (use the
+            Image menu in the editor above).
+          </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Input
               id="hero"
