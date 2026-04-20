@@ -46,7 +46,7 @@ const PREVIEW_MD_CLASS =
   "[&_blockquote]:border-l-4 [&_blockquote]:border-slate-200 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-slate-600 " +
   "[&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:text-[13px] " +
   "[&_pre]:mb-3 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-slate-900 [&_pre]:p-3 [&_pre]:text-xs [&_pre]:text-slate-100 " +
-  "[&_hr]:my-6 [&_hr]:border-slate-200 [&_img]:my-4 [&_img]:max-w-full [&_img]:rounded-md [&_img]:mx-auto [&_img]:block";
+  "[&_hr]:my-6 [&_hr]:border-slate-200 [&_img]:my-4 [&_img]:mx-auto [&_img]:block [&_img]:h-auto [&_img]:w-auto [&_img]:max-h-[220px] sm:[&_img]:max-h-[260px] [&_img]:max-w-[min(100%,28rem)] [&_img]:rounded-md [&_img]:object-contain";
 
 const JP_TEXT: Record<string, string> = {
   "jp-bc-slate-900": "text-slate-900",
