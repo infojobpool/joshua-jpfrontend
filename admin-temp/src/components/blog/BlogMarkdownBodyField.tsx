@@ -68,14 +68,22 @@ const COLOR_SWATCHES: { token: keyof typeof JP_TEXT; label: string; fill: string
   { token: "jp-bc-sky-600", label: "Sky", fill: "bg-sky-600" },
 ];
 
+function normalizeClassParts(className: unknown): string[] {
+  if (className == null) return [];
+  if (Array.isArray(className)) {
+    return className.flatMap((c) => String(c).split(/\s+/)).filter(Boolean);
+  }
+  return String(className)
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
 function ColoredSpan({
   className,
   children,
   ...rest
 }: ComponentPropsWithoutRef<"span">): ReactNode {
-  const parts = String(className || "")
-    .split(/\s+/)
-    .filter(Boolean);
+  const parts = normalizeClassParts(className);
   const token = parts.find((p) => p.startsWith("jp-bc-")) as keyof typeof JP_TEXT | undefined;
   const tw = token && JP_TEXT[token] ? JP_TEXT[token] : "";
   if (tw) {
@@ -241,13 +249,18 @@ export function BlogMarkdownBodyField({
 
   const onInlineImageFile = async (file: File | null) => {
     if (!file || !uploadInlineImage || disabled) return;
+    const alt = window.prompt("Image description (alt text)", "Image");
+    if (alt === null) {
+      if (inlineImgRef.current) inlineImgRef.current.value = "";
+      return;
+    }
     setUploadingInline(true);
     try {
       const url = await uploadInlineImage(file);
       const el = taRef.current;
       if (!el) return;
       const pos = el.selectionStart;
-      const snippet = `\n\n![Image](${url})\n\n`;
+      const snippet = `\n\n![${alt.trim() || "Image"}](${url})\n\n`;
       const next = replaceRange(value, pos, pos, snippet);
       applyChange(next, pos + snippet.length, pos + snippet.length);
     } catch {
@@ -292,8 +305,8 @@ export function BlogMarkdownBodyField({
         <span className="text-xs text-muted-foreground">{wordCount} words</span>
       </div>
       <p className="text-xs text-muted-foreground">
-        Toolbar for headings, links, colors, and images. Preview uses the same rules as the public blog (including
-        limited HTML for color spans).
+        Use <strong className="font-medium text-foreground">Image</strong> for upload or URL. Colored text uses a small
+        HTML span — it shows the same in Preview and on the live blog.
       </p>
 
       <input
@@ -371,22 +384,44 @@ export function BlogMarkdownBodyField({
             <ToolBtn title="Link (uses selection as label if highlighted)" onClick={insertLink}>
               <Link2 className="h-4 w-4" />
             </ToolBtn>
-            <ToolBtn title="Image from URL" onClick={insertImage}>
-              <ImageIcon className="h-4 w-4" />
-            </ToolBtn>
-            {uploadInlineImage ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 shrink-0 p-0"
-                title="Upload image into body"
-                disabled={disabled || uploadingInline}
-                onClick={() => inlineImgRef.current?.click()}
-              >
-                <Upload className="h-4 w-4" />
-              </Button>
-            ) : null}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 shrink-0 p-0"
+                  title="Add image to body"
+                  disabled={disabled || uploadingInline}
+                >
+                  <ImageIcon className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52" onCloseAutoFocus={(e) => e.preventDefault()}>
+                {uploadInlineImage ? (
+                  <DropdownMenuItem
+                    className="gap-2"
+                    disabled={uploadingInline}
+                    onSelect={() => {
+                      window.setTimeout(() => inlineImgRef.current?.click(), 0);
+                    }}
+                  >
+                    <Upload className="h-4 w-4 opacity-70" />
+                    Upload from computer…
+                  </DropdownMenuItem>
+                ) : null}
+                <DropdownMenuItem
+                  className="gap-2"
+                  onSelect={() => {
+                    window.setTimeout(() => insertImage(), 0);
+                    focusTa();
+                  }}
+                >
+                  <ImageIcon className="h-4 w-4 opacity-70" />
+                  Paste image URL…
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <span className="mx-0.5 w-px self-stretch bg-border" />
             <ToolBtn title="Bullet list" onClick={() => insertLinePrefix("- ")}>
               <List className="h-4 w-4" />

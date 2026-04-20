@@ -35,14 +35,22 @@ const JP_TEXT: Record<string, string> = {
   "jp-bc-sky-600": "text-sky-600 dark:text-sky-400",
 };
 
+function normalizeClassParts(className: unknown): string[] {
+  if (className == null) return [];
+  if (Array.isArray(className)) {
+    return className.flatMap((c) => String(c).split(/\s+/)).filter(Boolean);
+  }
+  return String(className)
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
 function ColoredSpan({
   className,
   children,
   ...rest
 }: ComponentPropsWithoutRef<"span">): ReactNode {
-  const parts = String(className || "")
-    .split(/\s+/)
-    .filter(Boolean);
+  const parts = normalizeClassParts(className);
   const token = parts.find((p) => p.startsWith("jp-bc-"));
   const tw = token ? JP_TEXT[token] : "";
   if (tw) {
