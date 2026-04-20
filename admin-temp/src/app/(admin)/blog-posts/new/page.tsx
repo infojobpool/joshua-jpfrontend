@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Upload } from "lucide-react";
@@ -17,6 +17,7 @@ import { AdminReadOnlyBanner } from "@/components/AdminReadOnlyBanner";
 import { parseMediaUploadResponse } from "@/lib/parseMediaUploadResponse";
 import { formatAxiosApiError } from "@/lib/apiError";
 import { BlogMarkdownBodyField } from "@/components/blog/BlogMarkdownBodyField";
+import { slugifyTitle } from "@/lib/slugifyTitle";
 
 export default function AdminNewBlogPostPage() {
   const router = useRouter();
@@ -29,8 +30,12 @@ export default function AdminNewBlogPostPage() {
   const [heroImageUrl, setHeroImageUrl] = useState("");
   const [slug, setSlug] = useState("");
   const [sortOrder, setSortOrder] = useState(10);
-  const [isPublished, setIsPublished] = useState(true);
+  const [autoSlug, setAutoSlug] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (autoSlug) setSlug(slugifyTitle(title));
+  }, [title, autoSlug]);
 
   const uploadHero = async (file: File | null) => {
     if (!file || !canWrite) return;
@@ -51,7 +56,16 @@ export default function AdminNewBlogPostPage() {
     }
   };
 
-  const save = async () => {
+  const uploadInlineImage = async (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await axiosInstance.post("admin/blog-posts/upload-image/", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return parseMediaUploadResponse(res);
+  };
+
+  const save = async (publish: boolean) => {
     if (!canWrite) return;
     if (typeof window !== "undefined" && !localStorage.getItem("token")) {
       toast.error("Admin session missing. Sign in on the admin home page (admin login), then try again.");
@@ -69,15 +83,16 @@ export default function AdminNewBlogPostPage() {
         excerpt: excerpt.trim(),
         body_markdown: bodyMarkdown,
         hero_image_url: heroImageUrl.trim() || null,
-        is_published: isPublished,
+        is_published: publish,
         sort_order: sortOrder,
       };
-      if (slug.trim()) payload.slug = slug.trim();
+      const effectiveSlug = (autoSlug ? slugifyTitle(title) : slug.trim()) || slugifyTitle(title);
+      payload.slug = effectiveSlug;
       const res = await axiosInstance.post("admin/blog-posts/", payload);
       if (res.data?.status_code != null && res.data.status_code !== 200) {
         throw new Error(res.data?.message || "Create failed");
       }
-      toast.success("Post created.");
+      toast.success(publish ? "Post published." : "Draft saved.");
       router.push("/blog-posts");
     } catch (e: unknown) {
       toast.error(formatAxiosApiError(e) || "Save failed.");
@@ -106,15 +121,36 @@ export default function AdminNewBlogPostPage() {
           <Label htmlFor="title">Title</Label>
           <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} disabled={!canWrite} />
         </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="autoslug"
+              checked={autoSlug}
+              onCheckedChange={(v) => setAutoSlug(v === true)}
+              disabled={!canWrite}
+            />
+            <Label htmlFor="autoslug" className="text-sm font-normal">
+              Auto-generate slug from title
+            </Label>
+          </div>
+        </div>
         <div className="space-y-2">
-          <Label htmlFor="slug">Slug (optional)</Label>
+          <Label htmlFor="slug">Slug</Label>
           <Input
             id="slug"
             value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            placeholder="auto-from-title if omitted"
-            disabled={!canWrite}
+            onChange={(e) => {
+              setAutoSlug(false);
+              setSlug(e.target.value);
+            }}
+            placeholder={slugifyTitle(title || "post")}
+            disabled={!canWrite || autoSlug}
+            readOnly={autoSlug}
+            className={autoSlug ? "bg-muted/60" : ""}
           />
+          <p className="text-xs text-muted-foreground">
+            {autoSlug ? "Slug updates when the title changes. Uncheck to edit manually." : "Manual slug — turn auto back on to sync from title."}
+          </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="excerpt">Excerpt</Label>
@@ -126,6 +162,7 @@ export default function AdminNewBlogPostPage() {
           value={bodyMarkdown}
           onChange={setBodyMarkdown}
           disabled={!canWrite}
+          uploadInlineImage={canWrite ? uploadInlineImage : undefined}
         />
         <div className="space-y-2">
           <Label htmlFor="hero">Hero image URL</Label>
@@ -159,10 +196,6 @@ export default function AdminNewBlogPostPage() {
         </div>
         <div className="flex flex-wrap items-center gap-6">
           <div className="flex items-center gap-2">
-            <Checkbox id="pub" checked={isPublished} onCheckedChange={(v) => setIsPublished(v === true)} disabled={!canWrite} />
-            <Label htmlFor="pub">Published</Label>
-          </div>
-          <div className="flex items-center gap-2">
             <Label htmlFor="sort">Sort order</Label>
             <Input
               id="sort"
@@ -174,10 +207,18 @@ export default function AdminNewBlogPostPage() {
             />
           </div>
         </div>
+        <p className="text-xs text-muted-foreground">
+          Drafts do not appear on the public blog until you publish. Use the list filters to find drafts.
+        </p>
         {canWrite ? (
-          <Button type="button" onClick={() => void save()} disabled={saving}>
-            {saving ? "Saving…" : "Create post"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={() => void save(false)} disabled={saving}>
+              {saving ? "Saving…" : "Save as draft"}
+            </Button>
+            <Button type="button" onClick={() => void save(true)} disabled={saving}>
+              {saving ? "Saving…" : "Publish"}
+            </Button>
+          </div>
         ) : null}
       </div>
     </div>

@@ -22,6 +22,7 @@ import {
 import { parseMediaUploadResponse } from "@/lib/parseMediaUploadResponse";
 import { formatAxiosApiError } from "@/lib/apiError";
 import { BlogMarkdownBodyField } from "@/components/blog/BlogMarkdownBodyField";
+import { slugifyTitle } from "@/lib/slugifyTitle";
 
 export default function AdminEditBlogPostPage() {
   const params = useParams();
@@ -38,6 +39,7 @@ export default function AdminEditBlogPostPage() {
   const [heroImageUrl, setHeroImageUrl] = useState("");
   const [slug, setSlug] = useState("");
   const [sortOrder, setSortOrder] = useState(10);
+  const [autoSlug, setAutoSlug] = useState(false);
   const [isPublished, setIsPublished] = useState(true);
 
   const load = useCallback(async () => {
@@ -77,12 +79,17 @@ export default function AdminEditBlogPostPage() {
     setHeroImageUrl((row.hero_image_url ?? "").trim());
     setSlug((row.slug ?? "").trim());
     setSortOrder(Number(row.sort_order) || 0);
-    setIsPublished(Boolean(row.is_published));
+    setIsPublished(row.is_published !== false);
+    setAutoSlug(false);
   }
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (autoSlug) setSlug(slugifyTitle(title));
+  }, [title, autoSlug]);
 
   const uploadHero = async (file: File | null) => {
     if (!file || !canWrite) return;
@@ -103,7 +110,16 @@ export default function AdminEditBlogPostPage() {
     }
   };
 
-  const save = async () => {
+  const uploadInlineImage = async (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await axiosInstance.post("admin/blog-posts/upload-image/", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return parseMediaUploadResponse(res);
+  };
+
+  const save = async (publish: boolean) => {
     if (!canWrite || !postId) return;
     if (typeof window !== "undefined" && !localStorage.getItem("token")) {
       toast.error("Admin session missing. Sign in on the admin home page (admin login), then try again.");
@@ -121,15 +137,17 @@ export default function AdminEditBlogPostPage() {
         excerpt: excerpt.trim(),
         body_markdown: bodyMarkdown,
         hero_image_url: heroImageUrl.trim() || null,
-        is_published: isPublished,
+        is_published: publish,
         sort_order: sortOrder,
       };
-      if (slug.trim()) payload.slug = slug.trim();
+      const effectiveSlug = (autoSlug ? slugifyTitle(title) : slug.trim()) || slugifyTitle(title);
+      payload.slug = effectiveSlug;
       const res = await axiosInstance.put(`admin/blog-posts/${encodeURIComponent(postId)}/`, payload);
       if (res.data?.status_code != null && res.data.status_code !== 200) {
         throw new Error(res.data?.message || "Update failed");
       }
-      toast.success("Post updated.");
+      setIsPublished(publish);
+      toast.success(publish ? "Published." : "Draft saved.");
       router.push("/blog-posts");
     } catch (e: unknown) {
       toast.error(formatAxiosApiError(e) || "Save failed.");
@@ -154,7 +172,9 @@ export default function AdminEditBlogPostPage() {
       </Button>
       <div>
         <h1 className="text-2xl font-bold">Edit blog post</h1>
-        <p className="text-sm text-muted-foreground">PUT /admin/blog-posts/{postId}/</p>
+        <p className="text-sm text-muted-foreground">
+          PUT /admin/blog-posts/{postId}/ — {!loading ? (isPublished ? "Currently published." : "Currently a draft.") : ""}
+        </p>
       </div>
 
       {loading ? (
@@ -165,9 +185,30 @@ export default function AdminEditBlogPostPage() {
             <Label htmlFor="title">Title</Label>
             <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} disabled={!canWrite} />
           </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="autoslug"
+              checked={autoSlug}
+              onCheckedChange={(v) => setAutoSlug(v === true)}
+              disabled={!canWrite}
+            />
+            <Label htmlFor="autoslug" className="text-sm font-normal">
+              Sync slug from title when saving
+            </Label>
+          </div>
           <div className="space-y-2">
-            <Label htmlFor="slug">Slug (optional)</Label>
-            <Input id="slug" value={slug} onChange={(e) => setSlug(e.target.value)} disabled={!canWrite} />
+            <Label htmlFor="slug">Slug</Label>
+            <Input
+              id="slug"
+              value={slug}
+              onChange={(e) => {
+                setAutoSlug(false);
+                setSlug(e.target.value);
+              }}
+              disabled={!canWrite || autoSlug}
+              readOnly={autoSlug}
+              className={autoSlug ? "bg-muted/60" : ""}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="excerpt">Excerpt</Label>
@@ -179,6 +220,7 @@ export default function AdminEditBlogPostPage() {
             value={bodyMarkdown}
             onChange={setBodyMarkdown}
             disabled={!canWrite}
+            uploadInlineImage={canWrite ? uploadInlineImage : undefined}
           />
           <div className="space-y-2">
             <Label htmlFor="hero">Hero image URL</Label>
@@ -211,15 +253,6 @@ export default function AdminEditBlogPostPage() {
           </div>
           <div className="flex flex-wrap items-center gap-6">
             <div className="flex items-center gap-2">
-              <Checkbox
-                id="pub"
-                checked={isPublished}
-                onCheckedChange={(v) => setIsPublished(v === true)}
-                disabled={!canWrite}
-              />
-              <Label htmlFor="pub">Published</Label>
-            </div>
-            <div className="flex items-center gap-2">
               <Label htmlFor="sort">Sort order</Label>
               <Input
                 id="sort"
@@ -232,9 +265,14 @@ export default function AdminEditBlogPostPage() {
             </div>
           </div>
           {canWrite ? (
-            <Button type="button" onClick={() => void save()} disabled={saving}>
-              {saving ? "Saving…" : "Save changes"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" onClick={() => void save(false)} disabled={saving}>
+                {saving ? "Saving…" : "Save as draft"}
+              </Button>
+              <Button type="button" onClick={() => void save(true)} disabled={saving}>
+                {saving ? "Saving…" : "Save & publish"}
+              </Button>
+            </div>
           ) : null}
         </div>
       )}

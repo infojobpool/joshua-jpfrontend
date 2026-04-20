@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -15,13 +15,23 @@ import {
   List,
   ListOrdered,
   Minus,
+  Palette,
   Quote,
+  Upload,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { blogMarkdownRehypePlugins } from "@/lib/blogMarkdownPipeline";
+import type { ComponentPropsWithoutRef } from "react";
 
 const PREVIEW_MD_CLASS =
   "jp-admin-blog-preview max-w-none text-sm text-slate-700 " +
@@ -34,7 +44,53 @@ const PREVIEW_MD_CLASS =
   "[&_blockquote]:border-l-4 [&_blockquote]:border-slate-200 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-slate-600 " +
   "[&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:text-[13px] " +
   "[&_pre]:mb-3 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-slate-900 [&_pre]:p-3 [&_pre]:text-xs [&_pre]:text-slate-100 " +
-  "[&_hr]:my-6 [&_hr]:border-slate-200 [&_img]:max-w-full [&_img]:rounded-md";
+  "[&_hr]:my-6 [&_hr]:border-slate-200 [&_img]:my-4 [&_img]:max-w-full [&_img]:rounded-md [&_img]:mx-auto [&_img]:block";
+
+const JP_TEXT: Record<string, string> = {
+  "jp-bc-slate-900": "text-slate-900",
+  "jp-bc-blue-600": "text-blue-600",
+  "jp-bc-red-600": "text-red-600",
+  "jp-bc-emerald-600": "text-emerald-600",
+  "jp-bc-amber-600": "text-amber-600",
+  "jp-bc-violet-600": "text-violet-600",
+  "jp-bc-rose-600": "text-rose-600",
+  "jp-bc-sky-600": "text-sky-600",
+};
+
+const COLOR_SWATCHES: { token: keyof typeof JP_TEXT; label: string; fill: string }[] = [
+  { token: "jp-bc-slate-900", label: "Default", fill: "bg-slate-900" },
+  { token: "jp-bc-blue-600", label: "Blue", fill: "bg-blue-600" },
+  { token: "jp-bc-red-600", label: "Red", fill: "bg-red-600" },
+  { token: "jp-bc-emerald-600", label: "Green", fill: "bg-emerald-600" },
+  { token: "jp-bc-amber-600", label: "Amber", fill: "bg-amber-500" },
+  { token: "jp-bc-violet-600", label: "Violet", fill: "bg-violet-600" },
+  { token: "jp-bc-rose-600", label: "Rose", fill: "bg-rose-600" },
+  { token: "jp-bc-sky-600", label: "Sky", fill: "bg-sky-600" },
+];
+
+function ColoredSpan({
+  className,
+  children,
+  ...rest
+}: ComponentPropsWithoutRef<"span">): ReactNode {
+  const parts = String(className || "")
+    .split(/\s+/)
+    .filter(Boolean);
+  const token = parts.find((p) => p.startsWith("jp-bc-")) as keyof typeof JP_TEXT | undefined;
+  const tw = token && JP_TEXT[token] ? JP_TEXT[token] : "";
+  if (tw) {
+    return (
+      <span className={tw} {...rest}>
+        {children}
+      </span>
+    );
+  }
+  return (
+    <span className={className} {...rest}>
+      {children}
+    </span>
+  );
+}
 
 function getLineBounds(text: string, caret: number): { lineStart: number; lineEnd: number } {
   const lineStart = text.lastIndexOf("\n", caret - 1) + 1;
@@ -53,11 +109,24 @@ type Props = {
   value: string;
   onChange: (next: string) => void;
   disabled?: boolean;
+  /** When set, toolbar offers upload → inserts `![](url)` at cursor after POST upload-image. */
+  uploadInlineImage?: (file: File) => Promise<string>;
 };
 
-export function BlogMarkdownBodyField({ id = "body-md", label, value, onChange, disabled }: Props) {
+export function BlogMarkdownBodyField({
+  id = "body-md",
+  label,
+  value,
+  onChange,
+  disabled,
+  uploadInlineImage,
+}: Props) {
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const inlineImgRef = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState<"write" | "preview">("write");
+  const [uploadingInline, setUploadingInline] = useState(false);
+
+  const rehypePlugins = useMemo(() => [...blogMarkdownRehypePlugins], []);
 
   const focusTa = () => {
     requestAnimationFrame(() => taRef.current?.focus());
@@ -126,16 +195,25 @@ export function BlogMarkdownBodyField({ id = "body-md", label, value, onChange, 
   };
 
   const insertLink = () => {
-    const labelText = window.prompt("Link text", "Read more");
-    if (labelText === null) return;
-    const url = window.prompt("URL (https://…)", "https://");
-    if (url === null) return;
     const el = taRef.current;
     if (!el || disabled) return;
-    const pos = el.selectionStart;
-    const snippet = `[${labelText.trim() || "link"}](${url.trim() || "#"})`;
-    const next = replaceRange(value, pos, pos, snippet);
-    applyChange(next, pos + snippet.length, pos + snippet.length);
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const raw = value.slice(start, end);
+    const url = window.prompt("Paste URL (https://…)", "https://");
+    if (url === null) return;
+    const u = url.trim() || "#";
+    if (raw.length > 0) {
+      const snippet = `[${raw}](${u})`;
+      const next = replaceRange(value, start, end, snippet);
+      applyChange(next, start + snippet.length, start + snippet.length);
+      return;
+    }
+    const labelText = window.prompt("Link text", "Read more");
+    if (labelText === null) return;
+    const snippet = `[${labelText.trim() || "link"}](${u})`;
+    const next = replaceRange(value, start, end, snippet);
+    applyChange(next, start + snippet.length, start + snippet.length);
   };
 
   const insertImage = () => {
@@ -146,13 +224,38 @@ export function BlogMarkdownBodyField({ id = "body-md", label, value, onChange, 
     const el = taRef.current;
     if (!el || disabled) return;
     const pos = el.selectionStart;
-    const snippet = `\n![${alt || "image"}](${url || "#"})\n`;
+    const snippet = `\n\n![${alt || "image"}](${url || "#"})\n\n`;
     const next = replaceRange(value, pos, pos, snippet);
     applyChange(next, pos + snippet.length, pos + snippet.length);
   };
 
+  const applyColorClass = (token: string) => {
+    const before = `<span class="jp-blog-color jp-bc-${token}">`;
+    const after = "</span>";
+    wrapSelection(before, after, "text");
+  };
+
   const insertFence = () => {
     wrapSelection("```\n", "\n```", "code");
+  };
+
+  const onInlineImageFile = async (file: File | null) => {
+    if (!file || !uploadInlineImage || disabled) return;
+    setUploadingInline(true);
+    try {
+      const url = await uploadInlineImage(file);
+      const el = taRef.current;
+      if (!el) return;
+      const pos = el.selectionStart;
+      const snippet = `\n\n![Image](${url})\n\n`;
+      const next = replaceRange(value, pos, pos, snippet);
+      applyChange(next, pos + snippet.length, pos + snippet.length);
+    } catch {
+      /* parent toast */
+    } finally {
+      setUploadingInline(false);
+      if (inlineImgRef.current) inlineImgRef.current.value = "";
+    }
   };
 
   const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
@@ -189,8 +292,18 @@ export function BlogMarkdownBodyField({ id = "body-md", label, value, onChange, 
         <span className="text-xs text-muted-foreground">{wordCount} words</span>
       </div>
       <p className="text-xs text-muted-foreground">
-        Use the toolbar for headings and formatting, or type Markdown. Preview matches the public blog.
+        Toolbar for headings, links, colors, and images. Preview uses the same rules as the public blog (including
+        limited HTML for color spans).
       </p>
+
+      <input
+        ref={inlineImgRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        disabled={disabled || !uploadInlineImage || uploadingInline}
+        onChange={(e) => void onInlineImageFile(e.target.files?.[0] ?? null)}
+      />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as "write" | "preview")} className="w-full">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -225,12 +338,55 @@ export function BlogMarkdownBodyField({ id = "body-md", label, value, onChange, 
             <ToolBtn title="Italic" onClick={() => wrapSelection("*", "*", "italic")}>
               <Italic className="h-4 w-4" />
             </ToolBtn>
-            <ToolBtn title="Link" onClick={insertLink}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 shrink-0 p-0"
+                  title="Text color"
+                  disabled={disabled}
+                >
+                  <Palette className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-44" onCloseAutoFocus={(e) => e.preventDefault()}>
+                {COLOR_SWATCHES.map((c) => (
+                  <DropdownMenuItem
+                    key={c.token}
+                    className="gap-2"
+                    onSelect={() => {
+                      const suffix = c.token.replace("jp-bc-", "");
+                      applyColorClass(suffix);
+                      focusTa();
+                    }}
+                  >
+                    <span className={cn("h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-black/10", c.fill)} />
+                    {c.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <ToolBtn title="Link (uses selection as label if highlighted)" onClick={insertLink}>
               <Link2 className="h-4 w-4" />
             </ToolBtn>
-            <ToolBtn title="Image" onClick={insertImage}>
+            <ToolBtn title="Image from URL" onClick={insertImage}>
               <ImageIcon className="h-4 w-4" />
             </ToolBtn>
+            {uploadInlineImage ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 shrink-0 p-0"
+                title="Upload image into body"
+                disabled={disabled || uploadingInline}
+                onClick={() => inlineImgRef.current?.click()}
+              >
+                <Upload className="h-4 w-4" />
+              </Button>
+            ) : null}
             <span className="mx-0.5 w-px self-stretch bg-border" />
             <ToolBtn title="Bullet list" onClick={() => insertLinePrefix("- ")}>
               <List className="h-4 w-4" />
@@ -266,7 +422,7 @@ export function BlogMarkdownBodyField({ id = "body-md", label, value, onChange, 
               "tracking-normal text-slate-900 placeholder:text-slate-400",
             )}
             placeholder={
-              "## Why JobPool\n\nWrite in **Markdown**. Use the toolbar above for headings, lists, and links."
+              "## Why JobPool\n\nWrite in **Markdown**. Use the toolbar above for headings, lists, links, and colors."
             }
           />
         </TabsContent>
@@ -279,7 +435,16 @@ export function BlogMarkdownBodyField({ id = "body-md", label, value, onChange, 
             )}
           >
             {value.trim() ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={rehypePlugins}
+                components={{
+                  a: ({ ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+                  span: ColoredSpan,
+                }}
+              >
+                {value}
+              </ReactMarkdown>
             ) : (
               <p className="text-sm text-muted-foreground">Nothing to preview yet.</p>
             )}
