@@ -10,15 +10,14 @@ import { cn } from "@/lib/utils";
 
 const MainHeader: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { isAuthenticated, user, logout, checkAuth } = useStore();
+  const { isAuthenticated, logout, checkAuth } = useStore();
   const unreadCount = useStore((s) => s.unreadCount);
   const [isHydrated, setIsHydrated] = useState(false);
   const pathname = usePathname();
   const isMarketingHome = pathname === "/" || pathname === "";
   const isDashboard = pathname === "/dashboard";
-  /** Mobile: hide bell + hamburger on dashboard and signed-in home (home uses `MobileHeroSection` for those controls). */
-  const hideMobileBellAndMenu =
-    isAuthenticated && (isDashboard || isMarketingHome);
+  /** Mobile: hide bell + hamburger on dashboard only (`MobileHeroSection` keeps profile on the blue hero). */
+  const hideMobileBellAndMenu = isAuthenticated && isDashboard;
 
   useEffect(() => {
     if (hideMobileBellAndMenu) setIsMobileMenuOpen(false);
