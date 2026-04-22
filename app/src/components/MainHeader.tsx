@@ -16,10 +16,13 @@ const MainHeader: React.FC = () => {
   const pathname = usePathname();
   const isMarketingHome = pathname === "/" || pathname === "";
   const isDashboard = pathname === "/dashboard";
+  /** Mobile: hide bell + hamburger where the app shell already covers nav (dashboard, signed-in home). */
+  const hideMobileBellAndMenu =
+    isAuthenticated && (isDashboard || isMarketingHome);
 
   useEffect(() => {
-    if (isDashboard) setIsMobileMenuOpen(false);
-  }, [isDashboard]);
+    if (hideMobileBellAndMenu) setIsMobileMenuOpen(false);
+  }, [hideMobileBellAndMenu]);
 
   useEffect(() => {
     try {
@@ -71,7 +74,9 @@ const MainHeader: React.FC = () => {
           className={cn(
             "flex items-center justify-between gap-3 md:min-h-0 md:h-[4.25rem] md:py-2 lg:h-[4.5rem] lg:py-2.5",
             isMarketingHome
-              ? "max-md:min-h-0 max-md:py-0.5 max-md:pb-1"
+              ? isAuthenticated
+                ? "max-md:min-h-0 max-md:py-1 max-md:pb-1"
+                : "max-md:min-h-0 max-md:py-0.5 max-md:pb-1"
               : isDashboard
                 ? "max-md:min-h-0 max-md:py-1 max-md:pb-1"
                 : "min-h-[5.75rem] py-2.5 md:min-h-0 md:py-2",
@@ -88,7 +93,9 @@ const MainHeader: React.FC = () => {
               className={cn(
                 "w-auto max-w-[min(340px,82vw)] object-contain object-left md:hidden",
                 isMarketingHome
-                  ? "h-[3.75rem] sm:h-[4.125rem]"
+                  ? isAuthenticated
+                    ? "h-10 sm:h-11"
+                    : "h-[3.75rem] sm:h-[4.125rem]"
                   : isDashboard
                     ? "h-10 sm:h-11"
                     : "h-[4.75rem] sm:h-[5.125rem]",
@@ -160,8 +167,8 @@ const MainHeader: React.FC = () => {
             )}
           </div>
 
-          {/* Mobile: notifications + menu (hidden on dashboard — bottom nav + account entry points) */}
-          {!isDashboard ? (
+          {/* Mobile: notifications + menu (hidden on dashboard & signed-in home — bottom nav + account) */}
+          {!hideMobileBellAndMenu ? (
             <div className="md:hidden flex shrink-0 items-center gap-2">
               {isAuthenticated ? (
                 <Link
@@ -196,7 +203,7 @@ const MainHeader: React.FC = () => {
         </div>
 
         {/* Mobile Navigation Menu */}
-        {isMobileMenuOpen && !isDashboard && (
+        {isMobileMenuOpen && !hideMobileBellAndMenu && (
           <div className="md:hidden border-t border-gray-100 py-4 transition-all duration-200 ease-in-out">
             <nav className="flex flex-col space-y-4">
               <Link 
