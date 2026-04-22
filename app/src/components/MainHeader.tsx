@@ -16,12 +16,6 @@ const MainHeader: React.FC = () => {
   const pathname = usePathname();
   const isMarketingHome = pathname === "/" || pathname === "";
   const isDashboard = pathname === "/dashboard";
-  /** Mobile: hide bell + hamburger on dashboard only (`MobileHeroSection` keeps profile on the blue hero). */
-  const hideMobileBellAndMenu = isAuthenticated && isDashboard;
-
-  useEffect(() => {
-    if (hideMobileBellAndMenu) setIsMobileMenuOpen(false);
-  }, [hideMobileBellAndMenu]);
 
   useEffect(() => {
     try {
@@ -52,6 +46,7 @@ const MainHeader: React.FC = () => {
     "/tasks",
     "/browse",
     "/browse-tasks",
+    "/dashboard",
     "/profile",
     "/messages",
     "/wallet",
@@ -166,43 +161,41 @@ const MainHeader: React.FC = () => {
             )}
           </div>
 
-          {/* Mobile: notifications + menu (hidden on dashboard & signed-in home — bottom nav + account) */}
-          {!hideMobileBellAndMenu ? (
-            <div className="md:hidden flex shrink-0 items-center gap-2">
-              {isAuthenticated ? (
-                <Link
-                  href="/notifications"
-                  className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-blue-100 bg-gradient-to-b from-white to-blue-50/80 text-blue-800 shadow-[0_2px_12px_rgba(37,99,235,0.12)] ring-1 ring-blue-200/40 hover:border-blue-200 hover:from-blue-50 hover:to-blue-100/90 hover:text-blue-900 active:scale-[0.97] transition-all"
-                  aria-label="Notifications"
-                  title="Notifications"
-                >
-                  <Bell className="h-5 w-5" aria-hidden />
-                  {unreadCount > 0 ? (
-                    <span className="absolute -right-0.5 -top-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-semibold leading-none text-white shadow-sm">
-                      {unreadCount > 99 ? "99+" : unreadCount}
-                    </span>
-                  ) : null}
-                </Link>
-              ) : null}
-              <button
-                type="button"
-                className="flex h-12 min-w-[3rem] shrink-0 items-center justify-center rounded-2xl border-2 border-blue-100 bg-gradient-to-b from-white to-blue-50/80 text-blue-800 shadow-[0_2px_12px_rgba(37,99,235,0.12)] ring-1 ring-blue-200/40 hover:border-blue-200 hover:from-blue-50 hover:to-blue-100/90 hover:text-blue-900 active:scale-[0.97] transition-all"
-                onClick={toggleMobileMenu}
-                aria-expanded={isMobileMenuOpen}
-                aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+          {/* Mobile: notifications + menu */}
+          <div className="md:hidden flex shrink-0 items-center gap-2">
+            {isAuthenticated ? (
+              <Link
+                href="/notifications"
+                className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-blue-100 bg-gradient-to-b from-white to-blue-50/80 text-blue-800 shadow-[0_2px_12px_rgba(37,99,235,0.12)] ring-1 ring-blue-200/40 hover:border-blue-200 hover:from-blue-50 hover:to-blue-100/90 hover:text-blue-900 active:scale-[0.97] transition-all"
+                aria-label="Notifications"
+                title="Notifications"
               >
-                {isMobileMenuOpen ? (
-                  <X className="h-6 w-6 stroke-[2.5]" />
-                ) : (
-                  <Menu className="h-6 w-6 stroke-[2.5]" />
-                )}
-              </button>
-            </div>
-          ) : null}
+                <Bell className="h-5 w-5" aria-hidden />
+                {unreadCount > 0 ? (
+                  <span className="absolute -right-0.5 -top-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-semibold leading-none text-white shadow-sm">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                ) : null}
+              </Link>
+            ) : null}
+            <button
+              type="button"
+              className="flex h-12 min-w-[3rem] shrink-0 items-center justify-center rounded-2xl border-2 border-blue-100 bg-gradient-to-b from-white to-blue-50/80 text-blue-800 shadow-[0_2px_12px_rgba(37,99,235,0.12)] ring-1 ring-blue-200/40 hover:border-blue-200 hover:from-blue-50 hover:to-blue-100/90 hover:text-blue-900 active:scale-[0.97] transition-all"
+              onClick={toggleMobileMenu}
+              aria-expanded={isMobileMenuOpen}
+              aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+            >
+              {isMobileMenuOpen ? (
+                <X className="h-6 w-6 stroke-[2.5]" />
+              ) : (
+                <Menu className="h-6 w-6 stroke-[2.5]" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Navigation Menu */}
-        {isMobileMenuOpen && !hideMobileBellAndMenu && (
+        {isMobileMenuOpen && (
           <div className="md:hidden border-t border-gray-100 py-4 transition-all duration-200 ease-in-out">
             <nav className="flex flex-col space-y-4">
               <Link 
