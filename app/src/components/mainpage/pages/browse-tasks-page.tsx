@@ -693,16 +693,7 @@ import {
   Loader2,
   Star,
   SlidersHorizontal,
-  Check,
 } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "../../../components/ui/sheet";
 import { cn } from "../../../lib/utils";
 import {
   Select,
@@ -767,8 +758,8 @@ export function BrowseTasksPage() {
   const [locations, setLocations] = useState<string[]>([]);
 
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
-  const [sortSheetOpen, setSortSheetOpen] = useState(false);
+  /** Mobile: inline filter panel below Filter row (expand / retract). */
+  const [mobileFilterExpanded, setMobileFilterExpanded] = useState(false);
 
   const [draftPriceRange, setDraftPriceRange] = useState<[number, number]>([0, 50000]);
   const [draftSelectedCategories, setDraftSelectedCategories] = useState<string[]>([]);
@@ -1019,12 +1010,15 @@ export function BrowseTasksPage() {
     return "Newest first";
   }, [sortBy]);
 
-  const openFilterSheet = () => {
-    setDraftPriceRange([priceRange[0], priceRange[1]]);
-    setDraftSelectedCategories([...selectedCategories]);
-    setDraftSelectedLocation(selectedLocation);
-    setDraftSelectedDateRange(selectedDateRange);
-    setFilterSheetOpen(true);
+  const toggleMobileFilters = () => {
+    setMobileFilterExpanded((prev) => {
+      if (prev) return false;
+      setDraftPriceRange([priceRange[0], priceRange[1]]);
+      setDraftSelectedCategories([...selectedCategories]);
+      setDraftSelectedLocation(selectedLocation);
+      setDraftSelectedDateRange(selectedDateRange);
+      return true;
+    });
   };
 
   /** Clears filters to defaults and applies immediately (no second tap on Apply). */
@@ -1038,7 +1032,7 @@ export function BrowseTasksPage() {
     setSelectedCategories([]);
     setSelectedLocation("all");
     setSelectedDateRange("any");
-    setFilterSheetOpen(false);
+    setMobileFilterExpanded(false);
   };
 
   const applyDraftFilters = () => {
@@ -1046,7 +1040,7 @@ export function BrowseTasksPage() {
     setSelectedCategories([...draftSelectedCategories]);
     setSelectedLocation(draftSelectedLocation);
     setSelectedDateRange(draftSelectedDateRange);
-    setFilterSheetOpen(false);
+    setMobileFilterExpanded(false);
   };
 
   const handleDraftCategoryChange = (categoryId: string) => {
@@ -1117,50 +1111,191 @@ export function BrowseTasksPage() {
             </div>
           </section>
 
-          {/* Mobile: compact browse chrome */}
-          <section className="border-b border-slate-200/80 bg-gradient-to-b from-white to-slate-50/90 px-4 pb-3 pt-3 md:hidden">
-              <h1 className="text-lg font-semibold tracking-tight text-slate-900">Browse tasks</h1>
-              <p className="mt-0.5 text-xs text-slate-500">Find open tasks and send your offer</p>
-              <div className="relative mt-3">
-                <Search
-                  className="pointer-events-none absolute left-3.5 top-1/2 h-[1.125rem] w-[1.125rem] -translate-y-1/2 text-slate-400"
-                  aria-hidden
-                />
-                <Input
-                  type="search"
-                  enterKeyHint="search"
-                  autoComplete="off"
-                  placeholder="Search by title, area, category…"
-                  className="h-12 rounded-2xl border-slate-200/90 bg-slate-50/90 pl-11 pr-4 text-[0.9375rem] shadow-inner shadow-slate-200/40 ring-1 ring-slate-200/60 transition-[box-shadow,background-color] placeholder:text-slate-400 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-blue-500/25"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={openFilterSheet}
-                  className="relative flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200/90 bg-white py-2.5 pr-6 text-sm font-semibold text-slate-800 shadow-sm active:scale-[0.99]"
-                >
-                  <SlidersHorizontal className="h-4 w-4 text-slate-500" aria-hidden />
-                  Filter
-                  {filtersActive ? (
-                    <span className="absolute right-2.5 top-2 h-2 w-2 rounded-full bg-blue-600 ring-2 ring-white" aria-hidden />
-                  ) : null}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSortSheetOpen(true)}
-                  className="flex min-h-[44px] flex-1 flex-col items-center justify-center gap-0 rounded-xl border border-slate-200/90 bg-white px-2 py-2 text-sm font-semibold text-slate-800 shadow-sm active:scale-[0.99]"
-                >
-                  <span className="flex items-center gap-1">
+          {/* Mobile: premium compact chrome — short search, minimal Filter | Sort, inline filters */}
+          <section className="border-b border-slate-200/70 bg-[#F7F8FA] px-4 pb-3 pt-3 md:hidden">
+            <h1 className="text-base font-bold tracking-tight text-[#1A1F4C]">
+              Browse tasks
+            </h1>
+            <div className="relative mt-2">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
+                aria-hidden
+              />
+              <Input
+                type="search"
+                enterKeyHint="search"
+                autoComplete="off"
+                placeholder="Search…"
+                className="h-9 rounded-full border border-slate-200/90 bg-white pl-9 pr-3 text-sm font-medium text-[#1A1F4C] shadow-sm placeholder:font-normal placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-blue-500/35"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="mt-2.5 flex items-center justify-between border-t border-slate-200/50 pt-2.5">
+              <button
+                type="button"
+                onClick={toggleMobileFilters}
+                aria-expanded={mobileFilterExpanded}
+                className={cn(
+                  "relative flex min-h-[44px] items-center gap-2 py-1 text-[15px] font-semibold tracking-tight text-[#1A1F4C] transition-colors active:opacity-80",
+                  mobileFilterExpanded && "text-blue-700"
+                )}
+              >
+                <SlidersHorizontal className="h-[17px] w-[17px] shrink-0 text-slate-500" aria-hidden />
+                Filter
+                {filtersActive ? (
+                  <span
+                    className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-blue-600 ring-2 ring-[#F7F8FA]"
+                    aria-hidden
+                  />
+                ) : null}
+              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex min-h-[44px] items-center gap-1 py-1 text-[15px] font-semibold tracking-tight text-[#1A1F4C] transition-colors active:opacity-80"
+                  >
                     Sort
                     <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
-                  </span>
-                  <span className="max-w-full truncate text-[11px] font-medium leading-tight text-slate-500">{sortLabel}</span>
-                </button>
+                    <span className="sr-only">Current: {sortLabel}</span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-[11.5rem]">
+                  <DropdownMenuItem onClick={() => setSortBy("newest")}>
+                    Newest first
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy("oldest")}>
+                    Oldest first
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy("price-high")}>
+                    Price: High to low
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy("price-low")}>
+                    Price: Low to high
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <div
+              className={cn(
+                "grid transition-[grid-template-rows] duration-300 ease-out",
+                mobileFilterExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+              )}
+            >
+              <div className="min-h-0 overflow-hidden">
+                <div className="space-y-4 border-t border-slate-200/60 pb-1 pt-3">
+                  <div>
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Categories
+                    </h3>
+                    <div className="max-h-44 space-y-2 overflow-y-auto pr-1">
+                      {categories.map((category) => (
+                        <div
+                          key={category.category_id}
+                          className="flex items-center gap-2"
+                        >
+                          <Checkbox
+                            id={`mobile-cat-${category.category_id}`}
+                            checked={draftSelectedCategories.includes(
+                              category.category_id
+                            )}
+                            onCheckedChange={() =>
+                              handleDraftCategoryChange(category.category_id)
+                            }
+                          />
+                          <label
+                            htmlFor={`mobile-cat-${category.category_id}`}
+                            className="text-sm text-[#1A1F4C]"
+                          >
+                            {category.category_name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Budget (INR)
+                    </h3>
+                    <div className="px-0.5">
+                      <Slider
+                        max={50000}
+                        step={100}
+                        value={draftPriceRange}
+                        onValueChange={(v) =>
+                          setDraftPriceRange(v as [number, number])
+                        }
+                        className="mb-3"
+                      />
+                      <div className="flex justify-between text-xs font-medium text-slate-500">
+                        <span>₹{draftPriceRange[0].toLocaleString("en-IN")}</span>
+                        <span>₹{draftPriceRange[1].toLocaleString("en-IN")}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Location
+                    </h3>
+                    <Select
+                      value={draftSelectedLocation}
+                      onValueChange={setDraftSelectedLocation}
+                    >
+                      <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white text-sm">
+                        <SelectValue placeholder="Select location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {locations.map((location) => (
+                          <SelectItem key={location} value={location}>
+                            {location === "all" ? "All locations" : location}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Due date
+                    </h3>
+                    <Select
+                      value={draftSelectedDateRange}
+                      onValueChange={setDraftSelectedDateRange}
+                    >
+                      <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white text-sm">
+                        <SelectValue placeholder="Select date range" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any time</SelectItem>
+                        <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="tomorrow">Tomorrow</SelectItem>
+                        <SelectItem value="this-week">This week</SelectItem>
+                        <SelectItem value="this-weekend">This weekend</SelectItem>
+                        <SelectItem value="next-week">Next week</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 flex-1 rounded-xl border-slate-200 font-semibold text-[#1A1F4C]"
+                      onClick={resetAndApplyFilters}
+                    >
+                      Reset
+                    </Button>
+                    <Button
+                      type="button"
+                      className="h-10 flex-1 rounded-xl bg-blue-600 font-semibold hover:bg-blue-700"
+                      onClick={applyDraftFilters}
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                </div>
               </div>
-            </section>
+            </div>
+          </section>
 
           <section className="py-6 md:py-16">
             <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
@@ -1478,156 +1613,6 @@ export function BrowseTasksPage() {
               </div>
             </div>
           </section>
-
-          {/* Mobile: filter sheet */}
-          <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
-            <SheetContent
-              side="bottom"
-              className={cn(
-                "max-h-[90vh] overflow-y-auto rounded-t-2xl border-slate-200 p-0 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 dark:border-slate-700",
-                "[&>button.absolute]:right-3 [&>button.absolute]:top-3"
-              )}
-            >
-              <SheetHeader className="space-y-1 border-b border-slate-100 px-4 pb-3 text-left dark:border-slate-800">
-                <SheetTitle className="text-lg text-slate-900">Filter</SheetTitle>
-                <SheetDescription className="text-slate-500">
-                  Narrow tasks by category, budget, location, and date.
-                </SheetDescription>
-              </SheetHeader>
-              <div className="space-y-6 px-4 py-4">
-                <div>
-                  <h3 className="mb-3 text-sm font-semibold text-slate-800">Categories</h3>
-                  <div className="max-h-48 space-y-2.5 overflow-y-auto pr-1">
-                    {categories.map((category) => (
-                      <div key={category.category_id} className="flex items-center gap-2">
-                        <Checkbox
-                          id={`sheet-cat-${category.category_id}`}
-                          checked={draftSelectedCategories.includes(category.category_id)}
-                          onCheckedChange={() => handleDraftCategoryChange(category.category_id)}
-                        />
-                        <label htmlFor={`sheet-cat-${category.category_id}`} className="text-sm text-slate-700">
-                          {category.category_name}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="mb-3 text-sm font-semibold text-slate-800">Budget (INR)</h3>
-                  <div className="px-1">
-                    <Slider
-                      max={50000}
-                      step={100}
-                      value={draftPriceRange}
-                      onValueChange={(v) => setDraftPriceRange(v as [number, number])}
-                      className="mb-4"
-                    />
-                    <div className="flex justify-between text-xs font-medium text-slate-500">
-                      <span>₹{draftPriceRange[0].toLocaleString("en-IN")}</span>
-                      <span>₹{draftPriceRange[1].toLocaleString("en-IN")}</span>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <h3 className="mb-3 text-sm font-semibold text-slate-800">Location</h3>
-                  <Select value={draftSelectedLocation} onValueChange={setDraftSelectedLocation}>
-                    <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-slate-50/80">
-                      <SelectValue placeholder="Select location" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {locations.map((location) => (
-                        <SelectItem key={location} value={location}>
-                          {location === "all" ? "All locations" : location}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <h3 className="mb-3 text-sm font-semibold text-slate-800">Due date</h3>
-                  <Select value={draftSelectedDateRange} onValueChange={setDraftSelectedDateRange}>
-                    <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-slate-50/80">
-                      <SelectValue placeholder="Select date range" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="any">Any time</SelectItem>
-                      <SelectItem value="today">Today</SelectItem>
-                      <SelectItem value="tomorrow">Tomorrow</SelectItem>
-                      <SelectItem value="this-week">This week</SelectItem>
-                      <SelectItem value="this-weekend">This weekend</SelectItem>
-                      <SelectItem value="next-week">Next week</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <SheetFooter className="flex-row gap-2 border-t border-slate-100 px-4 pb-2 pt-3 dark:border-slate-800">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-11 flex-1 rounded-xl border-slate-200 font-semibold"
-                  onClick={resetAndApplyFilters}
-                >
-                  Reset
-                </Button>
-                <Button
-                  type="button"
-                  className="h-11 flex-1 rounded-xl bg-blue-600 font-semibold hover:bg-blue-700"
-                  onClick={applyDraftFilters}
-                >
-                  Apply
-                </Button>
-              </SheetFooter>
-            </SheetContent>
-          </Sheet>
-
-          <Sheet open={sortSheetOpen} onOpenChange={setSortSheetOpen}>
-            <SheetContent
-              side="bottom"
-              className={cn(
-                "rounded-t-2xl border-slate-200 p-0 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 dark:border-slate-700",
-                "[&>button.absolute]:right-3 [&>button.absolute]:top-3"
-              )}
-            >
-              <SheetHeader className="px-4 pb-2 text-left">
-                <SheetTitle className="text-lg">Sort by</SheetTitle>
-                <SheetDescription>Choose how tasks are ordered.</SheetDescription>
-              </SheetHeader>
-              <div className="flex flex-col px-2 pb-4">
-                {(
-                  [
-                    { id: "newest" as const, label: "Newest first" },
-                    { id: "oldest" as const, label: "Oldest first" },
-                    { id: "price-high" as const, label: "Price: High to low" },
-                    { id: "price-low" as const, label: "Price: Low to high" },
-                  ] as const
-                ).map((opt) => {
-                  const active = sortBy === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      className={cn(
-                        "flex min-h-[48px] w-full items-center justify-between rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors",
-                        active ? "bg-blue-50 text-blue-900 ring-1 ring-blue-200/80" : "text-slate-800 hover:bg-slate-50"
-                      )}
-                      onClick={() => {
-                        setSortBy(opt.id);
-                        setSortSheetOpen(false);
-                      }}
-                    >
-                      {opt.label}
-                      {active ? <Check className="h-5 w-5 shrink-0 text-blue-600" aria-hidden /> : null}
-                    </button>
-                  );
-                })}
-              </div>
-              <SheetFooter className="px-3 pb-1">
-                <Button type="button" variant="outline" className="w-full rounded-xl" onClick={() => setSortSheetOpen(false)}>
-                  Close
-                </Button>
-              </SheetFooter>
-            </SheetContent>
-          </Sheet>
 
           <section className="py-16 bg-slate-50">
             <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
