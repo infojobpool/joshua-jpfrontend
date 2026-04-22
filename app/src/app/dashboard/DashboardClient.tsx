@@ -41,7 +41,7 @@ import {
   Home,
   Wallet,
   RotateCcw,
-  Map,
+  Map as MapIcon,
   SlidersHorizontal,
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
@@ -4798,7 +4798,7 @@ export default function Dashboard() {
                         className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-white/80 dark:text-slate-300 dark:hover:bg-slate-800/80"
                         aria-label="Open browse tasks"
                       >
-                        <Map className="h-5 w-5" aria-hidden />
+                        <MapIcon className="h-5 w-5" aria-hidden />
                       </Link>
                       <h2 className="text-center text-[15px] font-bold tracking-tight text-[#1A1F4C] dark:text-slate-100">
                         Available tasks
