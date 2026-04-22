@@ -70,6 +70,8 @@ export type DashboardTaskSummaryCardProps = {
   actions?: ReactNode;
   actionsWrapperClassName?: string;
   isMobile: boolean;
+  /** Tighter padding and vertical rhythm (e.g. available task list). */
+  density?: "default" | "compact";
 };
 
 export function DashboardTaskSummaryCard({
@@ -94,8 +96,10 @@ export function DashboardTaskSummaryCard({
   actions,
   actionsWrapperClassName,
   isMobile,
+  density = "default",
 }: DashboardTaskSummaryCardProps) {
-  const pad = isMobile ? "p-4" : "p-6";
+  const compact = density === "compact";
+  const pad = compact ? (isMobile ? "p-3" : "p-4") : isMobile ? "p-4" : "p-6";
   const defaultFooter = statusLabel || footerTrailing;
 
   return (
@@ -109,14 +113,27 @@ export function DashboardTaskSummaryCard({
           />
         ) : null}
         {share ? (
-          <div className="absolute right-4 top-4 z-10 opacity-90 hover:opacity-100 md:right-6 md:top-6">{share}</div>
+          <div
+            className={cn(
+              "absolute z-10 opacity-90 hover:opacity-100",
+              compact ? "right-3 top-3 md:right-4 md:top-4" : "right-4 top-4 md:right-6 md:top-6",
+            )}
+          >
+            {share}
+          </div>
         ) : null}
 
-        <div className="flex items-start justify-between gap-3 pr-10">
+        <div className={cn("flex items-start justify-between", compact ? "gap-2 pr-9" : "gap-3 pr-10")}>
           <h3
             className={cn(
               "task-title min-w-0 flex-1 text-balance leading-snug text-slate-900 dark:text-slate-100",
-              isMobile ? "text-base font-semibold" : "text-lg font-semibold md:text-xl",
+              compact
+                ? isMobile
+                  ? "text-[0.9375rem] font-semibold leading-tight"
+                  : "text-base font-semibold"
+                : isMobile
+                  ? "text-base font-semibold"
+                  : "text-lg font-semibold md:text-xl",
               titleClassName,
             )}
           >
@@ -124,7 +141,8 @@ export function DashboardTaskSummaryCard({
           </h3>
           <span
             className={cn(
-              "shrink-0 text-right text-base font-bold tabular-nums tracking-tight text-slate-900 dark:text-slate-100 md:text-lg",
+              "shrink-0 text-right font-bold tabular-nums tracking-tight text-slate-900 dark:text-slate-100",
+              compact ? "text-sm md:text-base" : "text-base md:text-lg",
               priceClassName,
             )}
           >
@@ -132,16 +150,24 @@ export function DashboardTaskSummaryCard({
           </span>
         </div>
 
-        {belowTitle ? <div className="mt-2">{belowTitle}</div> : null}
+        {belowTitle ? <div className={compact ? "mt-1.5" : "mt-2"}>{belowTitle}</div> : null}
 
         {metaRows && metaRows.length > 0 ? (
-          <div className="mt-3 space-y-2">
+          <div className={cn(compact ? "mt-2 space-y-1" : "mt-3 space-y-2")}>
             {metaRows.map((row) => (
               <div
                 key={row.key}
-                className="flex items-start gap-2.5 text-sm leading-snug text-slate-600 dark:text-slate-400"
+                className={cn(
+                  "flex items-start leading-snug text-slate-600 dark:text-slate-400",
+                  compact ? "gap-2 text-[13px]" : "gap-2.5 text-sm",
+                )}
               >
-                <span className="mt-0.5 shrink-0 text-slate-400 dark:text-slate-500 [&_svg]:h-4 [&_svg]:w-4">
+                <span
+                  className={cn(
+                    "mt-0.5 shrink-0 text-slate-400 dark:text-slate-500",
+                    compact ? "[&_svg]:h-3.5 [&_svg]:w-3.5" : "[&_svg]:h-4 [&_svg]:w-4",
+                  )}
+                >
                   {row.icon}
                 </span>
                 <span className="min-w-0">{row.text}</span>
@@ -150,12 +176,24 @@ export function DashboardTaskSummaryCard({
           </div>
         ) : null}
 
-        {extra ? <div className="mt-3">{extra}</div> : null}
+        {extra ? <div className={compact ? "mt-2" : "mt-3"}>{extra}</div> : null}
 
         {footer != null ? (
-          <div className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-700/60">{footer}</div>
+          <div
+            className={cn(
+              "border-t border-slate-100 dark:border-slate-700/60",
+              compact ? "mt-2 pt-2" : "mt-4 pt-3",
+            )}
+          >
+            {footer}
+          </div>
         ) : defaultFooter ? (
-          <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-3 dark:border-slate-700/60">
+          <div
+            className={cn(
+              "flex items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-700/60",
+              compact ? "mt-2 pt-2" : "mt-4 gap-3 pt-3",
+            )}
+          >
             {statusLabel ? (
               <span className={cn("min-w-0", statusClassName ?? defaultStatusClass(statusTone))}>{statusLabel}</span>
             ) : (
@@ -169,7 +207,13 @@ export function DashboardTaskSummaryCard({
           <div
             className={cn(
               "flex flex-wrap gap-2",
-              footer != null || defaultFooter ? "mt-4 border-t border-slate-100 pt-3 dark:border-slate-700/60" : "mt-4",
+              footer != null || defaultFooter
+                ? compact
+                  ? "mt-2 border-t border-slate-100 pt-2 dark:border-slate-700/60"
+                  : "mt-4 border-t border-slate-100 pt-3 dark:border-slate-700/60"
+                : compact
+                  ? "mt-2"
+                  : "mt-4",
               actionsWrapperClassName,
             )}
           >

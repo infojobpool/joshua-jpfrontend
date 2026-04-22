@@ -58,6 +58,7 @@ import {
   type DashboardTaskCardAccent,
   type DashboardTaskSummaryStatusTone,
 } from "@/components/dashboard/DashboardTaskSummaryCard";
+import { TaskDueSummaryRow } from "@/components/dashboard/TaskDueSummaryRow";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { TrustBadges } from "@/components/TrustBadges";
 import { analytics } from "@/lib/analytics";
@@ -245,11 +246,11 @@ function filterRealJobImages(images?: Image[] | null): Image[] {
 }
 
 /** Centered strip under card title — real photos only (no placeholder). */
-function DashboardCardThumbnails({ images }: { images?: Image[] }) {
+function DashboardCardThumbnails({ images, className }: { images?: Image[]; className?: string }) {
   const real = filterRealJobImages(images);
   if (real.length === 0) return null;
   return (
-    <div className="mt-3 flex w-full justify-center">
+    <div className={cn("mt-3 flex w-full justify-center", className)}>
       <div className="grid w-full max-w-[220px] grid-cols-3 gap-2 sm:max-w-[260px]">
         {real.slice(0, 3).map((img) => (
           <div
@@ -5206,7 +5207,7 @@ export default function Dashboard() {
                 />
                   </div>
                 ) : (
-                  <div className={`grid gap-4 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
+                  <div className={`grid gap-3 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
                     {sortedAvailableTasks.map((task) => {
                       const hasUserBid = requestedTasks.some(bid => bid.task_id === task.id);
                       const statusLabel =
@@ -5225,23 +5226,12 @@ export default function Dashboard() {
                           text: task.location,
                         });
                       }
-                      metaRows.push({
-                        key: "posted",
-                        icon: <Clock className="h-4 w-4" aria-hidden />,
-                        text: `Posted ${getCardPostedAt(task)}`,
-                      });
-                      if (task.dueDate || task.dueDateFlexible) {
-                        metaRows.push({
-                          key: "due",
-                          icon: <CalendarDays className="h-4 w-4" aria-hidden />,
-                          text: task.dueDateFlexible || !task.dueDate ? "Flexible" : formatDateWithTime(task.dueDate),
-                        });
-                      }
 
                       return (
                         <DashboardTaskSummaryCard
                           key={task.id}
                           accent="blue"
+                          density="compact"
                           isMobile={!!isMobile}
                           title={task.title}
                           titleClassName="line-clamp-3"
@@ -5255,14 +5245,17 @@ export default function Dashboard() {
                               variant="icon"
                             />
                           }
-                          belowTitle={<DashboardCardThumbnails images={task.images} />}
+                          belowTitle={
+                            <DashboardCardThumbnails images={task.images} className="mt-1.5 sm:mt-2" />
+                          }
                           metaRows={metaRows}
+                          extra={<TaskDueSummaryRow dueDate={task.dueDate} dueDateFlexible={task.dueDateFlexible} />}
                           statusLabel={statusLabel}
                           statusTone={statusTone}
                           footerTrailing={
                             task.posted_by ? (
-                              <Avatar className="h-8 w-8 border border-slate-200 dark:border-slate-600">
-                                <AvatarFallback className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                              <Avatar className="h-7 w-7 border border-slate-200 dark:border-slate-600 sm:h-8 sm:w-8">
+                                <AvatarFallback className="text-[11px] font-medium text-slate-600 dark:text-slate-300 sm:text-xs">
                                   {task.posted_by.charAt(0) || "?"}
                                 </AvatarFallback>
                               </Avatar>
@@ -5270,7 +5263,7 @@ export default function Dashboard() {
                           }
                           actions={
                             <Link href={`/tasks/${task.id}`} className="block w-full" onClick={() => { try { storeTaskForNav(task); } catch {} }}>
-                              <Button className="w-full rounded-xl bg-blue-600 py-2.5 font-semibold text-white hover:bg-blue-700">
+                              <Button className="w-full rounded-xl bg-blue-600 py-2 text-sm font-semibold text-white hover:bg-blue-700 sm:py-2.5">
                                 {hasUserBid ? "View Offer" : "Make an Offer"}
                               </Button>
                             </Link>
