@@ -40,7 +40,9 @@ import {
   ClipboardList,
   Home,
   Wallet,
-  RotateCcw
+  RotateCcw,
+  Map,
+  SlidersHorizontal,
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import { jobIdVariants } from "@/lib/jobIdVariants";
@@ -70,6 +72,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 // Load Leaflet map client-only to avoid mobile crashes
@@ -605,6 +613,8 @@ export default function Dashboard() {
   const [priceRange, setPriceRange] = useState([0, 50000]);
   const [location, setLocation] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  /** Mobile Available tab: show keyword search field (header uses icon only). */
+  const [availableSearchOpen, setAvailableSearchOpen] = useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
   // Mobile-only extra filter UI state
   const [sortBy, setSortBy] = useState<string>("newest");
@@ -642,7 +652,23 @@ export default function Dashboard() {
     setNearMeError(null);
     setOnlyOpen(true);
     setWithImages(false);
+    setAvailableSearchOpen(false);
   }, []);
+
+  const availableSortMenuLabel = useMemo(() => {
+    switch (availableSortBy) {
+      case "nearest":
+        return "Nearest first";
+      case "oldest":
+        return "Oldest first";
+      case "highest":
+        return "Highest budget";
+      case "lowest":
+        return "Lowest budget";
+      default:
+        return "Newest first";
+    }
+  }, [availableSortBy]);
 
   const selectDashboardTaskTab = useCallback(
     (value: string) => {
@@ -751,6 +777,13 @@ export default function Dashboard() {
       { timeout: 10000, maximumAge: 300000, enableHighAccuracy: true }
     );
   }, [nearMeMode]);
+
+  useEffect(() => {
+    if (activeTab !== "available") {
+      setAvailableSearchOpen(false);
+      setShowFilters(false);
+    }
+  }, [activeTab]);
 
   // Close profile dropdown when clicking outside
   useEffect(() => {
@@ -4366,87 +4399,6 @@ export default function Dashboard() {
 
           {/* Active filter chips (mobile) - removed per request */}
 
-          {isMobile && showFilters && (
-            <div id="mobile-filters" className="mt-1 rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm dark:border-slate-600 dark:bg-slate-900">
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Sort by</label>
-                  <div className="bg-white border border-gray-200 rounded-lg p-2">
-                    <select value={availableSortBy} onChange={e=>setAvailableSortBy(e.target.value)} className="w-full bg-transparent text-gray-700">
-                      {nearMeMode && <option value="nearest">Nearest first</option>}
-                      <option value="newest">Newest first</option>
-                      <option value="oldest">Oldest first</option>
-                      <option value="highest">Budget: High to Low</option>
-                      <option value="lowest">Budget: Low to High</option>
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Category</label>
-                  <div className="bg-white border border-gray-200 rounded-lg p-2">
-                    <select value={category} onChange={e=>setCategory(e.target.value)} className="w-full bg-transparent text-gray-700">
-                      <option value="all">All Categories</option>
-                      {categoriesLoading ? (
-                        <option value="loading" disabled>Loading categories...</option>
-                      ) : categories.length === 0 ? (
-                        <option value="no-categories" disabled>No categories available</option>
-                      ) : (
-                        categories.map((c) => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))
-                      )}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Price range</label>
-                  <div className="px-2 py-3 bg-gray-50 rounded-lg border">
-                    <Slider value={priceRange} onValueChange={setPriceRange} max={50000} step={10} />
-                    <div className="flex justify-between text-sm mt-2 text-gray-700">
-                      <span>₹{priceRange[0].toLocaleString()}</span>
-                      <span>₹{priceRange[1].toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Location</label>
-                  <Input value={location} onChange={(e)=>setLocation(e.target.value)} placeholder="e.g., Mumbai" />
-                  <p className="text-[11px] text-slate-500 mt-1">Text search for area. &quot;Near me&quot; uses GPS instead.</p>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-sm font-medium text-gray-700">Near me</label>
-                    <Button type="button" variant={nearMeMode ? "default" : "outline"} size="sm" onClick={handleNearMeToggle} disabled={isRequestingLocation}>
-                      {isRequestingLocation ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : nearMeMode ? <MapPin className="h-4 w-4 mr-1" /> : <MapPinOff className="h-4 w-4 mr-1" />}
-                      {isRequestingLocation ? "Getting…" : nearMeMode ? "On" : "Off"}
-                    </Button>
-                  </div>
-                  {nearMeMode && (
-                    <select value={String(radiusKm)} onChange={e=>setRadiusKm(Number(e.target.value))} className="mt-1 w-full bg-white border border-gray-200 rounded-lg p-2 text-gray-700">
-                      <option value="5">5 km</option>
-                      <option value="10">10 km</option>
-                      <option value="25">25 km</option>
-                      <option value="50">50 km</option>
-                    </select>
-                  )}
-                  {nearMeError && <p className="text-xs text-amber-600 mt-1">{nearMeError}</p>}
-                </div>
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 text-sm text-gray-700">
-                    <input type="checkbox" checked={onlyOpen} onChange={e=>setOnlyOpen(e.target.checked)} /> Only open
-                  </label>
-                  <label className="flex items-center gap-2 text-sm text-gray-700">
-                    <input type="checkbox" checked={withImages} onChange={e=>setWithImages(e.target.checked)} /> With images
-                  </label>
-                </div>
-                <div className="flex gap-2 pt-1">
-                  <Button type="button" variant="outline" className="flex-1" onClick={clearAvailableFilters}>Clear</Button>
-                  <Button type="button" className="flex-1" onClick={()=>setShowFilters(false)}>Apply</Button>
-                </div>
-              </div>
-            </div>
-          )}
-
           {activeTab === "my-tasks" && (
           <div className="space-y-3 md:space-y-6 mt-2 md:mt-8 animate-fade-in-up min-h-[500px]">
             <h2 className="text-lg md:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Tasks You've Posted</h2>
@@ -4711,7 +4663,12 @@ export default function Dashboard() {
 
           {activeTab === "available" && (
           <div className={`${isMobile ? "space-y-2 mt-2" : "space-y-4 mt-4"} animate-fade-in-up min-h-[500px]`}>
-            <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />Available Tasks</h2>
+            {!isMobile && (
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
+                <span className="w-1 h-5 rounded-full bg-[#2563eb]" />
+                Available Tasks
+              </h2>
+            )}
             <div className={`grid gap-6 ${isMobile ? "grid-cols-1" : "md:grid-cols-4"}`} style={{zIndex:1, position:'relative'}}>
               <div className={`${isMobile ? "hidden" : "md:col-span-1"} space-y-6`}>
                 <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
@@ -4834,45 +4791,227 @@ export default function Dashboard() {
 
               <div className={`${isMobile ? "col-span-1" : "md:col-span-3"} ${isMobile ? "space-y-2" : "space-y-6"}`}>
                 {isMobile ? (
-                  <div className="flex rounded-2xl border border-slate-200/90 dark:border-slate-600 bg-white dark:bg-slate-900 shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden">
-                    <form onSubmit={handleSearch} className="flex flex-1 min-w-0 items-stretch">
-                      <label htmlFor="dashboard-available-search" className="relative flex flex-1 min-w-0 items-center pl-3">
-                        <span className="sr-only">Search tasks</span>
-                        <Search className="pointer-events-none h-4 w-4 shrink-0 text-slate-400" />
+                  <div className="-mx-4 border-b border-slate-200/70 bg-[#F7F8FA] px-4 pb-3 pt-0 dark:border-slate-700/70 dark:bg-slate-950/40">
+                    <div className="grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-1 pt-0.5">
+                      <Link
+                        href="/browse"
+                        className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-white/80 dark:text-slate-300 dark:hover:bg-slate-800/80"
+                        aria-label="Open browse tasks"
+                      >
+                        <Map className="h-5 w-5" aria-hidden />
+                      </Link>
+                      <h2 className="text-center text-[15px] font-bold tracking-tight text-[#1A1F4C] dark:text-slate-100">
+                        Available tasks
+                      </h2>
+                      <button
+                        type="button"
+                        className="flex h-10 w-10 items-center justify-self-end justify-center rounded-full text-slate-600 transition-colors hover:bg-white/80 dark:text-slate-300 dark:hover:bg-slate-800/80"
+                        aria-label={availableSearchOpen ? "Hide search" : "Search tasks"}
+                        aria-expanded={availableSearchOpen}
+                        onClick={() => setAvailableSearchOpen((o) => !o)}
+                      >
+                        <Search className="h-5 w-5" aria-hidden />
+                      </button>
+                    </div>
+                    {availableSearchOpen ? (
+                      <form onSubmit={handleSearch} className="relative mt-2">
+                        <label htmlFor="dashboard-available-search" className="sr-only">
+                          Search tasks
+                        </label>
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" aria-hidden />
                         <Input
                           id="dashboard-available-search"
                           type="search"
-                          placeholder="Search tasks…"
+                          placeholder="Search…"
                           enterKeyHint="search"
-                          className="h-11 flex-1 min-w-0 border-0 bg-transparent pl-2 pr-2 text-sm text-slate-900 shadow-none placeholder:text-slate-400 focus-visible:ring-0 dark:text-slate-100"
+                          autoComplete="off"
+                          className="h-9 w-full rounded-full border border-slate-200/90 bg-white pl-9 pr-3 text-sm text-slate-900 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                         />
-                      </label>
-                      <Button
-                        type="submit"
-                        size="icon"
-                        className="h-11 w-11 shrink-0 rounded-none border-0 bg-[#2563eb] text-white hover:bg-[#1d4ed8]"
-                        aria-label="Search"
+                      </form>
+                    ) : null}
+                    <div className="mt-2.5 flex items-center justify-between border-t border-slate-200/50 pt-2.5 dark:border-slate-700/60">
+                      <button
+                        type="button"
+                        onClick={() => setShowFilters((v) => !v)}
+                        aria-expanded={showFilters}
+                        aria-controls="available-mobile-filters"
+                        className={cn(
+                          "relative flex min-h-[44px] items-center gap-2 py-1 text-[15px] font-semibold tracking-tight text-[#1A1F4C] transition-colors active:opacity-80 dark:text-slate-100",
+                          showFilters && "text-blue-700 dark:text-blue-400"
+                        )}
                       >
-                        <Search className="h-4 w-4" />
-                      </Button>
-                    </form>
-                    <button
-                      type="button"
-                      className="relative flex h-11 shrink-0 items-center gap-1.5 border-l border-slate-200/90 bg-slate-50/90 px-3 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-800"
-                      onClick={() => setShowFilters(!showFilters)}
-                      aria-expanded={showFilters}
-                      aria-controls="mobile-filters"
-                    >
-                      <span className="relative inline-flex">
-                        <Filter className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
+                        <SlidersHorizontal className="h-[17px] w-[17px] shrink-0 text-slate-500 dark:text-slate-400" aria-hidden />
+                        Filter
                         {availableFiltersActive ? (
-                          <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-slate-50 dark:ring-slate-800" aria-hidden />
+                          <span
+                            className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-blue-600 ring-2 ring-[#F7F8FA] dark:bg-blue-500 dark:ring-slate-950"
+                            aria-hidden
+                          />
                         ) : null}
-                      </span>
-                      Filters
-                    </button>
+                      </button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex min-h-[44px] items-center gap-1 py-1 text-[15px] font-semibold tracking-tight text-[#1A1F4C] dark:text-slate-100"
+                          >
+                            Sort
+                            <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                            <span className="sr-only">Current: {availableSortMenuLabel}</span>
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-[11.5rem]">
+                          {nearMeMode ? (
+                            <DropdownMenuItem onClick={() => setAvailableSortBy("nearest")}>
+                              Nearest first
+                            </DropdownMenuItem>
+                          ) : null}
+                          <DropdownMenuItem onClick={() => setAvailableSortBy("newest")}>
+                            Newest first
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setAvailableSortBy("oldest")}>
+                            Oldest first
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setAvailableSortBy("highest")}>
+                            Highest budget
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setAvailableSortBy("lowest")}>
+                            Lowest budget
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <div
+                      id="available-mobile-filters"
+                      className={cn(
+                        "grid transition-[grid-template-rows] duration-300 ease-out",
+                        showFilters ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                      )}
+                    >
+                      <div className="min-h-0 overflow-hidden">
+                        <div className="space-y-4 border-t border-slate-200/60 pb-1 pt-3 dark:border-slate-700/60">
+                          <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                              Category
+                            </label>
+                            <div className="rounded-lg border border-gray-200 bg-white p-2 dark:border-slate-600 dark:bg-slate-900">
+                              <select
+                                value={category}
+                                onChange={(e) => setCategory(e.target.value)}
+                                className="w-full bg-transparent text-gray-700 dark:text-slate-200"
+                              >
+                                <option value="all">All Categories</option>
+                                {categoriesLoading ? (
+                                  <option value="loading" disabled>
+                                    Loading categories...
+                                  </option>
+                                ) : categories.length === 0 ? (
+                                  <option value="no-categories" disabled>
+                                    No categories available
+                                  </option>
+                                ) : (
+                                  categories.map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                      {c.name}
+                                    </option>
+                                  ))
+                                )}
+                              </select>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                              Price range
+                            </label>
+                            <div className="rounded-lg border bg-gray-50 px-2 py-3 dark:border-slate-600 dark:bg-slate-900/80">
+                              <Slider value={priceRange} onValueChange={setPriceRange} max={50000} step={10} />
+                              <div className="mt-2 flex justify-between text-sm text-gray-700 dark:text-slate-300">
+                                <span>₹{priceRange[0].toLocaleString()}</span>
+                                <span>₹{priceRange[1].toLocaleString()}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                              Location
+                            </label>
+                            <Input
+                              value={location}
+                              onChange={(e) => setLocation(e.target.value)}
+                              placeholder="e.g., Mumbai"
+                              className="dark:border-slate-600 dark:bg-slate-900"
+                            />
+                            <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                              Text search for area. &quot;Near me&quot; uses GPS instead.
+                            </p>
+                          </div>
+                          <div>
+                            <div className="mb-1 flex items-center justify-between">
+                              <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Near me</label>
+                              <Button
+                                type="button"
+                                variant={nearMeMode ? "default" : "outline"}
+                                size="sm"
+                                onClick={handleNearMeToggle}
+                                disabled={isRequestingLocation}
+                              >
+                                {isRequestingLocation ? (
+                                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                                ) : nearMeMode ? (
+                                  <MapPin className="mr-1 h-4 w-4" />
+                                ) : (
+                                  <MapPinOff className="mr-1 h-4 w-4" />
+                                )}
+                                {isRequestingLocation ? "Getting…" : nearMeMode ? "On" : "Off"}
+                              </Button>
+                            </div>
+                            {nearMeMode ? (
+                              <select
+                                value={String(radiusKm)}
+                                onChange={(e) => setRadiusKm(Number(e.target.value))}
+                                className="mt-1 w-full rounded-lg border border-gray-200 bg-white p-2 text-gray-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                              >
+                                <option value="5">5 km</option>
+                                <option value="10">10 km</option>
+                                <option value="25">25 km</option>
+                                <option value="50">50 km</option>
+                              </select>
+                            ) : null}
+                            {nearMeError ? (
+                              <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">{nearMeError}</p>
+                            ) : null}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
+                              <input
+                                type="checkbox"
+                                checked={onlyOpen}
+                                onChange={(e) => setOnlyOpen(e.target.checked)}
+                              />{" "}
+                              Only open
+                            </label>
+                            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
+                              <input
+                                type="checkbox"
+                                checked={withImages}
+                                onChange={(e) => setWithImages(e.target.checked)}
+                              />{" "}
+                              With images
+                            </label>
+                          </div>
+                          <div className="flex gap-2 pt-1">
+                            <Button type="button" variant="outline" className="flex-1" onClick={clearAvailableFilters}>
+                              Clear
+                            </Button>
+                            <Button type="button" className="flex-1" onClick={() => setShowFilters(false)}>
+                              Done
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col sm:flex-row gap-4">
@@ -4900,7 +5039,7 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                <div className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-2 ${isMobile ? "mt-3 pt-0.5" : "mt-1"}`}>
+                <div className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-2 ${isMobile ? "mt-2 pt-0.5" : "mt-1"}`}>
                   <div className="flex flex-wrap items-center gap-2 min-w-0">
                     <p className="text-sm text-slate-500 dark:text-slate-400">
                       {sortedAvailableTasks.length} task{sortedAvailableTasks.length === 1 ? "" : "s"}
@@ -4915,13 +5054,19 @@ export default function Dashboard() {
                       </button>
                     ) : null}
                   </div>
-                  <select value={availableSortBy} onChange={e=>setAvailableSortBy(e.target.value)} className="w-full max-w-[11rem] sm:w-[180px] rounded-md border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-gray-700 dark:text-slate-200 shrink-0">
-                    {nearMeMode && <option value="nearest">Nearest first</option>}
-                    <option value="newest">Newest first</option>
-                    <option value="oldest">Oldest first</option>
-                    <option value="highest">Highest budget</option>
-                    <option value="lowest">Lowest budget</option>
-                  </select>
+                  {!isMobile ? (
+                    <select
+                      value={availableSortBy}
+                      onChange={(e) => setAvailableSortBy(e.target.value)}
+                      className="w-full max-w-[11rem] shrink-0 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 sm:w-[180px]"
+                    >
+                      {nearMeMode && <option value="nearest">Nearest first</option>}
+                      <option value="newest">Newest first</option>
+                      <option value="oldest">Oldest first</option>
+                      <option value="highest">Highest budget</option>
+                      <option value="lowest">Lowest budget</option>
+                    </select>
+                  ) : null}
                 </div>
 
                 {sortedAvailableTasks.length === 0 ? (
