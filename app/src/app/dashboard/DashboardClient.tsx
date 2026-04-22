@@ -440,7 +440,7 @@ const DASHBOARD_TASK_VIEW_OPTIONS: {
   description: string;
 }[] = [
   { id: "my-tasks", title: "Tasks I posted", description: "Jobs you created on JobPool." },
-  { id: "available", title: "Available to claim", description: "Open tasks you can send an offer on." },
+  { id: "available", title: "Available tasks", description: "Open tasks you can send an offer on." },
   { id: "assigned", title: "Assigned to me", description: "Work you are doing right now." },
   { id: "completed", title: "Completed", description: "Finished tasks." },
   { id: "my-bids", title: "My offers", description: "Offers and bids you have sent." },
@@ -4299,7 +4299,7 @@ export default function Dashboard() {
                       type="button"
                       onClick={() => setAvailableSearchOpen((o) => !o)}
                       className={cn(
-                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200/90 bg-white text-slate-600 shadow-sm transition active:scale-[0.99] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300",
+                        "flex w-11 shrink-0 items-center justify-center self-stretch rounded-xl border border-slate-200/90 bg-white text-slate-600 shadow-sm transition active:scale-[0.99] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300",
                         availableSearchOpen && "border-blue-300/80 bg-blue-50/90 text-blue-800 ring-2 ring-blue-500/20 dark:border-blue-700 dark:bg-blue-950/50 dark:text-blue-200"
                       )}
                       aria-label={availableSearchOpen ? "Hide search" : "Search tasks"}
