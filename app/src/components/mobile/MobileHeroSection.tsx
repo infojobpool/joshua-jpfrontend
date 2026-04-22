@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import useStore from "@/lib/Zustand";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
@@ -105,9 +106,18 @@ export function MobileHeroSection() {
           aria-hidden
         />
 
-        <div className="relative z-10 mx-auto max-w-lg px-4 pb-5 pt-2 sm:px-5 sm:pb-6 sm:pt-3">
+        <div
+          className={cn(
+            "relative z-10 mx-auto max-w-lg px-4 pb-5 sm:px-5 sm:pb-6",
+            isAuthenticated && user ? "pt-1" : "pt-2 sm:pt-3"
+          )}
+        >
           {isAuthenticated && user ? (
-            <div ref={heroBarRef} className="mb-2 flex items-center justify-end gap-2">
+            <>
+              <div
+                ref={heroBarRef}
+                className="absolute right-3 top-1 z-20 flex items-center justify-end gap-2 sm:right-4 sm:top-1.5"
+              >
               <Link
                 href="/notifications"
                 className={heroHeaderIconPill}
@@ -341,7 +351,9 @@ export function MobileHeroSection() {
                   </div>
                 ) : null}
               </div>
-            </div>
+              </div>
+              <div className="pointer-events-none h-12 w-full shrink-0" aria-hidden />
+            </>
           ) : null}
 
           {isAuthenticated && firstName ? (
