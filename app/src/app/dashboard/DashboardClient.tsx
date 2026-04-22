@@ -40,8 +40,7 @@ import {
   ClipboardList,
   Home,
   Wallet,
-  RotateCcw,
-  Sparkles
+  RotateCcw
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import { jobIdVariants } from "@/lib/jobIdVariants";
@@ -3864,136 +3863,6 @@ export default function Dashboard() {
       <main className="flex-1 w-full max-w-none mx-auto py-3 md:py-10 px-4 md:px-8 lg:px-12 pb-6 md:pb-10">
         <div className="contents">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 md:mb-8 gap-3 md:gap-4 animate-fade-in-up">
-          {/* Move profile block up on mobile */}
-          {mobile && (
-            <div className="w-full">
-              {/* Mobile top bar: notifications + profile */}
-              <div className="flex items-center justify-end gap-2">
-                <div className="flex items-center gap-2 shrink-0 min-w-0">
-                  <button
-                    type="button"
-                    onClick={() => setShowNotifications((s) => !s)}
-                    className="relative inline-flex items-center justify-center h-10 w-10 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-all duration-200"
-                    aria-label="Notifications"
-                    title="Notifications"
-                  >
-                    <Bell className={`h-5 w-5 text-gray-700 dark:text-slate-300 ${bellAnimating ? "animate-bell-ring" : ""}`} />
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full text-[10px] font-medium bg-emerald-600 text-white">
-                        {unreadCount > 99 ? "99+" : unreadCount}
-                      </span>
-                    )}
-                  </button>
-                  <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                    className="flex items-center gap-2 h-10 pl-2 pr-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-800 dark:text-slate-200 rounded-xl shadow-sm transition-all duration-200 hover:shadow-md dark:hover:bg-slate-700/80"
-                    aria-label="Account menu"
-                    aria-expanded={profileDropdownOpen}
-                  >
-                    <div className="relative shrink-0">
-                      {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
-                        <img
-                          src={resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image}
-                          alt={safeUser.name || "Profile"}
-                          className="h-8 w-8 rounded-full object-cover border-2 border-gray-200 dark:border-slate-600"
-                        />
-                      ) : (
-                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-sm font-semibold border-2 border-gray-200">
-                          {safeUser.name?.charAt(0) || "U"}
-                        </div>
-                      )}
-                      <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 bg-green-500 rounded-full border-2 border-white dark:border-slate-800" />
-                    </div>
-                    <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${profileDropdownOpen ? "rotate-180" : ""}`} />
-                  </button>
-                  {profileDropdownOpen && (
-                    <div className="absolute right-0 mt-3 w-72 max-w-[85vw] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl shadow-slate-200/50 dark:shadow-black/20 border border-slate-100 dark:border-slate-700/80 overflow-hidden z-50 animate-fade-in-up ring-1 ring-slate-900/5">
-                      <div className="px-5 py-4 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900 border-b border-slate-100 dark:border-slate-700/50">
-                        <div className="flex items-center gap-4">
-                          {(resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image) ? (
-                            <img 
-                              src={resolveProfileImageUrl(safeUser.profile_image) || safeUser.profile_image || ""} 
-                              alt={safeUser.name || "Profile"} 
-                              className="h-12 w-12 rounded-full object-cover ring-2 ring-white dark:ring-slate-800 shadow-md"
-                            />
-                          ) : (
-                            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-lg font-semibold ring-2 ring-white dark:ring-slate-800 shadow-md">
-                              {(safeUser.name ? safeUser.name.charAt(0) : "U")}
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-nowrap min-w-0">
-                              <p className="font-semibold text-slate-900 dark:text-slate-100 text-base truncate" title={safeUser.name || "User"}>
-                                {safeUser.name || "User"}
-                              </p>
-                              {user?.verification_status >= 3 && <VerifiedBadge size="sm" />}
-                            </div>
-                            {safeUser.email && (
-                              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 truncate" title={safeUser.email}>
-                                {safeUser.email}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="py-1.5">
-                        <Link href="/" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
-                          <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
-                            <Home className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                          </div>
-                          <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Go to Home</span>
-                        </Link>
-                        <Link href="/profile" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
-                          <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/20">
-                            <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                          </div>
-                          <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">My Profile</span>
-                        </Link>
-                        <Link href="/messages" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
-                          <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-900/20">
-                            <MessageSquare className="h-4 w-4 text-sky-600 dark:text-sky-400" />
-                          </div>
-                          <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Messages</span>
-                        </Link>
-                        <Link href="/wallet" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
-                          <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
-                            <Wallet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                          </div>
-                          <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Wallet</span>
-                        </Link>
-                        <Link href="/supportpage" className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
-                          <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800">
-                            <HelpCircle className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                          </div>
-                          <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Contact Support</span>
-                        </Link>
-                        <div className="border-t border-slate-100 dark:border-slate-700/50 my-1.5" />
-                        <button 
-                          onClick={handleSignOut} 
-                          className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors duration-150 w-[calc(100%-1rem)] text-left"
-                        >
-                          <div className="p-2 rounded-xl bg-red-50 dark:bg-red-900/20">
-                            <LogOut className="h-4 w-4 text-red-600 dark:text-red-400" />
-                          </div>
-                          <span className="text-red-600 dark:text-red-400 font-medium text-sm">Sign Out</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              </div>
-              <div className="mt-3 text-left space-y-0.5">
-                <h1 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-slate-100">Tasks</h1>
-                <div className="mt-2 inline-flex max-w-full flex-wrap items-center gap-1 rounded-full border border-amber-100/90 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20 px-2 py-0.5">
-                  <Sparkles className="h-3 w-3 text-amber-600/90 dark:text-amber-400/90 shrink-0" aria-hidden />
-                  <span className="text-[9px] font-semibold uppercase tracking-wide text-amber-900/80 dark:text-amber-200/90 leading-tight">Verified payouts</span>
-                </div>
-              </div>
-            </div>
-          )}
           {!isMobile && (
             <div className="animate-slide-in-right">
               <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-gray-900 dark:text-slate-100">

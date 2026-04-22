@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Menu, X, User, Plus, MessageSquare, Bell } from "lucide-react";
+import { Menu, X, Plus, MessageSquare, Bell, Briefcase } from "lucide-react";
 import useStore from "@/lib/Zustand";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +41,6 @@ const MainHeader: React.FC = () => {
 
   // Hide header on key authenticated app pages to reduce clutter (they use their own Header)
   const hideOnPrefixes = [
-    "/dashboard",
     "/post-task",
     "/tasks",
     "/browse",
@@ -124,9 +123,9 @@ const MainHeader: React.FC = () => {
                       <MessageSquare className="h-4 w-4" />
                     </Button>
                   </Link>
-                  <Link href="/dashboard" title="Dashboard" aria-label="Dashboard">
+                  <Link href="/dashboard" title="Tasks" aria-label="Tasks">
                     <Button type="button" variant="outline" size="icon" className="rounded-lg border-slate-200 text-slate-700 shadow-none hover:bg-slate-50">
-                      <User className="h-4 w-4" />
+                      <Briefcase className="h-4 w-4" />
                     </Button>
                   </Link>
                   <Button variant="ghost" size="sm" onClick={handleLogout} className="px-2.5 text-slate-600 hover:text-red-600">
@@ -234,8 +233,8 @@ const MainHeader: React.FC = () => {
                     </Link>
                     <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>
                       <Button variant="outline" className="w-full border-gray-300 hover:bg-gray-50">
-                        <User className="h-4 w-4 mr-2" />
-                        Dashboard
+                        <Briefcase className="h-4 w-4 mr-2" />
+                        Tasks
                       </Button>
                     </Link>
                     <Button variant="ghost" onClick={handleLogout} className="w-full text-gray-600 hover:text-red-600">
