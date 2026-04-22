@@ -60,8 +60,13 @@ export function MobileHeroSection() {
     setNavOpen(false);
   }, [logout]);
 
-  const heroIconClass =
-    "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/35 bg-white/15 text-white shadow-[0_4px_20px_rgba(0,0,0,0.2)] backdrop-blur-md transition hover:bg-white/25 active:scale-[0.98]";
+  /** Match `MainHeader` mobile bell / menu pills (white bar on dashboard) for visual consistency on the hero. */
+  const heroHeaderIconPill =
+    "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-blue-100 bg-gradient-to-b from-white to-blue-50/80 text-blue-800 shadow-[0_2px_12px_rgba(37,99,235,0.12)] ring-1 ring-blue-200/40 transition-all hover:border-blue-200 hover:from-blue-50 hover:to-blue-100/90 hover:text-blue-900 active:scale-[0.97]";
+  const heroHeaderMenuPill =
+    "flex h-12 min-w-[3rem] shrink-0 items-center justify-center rounded-2xl border-2 border-blue-100 bg-gradient-to-b from-white to-blue-50/80 text-blue-800 shadow-[0_2px_12px_rgba(37,99,235,0.12)] ring-1 ring-blue-200/40 transition-all hover:border-blue-200 hover:from-blue-50 hover:to-blue-100/90 hover:text-blue-900 active:scale-[0.97]";
+  const heroHeaderProfilePill =
+    "flex h-12 items-center gap-1.5 rounded-2xl border-2 border-blue-100 bg-gradient-to-b from-white to-blue-50/80 px-2 text-blue-900 shadow-[0_2px_12px_rgba(37,99,235,0.12)] ring-1 ring-blue-200/40 transition-all hover:border-blue-200 hover:from-blue-50 hover:to-blue-100/90 active:scale-[0.97]";
 
   const firstName =
     user?.name?.trim().split(/\s+/)[0] || (isAuthenticated ? "there" : "");
@@ -105,7 +110,7 @@ export function MobileHeroSection() {
             <div ref={heroBarRef} className="mb-2 flex items-center justify-end gap-2">
               <Link
                 href="/notifications"
-                className={heroIconClass}
+                className={heroHeaderIconPill}
                 aria-label="Notifications"
                 title="Notifications"
                 onClick={() => {
@@ -115,7 +120,7 @@ export function MobileHeroSection() {
               >
                 <Bell className="h-5 w-5" aria-hidden />
                 {unreadCount > 0 ? (
-                  <span className="absolute -right-0.5 -top-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold leading-none text-white shadow-sm ring-2 ring-[#0c1e4a]">
+                  <span className="absolute -right-0.5 -top-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-semibold leading-none text-white shadow-sm">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 ) : null}
@@ -127,11 +132,15 @@ export function MobileHeroSection() {
                     setNavOpen((o) => !o);
                     setProfileOpen(false);
                   }}
-                  className={heroIconClass}
+                  className={heroHeaderMenuPill}
                   aria-label={navOpen ? "Close menu" : "Open menu"}
                   aria-expanded={navOpen}
                 >
-                  {navOpen ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
+                  {navOpen ? (
+                    <X className="h-6 w-6 stroke-[2.5]" aria-hidden />
+                  ) : (
+                    <Menu className="h-6 w-6 stroke-[2.5]" aria-hidden />
+                  )}
                 </button>
                 {navOpen ? (
                   <div className="absolute right-0 z-[70] mt-2 w-[min(19rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200/90 bg-white py-2 text-slate-900 shadow-2xl ring-1 ring-black/5">
@@ -205,7 +214,7 @@ export function MobileHeroSection() {
                     setProfileOpen((o) => !o);
                     setNavOpen(false);
                   }}
-                  className="flex items-center gap-1.5 rounded-xl border border-white/35 bg-white/15 px-2 py-1.5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] backdrop-blur-md transition hover:bg-white/25 active:scale-[0.98]"
+                  className={heroHeaderProfilePill}
                   aria-label="Account menu"
                   aria-expanded={profileOpen}
                 >
@@ -214,17 +223,17 @@ export function MobileHeroSection() {
                       <img
                         src={profileImg}
                         alt={displayName}
-                        className="h-8 w-8 rounded-full border-2 border-white/80 object-cover"
+                        className="h-8 w-8 rounded-full border-2 border-blue-100 object-cover ring-1 ring-blue-200/50"
                       />
                     ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white/80 bg-white/20 text-sm font-semibold text-white">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-blue-100 bg-blue-50 text-sm font-semibold text-blue-700 ring-1 ring-blue-200/50">
                         {displayName.charAt(0) || "U"}
                       </div>
                     )}
-                    <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0c1e4a] bg-emerald-400" />
+                    <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-400 shadow-sm ring-1 ring-blue-200/60" />
                   </div>
                   <ChevronDown
-                    className={`h-4 w-4 shrink-0 text-white/90 transition-transform ${profileOpen ? "rotate-180" : ""}`}
+                    className={`h-4 w-4 shrink-0 text-blue-800 transition-transform ${profileOpen ? "rotate-180" : ""}`}
                     aria-hidden
                   />
                 </button>
