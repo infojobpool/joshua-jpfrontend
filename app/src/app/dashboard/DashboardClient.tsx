@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +63,15 @@ import {
   hasRealProfilePhotoUrl,
 } from "@/lib/payoutProfileCompletion";
 import { PayoutProfileProgress } from "@/components/PayoutProfileProgress";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 
 // Load Leaflet map client-only to avoid mobile crashes
 const TaskLocationMap = dynamic(
@@ -415,8 +424,29 @@ function getCardPostedAt(task: { id: string; postedAt: string }): string {
   return formatted;
 }
 
+/** Mobile task picker + URL `?tab=` — keep ids in sync with `activeTab` state. */
+const DASHBOARD_TASK_TAB_KEYS = ["my-tasks", "available", "assigned", "completed", "my-bids"] as const;
+type DashboardTaskTabKey = (typeof DASHBOARD_TASK_TAB_KEYS)[number];
+
+const DASHBOARD_TASK_VIEW_OPTIONS: {
+  id: DashboardTaskTabKey;
+  title: string;
+  description: string;
+}[] = [
+  { id: "my-tasks", title: "Tasks I posted", description: "Jobs you created on JobPool." },
+  { id: "available", title: "Available to claim", description: "Open tasks you can send an offer on." },
+  { id: "assigned", title: "Assigned to me", description: "Work you are doing right now." },
+  { id: "completed", title: "Completed", description: "Finished tasks." },
+  { id: "my-bids", title: "My offers", description: "Offers and bids you have sent." },
+];
+
+function dashboardTaskViewTitle(tab: string): string {
+  return DASHBOARD_TASK_VIEW_OPTIONS.find((o) => o.id === tab)?.title ?? "Tasks";
+}
+
 export default function Dashboard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, userId, isAuthenticated, logout, addNotifications, updateUserProfileImage, checkAuth } = useStore();
   const { items: notificationItems, unreadCount, markAsRead, clearOldKeepLatest, clearAll, bellAnimating } = useNotifications(!!isAuthenticated);
   /** Recent preview in the bell panel (not unread-only, so "View all" / read items still make sense). */
@@ -615,6 +645,35 @@ export default function Dashboard() {
     setWithImages(false);
   }, []);
 
+  const selectDashboardTaskTab = useCallback(
+    (value: string) => {
+      setActiveTab(value);
+      if (value === "my-tasks") {
+        try {
+          localStorage.removeItem(`user_tasks_${userId || effectiveUserId}`);
+        } catch {
+          /* ignore */
+        }
+        setRefetchPostedTrigger((t) => t + 1);
+      } else if (value === "available") setRefetchAvailableTrigger((t) => t + 1);
+      else if (value === "assigned") setRefetchAssignedTrigger((t) => t + 1);
+      else if (value === "completed") setRefetchCompletedTrigger((t) => t + 1);
+      else if (value === "my-bids") setRefetchBidsTrigger((t) => t + 1);
+      if (searchParams.get("tab") !== value) {
+        router.replace(`/dashboard?tab=${encodeURIComponent(value)}`, { scroll: false });
+      }
+    },
+    [router, searchParams, userId, effectiveUserId]
+  );
+
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (!t) return;
+    if ((DASHBOARD_TASK_TAB_KEYS as readonly string[]).includes(t)) {
+      setActiveTab(t);
+    }
+  }, [searchParams]);
+
   // Inline filters: do not lock body scroll to avoid touch blocking on mobile
   
   // Dialog states
@@ -627,7 +686,17 @@ export default function Dashboard() {
   const [assignedCancelOpen, setAssignedCancelOpen] = useState(false);
   const [selectedAssignedId, setSelectedAssignedId] = useState<string | null>(null);
   const [cancellationReason, setCancellationReason] = useState("");
-  const [activeTab, setActiveTab] = useState<string>("available");
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (typeof window === "undefined") return "available";
+    try {
+      const t = new URLSearchParams(window.location.search).get("tab");
+      if (t && (DASHBOARD_TASK_TAB_KEYS as readonly string[]).includes(t)) return t;
+    } catch {
+      /* ignore */
+    }
+    return "available";
+  });
+  const [taskViewPickerOpen, setTaskViewPickerOpen] = useState(false);
   const [refetchAssignedTrigger, setRefetchAssignedTrigger] = useState(0);
   const [refetchPostedTrigger, setRefetchPostedTrigger] = useState(0);
   const [refetchAvailableTrigger, setRefetchAvailableTrigger] = useState(0);
@@ -3017,7 +3086,7 @@ export default function Dashboard() {
             }, 2000);
 
             // Switch to Completed tab only when fully completed
-            setActiveTab("completed");
+            selectDashboardTaskTab("completed");
           } else {
             // Only tasker has confirmed so far – keep card in Assigned tab
             setAssignedTasks((prev) =>
@@ -3250,7 +3319,7 @@ export default function Dashboard() {
                   payload?.job_completion_status ?? completedTask.job_completion_status,
               } as Task,
             ]);
-            setActiveTab("completed");
+            selectDashboardTaskTab("completed");
           } else {
             setAssignedTasks((prev) =>
               prev.map((t) =>
@@ -3917,7 +3986,7 @@ export default function Dashboard() {
               </div>
               </div>
               <div className="mt-3 text-left space-y-0.5">
-                <h1 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-slate-100">Dashboard</h1>
+                <h1 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-slate-100">Tasks</h1>
                 <div className="mt-2 inline-flex max-w-full flex-wrap items-center gap-1 rounded-full border border-amber-100/90 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20 px-2 py-0.5">
                   <Sparkles className="h-3 w-3 text-amber-600/90 dark:text-amber-400/90 shrink-0" aria-hidden />
                   <span className="text-[9px] font-semibold uppercase tracking-wide text-amber-900/80 dark:text-amber-200/90 leading-tight">Verified payouts</span>
@@ -4297,59 +4366,134 @@ export default function Dashboard() {
         )}
 
         <div className="w-full">
-          {(() => {
-            const tabCls = (v: string) => {
-              const active = activeTab === v;
-              const base = "inline-flex items-center justify-center gap-1.5 rounded-xl whitespace-nowrap transition-all duration-200 active:scale-[0.98]";
-              const activeCls =
-                "bg-white dark:bg-slate-700 shadow-md ring-2 ring-[#3b82f6]/35 text-[#1d4ed8] dark:text-blue-300 font-bold";
-              const inactiveCls =
-                "text-slate-800 dark:text-slate-100 font-semibold bg-white/55 dark:bg-slate-700/55 ring-1 ring-slate-200/70 dark:ring-slate-600/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]";
-              const mobileCls = isMobile ? "flex flex-col gap-0.5 px-2 py-1.5 flex-shrink-0 rounded-lg text-[11px]" : "px-4 py-2 text-sm font-semibold";
-              return `${base} ${mobileCls} ${active ? activeCls : inactiveCls}`;
-            };
-            const onTab = (value: string) => {
-              setActiveTab(value);
-              if (value === "my-tasks") {
-                try { localStorage.removeItem(`user_tasks_${userId || effectiveUserId}`); } catch {}
-                setRefetchPostedTrigger((t) => t + 1);
-              } else if (value === "available") setRefetchAvailableTrigger((t) => t + 1);
-              else if (value === "assigned") setRefetchAssignedTrigger((t) => t + 1);
-              else if (value === "completed") setRefetchCompletedTrigger((t) => t + 1);
-              else if (value === "my-bids") setRefetchBidsTrigger((t) => t + 1);
-            };
-            return (
-              <div className={
-                isMobile
-                  ? "flex w-full p-1.5 bg-slate-100/90 dark:bg-slate-800/95 border border-slate-200/80 dark:border-slate-700 rounded-xl shadow-sm z-20 gap-1 min-h-[44px] overflow-x-auto overflow-y-hidden flex-nowrap justify-between sticky top-[calc(env(safe-area-inset-top)+48px)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                  : "flex w-full bg-slate-100/90 dark:bg-slate-800/95 p-1.5 rounded-xl gap-1 border border-slate-200/80 dark:border-slate-700"
-              }>
-                <button type="button" onClick={() => onTab("my-tasks")} className={tabCls("my-tasks")}>
-                  <Briefcase className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
-                  <span>{isMobile ? "Tasks" : "My Tasks"}</span>
-                </button>
-                <button type="button" onClick={() => onTab("available")} className={tabCls("available")}>
-                  <Search className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
-                  <span>Available</span>
-                </button>
-                <button type="button" onClick={() => onTab("assigned")} className={tabCls("assigned")}>
-                  <CheckCircle className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
-                  <span>Assigned</span>
-                </button>
-                <button type="button" onClick={() => onTab("completed")} className={tabCls("completed")}>
-                  <Star className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
-                  <span>{isMobile ? "Done" : "Completed"}</span>
-                </button>
-                <button type="button" onClick={() => onTab("my-bids")} className={tabCls("my-bids")}>
-                  <IndianRupee className="h-3.5 w-3.5 md:h-4 w-4 md:hidden shrink-0" />
-                  <span>{isMobile ? "Bids" : "My Bids"}</span>
+          {isMobile ? (
+            <Sheet open={taskViewPickerOpen} onOpenChange={setTaskViewPickerOpen}>
+              <div className="sticky z-20 -mx-4 mb-1 border-b border-slate-200/70 bg-slate-50/98 px-4 pb-2 pt-0 backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-950/98 top-0">
+                <button
+                  type="button"
+                  onClick={() => setTaskViewPickerOpen(true)}
+                  className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 text-left shadow-sm transition active:scale-[0.99] dark:border-slate-600 dark:bg-slate-800"
+                  aria-expanded={taskViewPickerOpen}
+                  aria-haspopup="dialog"
+                >
+                  <div className="min-w-0 flex-1">
+                    <span className="block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Task lists
+                    </span>
+                    <span className="block truncate text-base font-semibold text-slate-900 dark:text-slate-100">
+                      {dashboardTaskViewTitle(activeTab)}
+                    </span>
+                  </div>
+                  <ChevronDown
+                    className={cn(
+                      "h-5 w-5 shrink-0 text-slate-500 transition-transform dark:text-slate-400",
+                      taskViewPickerOpen && "rotate-180"
+                    )}
+                    aria-hidden
+                  />
                 </button>
               </div>
-            );
-          })()}
+              <SheetContent
+                side="bottom"
+                className={cn(
+                  "max-h-[85vh] overflow-y-auto rounded-t-2xl border-slate-200 p-0 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 dark:border-slate-700",
+                  "[&>button.absolute]:right-3 [&>button.absolute]:top-3"
+                )}
+              >
+                <SheetHeader className="space-y-1 px-4 pb-2 text-left">
+                  <SheetTitle className="text-lg">Choose a list</SheetTitle>
+                  <SheetDescription>Show tasks and offers for this account.</SheetDescription>
+                </SheetHeader>
+                <div className="px-2 pb-2">
+                  <div className="flex flex-col gap-1">
+                    {DASHBOARD_TASK_VIEW_OPTIONS.map((opt) => {
+                      const active = activeTab === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            selectDashboardTaskTab(opt.id);
+                            setTaskViewPickerOpen(false);
+                          }}
+                          className={cn(
+                            "flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors active:bg-slate-100 dark:active:bg-slate-800",
+                            active
+                              ? "bg-blue-50/90 ring-1 ring-blue-200/80 dark:bg-blue-950/40 dark:ring-blue-800/60"
+                              : "hover:bg-slate-50 dark:hover:bg-slate-800/80"
+                          )}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold text-slate-900 dark:text-slate-100">{opt.title}</div>
+                            <div className="mt-0.5 text-xs leading-snug text-slate-500 dark:text-slate-400">
+                              {opt.description}
+                            </div>
+                          </div>
+                          {active ? (
+                            <CheckCircle
+                              className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400"
+                              aria-hidden
+                            />
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <SheetFooter className="border-t border-slate-100 px-3 pb-1 pt-3 dark:border-slate-800">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full rounded-xl"
+                    onClick={() => setTaskViewPickerOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+          ) : (
+            (() => {
+              const tabCls = (v: string) => {
+                const active = activeTab === v;
+                const base =
+                  "inline-flex items-center justify-center gap-1.5 rounded-xl whitespace-nowrap transition-all duration-200 active:scale-[0.98]";
+                const activeCls =
+                  "bg-white dark:bg-slate-700 shadow-md ring-2 ring-[#3b82f6]/35 text-[#1d4ed8] dark:text-blue-300 font-bold";
+                const inactiveCls =
+                  "text-slate-800 dark:text-slate-100 font-semibold bg-white/55 dark:bg-slate-700/55 ring-1 ring-slate-200/70 dark:ring-slate-600/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]";
+                const desktopCls = "px-4 py-2 text-sm font-semibold";
+                return `${base} ${desktopCls} ${active ? activeCls : inactiveCls}`;
+              };
+              return (
+                <div className="flex w-full gap-1 rounded-xl border border-slate-200/80 bg-slate-100/90 p-1.5 dark:border-slate-700 dark:bg-slate-800/95">
+                  <button type="button" onClick={() => selectDashboardTaskTab("my-tasks")} className={tabCls("my-tasks")}>
+                    <Briefcase className="hidden h-4 w-4 shrink-0 md:inline" />
+                    <span>My Tasks</span>
+                  </button>
+                  <button type="button" onClick={() => selectDashboardTaskTab("available")} className={tabCls("available")}>
+                    <Search className="hidden h-4 w-4 shrink-0 md:inline" />
+                    <span>Available</span>
+                  </button>
+                  <button type="button" onClick={() => selectDashboardTaskTab("assigned")} className={tabCls("assigned")}>
+                    <CheckCircle className="hidden h-4 w-4 shrink-0 md:inline" />
+                    <span>Assigned</span>
+                  </button>
+                  <button type="button" onClick={() => selectDashboardTaskTab("completed")} className={tabCls("completed")}>
+                    <Star className="hidden h-4 w-4 shrink-0 md:inline" />
+                    <span>Completed</span>
+                  </button>
+                  <button type="button" onClick={() => selectDashboardTaskTab("my-bids")} className={tabCls("my-bids")}>
+                    <IndianRupee className="hidden h-4 w-4 shrink-0 md:inline" />
+                    <span>My offers</span>
+                  </button>
+                </div>
+              );
+            })()
+          )}
 
-          {/* Slim gap under sticky tabs on mobile */}
-          <div className="md:hidden h-1" aria-hidden />
+          {/* Slim gap under task list switcher on mobile */}
+          <div className="md:hidden h-2" aria-hidden />
 
           {/* Active filter chips (mobile) - removed per request */}
 
@@ -4995,8 +5139,8 @@ export default function Dashboard() {
                   title="No assigned tasks"
                   description="You don't have any tasks assigned yet. Browse available tasks to submit bids."
                   illustration={<BriefcaseEmptyIllustration />}
-                  action={{ label: "Browse tasks", onClick: () => setActiveTab("available") }}
-                  secondaryAction={{ label: "My tasks", onClick: () => setActiveTab("my-tasks") }}
+                  action={{ label: "Browse tasks", onClick: () => selectDashboardTaskTab("available") }}
+                  secondaryAction={{ label: "My tasks", onClick: () => selectDashboardTaskTab("my-tasks") }}
                 />
               </div>
             ) : (
@@ -5156,7 +5300,7 @@ export default function Dashboard() {
                 icon={CheckCircle}
                 title="No completed tasks"
                 description="You haven't completed any tasks yet. Complete your assigned tasks to see them here."
-                action={{ label: "View Assigned Tasks", onClick: () => setActiveTab("assigned") }}
+                action={{ label: "View Assigned Tasks", onClick: () => selectDashboardTaskTab("assigned") }}
               />
             ) : (
               <div className={`grid gap-4 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
@@ -5250,7 +5394,7 @@ export default function Dashboard() {
                 icon={ClipboardList}
                 title="No bids placed"
                 description="You haven't placed any bids yet. Browse available tasks and submit your first bid to get started."
-                action={{ label: "Browse Available Tasks", onClick: () => setActiveTab("available") }}
+                action={{ label: "Browse Available Tasks", onClick: () => selectDashboardTaskTab("available") }}
               />
             ) : (
               <div className={`grid gap-4 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>

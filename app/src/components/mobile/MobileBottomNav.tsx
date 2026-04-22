@@ -35,7 +35,7 @@ export function MobileBottomNav() {
 
   const navItems: (NavLinkItem | { type: "post" })[] = [
     { href: "/", icon: Home, label: "Home" },
-    { href: HOME_BROWSE_ALL_TASKS_HREF, icon: Search, label: "Browse" },
+    { href: HOME_BROWSE_ALL_TASKS_HREF, icon: Search, label: "Tasks" },
     { type: "post" },
     { href: "/messages", icon: MessageSquare, label: "Chat" },
     {

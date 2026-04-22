@@ -1,5 +1,5 @@
 /**
- * Open task discovery — must stay in sync with `MobileBottomNav` “Browse”.
+ * Task hub (dashboard) — must stay in sync with `MobileBottomNav` “Tasks”.
  */
 export const HOME_BROWSE_ALL_TASKS_HREF = "/dashboard" as const;
 
