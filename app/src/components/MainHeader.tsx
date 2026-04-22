@@ -15,6 +15,11 @@ const MainHeader: React.FC = () => {
   const [isHydrated, setIsHydrated] = useState(false);
   const pathname = usePathname();
   const isMarketingHome = pathname === "/" || pathname === "";
+  const isDashboard = pathname === "/dashboard";
+
+  useEffect(() => {
+    if (isDashboard) setIsMobileMenuOpen(false);
+  }, [isDashboard]);
 
   useEffect(() => {
     try {
@@ -67,7 +72,9 @@ const MainHeader: React.FC = () => {
             "flex items-center justify-between gap-3 md:min-h-0 md:h-[4.25rem] md:py-2 lg:h-[4.5rem] lg:py-2.5",
             isMarketingHome
               ? "max-md:min-h-0 max-md:py-0.5 max-md:pb-1"
-              : "min-h-[5.75rem] py-2.5 md:min-h-0 md:py-2",
+              : isDashboard
+                ? "max-md:min-h-0 max-md:py-1 max-md:pb-1"
+                : "min-h-[5.75rem] py-2.5 md:min-h-0 md:py-2",
           )}
         >
           {/* Logo — mobile: full JOB POOL lockup PNG; desktop: wide mark */}
@@ -80,7 +87,11 @@ const MainHeader: React.FC = () => {
               alt="JobPool"
               className={cn(
                 "w-auto max-w-[min(340px,82vw)] object-contain object-left md:hidden",
-                isMarketingHome ? "h-[3.75rem] sm:h-[4.125rem]" : "h-[4.75rem] sm:h-[5.125rem]",
+                isMarketingHome
+                  ? "h-[3.75rem] sm:h-[4.125rem]"
+                  : isDashboard
+                    ? "h-10 sm:h-11"
+                    : "h-[4.75rem] sm:h-[5.125rem]",
               )}
             />
             <img
@@ -149,41 +160,43 @@ const MainHeader: React.FC = () => {
             )}
           </div>
 
-          {/* Mobile: notifications + menu (same visual language) */}
-          <div className="md:hidden flex shrink-0 items-center gap-2">
-            {isAuthenticated ? (
-              <Link
-                href="/notifications"
-                className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-blue-100 bg-gradient-to-b from-white to-blue-50/80 text-blue-800 shadow-[0_2px_12px_rgba(37,99,235,0.12)] ring-1 ring-blue-200/40 hover:border-blue-200 hover:from-blue-50 hover:to-blue-100/90 hover:text-blue-900 active:scale-[0.97] transition-all"
-                aria-label="Notifications"
-                title="Notifications"
+          {/* Mobile: notifications + menu (hidden on dashboard — bottom nav + account entry points) */}
+          {!isDashboard ? (
+            <div className="md:hidden flex shrink-0 items-center gap-2">
+              {isAuthenticated ? (
+                <Link
+                  href="/notifications"
+                  className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-blue-100 bg-gradient-to-b from-white to-blue-50/80 text-blue-800 shadow-[0_2px_12px_rgba(37,99,235,0.12)] ring-1 ring-blue-200/40 hover:border-blue-200 hover:from-blue-50 hover:to-blue-100/90 hover:text-blue-900 active:scale-[0.97] transition-all"
+                  aria-label="Notifications"
+                  title="Notifications"
+                >
+                  <Bell className="h-5 w-5" aria-hidden />
+                  {unreadCount > 0 ? (
+                    <span className="absolute -right-0.5 -top-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-semibold leading-none text-white shadow-sm">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  ) : null}
+                </Link>
+              ) : null}
+              <button
+                type="button"
+                className="flex h-12 min-w-[3rem] shrink-0 items-center justify-center rounded-2xl border-2 border-blue-100 bg-gradient-to-b from-white to-blue-50/80 text-blue-800 shadow-[0_2px_12px_rgba(37,99,235,0.12)] ring-1 ring-blue-200/40 hover:border-blue-200 hover:from-blue-50 hover:to-blue-100/90 hover:text-blue-900 active:scale-[0.97] transition-all"
+                onClick={toggleMobileMenu}
+                aria-expanded={isMobileMenuOpen}
+                aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
               >
-                <Bell className="h-5 w-5" aria-hidden />
-                {unreadCount > 0 ? (
-                  <span className="absolute -right-0.5 -top-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-semibold leading-none text-white shadow-sm">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                ) : null}
-              </Link>
-            ) : null}
-            <button
-              type="button"
-              className="flex h-12 min-w-[3rem] shrink-0 items-center justify-center rounded-2xl border-2 border-blue-100 bg-gradient-to-b from-white to-blue-50/80 text-blue-800 shadow-[0_2px_12px_rgba(37,99,235,0.12)] ring-1 ring-blue-200/40 hover:border-blue-200 hover:from-blue-50 hover:to-blue-100/90 hover:text-blue-900 active:scale-[0.97] transition-all"
-              onClick={toggleMobileMenu}
-              aria-expanded={isMobileMenuOpen}
-              aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
-            >
-              {isMobileMenuOpen ? (
-                <X className="h-6 w-6 stroke-[2.5]" />
-              ) : (
-                <Menu className="h-6 w-6 stroke-[2.5]" />
-              )}
-            </button>
-          </div>
+                {isMobileMenuOpen ? (
+                  <X className="h-6 w-6 stroke-[2.5]" />
+                ) : (
+                  <Menu className="h-6 w-6 stroke-[2.5]" />
+                )}
+              </button>
+            </div>
+          ) : null}
         </div>
 
         {/* Mobile Navigation Menu */}
-        {isMobileMenuOpen && (
+        {isMobileMenuOpen && !isDashboard && (
           <div className="md:hidden border-t border-gray-100 py-4 transition-all duration-200 ease-in-out">
             <nav className="flex flex-col space-y-4">
               <Link 

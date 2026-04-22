@@ -41,7 +41,6 @@ import {
   Home,
   Wallet,
   RotateCcw,
-  Map as MapIcon,
   SlidersHorizontal,
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
@@ -4270,11 +4269,11 @@ export default function Dashboard() {
         <div className="w-full">
           {isMobile ? (
             <Sheet open={taskViewPickerOpen} onOpenChange={setTaskViewPickerOpen}>
-              <div className="sticky z-20 -mx-4 mb-1 border-b border-slate-200/70 bg-slate-50/98 px-4 pb-2 pt-0 backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-950/98 top-0">
+              <div className="sticky z-20 -mx-4 mb-0 border-b border-slate-200/70 bg-slate-50/98 px-4 pb-1 pt-0 backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-950/98 top-0">
                 <button
                   type="button"
                   onClick={() => setTaskViewPickerOpen(true)}
-                  className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 text-left shadow-sm transition active:scale-[0.99] dark:border-slate-600 dark:bg-slate-800"
+                  className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-left shadow-sm transition active:scale-[0.99] dark:border-slate-600 dark:bg-slate-800"
                   aria-expanded={taskViewPickerOpen}
                   aria-haspopup="dialog"
                 >
@@ -4395,7 +4394,7 @@ export default function Dashboard() {
           )}
 
           {/* Slim gap under task list switcher on mobile */}
-          <div className="md:hidden h-2" aria-hidden />
+          <div className="md:hidden h-1" aria-hidden />
 
           {/* Active filter chips (mobile) - removed per request */}
 
@@ -4662,7 +4661,7 @@ export default function Dashboard() {
           )}
 
           {activeTab === "available" && (
-          <div className={`${isMobile ? "space-y-2 mt-2" : "space-y-4 mt-4"} animate-fade-in-up min-h-[500px]`}>
+          <div className={`${isMobile ? "space-y-1.5 mt-1" : "space-y-4 mt-4"} animate-fade-in-up min-h-[500px]`}>
             {!isMobile && (
               <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
                 <span className="w-1 h-5 rounded-full bg-[#2563eb]" />
@@ -4789,32 +4788,26 @@ export default function Dashboard() {
                 </Card>
               </div>
 
-              <div className={`${isMobile ? "col-span-1" : "md:col-span-3"} ${isMobile ? "space-y-2" : "space-y-6"}`}>
+              <div className={`${isMobile ? "col-span-1" : "md:col-span-3"} ${isMobile ? "space-y-1.5" : "space-y-6"}`}>
                 {isMobile ? (
-                  <div className="-mx-4 border-b border-slate-200/70 bg-[#F7F8FA] px-4 pb-3 pt-0 dark:border-slate-700/70 dark:bg-slate-950/40">
-                    <div className="grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-1 pt-0.5">
-                      <Link
-                        href="/browse"
-                        className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-white/80 dark:text-slate-300 dark:hover:bg-slate-800/80"
-                        aria-label="Open browse tasks"
-                      >
-                        <MapIcon className="h-5 w-5" aria-hidden />
-                      </Link>
-                      <h2 className="text-center text-[15px] font-bold tracking-tight text-[#1A1F4C] dark:text-slate-100">
+                  <div className="-mx-4 border-b border-slate-200/70 bg-[#F7F8FA] px-4 pb-2 pt-0 dark:border-slate-700/70 dark:bg-slate-950/40">
+                    <div className="grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-0.5 pt-0">
+                      <span className="inline-block w-10 shrink-0" aria-hidden />
+                      <h2 className="text-center text-[15px] font-bold leading-tight tracking-tight text-[#1A1F4C] dark:text-slate-100">
                         Available tasks
                       </h2>
                       <button
                         type="button"
-                        className="flex h-10 w-10 items-center justify-self-end justify-center rounded-full text-slate-600 transition-colors hover:bg-white/80 dark:text-slate-300 dark:hover:bg-slate-800/80"
+                        className="flex h-9 w-9 items-center justify-self-end justify-center rounded-full text-slate-600 transition-colors hover:bg-white/80 dark:text-slate-300 dark:hover:bg-slate-800/80"
                         aria-label={availableSearchOpen ? "Hide search" : "Search tasks"}
                         aria-expanded={availableSearchOpen}
                         onClick={() => setAvailableSearchOpen((o) => !o)}
                       >
-                        <Search className="h-5 w-5" aria-hidden />
+                        <Search className="h-[1.125rem] w-[1.125rem]" aria-hidden />
                       </button>
                     </div>
                     {availableSearchOpen ? (
-                      <form onSubmit={handleSearch} className="relative mt-2">
+                      <form onSubmit={handleSearch} className="relative mt-1.5">
                         <label htmlFor="dashboard-available-search" className="sr-only">
                           Search tasks
                         </label>
@@ -4831,18 +4824,18 @@ export default function Dashboard() {
                         />
                       </form>
                     ) : null}
-                    <div className="mt-2.5 flex items-center justify-between border-t border-slate-200/50 pt-2.5 dark:border-slate-700/60">
+                    <div className="mt-1.5 flex items-center justify-between border-t border-slate-200/50 pt-1.5 dark:border-slate-700/60">
                       <button
                         type="button"
                         onClick={() => setShowFilters((v) => !v)}
                         aria-expanded={showFilters}
                         aria-controls="available-mobile-filters"
                         className={cn(
-                          "relative flex min-h-[44px] items-center gap-2 py-1 text-[15px] font-semibold tracking-tight text-[#1A1F4C] transition-colors active:opacity-80 dark:text-slate-100",
+                          "relative flex min-h-[40px] items-center gap-1.5 py-0.5 text-[14px] font-semibold tracking-tight text-[#1A1F4C] transition-colors active:opacity-80 dark:text-slate-100",
                           showFilters && "text-blue-700 dark:text-blue-400"
                         )}
                       >
-                        <SlidersHorizontal className="h-[17px] w-[17px] shrink-0 text-slate-500 dark:text-slate-400" aria-hidden />
+                        <SlidersHorizontal className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden />
                         Filter
                         {availableFiltersActive ? (
                           <span
@@ -4855,10 +4848,10 @@ export default function Dashboard() {
                         <DropdownMenuTrigger asChild>
                           <button
                             type="button"
-                            className="flex min-h-[44px] items-center gap-1 py-1 text-[15px] font-semibold tracking-tight text-[#1A1F4C] dark:text-slate-100"
+                            className="flex min-h-[40px] items-center gap-1 py-0.5 text-[14px] font-semibold tracking-tight text-[#1A1F4C] dark:text-slate-100"
                           >
                             Sort
-                            <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
                             <span className="sr-only">Current: {availableSortMenuLabel}</span>
                           </button>
                         </DropdownMenuTrigger>
@@ -4891,7 +4884,7 @@ export default function Dashboard() {
                       )}
                     >
                       <div className="min-h-0 overflow-hidden">
-                        <div className="space-y-4 border-t border-slate-200/60 pb-1 pt-3 dark:border-slate-700/60">
+                        <div className="space-y-3 border-t border-slate-200/60 pb-0.5 pt-2 dark:border-slate-700/60">
                           <div>
                             <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">
                               Category

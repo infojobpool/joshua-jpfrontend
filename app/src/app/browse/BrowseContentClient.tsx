@@ -560,7 +560,8 @@ function BrowseContent() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-4">
-          <div className="md:col-span-1 space-y-6">
+          {/* Sidebar filters: desktop only. On mobile the same controls render once below via "Filters" toggle (avoids duplicate panels). */}
+          <div className="hidden md:block md:col-span-1 space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Filters</CardTitle>
@@ -685,14 +686,14 @@ function BrowseContent() {
                 </div>
                 <Button type="submit">Search</Button>
               </form>
-              <Button variant="outline" className="sm:hidden" onClick={() => setShowFilters(!showFilters)}>
+              <Button variant="outline" className="md:hidden" onClick={() => setShowFilters(!showFilters)}>
                 <Filter className="mr-2 h-4 w-4" />
                 Filters
               </Button>
             </div>
 
             {showFilters && (
-              <Card className="sm:hidden">
+              <Card className="md:hidden">
                 <CardHeader>
                   <CardTitle className="text-lg">Filters</CardTitle>
                 </CardHeader>
