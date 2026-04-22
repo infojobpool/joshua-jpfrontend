@@ -4270,30 +4270,69 @@ export default function Dashboard() {
           {isMobile ? (
             <Sheet open={taskViewPickerOpen} onOpenChange={setTaskViewPickerOpen}>
               <div className="sticky z-20 -mx-4 mb-0 border-b border-slate-200/70 bg-slate-50/98 px-4 pb-1 pt-0 backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-950/98 top-0">
-                <button
-                  type="button"
-                  onClick={() => setTaskViewPickerOpen(true)}
-                  className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-left shadow-sm transition active:scale-[0.99] dark:border-slate-600 dark:bg-slate-800"
-                  aria-expanded={taskViewPickerOpen}
-                  aria-haspopup="dialog"
-                >
-                  <div className="min-w-0 flex-1">
-                    <span className="block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Task lists
-                    </span>
-                    <span className="block truncate text-base font-semibold text-slate-900 dark:text-slate-100">
-                      {dashboardTaskViewTitle(activeTab)}
-                    </span>
-                  </div>
-                  <ChevronDown
-                    className={cn(
-                      "h-5 w-5 shrink-0 text-slate-500 transition-transform dark:text-slate-400",
-                      taskViewPickerOpen && "rotate-180"
-                    )}
-                    aria-hidden
-                  />
-                </button>
+                <div className="flex items-stretch gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTaskViewPickerOpen(true)}
+                    className="flex min-h-[44px] min-w-0 flex-1 items-center justify-between gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-left shadow-sm transition active:scale-[0.99] dark:border-slate-600 dark:bg-slate-800"
+                    aria-expanded={taskViewPickerOpen}
+                    aria-haspopup="dialog"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Task lists
+                      </span>
+                      <span className="block truncate text-base font-semibold text-slate-900 dark:text-slate-100">
+                        {dashboardTaskViewTitle(activeTab)}
+                      </span>
+                    </div>
+                    <ChevronDown
+                      className={cn(
+                        "h-5 w-5 shrink-0 text-slate-500 transition-transform dark:text-slate-400",
+                        taskViewPickerOpen && "rotate-180"
+                      )}
+                      aria-hidden
+                    />
+                  </button>
+                  {activeTab === "available" ? (
+                    <button
+                      type="button"
+                      onClick={() => setAvailableSearchOpen((o) => !o)}
+                      className={cn(
+                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200/90 bg-white text-slate-600 shadow-sm transition active:scale-[0.99] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300",
+                        availableSearchOpen && "border-blue-300/80 bg-blue-50/90 text-blue-800 ring-2 ring-blue-500/20 dark:border-blue-700 dark:bg-blue-950/50 dark:text-blue-200"
+                      )}
+                      aria-label={availableSearchOpen ? "Hide search" : "Search tasks"}
+                      aria-expanded={availableSearchOpen}
+                    >
+                      <Search className="h-[1.125rem] w-[1.125rem]" aria-hidden />
+                    </button>
+                  ) : null}
+                </div>
               </div>
+              {activeTab === "available" && availableSearchOpen ? (
+                <div className="-mx-4 border-b border-slate-200/70 bg-slate-50/98 px-4 pb-2 pt-1 dark:border-slate-700/70 dark:bg-slate-950/98">
+                  <form onSubmit={handleSearch} className="relative">
+                    <label htmlFor="dashboard-available-search" className="sr-only">
+                      Search tasks
+                    </label>
+                    <Search
+                      className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
+                      aria-hidden
+                    />
+                    <Input
+                      id="dashboard-available-search"
+                      type="search"
+                      placeholder="Search…"
+                      enterKeyHint="search"
+                      autoComplete="off"
+                      className="h-9 w-full rounded-full border border-slate-200/90 bg-white pl-9 pr-3 text-sm text-slate-900 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </form>
+                </div>
+              ) : null}
               <SheetContent
                 side="bottom"
                 className={cn(
@@ -4791,40 +4830,7 @@ export default function Dashboard() {
               <div className={`${isMobile ? "col-span-1" : "md:col-span-3"} ${isMobile ? "space-y-1.5" : "space-y-6"}`}>
                 {isMobile ? (
                   <div className="-mx-4 border-b border-slate-200/70 bg-[#F7F8FA] px-4 pb-2 pt-0 dark:border-slate-700/70 dark:bg-slate-950/40">
-                    <div className="grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-0.5 pt-0">
-                      <span className="inline-block w-10 shrink-0" aria-hidden />
-                      <h2 className="text-center text-[15px] font-bold leading-tight tracking-tight text-[#1A1F4C] dark:text-slate-100">
-                        Available tasks
-                      </h2>
-                      <button
-                        type="button"
-                        className="flex h-9 w-9 items-center justify-self-end justify-center rounded-full text-slate-600 transition-colors hover:bg-white/80 dark:text-slate-300 dark:hover:bg-slate-800/80"
-                        aria-label={availableSearchOpen ? "Hide search" : "Search tasks"}
-                        aria-expanded={availableSearchOpen}
-                        onClick={() => setAvailableSearchOpen((o) => !o)}
-                      >
-                        <Search className="h-[1.125rem] w-[1.125rem]" aria-hidden />
-                      </button>
-                    </div>
-                    {availableSearchOpen ? (
-                      <form onSubmit={handleSearch} className="relative mt-1.5">
-                        <label htmlFor="dashboard-available-search" className="sr-only">
-                          Search tasks
-                        </label>
-                        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" aria-hidden />
-                        <Input
-                          id="dashboard-available-search"
-                          type="search"
-                          placeholder="Search…"
-                          enterKeyHint="search"
-                          autoComplete="off"
-                          className="h-9 w-full rounded-full border border-slate-200/90 bg-white pl-9 pr-3 text-sm text-slate-900 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                      </form>
-                    ) : null}
-                    <div className="mt-1.5 flex items-center justify-between border-t border-slate-200/50 pt-1.5 dark:border-slate-700/60">
+                    <div className="flex items-center justify-between pt-1">
                       <button
                         type="button"
                         onClick={() => setShowFilters((v) => !v)}

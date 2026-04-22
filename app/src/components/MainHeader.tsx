@@ -16,7 +16,7 @@ const MainHeader: React.FC = () => {
   const pathname = usePathname();
   const isMarketingHome = pathname === "/" || pathname === "";
   const isDashboard = pathname === "/dashboard";
-  /** Mobile: hide bell + hamburger where the app shell already covers nav (dashboard, signed-in home). */
+  /** Mobile: hide bell + hamburger on dashboard and signed-in home (home uses `MobileHeroSection` for those controls). */
   const hideMobileBellAndMenu =
     isAuthenticated && (isDashboard || isMarketingHome);
 

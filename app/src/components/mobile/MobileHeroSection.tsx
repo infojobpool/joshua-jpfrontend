@@ -4,15 +4,20 @@ import React, { FormEvent, useCallback, useEffect, useRef, useState } from "reac
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Bell,
   Briefcase,
   ChevronDown,
   HelpCircle,
   Home,
   LogOut,
+  Menu,
   MessageSquare,
+  Plus,
   User,
   Wallet,
+  X,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import useStore from "@/lib/Zustand";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
@@ -24,30 +29,39 @@ export function MobileHeroSection() {
   const router = useRouter();
   const [taskTitle, setTaskTitle] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
-  const profileWrapRef = useRef<HTMLDivElement>(null);
+  const [navOpen, setNavOpen] = useState(false);
+  const heroBarRef = useRef<HTMLDivElement>(null);
   const checkAuth = useStore((s) => s.checkAuth);
   const logout = useStore((s) => s.logout);
   const isAuthenticated = useStore((s) => s.isAuthenticated);
   const user = useStore((s) => s.user);
+  const unreadCount = useStore((s) => s.unreadCount);
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
 
   useEffect(() => {
-    if (!profileOpen) return;
+    if (!profileOpen && !navOpen) return;
     const onDown = (e: MouseEvent) => {
-      const el = profileWrapRef.current;
-      if (el && !el.contains(e.target as Node)) setProfileOpen(false);
+      const el = heroBarRef.current;
+      if (el && !el.contains(e.target as Node)) {
+        setProfileOpen(false);
+        setNavOpen(false);
+      }
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
-  }, [profileOpen]);
+  }, [profileOpen, navOpen]);
 
   const handleSignOut = useCallback(() => {
     logout();
     setProfileOpen(false);
+    setNavOpen(false);
   }, [logout]);
+
+  const heroIconClass =
+    "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/35 bg-white/15 text-white shadow-[0_4px_20px_rgba(0,0,0,0.2)] backdrop-blur-md transition hover:bg-white/25 active:scale-[0.98]";
 
   const firstName =
     user?.name?.trim().split(/\s+/)[0] || (isAuthenticated ? "there" : "");
@@ -88,11 +102,109 @@ export function MobileHeroSection() {
 
         <div className="relative z-10 mx-auto max-w-lg px-4 pb-5 pt-2 sm:px-5 sm:pb-6 sm:pt-3">
           {isAuthenticated && user ? (
-            <div ref={profileWrapRef} className="mb-2 flex justify-end">
+            <div ref={heroBarRef} className="mb-2 flex items-center justify-end gap-2">
+              <Link
+                href="/notifications"
+                className={heroIconClass}
+                aria-label="Notifications"
+                title="Notifications"
+                onClick={() => {
+                  setNavOpen(false);
+                  setProfileOpen(false);
+                }}
+              >
+                <Bell className="h-5 w-5" aria-hidden />
+                {unreadCount > 0 ? (
+                  <span className="absolute -right-0.5 -top-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold leading-none text-white shadow-sm ring-2 ring-[#0c1e4a]">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                ) : null}
+              </Link>
               <div className="relative">
                 <button
                   type="button"
-                  onClick={() => setProfileOpen((o) => !o)}
+                  onClick={() => {
+                    setNavOpen((o) => !o);
+                    setProfileOpen(false);
+                  }}
+                  className={heroIconClass}
+                  aria-label={navOpen ? "Close menu" : "Open menu"}
+                  aria-expanded={navOpen}
+                >
+                  {navOpen ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
+                </button>
+                {navOpen ? (
+                  <div className="absolute right-0 z-[70] mt-2 w-[min(19rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200/90 bg-white py-2 text-slate-900 shadow-2xl ring-1 ring-black/5">
+                    <Link
+                      href="/how-it-works"
+                      className="block px-4 py-2.5 text-sm font-medium hover:bg-slate-50"
+                      onClick={() => setNavOpen(false)}
+                    >
+                      How it works
+                    </Link>
+                    <Link
+                      href="/categories"
+                      className="block px-4 py-2.5 text-sm font-medium hover:bg-slate-50"
+                      onClick={() => setNavOpen(false)}
+                    >
+                      Categories
+                    </Link>
+                    <Link
+                      href="/aboutus"
+                      className="block px-4 py-2.5 text-sm font-medium hover:bg-slate-50"
+                      onClick={() => setNavOpen(false)}
+                    >
+                      About us
+                    </Link>
+                    <Link
+                      href="/support"
+                      className="block px-4 py-2.5 text-sm font-medium hover:bg-slate-50"
+                      onClick={() => setNavOpen(false)}
+                    >
+                      Support
+                    </Link>
+                    <div className="my-1 border-t border-slate-100" />
+                    <div className="space-y-2 px-3 pb-1 pt-1">
+                      <Link href="/post-task" onClick={() => setNavOpen(false)}>
+                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Post task
+                        </Button>
+                      </Link>
+                      <Link href="/messages" onClick={() => setNavOpen(false)}>
+                        <Button variant="outline" className="w-full border-slate-200">
+                          <MessageSquare className="mr-2 h-4 w-4" />
+                          Messages
+                        </Button>
+                      </Link>
+                      <Link href="/dashboard" onClick={() => setNavOpen(false)}>
+                        <Button variant="outline" className="w-full border-slate-200">
+                          <Briefcase className="mr-2 h-4 w-4" />
+                          Tasks
+                        </Button>
+                      </Link>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="w-full text-slate-600 hover:text-red-600"
+                        onClick={() => {
+                          setNavOpen(false);
+                          handleSignOut();
+                        }}
+                      >
+                        Log out
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileOpen((o) => !o);
+                    setNavOpen(false);
+                  }}
                   className="flex items-center gap-1.5 rounded-xl border border-white/35 bg-white/15 px-2 py-1.5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] backdrop-blur-md transition hover:bg-white/25 active:scale-[0.98]"
                   aria-label="Account menu"
                   aria-expanded={profileOpen}
