@@ -14,8 +14,6 @@ import { prefetchBidsForTask } from "@/lib/taskNavCache";
 import { HOME_BROWSE_ALL_TASKS_HREF, HOME_EXPLORE_ALL_TASKS_LABEL } from "@/lib/homeSectionNav";
 import { cn } from "@/lib/utils";
 
-const TASK_CARD_PLACEHOLDER = "/images/placeholder.svg";
-
 const DESKTOP_MAX = 12;
 const SECTION_SUBTITLE = "See open tasks and apply.";
 /** Mobile recent-tasks strip: auto-scroll speed (px/s) — time-based; keep modest so swipe still feels natural */
@@ -26,28 +24,7 @@ function formatBudget(n: number) {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
 }
 
-function RecentTaskCardImage({ url }: { url: string | null }) {
-  const resolved = url?.trim() || TASK_CARD_PLACEHOLDER;
-  return (
-    <img
-      src={resolved}
-      alt=""
-      className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-      loading="lazy"
-      decoding="async"
-      referrerPolicy="no-referrer"
-      onError={(e) => {
-        const el = e.currentTarget;
-        if (!el.dataset.fallback) {
-          el.dataset.fallback = "1";
-          el.src = TASK_CARD_PLACEHOLDER;
-        }
-      }}
-    />
-  );
-}
-
-/** Matches `PremiumOfferingCard`: compact image rail, budget strip, blue/slate shell. */
+/** Text-only: same shell as listings, budget in a compact header strip (no task images). */
 function PremiumRecentTaskCard({
   task,
   href,
@@ -77,30 +54,24 @@ function PremiumRecentTaskCard({
     >
       <article
         className={cn(
-          "flex h-full flex-col overflow-hidden rounded-2xl bg-white md:rounded-2xl",
+          "flex h-full min-h-[10.5rem] flex-col overflow-hidden rounded-2xl bg-white md:min-h-[11rem] md:rounded-2xl",
           "shadow-[0_14px_44px_-28px_rgba(15,23,42,0.35)] ring-1 ring-slate-200/90",
           "transition-all duration-300 ease-out",
           "hover:-translate-y-0.5 hover:shadow-[0_22px_50px_-24px_rgba(37,99,235,0.22)] hover:ring-blue-200/70",
         )}
       >
-        <div className="relative h-[7.25rem] w-full shrink-0 overflow-hidden bg-slate-100 sm:h-[7.75rem] md:h-[8.25rem]">
-          <RecentTaskCardImage url={task.imageUrl} />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/88 via-slate-900/20 to-slate-900/0" />
-          <div className="absolute inset-x-0 bottom-0 px-2.5 pb-2 pt-6 md:px-3 md:pb-2.5">
-            <div className="flex items-end justify-between gap-2 border-t border-white/20 pt-1.5">
-              <span className="text-[8px] font-semibold uppercase tracking-[0.2em] text-blue-100/95 md:text-[9px]" style={archivo}>
-                Budget
-              </span>
-              <span
-                className="text-right text-sm font-bold tabular-nums tracking-tight text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.4)] md:text-base"
-                style={archivo}
-              >
-                {budget}
-              </span>
-            </div>
-          </div>
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 px-3 py-2.5 md:px-3.5 md:py-3">
+          <span className="text-[8px] font-semibold uppercase tracking-[0.2em] text-blue-100/90 md:text-[9px]" style={archivo}>
+            Budget
+          </span>
+          <span
+            className="text-right text-sm font-bold tabular-nums tracking-tight text-white md:text-base"
+            style={archivo}
+          >
+            {budget}
+          </span>
         </div>
-        <div className="flex flex-1 flex-col gap-1 px-3 pb-2.5 pt-2 md:gap-1 md:px-3.5 md:pb-3 md:pt-2.5">
+        <div className="flex flex-1 flex-col gap-1.5 px-3 pb-3 pt-2.5 md:gap-1.5 md:px-3.5 md:pb-3.5 md:pt-3">
           <p
             className="truncate text-[8px] font-semibold uppercase tracking-[0.16em] text-blue-800/85 md:text-[9px] md:tracking-[0.18em]"
             style={archivo}
@@ -320,7 +291,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-[13.5rem] w-[15.5rem] shrink-0 animate-pulse rounded-2xl bg-slate-100/90 ring-1 ring-slate-200/80"
+                className="h-[11.5rem] w-[15.5rem] shrink-0 animate-pulse rounded-2xl bg-slate-100/90 ring-1 ring-slate-200/80"
               />
             ))}
           </div>
@@ -437,7 +408,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="h-[14.5rem] w-[16rem] shrink-0 animate-pulse rounded-2xl bg-slate-100/90 ring-1 ring-slate-200/80 md:w-[17rem]"
+                className="h-[12rem] w-[16rem] shrink-0 animate-pulse rounded-2xl bg-slate-100/90 ring-1 ring-slate-200/80 md:w-[17rem]"
               />
             ))}
           </div>
