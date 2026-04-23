@@ -235,12 +235,14 @@ export function MobileSignIn() {
   }
 
   return (
-    <div className="relative w-full bg-gradient-to-b from-slate-50 via-blue-50/70 to-indigo-50/90 pb-6 pt-1">
+    <div className="relative flex min-h-0 flex-1 flex-col bg-gradient-to-b from-slate-50 via-blue-50/70 to-indigo-50/95">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-24 -right-24 h-56 w-56 rounded-full bg-blue-200/35 blur-3xl" />
         <div className="absolute -bottom-24 -left-24 h-56 w-56 rounded-full bg-indigo-200/35 blur-3xl" />
       </div>
-      <div className="relative mx-auto w-full max-w-md px-4">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
+        <div className="flex min-h-0 flex-1 flex-col justify-center py-3">
+          <div className="mx-auto w-full max-w-md">
         <div className="flex flex-col gap-2">
           <SignInVerificationOuterTip
             open={showVerifyEmailBanner}
@@ -376,6 +378,21 @@ export function MobileSignIn() {
             </MobileForm>
           </MobileCardContent>
         </MobileCard>
+        </div>
+          </div>
+        </div>
+        <div className="relative mx-auto mt-2 w-full max-w-md shrink-0 pb-1 pt-1 text-center">
+          <p className="text-[11px] leading-relaxed text-slate-500/90">
+            Secure sign-in · By continuing you agree to our{" "}
+            <Link href="/termsandconditions" className="font-medium text-blue-600 hover:text-blue-700">
+              Terms
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy-policy" className="font-medium text-blue-600 hover:text-blue-700">
+              Privacy Policy
+            </Link>
+            .
+          </p>
         </div>
       </div>
     </div>

@@ -15,6 +15,9 @@ export function parseDueDateEndOfDay(due: string | undefined): Date | null {
   return null;
 }
 
+/** Shown when due is missing, unknown, or a non-date placeholder (not “Flexible”). */
+export const PLACEHOLDER_DUE_DISPLAY = "Schedule with poster";
+
 /** Values that mean “no specific date” from API or legacy forms. */
 const NO_SPECIFIC_DUE = new Set([
   "",
@@ -47,7 +50,7 @@ export function dueDisplayForListCard(
     return { display: "Flexible", showDaysBadge: false };
   }
   if (isPlaceholderDueDate(dueDate)) {
-    return { display: "Upon agreement", showDaysBadge: false };
+    return { display: PLACEHOLDER_DUE_DISPLAY, showDaysBadge: false };
   }
   return { display: dueDate!.trim(), showDaysBadge: true };
 }

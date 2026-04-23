@@ -2,7 +2,11 @@
 
 import { CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { daysLeftLabel, dueDisplayForListCard } from "@/lib/taskDueDisplay";
+import {
+  PLACEHOLDER_DUE_DISPLAY,
+  daysLeftLabel,
+  dueDisplayForListCard,
+} from "@/lib/taskDueDisplay";
 
 export function TaskDueSummaryRow({
   dueDate,
@@ -15,7 +19,7 @@ export function TaskDueSummaryRow({
 }) {
   const { display, showDaysBadge } = dueDisplayForListCard(dueDate, dueDateFlexible);
   const left = showDaysBadge && dueDate?.trim() ? daysLeftLabel(dueDate.trim()) : null;
-  const isSoftCopy = display === "Upon agreement" || display === "Flexible";
+  const isSoftCopy = display === PLACEHOLDER_DUE_DISPLAY || display === "Flexible";
 
   return (
     <div

@@ -252,14 +252,16 @@ export default function SignInPage() {
   // Show mobile version on mobile devices
   if (isMobile) {
     return (
-      <Suspense fallback={null}>
-        <MobileSignIn />
-      </Suspense>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <Suspense fallback={null}>
+          <MobileSignIn />
+        </Suspense>
+      </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-b from-slate-50 via-blue-50/80 to-indigo-50/90 p-4 pb-10 pt-6 sm:pt-8">
+    <div className="relative flex min-h-screen flex-col bg-gradient-to-b from-slate-50 via-blue-50/80 to-indigo-50/95 px-4 py-6 sm:px-6 sm:py-8">
       <Toaster />
 
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -267,7 +269,7 @@ export default function SignInPage() {
         <div className="absolute -bottom-32 -left-32 h-72 w-72 rounded-full bg-indigo-200/30 blur-3xl" />
       </div>
 
-      <div className="relative mx-auto w-full max-w-md">
+      <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-2 sm:py-4">
         <div className="mb-4 text-center sm:mb-5">
           <Link href="/" className="group inline-flex items-center justify-center">
             <img
@@ -441,14 +443,14 @@ export default function SignInPage() {
           </form>
         </Card>
 
-        <div className="mt-4 text-center">
-          <p className="text-[11px] leading-relaxed text-slate-500 sm:text-xs">
-            By signing in you agree to our{" "}
-            <Link href="/termsandconditions" className="text-blue-600 hover:text-blue-700">
+        <div className="mt-5 shrink-0 text-center sm:mt-6">
+          <p className="text-[11px] leading-relaxed text-slate-500/90 sm:text-xs">
+            Secure sign-in · By signing in you agree to our{" "}
+            <Link href="/termsandconditions" className="font-medium text-blue-600 hover:text-blue-700">
               Terms
             </Link>{" "}
             and{" "}
-            <Link href="/privacy-policy" className="text-blue-600 hover:text-blue-700">
+            <Link href="/privacy-policy" className="font-medium text-blue-600 hover:text-blue-700">
               Privacy Policy
             </Link>
             .
