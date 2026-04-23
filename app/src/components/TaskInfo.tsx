@@ -139,7 +139,7 @@
 "use client";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Calendar, IndianRupee, MapPin, MessageSquare, SquarePen, Star, Trash2, X } from "lucide-react";
+import { Calendar, IndianRupee, MapPin, MessageSquare, SquarePen, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card";
@@ -675,43 +675,6 @@ export function TaskInfo({
                 ) : (
                   <p className="text-sm font-semibold text-slate-900 truncate">{task.poster?.name || "Unknown"}</p>
                 )}
-                <div className="rounded-lg border border-slate-100 bg-gradient-to-b from-slate-50/95 to-white px-2.5 py-2 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6)] ring-1 ring-slate-900/[0.04]">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Genuine reviews</p>
-                  {(() => {
-                    const tc = task.poster?.taskmasterReviewCount;
-                    const ta = task.poster?.taskmasterAverageRating;
-                    const hasVerified =
-                      tc != null && tc > 0 && ta != null && !Number.isNaN(Number(ta));
-                    if (hasVerified) {
-                      const n = Number(ta);
-                      return (
-                        <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-                          <span className="inline-flex items-center gap-0.5 text-amber-500">
-                            <Star className="h-3.5 w-3.5 fill-current" aria-hidden />
-                            <span className="text-sm font-bold tabular-nums text-slate-900">{n.toFixed(1)}</span>
-                          </span>
-                          <span className="text-xs text-slate-600">
-                            from {tc} verified review{tc === 1 ? "" : "s"}
-                          </span>
-                        </div>
-                      );
-                    }
-                    if (task.poster?.rating != null && task.poster.rating > 0) {
-                      return (
-                        <div className="mt-1 flex items-center gap-1.5 text-sm text-slate-800">
-                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden />
-                          <span className="font-semibold tabular-nums">{task.poster.rating}</span>
-                          <span className="text-xs text-slate-500">on profile</span>
-                        </div>
-                      );
-                    }
-                    return (
-                      <p className="mt-1 text-xs leading-snug text-slate-500">
-                        No reviews yet. Ratings from taskers appear here after completed tasks.
-                      </p>
-                    );
-                  })()}
-                </div>
                 <div className="rounded-lg border border-emerald-100/90 bg-gradient-to-br from-emerald-50/95 to-white px-2.5 py-2 ring-1 ring-emerald-900/[0.06]">
                   <div className="flex items-center gap-2">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-emerald-100">
