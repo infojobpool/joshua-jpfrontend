@@ -12,6 +12,9 @@ import {
 } from "@/lib/homeJobsCache";
 import { prefetchBidsForTask } from "@/lib/taskNavCache";
 import { HOME_BROWSE_ALL_TASKS_HREF, HOME_EXPLORE_ALL_TASKS_LABEL } from "@/lib/homeSectionNav";
+import { cn } from "@/lib/utils";
+
+const TASK_CARD_PLACEHOLDER = "/images/placeholder.svg";
 
 const DESKTOP_MAX = 12;
 const SECTION_SUBTITLE = "See open tasks and apply.";
@@ -21,6 +24,111 @@ const DESKTOP_RECENT_AUTO_SCROLL_PX_PER_SEC = 42;
 
 function formatBudget(n: number) {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
+}
+
+function RecentTaskCardImage({ url }: { url: string | null }) {
+  const resolved = url?.trim() || TASK_CARD_PLACEHOLDER;
+  return (
+    <img
+      src={resolved}
+      alt=""
+      className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={(e) => {
+        const el = e.currentTarget;
+        if (!el.dataset.fallback) {
+          el.dataset.fallback = "1";
+          el.src = TASK_CARD_PLACEHOLDER;
+        }
+      }}
+    />
+  );
+}
+
+/** Matches `PremiumOfferingCard`: compact image rail, budget strip, blue/slate shell. */
+function PremiumRecentTaskCard({
+  task,
+  href,
+  widthClass,
+  scrollSnap,
+  onPrefetch,
+}: {
+  task: HomeTaskCard;
+  href: string;
+  widthClass: string;
+  scrollSnap?: boolean;
+  onPrefetch?: () => void;
+}) {
+  const archivo = { fontFamily: "var(--font-archivo), var(--font-geist-sans), system-ui, sans-serif" } as const;
+  const budget = formatBudget(task.budget);
+
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "group block shrink-0 overflow-hidden",
+        widthClass,
+        scrollSnap && "snap-start [scroll-snap-stop:always]",
+      )}
+      onMouseEnter={onPrefetch}
+      onTouchStart={onPrefetch}
+    >
+      <article
+        className={cn(
+          "flex h-full flex-col overflow-hidden rounded-2xl bg-white md:rounded-2xl",
+          "shadow-[0_14px_44px_-28px_rgba(15,23,42,0.35)] ring-1 ring-slate-200/90",
+          "transition-all duration-300 ease-out",
+          "hover:-translate-y-0.5 hover:shadow-[0_22px_50px_-24px_rgba(37,99,235,0.22)] hover:ring-blue-200/70",
+        )}
+      >
+        <div className="relative h-[7.25rem] w-full shrink-0 overflow-hidden bg-slate-100 sm:h-[7.75rem] md:h-[8.25rem]">
+          <RecentTaskCardImage url={task.imageUrl} />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/88 via-slate-900/20 to-slate-900/0" />
+          <div className="absolute inset-x-0 bottom-0 px-2.5 pb-2 pt-6 md:px-3 md:pb-2.5">
+            <div className="flex items-end justify-between gap-2 border-t border-white/20 pt-1.5">
+              <span className="text-[8px] font-semibold uppercase tracking-[0.2em] text-blue-100/95 md:text-[9px]" style={archivo}>
+                Budget
+              </span>
+              <span
+                className="text-right text-sm font-bold tabular-nums tracking-tight text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.4)] md:text-base"
+                style={archivo}
+              >
+                {budget}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-1 flex-col gap-1 px-3 pb-2.5 pt-2 md:gap-1 md:px-3.5 md:pb-3 md:pt-2.5">
+          <p
+            className="truncate text-[8px] font-semibold uppercase tracking-[0.16em] text-blue-800/85 md:text-[9px] md:tracking-[0.18em]"
+            style={archivo}
+            title={task.category_name}
+          >
+            {task.category_name}
+          </p>
+          <h3
+            className="task-title line-clamp-2 min-w-0 overflow-hidden break-words text-[0.875rem] font-bold leading-snug tracking-[-0.02em] text-slate-900 md:text-[0.9375rem]"
+            style={archivo}
+          >
+            {task.title}
+          </h3>
+          {task.location ? (
+            <p className="mt-auto flex min-w-0 items-center gap-1 truncate pt-0.5 text-[10px] font-medium text-slate-500 md:text-[11px]">
+              <MapPin className="h-3 w-3 shrink-0 text-blue-600/55" />
+              <span className="truncate">{task.location}</span>
+            </p>
+          ) : (
+            <p className="mt-auto flex items-center gap-1 pt-0.5 text-[10px] font-semibold text-blue-800/75 md:text-[11px]">
+              <Briefcase className="h-3 w-3 shrink-0 text-blue-600/60" />
+              Open listing
+            </p>
+          )}
+        </div>
+      </article>
+    </Link>
+  );
 }
 
 export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop" }) {
@@ -212,7 +320,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-32 w-64 shrink-0 animate-pulse rounded-2xl bg-gray-100"
+                className="h-[13.5rem] w-[15.5rem] shrink-0 animate-pulse rounded-2xl bg-slate-100/90 ring-1 ring-slate-200/80"
               />
             ))}
           </div>
@@ -299,45 +407,19 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
         >
           <div className="flex w-max gap-3 pr-1">
             {loop.map((t, idx) => (
-              <Link
+              <PremiumRecentTaskCard
                 key={`${t.id}-${idx}`}
+                task={t}
                 href={`/tasks/${t.id}`}
-                className="group w-64 shrink-0 overflow-hidden rounded-2xl border border-gray-200/60 bg-white shadow-lg shadow-black/5 transition-shadow hover:shadow-xl"
-                onMouseEnter={() => {
+                widthClass="w-[15.5rem]"
+                onPrefetch={() => {
                   try {
                     prefetchBidsForTask(t.id);
                   } catch {
                     /* ignore */
                   }
                 }}
-                onTouchStart={() => {
-                  try {
-                    prefetchBidsForTask(t.id);
-                  } catch {
-                    /* ignore */
-                  }
-                }}
-              >
-                <div className="flex flex-col gap-2 p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="min-w-0 truncate rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-800">
-                      {t.category_name}
-                    </span>
-                    <span className="shrink-0 text-[11px] font-semibold text-blue-700">
-                      {formatBudget(t.budget)}
-                    </span>
-                  </div>
-                  <h4 className="task-title line-clamp-2 min-w-0 overflow-hidden break-words text-sm text-gray-900">
-                    {t.title}
-                  </h4>
-                  {t.location ? (
-                    <p className="flex items-center gap-1 truncate text-xs text-gray-500">
-                      <MapPin className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{t.location}</span>
-                    </p>
-                  ) : null}
-                </div>
-              </Link>
+              />
             ))}
           </div>
         </div>
@@ -355,7 +437,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="h-44 w-64 shrink-0 animate-pulse rounded-xl bg-gray-200"
+                className="h-[14.5rem] w-[16rem] shrink-0 animate-pulse rounded-2xl bg-slate-100/90 ring-1 ring-slate-200/80 md:w-[17rem]"
               />
             ))}
           </div>
@@ -463,51 +545,22 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
               onMouseLeave={() => setMarqueePaused(false)}
               onWheel={registerUserHorizontalScroll}
             >
-              <div className="flex w-max gap-4 transform-gpu will-change-transform">
+              <div className="flex w-max gap-4 md:gap-5 transform-gpu will-change-transform">
                 {loopDesktop.map((task, idx) => (
-                <div
-                  key={`${task.id}-${idx}`}
-                  className="w-56 flex-shrink-0 scroll-snap-start sm:w-60 md:w-64"
-                >
-                  <Link
+                  <PremiumRecentTaskCard
+                    key={`${task.id}-${idx}`}
+                    task={task}
                     href={`/tasks/${task.id}`}
-                    className="group block overflow-hidden rounded-xl border border-gray-100 bg-white shadow-md transition-shadow duration-300 hover:shadow-lg"
-                    onMouseEnter={() => {
+                    widthClass="w-[16rem] md:w-[17rem]"
+                    scrollSnap
+                    onPrefetch={() => {
                       try {
                         prefetchBidsForTask(task.id);
                       } catch {
                         /* ignore */
                       }
                     }}
-                    onTouchStart={() => {
-                      try {
-                        prefetchBidsForTask(task.id);
-                      } catch {
-                        /* ignore */
-                      }
-                    }}
-                  >
-                    <div className="p-4">
-                      <div className="mb-3 flex items-start justify-between gap-2">
-                        <span className="min-w-0 max-w-[65%] truncate rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-800">
-                          {task.category_name}
-                        </span>
-                        <span className="shrink-0 rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">
-                          {formatBudget(task.budget)}
-                        </span>
-                      </div>
-                      <h3 className="task-title line-clamp-2 min-w-0 overflow-hidden break-words text-base text-gray-900">
-                        {task.title}
-                      </h3>
-                      {task.location ? (
-                        <p className="mt-2 flex min-w-0 items-center gap-1 text-sm text-gray-500">
-                          <MapPin className="h-3.5 w-3.5 shrink-0" />
-                          <span className="truncate">{task.location}</span>
-                        </p>
-                      ) : null}
-                    </div>
-                  </Link>
-                </div>
+                  />
                 ))}
               </div>
             </div>

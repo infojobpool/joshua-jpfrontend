@@ -44,7 +44,7 @@ function OfferingCardImage({ url, alt }: { url: string; alt: string }) {
   );
 }
 
-/** Distinct from task cards: editorial image ratio, emerald treatment, Archivo typography, price on image rail. */
+/** Service listings: compact image, blue/slate premium shell (aligned with homepage task cards). */
 function PremiumOfferingCard({
   o,
   href,
@@ -71,22 +71,22 @@ function PremiumOfferingCard({
     >
       <article
         className={cn(
-          "flex h-full flex-col overflow-hidden rounded-2xl bg-white md:rounded-[1.35rem]",
-          "shadow-[0_22px_52px_-30px_rgba(6,78,59,0.32)] ring-1 ring-emerald-950/[0.06]",
+          "flex h-full flex-col overflow-hidden rounded-2xl bg-white md:rounded-2xl",
+          "shadow-[0_14px_44px_-28px_rgba(15,23,42,0.35)] ring-1 ring-slate-200/90",
           "transition-all duration-300 ease-out",
-          "hover:-translate-y-1 hover:shadow-[0_32px_64px_-28px_rgba(6,78,59,0.38)] hover:ring-emerald-800/12",
+          "hover:-translate-y-0.5 hover:shadow-[0_22px_50px_-24px_rgba(37,99,235,0.22)] hover:ring-blue-200/70",
         )}
       >
-        <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-slate-200">
+        <div className="relative h-[7.25rem] w-full shrink-0 overflow-hidden bg-slate-100 sm:h-[7.75rem] md:h-[8.25rem]">
           <OfferingCardImage url={o.photoUrls?.[0] || PLACEHOLDER} alt="" />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-emerald-950/90 via-emerald-900/25 to-emerald-900/5" />
-          <div className="absolute inset-x-0 bottom-0 px-3 pb-2.5 pt-10 md:px-3.5 md:pb-3">
-            <div className="flex items-end justify-between gap-2 border-t border-white/25 pt-2">
-              <span className="text-[9px] font-semibold uppercase tracking-[0.22em] text-emerald-100/95 md:text-[10px]" style={archivo}>
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/88 via-slate-900/20 to-slate-900/0" />
+          <div className="absolute inset-x-0 bottom-0 px-2.5 pb-2 pt-6 md:px-3 md:pb-2.5">
+            <div className="flex items-end justify-between gap-2 border-t border-white/20 pt-1.5">
+              <span className="text-[8px] font-semibold uppercase tracking-[0.2em] text-blue-100/95 md:text-[9px]" style={archivo}>
                 {prefix}
               </span>
               <span
-                className="text-right text-base font-bold tabular-nums tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)] md:text-lg"
+                className="text-right text-sm font-bold tabular-nums tracking-tight text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.4)] md:text-base"
                 style={archivo}
               >
                 {amount}
@@ -94,32 +94,32 @@ function PremiumOfferingCard({
             </div>
           </div>
         </div>
-        <div className="flex flex-1 flex-col gap-1 px-3.5 pb-3 pt-2.5 md:gap-1.5 md:px-4 md:pb-4 md:pt-3">
+        <div className="flex flex-1 flex-col gap-1 px-3 pb-2.5 pt-2 md:gap-1 md:px-3.5 md:pb-3 md:pt-2.5">
           <p
-            className="text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-800/75 md:text-[10px] md:tracking-[0.2em]"
+            className="text-[8px] font-semibold uppercase tracking-[0.16em] text-blue-800/85 md:text-[9px] md:tracking-[0.18em]"
             style={archivo}
           >
             {category}
           </p>
           <h3
-            className="line-clamp-2 min-w-0 text-[0.9375rem] font-bold leading-snug tracking-[-0.025em] text-slate-900 md:text-[1.0625rem]"
+            className="line-clamp-2 min-w-0 text-[0.875rem] font-bold leading-snug tracking-[-0.02em] text-slate-900 md:text-[0.9375rem]"
             style={archivo}
           >
             {o.title || "Listing"}
           </h3>
           {o.providerDisplayName ? (
-            <p className="truncate text-[11px] font-semibold text-emerald-900/88 md:text-[0.8125rem]" style={archivo}>
+            <p className="truncate text-[11px] font-semibold text-blue-900/85 md:text-[0.8125rem]" style={archivo}>
               {o.providerDisplayName}
             </p>
           ) : null}
           {o.locationText ? (
-            <p className="mt-auto flex items-center gap-1 truncate pt-0.5 text-[10px] font-medium text-slate-500 md:text-xs">
-              <MapPin className="h-3 w-3 shrink-0 text-emerald-700/45" />
+            <p className="mt-auto flex items-center gap-1 truncate pt-0.5 text-[10px] font-medium text-slate-500 md:text-[11px]">
+              <MapPin className="h-3 w-3 shrink-0 text-blue-600/55" />
               <span className="truncate">{o.locationText}</span>
             </p>
           ) : (
-            <p className="mt-auto flex items-center gap-1 pt-0.5 text-[10px] font-semibold text-emerald-800/75 md:text-xs">
-              <Package className="h-3 w-3 shrink-0 text-emerald-700/60" />
+            <p className="mt-auto flex items-center gap-1 pt-0.5 text-[10px] font-semibold text-blue-800/75 md:text-[11px]">
+              <Package className="h-3 w-3 shrink-0 text-blue-600/60" />
               View profile to book
             </p>
           )}
@@ -305,11 +305,11 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
       return (
         <div className="md:hidden border-t border-emerald-100/70 bg-gradient-to-b from-emerald-50/45 via-gray-50/90 to-gray-50 px-4 py-4">
           <div className="mb-3 h-5 w-56 animate-pulse rounded bg-emerald-100/60" />
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-[17.5rem] w-[17.25rem] shrink-0 animate-pulse rounded-2xl bg-emerald-100/35 ring-1 ring-emerald-900/5"
+                className="h-[13.5rem] w-[15.5rem] shrink-0 animate-pulse rounded-2xl bg-slate-100/90 ring-1 ring-slate-200/80"
               />
             ))}
           </div>
@@ -386,13 +386,13 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
           onTouchCancel={scheduleMarqueeResume}
           onWheel={registerUserHorizontalScroll}
         >
-          <div className="flex w-max gap-4 pr-1">
+          <div className="flex w-max gap-3 pr-1">
             {loop.map((o, idx) => (
               <PremiumOfferingCard
                 key={`${o.id}-${idx}`}
                 o={o}
                 href={profileHref(o)}
-                widthClass="w-[17.25rem]"
+                widthClass="w-[15.5rem]"
               />
             ))}
           </div>
@@ -407,11 +407,11 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
       <section className="hidden border-t border-emerald-100/60 py-12 md:block overflow-hidden bg-gradient-to-b from-emerald-50/40 via-white to-white">
         <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
           <div className="mx-auto mb-8 h-10 max-w-md animate-pulse rounded-lg bg-emerald-100/50" />
-          <div className="mx-auto flex max-w-7xl justify-center gap-5">
+          <div className="mx-auto flex max-w-7xl justify-center gap-4">
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="h-[19.5rem] w-[17.75rem] shrink-0 animate-pulse rounded-[1.35rem] bg-emerald-100/40 ring-1 ring-emerald-900/5 md:w-[18.5rem]"
+                className="h-[14.5rem] w-[16rem] shrink-0 animate-pulse rounded-2xl bg-slate-100/90 ring-1 ring-slate-200/80 md:w-[17rem]"
               />
             ))}
           </div>
@@ -515,10 +515,10 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
               onMouseLeave={() => setMarqueePaused(false)}
               onWheel={registerUserHorizontalScroll}
             >
-              <div className="flex w-max gap-5 md:gap-6 transform-gpu will-change-transform">
+              <div className="flex w-max gap-4 md:gap-5 transform-gpu will-change-transform">
                 {loopDesktop.map((o, idx) => (
                   <div key={`${o.id}-${idx}`} className="flex-shrink-0 scroll-snap-start">
-                    <PremiumOfferingCard o={o} href={profileHref(o)} widthClass="w-[17.75rem] md:w-[18.5rem]" />
+                    <PremiumOfferingCard o={o} href={profileHref(o)} widthClass="w-[16rem] md:w-[17rem]" />
                   </div>
                 ))}
               </div>
