@@ -15,6 +15,43 @@ export function parseDueDateEndOfDay(due: string | undefined): Date | null {
   return null;
 }
 
+/** Values that mean “no specific date” from API or legacy forms. */
+const NO_SPECIFIC_DUE = new Set([
+  "",
+  "unknown",
+  "n/a",
+  "na",
+  "none",
+  "tbd",
+  "—",
+  "-",
+  "not set",
+  "not specified",
+]);
+
+export function isPlaceholderDueDate(due?: string | null): boolean {
+  const t = due?.trim();
+  if (!t) return true;
+  return NO_SPECIFIC_DUE.has(t.toLowerCase());
+}
+
+/**
+ * What to show on list cards under “To be done”.
+ * Returns display text and whether we can compute a “days left” chip from `dueDate`.
+ */
+export function dueDisplayForListCard(
+  dueDate?: string | null,
+  dueDateFlexible?: boolean,
+): { display: string; showDaysBadge: boolean } {
+  if (dueDateFlexible) {
+    return { display: "Flexible", showDaysBadge: false };
+  }
+  if (isPlaceholderDueDate(dueDate)) {
+    return { display: "Upon agreement", showDaysBadge: false };
+  }
+  return { display: dueDate!.trim(), showDaysBadge: true };
+}
+
 /** Human label for days until due date (same rules as task detail). */
 export function daysLeftLabel(due: string): string | null {
   const end = parseDueDateEndOfDay(due);

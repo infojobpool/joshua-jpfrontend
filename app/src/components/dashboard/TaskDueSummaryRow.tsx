@@ -2,7 +2,7 @@
 
 import { CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { daysLeftLabel } from "@/lib/taskDueDisplay";
+import { daysLeftLabel, dueDisplayForListCard } from "@/lib/taskDueDisplay";
 
 export function TaskDueSummaryRow({
   dueDate,
@@ -13,9 +13,9 @@ export function TaskDueSummaryRow({
   dueDateFlexible?: boolean;
   className?: string;
 }) {
-  const trimmed = dueDate?.trim();
-  const display = trimmed || (dueDateFlexible ? "Flexible" : "—");
-  const left = trimmed ? daysLeftLabel(trimmed) : null;
+  const { display, showDaysBadge } = dueDisplayForListCard(dueDate, dueDateFlexible);
+  const left = showDaysBadge && dueDate?.trim() ? daysLeftLabel(dueDate.trim()) : null;
+  const isSoftCopy = display === "Upon agreement" || display === "Flexible";
 
   return (
     <div
@@ -32,7 +32,16 @@ export function TaskDueSummaryRow({
           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
             To be done
           </p>
-          <p className="text-sm font-semibold leading-tight text-slate-900 dark:text-slate-100">{display}</p>
+          <p
+            className={cn(
+              "text-sm leading-tight",
+              isSoftCopy
+                ? "font-medium text-slate-500 dark:text-slate-400"
+                : "font-semibold text-slate-900 dark:text-slate-100",
+            )}
+          >
+            {display}
+          </p>
         </div>
         {left ? (
           <span

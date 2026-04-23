@@ -101,6 +101,19 @@ export function DashboardTaskSummaryCard({
   const compact = density === "compact";
   const pad = compact ? (isMobile ? "p-3" : "p-4") : isMobile ? "p-4" : "p-6";
   const defaultFooter = statusLabel || footerTrailing;
+  const stackedPriceShare = Boolean(compact && share);
+
+  const pricePill = (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-lg border border-blue-200/90 bg-gradient-to-b from-blue-50 via-white to-blue-50/30 font-bold tabular-nums text-blue-950 shadow-sm ring-1 ring-blue-600/10 dark:border-blue-800/60 dark:from-blue-950/50 dark:via-slate-900 dark:to-blue-950/30 dark:text-blue-100 dark:ring-blue-400/15",
+        compact ? "px-2 py-1 text-sm" : "px-2.5 py-1.5 text-base md:text-lg",
+        priceClassName,
+      )}
+    >
+      {price}
+    </span>
+  );
 
   return (
     <Card className={cn(dashboardTaskSummaryShell, accentClass[accent], className)}>
@@ -112,7 +125,7 @@ export function DashboardTaskSummaryCard({
             aria-hidden
           />
         ) : null}
-        {share ? (
+        {!stackedPriceShare && share ? (
           <div
             className={cn(
               "absolute z-10 opacity-90 hover:opacity-100",
@@ -123,32 +136,44 @@ export function DashboardTaskSummaryCard({
           </div>
         ) : null}
 
-        <div className={cn("flex items-start justify-between", compact ? "gap-2 pr-9" : "gap-3 pr-10")}>
-          <h3
-            className={cn(
-              "task-title min-w-0 flex-1 text-balance leading-snug text-slate-900 dark:text-slate-100",
-              compact
-                ? isMobile
-                  ? "text-[0.9375rem] font-semibold leading-tight"
-                  : "text-base font-semibold"
-                : isMobile
-                  ? "text-base font-semibold"
-                  : "text-lg font-semibold md:text-xl",
-              titleClassName,
-            )}
-          >
-            {title}
-          </h3>
-          <span
-            className={cn(
-              "shrink-0 text-right font-bold tabular-nums tracking-tight text-slate-900 dark:text-slate-100",
-              compact ? "text-sm md:text-base" : "text-base md:text-lg",
-              priceClassName,
-            )}
-          >
-            {price}
-          </span>
-        </div>
+        {stackedPriceShare ? (
+          <>
+            <div className="flex items-start justify-between gap-2">
+              <h3
+                className={cn(
+                  "task-title min-w-0 flex-1 text-balance leading-snug text-slate-900 dark:text-slate-100",
+                  isMobile ? "text-[0.9375rem] font-semibold leading-tight" : "text-base font-semibold",
+                  titleClassName,
+                )}
+              >
+                {title}
+              </h3>
+            </div>
+            <div className="mt-1.5 flex items-center justify-between gap-3">
+              {pricePill}
+              <div className="shrink-0 opacity-95 hover:opacity-100 [&_button]:touch-manipulation">{share}</div>
+            </div>
+          </>
+        ) : (
+          <div className={cn("flex items-start justify-between", compact ? "gap-2 pr-9" : "gap-3 pr-10")}>
+            <h3
+              className={cn(
+                "task-title min-w-0 flex-1 text-balance leading-snug text-slate-900 dark:text-slate-100",
+                compact
+                  ? isMobile
+                    ? "text-[0.9375rem] font-semibold leading-tight"
+                    : "text-base font-semibold"
+                  : isMobile
+                    ? "text-base font-semibold"
+                    : "text-lg font-semibold md:text-xl",
+                titleClassName,
+              )}
+            >
+              {title}
+            </h3>
+            {pricePill}
+          </div>
+        )}
 
         {belowTitle ? <div className={compact ? "mt-1.5" : "mt-2"}>{belowTitle}</div> : null}
 
