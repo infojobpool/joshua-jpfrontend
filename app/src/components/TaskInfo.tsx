@@ -581,7 +581,7 @@ export function TaskInfo({
     .filter(({ image }) => isRealTaskImage(image));
 
   const photoThumbRing =
-    "ring-2 ring-slate-200/90 hover:ring-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-shadow shadow-sm";
+    "ring-2 ring-slate-200/90 hover:ring-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-shadow shadow-sm";
 
   return (
     <Card className="bg-white/95 backdrop-blur-sm border border-slate-200/60 shadow-sm rounded-2xl overflow-hidden">
@@ -594,7 +594,7 @@ export function TaskInfo({
                 value={formData.title}
                 onChange={handleChange}
                 placeholder="Task Title"
-                className="text-xl font-bold bg-white border border-slate-200 focus:border-emerald-400 rounded-xl px-3 py-2"
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xl font-bold focus:border-blue-500"
               />
             ) : (
               <CardTitle className="task-title text-xl sm:text-2xl md:text-3xl text-slate-900 leading-snug font-semibold tracking-tight pr-1">
@@ -608,7 +608,7 @@ export function TaskInfo({
                 variant="ghost"
                 size="sm"
                 onClick={handleEditClick}
-                className="text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg p-2"
+                className="rounded-lg p-2 text-slate-500 hover:bg-blue-50 hover:text-blue-700"
                 aria-label="Edit task"
                 title="Edit task (open tasks only)"
               >
@@ -629,16 +629,16 @@ export function TaskInfo({
                     displayStatus === "pending_payment"
                       ? "bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-sm"
                       : displayStatus === "in_progress"
-                        ? "bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-sm"
+                        ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm"
                         : displayStatus === "completed"
-                          ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-sm"
+                          ? "bg-gradient-to-r from-blue-700 to-indigo-700 text-white shadow-sm"
                           : displayStatus === "deleted"
                             ? "bg-red-600 text-white shadow-sm"
                             : displayStatus === "canceled"
                               ? "bg-orange-500 text-white shadow-sm"
                               : displayStatus === "requested"
                                 ? "bg-violet-600 text-white shadow-sm"
-                                : "bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-200/80"
+                                : "bg-blue-600 text-white shadow-sm ring-2 ring-blue-200/90"
                   }`}
                 >
                   {displayStatus === "pending_payment"
@@ -661,7 +661,7 @@ export function TaskInfo({
               {task.poster?.id ? (
                 <Link
                   href={`/profilepage/${task.poster.id}`}
-                  className="h-11 w-11 shrink-0 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm hover:ring-emerald-200 transition-shadow"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 shadow-sm ring-2 ring-white transition-shadow hover:ring-blue-200"
                 >
                   {showPosterPhoto ? (
                     <img
@@ -692,21 +692,21 @@ export function TaskInfo({
                 {task.poster?.id ? (
                   <Link
                     href={`/profilepage/${task.poster.id}`}
-                    className="text-sm font-semibold text-slate-900 truncate block hover:text-emerald-700"
+                    className="block truncate text-sm font-semibold text-slate-900 hover:text-blue-700"
                   >
                     {task.poster?.name || "Unknown"}
                   </Link>
                 ) : (
                   <p className="text-sm font-semibold text-slate-900 truncate">{task.poster?.name || "Unknown"}</p>
                 )}
-                <div className="rounded-lg border border-emerald-100/90 bg-gradient-to-br from-emerald-50/95 to-white px-2.5 py-2 ring-1 ring-emerald-900/[0.06]">
+                <div className="jp-bg-blue-pattern rounded-lg border border-blue-100/90 px-2.5 py-2 ring-1 ring-blue-900/[0.05]">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-emerald-100">
-                      <IndianRupee className="h-4 w-4 text-emerald-700" aria-hidden />
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-100 ring-1 ring-blue-200/50">
+                      <IndianRupee className="h-4 w-4 text-blue-700" aria-hidden />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800/90">Task budget</p>
-                      <p className="text-base font-bold tabular-nums text-emerald-950">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-800/90">Task budget</p>
+                      <p className="text-base font-bold tabular-nums text-blue-950 dark:text-blue-100">
                         ₹{Number(task.budget).toLocaleString("en-IN")}
                       </p>
                     </div>
@@ -716,7 +716,7 @@ export function TaskInfo({
                   <Button
                     type="button"
                     size="sm"
-                    className="w-full h-9 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                    className="jp-btn-blue-gradient h-9 w-full text-sm font-semibold shadow-sm"
                     onClick={() => handleMessageUser(task.poster?.id)}
                     disabled={isPaymentPending}
                     title={isPaymentPending ? "Complete payment to enable messaging" : undefined}
@@ -728,8 +728,8 @@ export function TaskInfo({
               </div>
             </div>
             <div className="flex gap-3 pt-2 border-t border-slate-100 items-start">
-              <div className="h-9 w-9 shrink-0 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center">
-                <Calendar className="h-4 w-4 text-emerald-700" aria-hidden />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-blue-100 bg-blue-50 ring-1 ring-blue-100/60">
+                <Calendar className="h-4 w-4 text-blue-700" aria-hidden />
               </div>
               <div className="min-w-0 flex-1 flex flex-wrap items-baseline justify-between gap-2">
                 <div>
@@ -771,7 +771,7 @@ export function TaskInfo({
                           ? "bg-red-50 text-red-700 ring-1 ring-red-100"
                           : left === "Due today"
                             ? "bg-amber-50 text-amber-800 ring-1 ring-amber-100"
-                            : "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100"
+                            : "bg-blue-50 text-blue-800 ring-1 ring-blue-100"
                       }`}
                     >
                       {left}
@@ -902,7 +902,7 @@ export function TaskInfo({
             {newImageFiles.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {newImageFiles.map((row) => (
-                  <div key={row.id} className="relative h-20 w-20 overflow-hidden rounded-lg border border-emerald-200 shadow-sm">
+                  <div key={row.id} className="relative h-20 w-20 overflow-hidden rounded-lg border border-blue-200 shadow-sm">
                     <img src={row.url} alt="" className="h-full w-full object-cover" />
                     <button
                       type="button"
@@ -935,7 +935,7 @@ export function TaskInfo({
         {/* Description Section */}
         <div className="space-y-3.5 pt-0.5">
           <h3 className="flex items-center gap-3 text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-50 via-white to-slate-50 text-emerald-700 shadow-sm ring-1 ring-emerald-100/90 dark:from-emerald-950/50 dark:via-slate-900 dark:to-slate-900 dark:text-emerald-400 dark:ring-emerald-900/40">
+            <span className="jp-bg-blue-pattern flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-blue-700 shadow-sm ring-1 ring-blue-100/90 dark:text-blue-300 dark:ring-blue-900/40">
               <FileText className="h-4 w-4" strokeWidth={2} aria-hidden />
             </span>
             Description
@@ -947,7 +947,7 @@ export function TaskInfo({
                 value={formData.description}
                 onChange={handleChange}
                 placeholder="Describe what you need, timing, and any important details…"
-                className="min-h-[120px] rounded-xl border-slate-200 bg-slate-50/40 text-[15px] leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 md:min-h-[140px] dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-100"
+                className="min-h-[120px] rounded-xl border-slate-200 bg-slate-50/40 text-[15px] leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 md:min-h-[140px] dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-100"
               />
             ) : (
               <p className="max-w-[65ch] text-pretty text-[15px] font-normal leading-[1.75] tracking-normal text-slate-600 antialiased dark:text-slate-300 md:text-base md:leading-[1.72] whitespace-pre-wrap">
@@ -995,10 +995,10 @@ export function TaskInfo({
                 />
               ) : null}
             </div>
-            <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-lg p-3 border border-emerald-200/50">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="p-1 rounded bg-emerald-100">
-                  <IndianRupee className="h-3 w-3 text-emerald-600" />
+            <div className="jp-bg-blue-pattern rounded-lg border border-blue-200/60 p-3">
+              <div className="mb-1 flex items-center gap-2">
+                <div className="rounded bg-blue-100 p-1">
+                  <IndianRupee className="h-3 w-3 text-blue-600" />
                 </div>
                 <h4 className="text-xs font-semibold text-gray-800">Budget</h4>
               </div>
@@ -1008,7 +1008,7 @@ export function TaskInfo({
                 value={formData.budget}
                 onChange={handleChange}
                 placeholder="Budget"
-                className="border-emerald-200 focus:border-emerald-400 bg-white/80 text-sm"
+                className="border-blue-200 bg-white/80 text-sm focus:border-blue-500"
               />
             </div>
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200/50">

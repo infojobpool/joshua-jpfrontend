@@ -1,6 +1,7 @@
 "use client";
 
-import { IndianRupee, Loader2 } from "lucide-react";
+import Image from "next/image";
+import { Loader2 } from "lucide-react";
 
 interface NoOffersEmptyStateProps {
   /** poster = task owner waiting for offers; tasker = can make first offer; processing = offer submitted */
@@ -27,26 +28,33 @@ export function NoOffersEmptyState({ variant }: NoOffersEmptyStateProps) {
         };
 
   return (
-    <div className="flex flex-col items-center justify-center px-4 py-8 text-center animate-fade-in-up">
+    <div className="flex flex-col items-center justify-center px-3 py-4 text-center animate-fade-in-up md:px-4 md:py-5">
       {isProcessing ? (
-        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-blue-50 shadow-inner ring-1 ring-blue-100 dark:bg-blue-950/50 dark:ring-blue-900/40">
+        <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 shadow-inner ring-1 ring-blue-100 dark:bg-blue-950/50 dark:ring-blue-900/40">
           <Loader2
-            className="h-10 w-10 text-blue-600 animate-spin dark:text-blue-400"
+            className="h-7 w-7 text-blue-600 animate-spin dark:text-blue-400"
             strokeWidth={2}
             aria-hidden
           />
         </div>
       ) : (
-        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-50 via-white to-blue-50 shadow-md ring-4 ring-white dark:from-emerald-950/30 dark:via-slate-900 dark:to-blue-950/40 dark:ring-slate-800 animate-empty-state-float">
-          <IndianRupee
-            className="h-12 w-12 text-emerald-600 dark:text-emerald-400"
-            strokeWidth={1.75}
-            aria-hidden
+        <div className="mb-3 flex w-full max-w-[200px] justify-center animate-empty-state-float sm:max-w-[220px]">
+          <Image
+            src="/images/empty-offers-illustration.png"
+            alt=""
+            width={220}
+            height={100}
+            className="h-[68px] w-auto max-h-[72px] object-contain object-center sm:h-[76px] sm:max-h-[80px]"
+            sizes="(max-width: 640px) 200px, 220px"
           />
         </div>
       )}
-      <h3 className="mb-1 text-lg font-bold text-slate-900 dark:text-slate-100">{config.title}</h3>
-      <p className="max-w-[280px] text-sm text-slate-600 dark:text-slate-400">{config.subtext}</p>
+      <h3 className="mb-0.5 text-base font-bold leading-snug text-slate-900 dark:text-slate-100 md:text-lg">
+        {config.title}
+      </h3>
+      <p className="max-w-[280px] text-xs leading-snug text-slate-600 dark:text-slate-400 md:text-sm">
+        {config.subtext}
+      </p>
     </div>
   );
 }

@@ -764,7 +764,7 @@ export function OffersSection({
 
   return (
     <Card className="border border-slate-200/80 shadow-sm rounded-2xl bg-white/95 overflow-hidden">
-      <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-emerald-50/20 pb-4">
+      <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-blue-50/40 pb-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <CardTitle className="text-lg font-semibold text-slate-900">Offers ({offers.length})</CardTitle>
@@ -878,13 +878,13 @@ export function OffersSection({
                         <button
                           type="button"
                           onClick={() => router.push("/payments")}
-                          className="text-xs font-medium text-emerald-700 hover:underline"
+                          className="text-xs font-medium text-blue-700 hover:underline"
                         >
                           Complete payment
                         </button>
                       </div>
                     ) : (
-                      <span className="rounded-full bg-emerald-50 text-emerald-800 px-3 py-1.5 text-xs font-semibold ring-1 ring-emerald-100">Selected</span>
+                      <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-800 ring-1 ring-blue-100">Selected</span>
                     )}
                 </div>
               )}
@@ -895,7 +895,7 @@ export function OffersSection({
                      (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) || 
                      (selectedFromSession && selectedFromSession === offer.tasker.id)) && (
                     <Button
-                      className="w-full sm:flex-1"
+                      className="jp-btn-blue-gradient w-full border-0 sm:flex-1"
                       size="sm"
                       onClick={() => handleAcceptOffer(offer)}
                       disabled={isAccepting === offer.id}
@@ -954,7 +954,7 @@ export function OffersSection({
           {paymentUrlForApp && !paymentLinkLoading && (
             <DialogFooter className="flex-col gap-2 sm:flex-col">
               <Button
-                className="w-full bg-green-600 hover:bg-green-700"
+                className="jp-btn-blue-gradient w-full rounded-lg font-semibold"
                 onClick={async () => {
                   try {
                     await navigator.clipboard?.writeText(paymentUrlForApp);
@@ -1071,7 +1071,7 @@ export function OffersSection({
               </div>
               <Button 
                 type="submit" 
-                className="w-full h-11 rounded-xl font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" 
+                className="jp-btn-blue-gradient h-11 w-full rounded-xl font-semibold shadow-sm" 
                 disabled={!verificationChecked || !isVerified || isSubmitting}
               >
                 {isSubmitting ? "Submitting..." : !verificationChecked ? "Verifying..." : verificationChecked && !isVerified ? "Verification Required" : "Make an offer"}
