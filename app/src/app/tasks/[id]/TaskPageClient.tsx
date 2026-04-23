@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/sonner";
 import axiosInstance from "@/lib/axiosInstance";
 import { jobIdVariants } from "@/lib/jobIdVariants";
 import { resolveApiMediaUrl, resolveProfileImageUrl } from "@/lib/profileImage";
+import { hasRealProfilePhotoUrl } from "@/lib/payoutProfileCompletion";
 import { isProfileComplete, getProfileImageFromUser } from "@/lib/profileUtils";
 import { storeBidsInCache } from "@/lib/taskNavCache";
 import useStore from "@/lib/Zustand";
@@ -140,7 +141,7 @@ export default function TaskDetailPage() {
   // Fetch poster profile for avatar, rating, and taskmaster review stats
   useEffect(() => {
     if (!task?.poster?.id) return;
-    const needsAvatar = !task.poster.avatar || task.poster.avatar.includes("placeholder");
+    const needsAvatar = !hasRealProfilePhotoUrl(task.poster.avatar);
     const needsTaskmasterStats = task.poster.taskmasterReviewCount == null;
     if (!needsAvatar && !needsTaskmasterStats) return;
     let cancelled = false;
@@ -149,7 +150,17 @@ export default function TaskDetailPage() {
         const res = await axiosInstance.get(`/profile?user_id=${task.poster.id}`);
         const d = res.data;
         const payload = d?.data ?? d;
-        const img = resolveProfileImageUrl(payload?.profile_img ?? payload?.profile_image ?? d?.profile_img ?? d?.profile_image);
+        const rawImg =
+          payload?.profile_img ??
+          payload?.profile_image ??
+          payload?.profile_photo ??
+          payload?.photo_url ??
+          payload?.avatar ??
+          (payload as { user?: { profile_img?: string } })?.user?.profile_img ??
+          (payload as { user?: { profile_image?: string } })?.user?.profile_image ??
+          d?.profile_img ??
+          d?.profile_image;
+        const img = resolveProfileImageUrl(typeof rawImg === "string" ? rawImg : undefined);
         const rating = payload?.rating ?? payload?.average_rating ?? payload?.review_rating ?? d?.rating ?? d?.average_rating ?? d?.review_rating;
         // Compute taskmaster review stats (reviews received when posting tasks)
         let taskmasterAverage: number | null = null;
@@ -182,7 +193,7 @@ export default function TaskDetailPage() {
       } catch (_) {}
     })();
     return () => { cancelled = true; };
-  }, [task?.id, task?.poster?.id]);
+  }, [task?.id, task?.poster?.id, task?.poster?.avatar]);
 
   // Check for existing review in localStorage when task loads
   useEffect(() => {
@@ -833,7 +844,17 @@ export default function TaskDetailPage() {
           poster: {
             id: job.user_ref_id,
             name: job.posted_by,
-            avatar: resolveProfileImageUrl(job.posted_by_profile_image || (job as any).taskmanager_profile_image || (job as any).profile_img || (job as any).user_profile_img || (job as any).poster?.profile_img) || "/images/placeholder.svg",
+            avatar:
+              resolveProfileImageUrl(
+                job.posted_by_profile_image ||
+                  (job as any).taskmanager_profile_image ||
+                  (job as any).taskmanager_profile_img ||
+                  (job as any).poster?.profile_img ||
+                  (job as any).poster?.profile_image ||
+                  (job as any).profile_img ||
+                  (job as any).user_profile_img ||
+                  (job as any).posted_by_profile_img,
+              ) || "/images/placeholder.svg",
             rating: (job as any).posted_by_rating ?? job.rating ?? null,
             taskCount: job.task_count ?? 0,
             joinedDate: job.joined_date ?? null,

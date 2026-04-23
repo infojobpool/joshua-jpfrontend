@@ -139,7 +139,7 @@
 "use client";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Calendar, IndianRupee, MapPin, MessageSquare, SquarePen, Trash2, X } from "lucide-react";
+import { Calendar, FileText, IndianRupee, MapPin, MessageSquare, SquarePen, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card";
@@ -157,6 +157,8 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCallback, useEffect, useState } from "react";
+import { resolveApiMediaUrl } from "@/lib/profileImage";
+import { hasRealProfilePhotoUrl } from "@/lib/payoutProfileCompletion";
 import { useRouter } from "next/navigation";
 
 // Interfaces
@@ -305,7 +307,19 @@ export function TaskInfo({
   const [newImageFiles, setNewImageFiles] = useState<{ id: string; file: File; url: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [minDate, setMinDate] = useState("");
-  
+  const [posterImgFailed, setPosterImgFailed] = useState(false);
+
+  useEffect(() => {
+    setPosterImgFailed(false);
+  }, [task.poster?.id, task.poster?.avatar]);
+
+  const posterAvatarRaw = task.poster?.avatar;
+  const posterPhotoUrl = posterAvatarRaw ? resolveApiMediaUrl(posterAvatarRaw) : "";
+  const showPosterPhoto =
+    hasRealProfilePhotoUrl(posterAvatarRaw) &&
+    hasRealProfilePhotoUrl(posterPhotoUrl) &&
+    !posterImgFailed;
+
   // Use parent's payment state when available - don't show pending until API check completes (avoids flicker)
   const isPaymentPending =
     paymentCheckDone !== undefined && parentPaymentPending !== undefined
@@ -649,16 +663,26 @@ export function TaskInfo({
                   href={`/profilepage/${task.poster.id}`}
                   className="h-11 w-11 shrink-0 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm hover:ring-emerald-200 transition-shadow"
                 >
-                  {task.poster?.avatar ? (
-                    <img src={task.poster.avatar} alt="" className="h-full w-full object-cover" />
+                  {showPosterPhoto ? (
+                    <img
+                      src={posterPhotoUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      onError={() => setPosterImgFailed(true)}
+                    />
                   ) : (
                     <span className="text-sm font-semibold text-slate-600">{task.poster?.name?.charAt(0) || "?"}</span>
                   )}
                 </Link>
               ) : (
                 <div className="h-11 w-11 shrink-0 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm">
-                  {task.poster?.avatar ? (
-                    <img src={task.poster.avatar} alt="" className="h-full w-full object-cover" />
+                  {showPosterPhoto ? (
+                    <img
+                      src={posterPhotoUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      onError={() => setPosterImgFailed(true)}
+                    />
                   ) : (
                     <span className="text-sm font-semibold text-slate-600">{task.poster?.name?.charAt(0) || "?"}</span>
                   )}
@@ -909,26 +933,26 @@ export function TaskInfo({
         )}
 
         {/* Description Section */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+        <div className="space-y-3.5 pt-0.5">
+          <h3 className="flex items-center gap-3 text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-50 via-white to-slate-50 text-emerald-700 shadow-sm ring-1 ring-emerald-100/90 dark:from-emerald-950/50 dark:via-slate-900 dark:to-slate-900 dark:text-emerald-400 dark:ring-emerald-900/40">
+              <FileText className="h-4 w-4" strokeWidth={2} aria-hidden />
             </span>
             Description
           </h3>
-          <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3.5 md:p-4">
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm ring-1 ring-slate-900/[0.03] dark:border-slate-700/90 dark:bg-slate-950/35 dark:ring-slate-600/15 md:p-6">
             {isEditing && canPosterEdit ? (
               <Textarea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                placeholder="Task Description"
-                className="min-h-[80px] border-slate-200 focus:border-emerald-400 bg-white text-sm rounded-lg"
+                placeholder="Describe what you need, timing, and any important details…"
+                className="min-h-[120px] rounded-xl border-slate-200 bg-slate-50/40 text-[15px] leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 md:min-h-[140px] dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-100"
               />
             ) : (
-              <p className="text-slate-700 leading-relaxed text-sm">{task.description}</p>
+              <p className="max-w-[65ch] text-pretty text-[15px] font-normal leading-[1.75] tracking-normal text-slate-600 antialiased dark:text-slate-300 md:text-base md:leading-[1.72] whitespace-pre-wrap">
+                {task.description}
+              </p>
             )}
           </div>
         </div>

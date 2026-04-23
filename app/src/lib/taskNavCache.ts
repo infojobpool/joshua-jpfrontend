@@ -1,3 +1,5 @@
+import { resolveApiMediaUrl } from "@/lib/profileImage";
+
 /**
  * Store task data before navigation for instant display on task detail page.
  * Reduces perceived loading time when clicking "Make offer" or "View offer".
@@ -48,7 +50,11 @@ export function storeTaskForNav(task: NavTaskInput) {
         poster: {
           id: String(task.posted_by_id ?? ""),
           name: task.posted_by || "Unknown",
-          avatar: (task as any).posted_by_profile_image || "/images/placeholder.svg",
+          avatar: (() => {
+            const raw = task.posted_by_profile_image;
+            if (!raw || !String(raw).trim()) return "/images/placeholder.svg";
+            return resolveApiMediaUrl(raw);
+          })(),
           rating: null,
           taskCount: null,
           joinedDate: null,
