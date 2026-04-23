@@ -164,6 +164,20 @@ html {
 .animate-pulse-slow {
   animation: pulse-slow 2s ease-in-out infinite;
 }
+
+/* Empty states (e.g. no offers yet) — soft vertical bob */
+@keyframes emptyStateFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+.animate-empty-state-float {
+  animation: emptyStateFloat 2.8s ease-in-out infinite;
+}
 .animate-shimmer {
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200px 100%;

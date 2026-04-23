@@ -28,12 +28,12 @@ export function NoOffersEmptyState({ variant }: NoOffersEmptyStateProps) {
       };
 
   return (
-    <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+    <div className="flex flex-col items-center justify-center py-8 px-4 text-center animate-fade-in-up">
       {config.showMagnifyingGlass ? (
-        <div className="relative w-40 h-32 mb-6 flex items-center justify-center">
+        <div className="relative mb-6 flex h-32 w-40 items-center justify-center animate-empty-state-float">
           <svg
             viewBox="0 0 160 128"
-            className="w-full h-full"
+            className="h-full w-full"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
             aria-hidden
@@ -64,8 +64,8 @@ export function NoOffersEmptyState({ variant }: NoOffersEmptyStateProps) {
           </svg>
         </div>
       ) : (
-        <div className="w-20 h-20 rounded-2xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center mb-6">
-          <svg viewBox="0 0 24 24" className="w-10 h-10 text-blue-600 dark:text-blue-400 animate-pulse" fill="none" stroke="currentColor" strokeWidth="2">
+        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-blue-50 animate-pulse-slow dark:bg-blue-950/50">
+          <svg viewBox="0 0 24 24" className="h-10 w-10 text-blue-600 dark:text-blue-400 animate-pulse" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="10" />
             <path d="M12 6v6l4 2" />
           </svg>
