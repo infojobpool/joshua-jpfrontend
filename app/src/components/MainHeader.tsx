@@ -59,7 +59,7 @@ const MainHeader: React.FC = () => {
   return (
     <header
       className={cn(
-        "bg-white/95 backdrop-blur-sm sticky top-0 z-50",
+        "shrink-0 bg-white/95 backdrop-blur-sm sticky top-0 z-50",
         isMarketingHome ? "max-md:border-b-0 max-md:shadow-none" : "border-b border-gray-100",
       )}
     >

@@ -24,12 +24,12 @@ export function TaskDueSummaryRow({
   return (
     <div
       className={cn(
-        "flex gap-2 border-t border-slate-100 pt-2 dark:border-slate-700/60",
+        "flex gap-1.5 border-t border-slate-100 pt-1.5 dark:border-slate-700/60",
         className,
       )}
     >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-950/40">
-        <CalendarDays className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" aria-hidden />
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-emerald-100 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-950/40 sm:h-8 sm:w-8 sm:rounded-lg">
+        <CalendarDays className="h-3 w-3 text-emerald-700 dark:text-emerald-400 sm:h-3.5 sm:w-3.5" aria-hidden />
       </div>
       <div className="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-2">
         <div className="min-w-0">
@@ -38,7 +38,7 @@ export function TaskDueSummaryRow({
           </p>
           <p
             className={cn(
-              "text-sm leading-tight",
+              "text-[13px] leading-tight sm:text-sm",
               isSoftCopy
                 ? "font-medium text-slate-500 dark:text-slate-400"
                 : "font-semibold text-slate-900 dark:text-slate-100",

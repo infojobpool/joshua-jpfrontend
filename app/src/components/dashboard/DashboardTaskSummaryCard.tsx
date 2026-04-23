@@ -99,7 +99,7 @@ export function DashboardTaskSummaryCard({
   density = "default",
 }: DashboardTaskSummaryCardProps) {
   const compact = density === "compact";
-  const pad = compact ? (isMobile ? "p-3" : "p-4") : isMobile ? "p-4" : "p-6";
+  const pad = compact ? (isMobile ? "px-2.5 py-2.5" : "px-3 py-3") : isMobile ? "p-4" : "p-6";
   const defaultFooter = statusLabel || footerTrailing;
   const stackedPriceShare = Boolean(compact && share);
 
@@ -107,7 +107,11 @@ export function DashboardTaskSummaryCard({
     <span
       className={cn(
         "inline-flex items-center rounded-lg border border-blue-200/90 bg-gradient-to-b from-blue-50 via-white to-blue-50/30 font-bold tabular-nums text-blue-950 shadow-sm ring-1 ring-blue-600/10 dark:border-blue-800/60 dark:from-blue-950/50 dark:via-slate-900 dark:to-blue-950/30 dark:text-blue-100 dark:ring-blue-400/15",
-        compact ? "px-2 py-1 text-sm" : "px-2.5 py-1.5 text-base md:text-lg",
+        compact
+          ? isMobile
+            ? "px-2 py-0.5 text-[13px] leading-tight"
+            : "px-2 py-1 text-sm"
+          : "px-2.5 py-1.5 text-base md:text-lg",
         priceClassName,
       )}
     >
@@ -129,7 +133,11 @@ export function DashboardTaskSummaryCard({
           <div
             className={cn(
               "absolute z-10 opacity-90 hover:opacity-100",
-              compact ? "right-3 top-3 md:right-4 md:top-4" : "right-4 top-4 md:right-6 md:top-6",
+              compact
+                ? isMobile
+                  ? "right-2.5 top-2.5"
+                  : "right-3 top-3 md:right-4 md:top-4"
+                : "right-4 top-4 md:right-6 md:top-6",
             )}
           >
             {share}
@@ -149,7 +157,12 @@ export function DashboardTaskSummaryCard({
                 {title}
               </h3>
             </div>
-            <div className="mt-1.5 flex items-center justify-between gap-3">
+            <div
+              className={cn(
+                "flex items-center justify-between",
+                compact && isMobile ? "mt-1 gap-2" : "mt-1.5 gap-3",
+              )}
+            >
               {pricePill}
               <div className="shrink-0 opacity-95 hover:opacity-100 [&_button]:touch-manipulation">{share}</div>
             </div>
@@ -175,10 +188,16 @@ export function DashboardTaskSummaryCard({
           </div>
         )}
 
-        {belowTitle ? <div className={compact ? "mt-1.5" : "mt-2"}>{belowTitle}</div> : null}
+        {belowTitle ? (
+          <div className={cn(compact && isMobile ? "mt-1" : compact ? "mt-1.5" : "mt-2")}>{belowTitle}</div>
+        ) : null}
 
         {metaRows && metaRows.length > 0 ? (
-          <div className={cn(compact ? "mt-2 space-y-1" : "mt-3 space-y-2")}>
+          <div
+            className={cn(
+              compact && isMobile ? "mt-1.5 space-y-0.5" : compact ? "mt-2 space-y-1" : "mt-3 space-y-2",
+            )}
+          >
             {metaRows.map((row) => (
               <div
                 key={row.key}
@@ -201,13 +220,15 @@ export function DashboardTaskSummaryCard({
           </div>
         ) : null}
 
-        {extra ? <div className={compact ? "mt-2" : "mt-3"}>{extra}</div> : null}
+        {extra ? (
+          <div className={cn(compact && isMobile ? "mt-1.5" : compact ? "mt-2" : "mt-3")}>{extra}</div>
+        ) : null}
 
         {footer != null ? (
           <div
             className={cn(
               "border-t border-slate-100 dark:border-slate-700/60",
-              compact ? "mt-2 pt-2" : "mt-4 pt-3",
+              compact && isMobile ? "mt-1.5 pt-1.5" : compact ? "mt-2 pt-2" : "mt-4 pt-3",
             )}
           >
             {footer}
@@ -216,7 +237,7 @@ export function DashboardTaskSummaryCard({
           <div
             className={cn(
               "flex items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-700/60",
-              compact ? "mt-2 pt-2" : "mt-4 gap-3 pt-3",
+              compact && isMobile ? "mt-1.5 pt-1.5" : compact ? "mt-2 pt-2" : "mt-4 gap-3 pt-3",
             )}
           >
             {statusLabel ? (
@@ -233,12 +254,16 @@ export function DashboardTaskSummaryCard({
             className={cn(
               "flex flex-wrap gap-2",
               footer != null || defaultFooter
-                ? compact
-                  ? "mt-2 border-t border-slate-100 pt-2 dark:border-slate-700/60"
-                  : "mt-4 border-t border-slate-100 pt-3 dark:border-slate-700/60"
-                : compact
-                  ? "mt-2"
-                  : "mt-4",
+                ? compact && isMobile
+                  ? "mt-1.5 border-t border-slate-100 pt-1.5 dark:border-slate-700/60"
+                  : compact
+                    ? "mt-2 border-t border-slate-100 pt-2 dark:border-slate-700/60"
+                    : "mt-4 border-t border-slate-100 pt-3 dark:border-slate-700/60"
+                : compact && isMobile
+                  ? "mt-1.5"
+                  : compact
+                    ? "mt-2"
+                    : "mt-4",
               actionsWrapperClassName,
             )}
           >

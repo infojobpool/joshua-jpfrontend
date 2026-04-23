@@ -4,7 +4,12 @@ interface AppEntranceWrapperProps {
   children: React.ReactNode;
 }
 
-/** Wraps app content; on mobile (via CSS media query) applies slide-up entrance animation */
+/**
+ * Column flex + min dynamic viewport height so `AppMain` can use `flex-1` and fill the area
+ * **below** the header (avoids a full 100vh main stacked under the header on sign-in, etc.).
+ */
 export function AppEntranceWrapper({ children }: AppEntranceWrapperProps) {
-  return <div className="mobile-app-open">{children}</div>;
+  return (
+    <div className="mobile-app-open flex min-h-[100dvh] flex-col">{children}</div>
+  );
 }

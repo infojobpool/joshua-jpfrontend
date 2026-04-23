@@ -18,7 +18,7 @@ type AuthFlowShellProps = {
  */
 export function AuthFlowShell({ children, footer, dense }: AuthFlowShellProps) {
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col bg-gradient-to-b from-slate-50 via-blue-50/80 to-indigo-50/95">
+    <div className="relative flex h-full min-h-0 flex-1 flex-col bg-gradient-to-b from-slate-50 via-blue-50/80 to-indigo-50/95">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -right-32 -top-32 h-72 w-72 rounded-full bg-blue-200/30 blur-3xl" />
         <div className="absolute -bottom-32 -left-32 h-72 w-72 rounded-full bg-indigo-200/30 blur-3xl" />
@@ -44,5 +44,5 @@ export function AuthFlowShell({ children, footer, dense }: AuthFlowShellProps) {
 
 /** Page root for auth routes that hide the mobile tab bar — pairs with `AuthFlowShell`. */
 export function AuthPageViewport({ children }: { children: React.ReactNode }) {
-  return <div className="flex min-h-0 flex-1 flex-col">{children}</div>;
+  return <div className="flex h-full min-h-0 flex-1 flex-col">{children}</div>;
 }

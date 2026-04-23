@@ -235,7 +235,7 @@ export function MobileSignIn() {
   }
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col bg-gradient-to-b from-slate-50 via-blue-50/70 to-indigo-50/95">
+    <div className="relative flex h-full min-h-0 flex-1 flex-col bg-gradient-to-b from-slate-50 via-blue-50/70 to-indigo-50/95">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-24 -right-24 h-56 w-56 rounded-full bg-blue-200/35 blur-3xl" />
         <div className="absolute -bottom-24 -left-24 h-56 w-56 rounded-full bg-indigo-200/35 blur-3xl" />

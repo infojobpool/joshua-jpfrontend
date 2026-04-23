@@ -251,12 +251,12 @@ function DashboardCardThumbnails({ images, className }: { images?: Image[]; clas
   const real = filterRealJobImages(images);
   if (real.length === 0) return null;
   return (
-    <div className={cn("mt-3 flex w-full justify-center", className)}>
-      <div className="grid w-full max-w-[220px] grid-cols-3 gap-2 sm:max-w-[260px]">
+    <div className={cn("mt-2 flex w-full justify-center sm:mt-2.5", className)}>
+      <div className="grid w-full max-w-[200px] grid-cols-3 gap-1.5 sm:max-w-[240px] sm:gap-2">
         {real.slice(0, 3).map((img) => (
           <div
             key={img.id}
-            className="relative aspect-square overflow-hidden rounded-xl border border-slate-200/70 shadow-sm dark:border-slate-600/70"
+            className="relative aspect-square overflow-hidden rounded-lg border border-slate-200/70 shadow-sm dark:border-slate-600/70 sm:rounded-xl"
           >
             <Image
               src={img.url}
@@ -4537,7 +4537,7 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             ) : (
-              <div className={`grid gap-4 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
+              <div className={`grid gap-2.5 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
                 {sortedPostedTasksForMyTasks.map((task) => {
                   let accent: DashboardTaskCardAccent = "blue";
                   if (task.cancel_status || task.deletion_status) accent = "rose";
@@ -4593,13 +4593,14 @@ export default function Dashboard() {
                       key={task.id}
                       className={task.deletion_status || task.cancel_status ? "cursor-not-allowed opacity-60" : ""}
                       accent={accent}
+                      density="compact"
                       isMobile={!!isMobile}
                       lead={
                         <>
                           {task.status === "in_progress" && !task.cancel_status ? (
                             <div
                               className={cn(
-                                "mx-3 mt-3 rounded-xl px-3 py-1.5 text-center text-xs font-semibold text-white md:mx-4 md:mt-4",
+                                "mx-2.5 mt-2 rounded-xl px-3 py-1.5 text-center text-xs font-semibold text-white sm:mx-3 sm:mt-3 md:mx-4 md:mt-4",
                                 task.taskmaster_completed &&
                                   !task.tasker_completed &&
                                   task.job_completion_status !== 1 &&
@@ -4642,8 +4643,8 @@ export default function Dashboard() {
                       bodyClassName={task.cancel_status && task.cancelled_by_role === "tasker" ? "opacity-70" : undefined}
                       belowTitle={
                         <>
-                          <DashboardCardThumbnails images={task.images} />
-                          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                          <DashboardCardThumbnails images={task.images} className="mt-1 sm:mt-1.5" />
+                          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
                             <Badge
                               variant="outline"
                               className={cn(
@@ -4731,11 +4732,13 @@ export default function Dashboard() {
                         task.cancel_status && task.cancelled_by_role === "tasker" ? (
                           <div className="flex w-full gap-2">
                             <Link href="/post-task" className="flex-1">
-                              <Button className="w-full rounded-xl bg-orange-600 text-white hover:bg-orange-700">Repost Task</Button>
+                              <Button className="w-full rounded-xl bg-orange-600 py-1.5 text-sm text-white hover:bg-orange-700 sm:py-2">
+                                Repost Task
+                              </Button>
                             </Link>
                             <Button
                               variant="outline"
-                              className="flex-1 rounded-xl border-red-200 text-red-600 hover:bg-red-50"
+                              className="flex-1 rounded-xl border-red-200 py-1.5 text-sm text-red-600 hover:bg-red-50 sm:py-2"
                               onClick={() => handlePermanentDelete(task.id)}
                             >
                               Delete
@@ -4743,12 +4746,16 @@ export default function Dashboard() {
                           </div>
                         ) : task.deletion_status || task.cancel_status ? (
                           <div className="flex w-full gap-2">
-                            <Button variant="outline" className="flex-1 rounded-xl" onClick={() => handleRequestUndeleteClick(task.id)}>
+                            <Button
+                              variant="outline"
+                              className="flex-1 rounded-xl py-1.5 text-sm sm:py-2"
+                              onClick={() => handleRequestUndeleteClick(task.id)}
+                            >
                               Request Access
                             </Button>
                             <Button
                               variant="outline"
-                              className="flex-1 rounded-xl border-red-200 text-red-600 hover:bg-red-50"
+                              className="flex-1 rounded-xl border-red-200 py-1.5 text-sm text-red-600 hover:bg-red-50 sm:py-2"
                               onClick={() => handlePermanentDelete(task.id)}
                             >
                               Delete
@@ -4775,13 +4782,13 @@ export default function Dashboard() {
                                 } catch {}
                               }}
                             >
-                              <Button variant="outline" className="w-full rounded-xl border-slate-200">
+                              <Button variant="outline" className="w-full rounded-xl border-slate-200 py-1.5 text-sm sm:py-2">
                                 👁️ View Details
                               </Button>
                             </Link>
                             {task.job_completion_status !== 1 && task.job_completion_status !== "1" && !task.taskmaster_completed ? (
                               <Button
-                                className="min-w-0 flex-1 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
+                                className="min-w-0 flex-1 rounded-xl bg-blue-600 py-1.5 text-sm text-white hover:bg-blue-700 sm:py-2"
                                 onClick={() => {
                                   setCompleteReviewTask(task);
                                   setCompleteReviewAsTaskmaster(true);
@@ -4818,7 +4825,7 @@ export default function Dashboard() {
                               } catch {}
                             }}
                           >
-                            <Button variant="outline" className="w-full rounded-xl border-slate-200">
+                            <Button variant="outline" className="w-full rounded-xl border-slate-200 py-1.5 text-sm sm:py-2">
                               👁️ View Details
                             </Button>
                           </Link>
@@ -5215,7 +5222,7 @@ export default function Dashboard() {
                 />
                   </div>
                 ) : (
-                  <div className={`grid gap-3 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
+                  <div className={`grid gap-2.5 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
                     {sortedAvailableTasks.map((task) => {
                       const hasUserBid = requestedTasks.some(bid => bid.task_id === task.id);
                       const statusLabel =
@@ -5254,7 +5261,7 @@ export default function Dashboard() {
                             />
                           }
                           belowTitle={
-                            <DashboardCardThumbnails images={task.images} className="mt-1.5 sm:mt-2" />
+                            <DashboardCardThumbnails images={task.images} className="mt-1 sm:mt-1.5" />
                           }
                           metaRows={metaRows}
                           extra={<TaskDueSummaryRow dueDate={task.dueDate} dueDateFlexible={task.dueDateFlexible} />}
@@ -5262,8 +5269,13 @@ export default function Dashboard() {
                           statusTone={statusTone}
                           footerTrailing={
                             task.posted_by ? (
-                              <Avatar className="h-7 w-7 border border-slate-200 dark:border-slate-600 sm:h-8 sm:w-8">
-                                <AvatarFallback className="text-[11px] font-medium text-slate-600 dark:text-slate-300 sm:text-xs">
+                              <Avatar
+                                className={cn(
+                                  "border border-slate-200 dark:border-slate-600",
+                                  isMobile ? "h-6 w-6" : "h-7 w-7 sm:h-8 sm:w-8",
+                                )}
+                              >
+                                <AvatarFallback className="text-[10px] font-medium text-slate-600 dark:text-slate-300 sm:text-[11px] sm:text-xs">
                                   {task.posted_by.charAt(0) || "?"}
                                 </AvatarFallback>
                               </Avatar>
@@ -5271,7 +5283,7 @@ export default function Dashboard() {
                           }
                           actions={
                             <Link href={`/tasks/${task.id}`} className="block w-full" onClick={() => { try { storeTaskForNav(task); } catch {} }}>
-                              <Button className="w-full rounded-xl bg-blue-600 py-2 text-sm font-semibold text-white hover:bg-blue-700 sm:py-2.5">
+                              <Button className="w-full rounded-xl bg-blue-600 py-1.5 text-sm font-semibold text-white hover:bg-blue-700 sm:py-2">
                                 {hasUserBid ? "View Offer" : "Make an Offer"}
                               </Button>
                             </Link>
@@ -5309,7 +5321,7 @@ export default function Dashboard() {
                 />
               </div>
             ) : (
-              <div className={`grid gap-4 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
+              <div className={`grid gap-2.5 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
                 {sortedAssignedTasks.map((task) => {
                   const isCancelled = task.cancel_status || task.cancelled || task.status === "canceled" || task.status === "cancelled";
                   const cancelledByTasker = task.cancelled_by_role === "tasker";
@@ -5362,6 +5374,7 @@ export default function Dashboard() {
                       key={task.id}
                       className={isCancelled ? "opacity-60" : ""}
                       accent={isCancelled ? "rose" : "blue"}
+                      density="compact"
                       isMobile={!!isMobile}
                       showTopProgressBar={!isCancelled}
                       title={task.title}
@@ -5379,8 +5392,8 @@ export default function Dashboard() {
                       }
                       belowTitle={
                         <>
-                          <DashboardCardThumbnails images={task.images} />
-                          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                          <DashboardCardThumbnails images={task.images} className="mt-1 sm:mt-1.5" />
+                          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
                             {isCancelled && cancelledByTasker ? (
                               <Badge variant="outline" className="border-gray-300 text-xs text-gray-600">
                                 ❌ Cancelled by you
@@ -5459,9 +5472,16 @@ export default function Dashboard() {
                       statusTone={assignedStatusTone}
                       footerTrailing={
                         task.posted_by ? (
-                          <div className="flex max-w-[10rem] items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                            <Avatar className="h-8 w-8 shrink-0 border border-slate-200 dark:border-slate-600">
-                              <AvatarFallback className="text-xs">{task.posted_by.charAt(0) || "?"}</AvatarFallback>
+                          <div className="flex max-w-[10rem] items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 sm:gap-2 sm:text-sm">
+                            <Avatar
+                              className={cn(
+                                "shrink-0 border border-slate-200 dark:border-slate-600",
+                                isMobile ? "h-6 w-6" : "h-8 w-8",
+                              )}
+                            >
+                              <AvatarFallback className="text-[10px] sm:text-xs">
+                                {task.posted_by.charAt(0) || "?"}
+                              </AvatarFallback>
                             </Avatar>
                             <span className="truncate">{task.posted_by}</span>
                           </div>
@@ -5471,7 +5491,7 @@ export default function Dashboard() {
                         isCancelled ? (
                           <Button
                             variant="outline"
-                            className="rounded-xl border-red-200 text-red-600 hover:bg-red-50"
+                            className="rounded-xl border-red-200 py-1.5 text-sm text-red-600 hover:bg-red-50 sm:py-2"
                             onClick={() => {
                               if (confirm("⚠️ Delete this cancelled task?")) {
                                 setAssignedTasks((prev) => prev.filter((t) => t.id !== task.id));
@@ -5503,11 +5523,11 @@ export default function Dashboard() {
                                 } catch {}
                               }}
                             >
-                              <Button variant="outline" className="w-full rounded-xl border-slate-200">
+                              <Button variant="outline" className="w-full rounded-xl border-slate-200 py-1.5 text-sm sm:py-2">
                                 👁️ View Details
                               </Button>
                             </Link>
-                            <span className="flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-2 text-sm text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+                            <span className="flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-1.5 text-xs text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 sm:px-4 sm:py-2 sm:text-sm">
                               ✅ Waiting for taskmaster
                             </span>
                           </>
@@ -5533,19 +5553,19 @@ export default function Dashboard() {
                                 } catch {}
                               }}
                             >
-                              <Button variant="outline" className="w-full rounded-xl border-slate-200">
+                              <Button variant="outline" className="w-full rounded-xl border-slate-200 py-1.5 text-sm sm:py-2">
                                 👁️ View Details
                               </Button>
                             </Link>
                             <Button
                               variant="outline"
-                              className="rounded-xl border-amber-200 text-amber-600 hover:bg-amber-50"
+                              className="rounded-xl border-amber-200 py-1.5 text-sm text-amber-600 hover:bg-amber-50 sm:py-2"
                               onClick={() => handleAssignedCancelClick(task.id)}
                             >
                               Cancel
                             </Button>
                             <Button
-                              className="min-w-0 flex-1 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
+                              className="min-w-0 flex-1 rounded-xl bg-blue-600 py-1.5 text-sm text-white hover:bg-blue-700 sm:py-2"
                               onClick={() => {
                                 setCompleteReviewTask(task);
                                 setCompleteReviewAsTaskmaster(false);
@@ -5603,7 +5623,7 @@ export default function Dashboard() {
                 action={{ label: "View Assigned Tasks", onClick: () => selectDashboardTaskTab("assigned") }}
               />
             ) : (
-              <div className={`grid gap-4 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
+              <div className={`grid gap-2.5 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
                 {sortedCompletedTasks.map((task) => {
                   const completedMeta: { key: string; icon: ReactNode; text: string }[] = [
                     {
@@ -5626,6 +5646,7 @@ export default function Dashboard() {
                     <DashboardTaskSummaryCard
                       key={task.id}
                       accent="emerald"
+                      density="compact"
                       isMobile={!!isMobile}
                       title={task.title}
                       titleClassName="line-clamp-2"
@@ -5639,7 +5660,7 @@ export default function Dashboard() {
                           variant="icon"
                         />
                       }
-                      belowTitle={<DashboardCardThumbnails images={task.images} />}
+                      belowTitle={<DashboardCardThumbnails images={task.images} className="mt-1 sm:mt-1.5" />}
                       metaRows={completedMeta}
                       extra={
                         task.review_comment ? (
@@ -5682,7 +5703,7 @@ export default function Dashboard() {
                             variant="outline"
                             className={cn(
                               "w-full transform rounded-lg border-2 border-gray-300 font-semibold text-gray-700 shadow-md transition-all duration-200 hover:scale-[1.02] hover:border-gray-400 hover:text-gray-800 hover:shadow-lg dark:border-slate-600 dark:text-slate-200",
-                              isMobile ? "py-2 text-sm" : "px-4 py-3",
+                              isMobile ? "py-1.5 text-sm" : "px-4 py-3",
                             )}
                           >
                             <div className="flex items-center gap-2">
@@ -5719,7 +5740,7 @@ export default function Dashboard() {
                 action={{ label: "Browse Available Tasks", onClick: () => selectDashboardTaskTab("available") }}
               />
             ) : (
-              <div className={`grid gap-4 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
+              <div className={`grid gap-2.5 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
                 {sortedRequestedTasks.map((bid) => {
                   const bidMeta: { key: string; icon: ReactNode; text: string }[] = [
                     {
@@ -5740,6 +5761,7 @@ export default function Dashboard() {
                     <DashboardTaskSummaryCard
                       key={bid.bid_id}
                       accent={bid.task_deleted || bid.task_cancelled ? "rose" : "amber"}
+                      density="compact"
                       isMobile={!!isMobile}
                       title={bid.task_title}
                       titleClassName="line-clamp-3"
@@ -5755,8 +5777,8 @@ export default function Dashboard() {
                       }
                       belowTitle={
                         <>
-                          <DashboardCardThumbnails images={bid.images} />
-                          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                          <DashboardCardThumbnails images={bid.images} className="mt-1 sm:mt-1.5" />
+                          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
                             {bid.task_deleted ? (
                               <Badge className="rounded-md bg-gray-600 px-2 py-0.5 text-xs text-white">🗑️ Deleted</Badge>
                             ) : null}
@@ -5788,9 +5810,14 @@ export default function Dashboard() {
                             </p>
                             <p className="text-xl font-bold tabular-nums text-slate-900 dark:text-slate-100">₹{bid.bid_amount}</p>
                           </div>
-                          <div className="flex max-w-[10rem] shrink-0 items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                            <Avatar className="h-8 w-8 border border-slate-200 dark:border-slate-600">
-                              <AvatarFallback className="text-xs">{bid.posted_by?.charAt(0) || "?"}</AvatarFallback>
+                          <div className="flex max-w-[10rem] shrink-0 items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 sm:gap-2 sm:text-sm">
+                            <Avatar
+                              className={cn(
+                                "border border-slate-200 dark:border-slate-600",
+                                isMobile ? "h-6 w-6" : "h-8 w-8",
+                              )}
+                            >
+                              <AvatarFallback className="text-[10px] sm:text-xs">{bid.posted_by?.charAt(0) || "?"}</AvatarFallback>
                             </Avatar>
                             <span className="truncate">{bid.posted_by}</span>
                           </div>
@@ -5825,7 +5852,7 @@ export default function Dashboard() {
                             } catch {}
                           }}
                         >
-                          <Button variant="outline" className="w-full rounded-xl border-slate-200">
+                          <Button variant="outline" className="w-full rounded-xl border-slate-200 py-1.5 text-sm sm:py-2">
                             👁️ View Task Details
                           </Button>
                         </Link>
