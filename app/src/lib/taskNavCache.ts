@@ -36,7 +36,7 @@ export function storeTaskForNav(task: NavTaskInput) {
         status: task.status || "open",
         job_completion_status: 0,
         postedAt: task.postedAt || "N/A",
-        dueDate: task.dueDate || "N/A",
+        dueDate: task.dueDate?.trim() || "",
         category: task.category || "",
         images: (task.images && task.images.length)
           ? task.images.map((img, i) => ({

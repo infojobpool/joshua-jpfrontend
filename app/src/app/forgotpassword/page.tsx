@@ -22,8 +22,8 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
-import  axiosInstance  from "../../lib/axiosInstance"; // Adjust the import path to where your axiosInstance is defined
-
+import axiosInstance from "../../lib/axiosInstance";
+import { AuthFlowShell, AuthPageViewport } from "@/components/auth/AuthFlowShell";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -76,8 +76,23 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-      <Card className="w-full max-w-md">
+    <AuthPageViewport>
+      <AuthFlowShell
+        footer={
+          <>
+            Secure link · By using JobPool you agree to our{" "}
+            <Link href="/termsandconditions" className="font-medium text-blue-600 hover:text-blue-700">
+              Terms
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy-policy" className="font-medium text-blue-600 hover:text-blue-700">
+              Privacy Policy
+            </Link>
+            .
+          </>
+        }
+      >
+      <Card className="w-full border border-slate-200/70 bg-white/95 shadow-lg shadow-slate-900/5 ring-1 ring-slate-900/[0.04] backdrop-blur-sm">
         <CardHeader className="space-y-1">
           <div className="flex items-center">
             <Link
@@ -187,6 +202,7 @@ export default function ForgotPasswordPage() {
           </div>
         </CardFooter>
       </Card>
-    </div>
+      </AuthFlowShell>
+    </AuthPageViewport>
   );
 }

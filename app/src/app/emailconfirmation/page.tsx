@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import axiosInstance from "@/lib/axiosInstance";
 import { toast, Toaster } from "sonner";
+import { AuthFlowShell, AuthPageViewport } from "@/components/auth/AuthFlowShell";
 
 function EmailConfirmationContent() {
   const router = useRouter();
@@ -137,9 +138,20 @@ function EmailConfirmationContent() {
   }, [searchParams]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4">
+    <AuthPageViewport>
+      <AuthFlowShell
+        footer={
+          <>
+            Need help?{" "}
+            <Link href="/support" className="font-medium text-blue-600 hover:text-blue-700">
+              Contact support
+            </Link>
+            .
+          </>
+        }
+      >
       <Toaster />
-      <Card className="w-full max-w-md backdrop-blur-sm bg-white/90 border-0 shadow-2xl">
+      <Card className="w-full max-w-md border border-slate-200/70 bg-white/95 shadow-lg shadow-slate-900/5 ring-1 ring-slate-900/[0.04] backdrop-blur-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-gray-900">Email Confirmation</CardTitle>
           <CardDescription className="text-gray-600">
@@ -206,27 +218,27 @@ function EmailConfirmationContent() {
             </Button>
           )}
 
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            <p>
-              Need help?{" "}
-              <Link href="/support" className="text-blue-600 hover:text-blue-700 transition-colors">
-                Contact Support
-              </Link>
-            </p>
-          </div>
         </CardFooter>
       </Card>
-    </div>
+      </AuthFlowShell>
+    </AuthPageViewport>
   );
 }
 
 export default function EmailConfirmationPage() {
   return (
-    <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <AuthPageViewport>
+          <AuthFlowShell>
+            <div className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="h-10 w-10 animate-spin text-blue-600" aria-hidden />
+              <p className="mt-3 text-sm text-slate-500">Loading…</p>
+            </div>
+          </AuthFlowShell>
+        </AuthPageViewport>
+      }
+    >
       <EmailConfirmationContent />
     </Suspense>
   );

@@ -149,7 +149,12 @@ import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
 import { Checkbox } from "./ui/checkbox";
 import axiosInstance from "@/lib/axiosInstance";
-import { daysLeftLabel } from "@/lib/taskDueDisplay";
+import {
+  PLACEHOLDER_DUE_DISPLAY,
+  daysLeftLabel,
+  dueDisplayForListCard,
+} from "@/lib/taskDueDisplay";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -715,10 +720,34 @@ export function TaskInfo({
               <div className="min-w-0 flex-1 flex flex-wrap items-baseline justify-between gap-2">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">To be done</p>
-                  <p className="text-sm font-semibold text-slate-900">{task.dueDate || "Flexible"}</p>
+                  {(() => {
+                    const { display, showDaysBadge } = dueDisplayForListCard(
+                      task.dueDate,
+                      task.dueDateFlexible,
+                    );
+                    const soft =
+                      display === "Flexible" || display === PLACEHOLDER_DUE_DISPLAY;
+                    return (
+                      <p
+                        className={cn(
+                          "text-sm leading-tight",
+                          soft
+                            ? "font-medium text-slate-500"
+                            : "font-semibold text-slate-900",
+                        )}
+                      >
+                        {display}
+                      </p>
+                    );
+                  })()}
                 </div>
                 {(() => {
-                  const left = daysLeftLabel(task.dueDate);
+                  const { showDaysBadge } = dueDisplayForListCard(
+                    task.dueDate,
+                    task.dueDateFlexible,
+                  );
+                  if (!showDaysBadge || !task.dueDate?.trim()) return null;
+                  const left = daysLeftLabel(task.dueDate.trim());
                   if (!left) return null;
                   const past = left === "Past due";
                   return (

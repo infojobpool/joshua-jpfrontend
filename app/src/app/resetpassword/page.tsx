@@ -25,8 +25,22 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
-import axiosInstance from "../../lib/axiosInstance"; 
+import axiosInstance from "../../lib/axiosInstance";
+import { AuthFlowShell, AuthPageViewport } from "@/components/auth/AuthFlowShell";
 
+const authFooter = (
+  <>
+    Secure account · By continuing you agree to our{" "}
+    <Link href="/termsandconditions" className="font-medium text-blue-600 hover:text-blue-700">
+      Terms
+    </Link>{" "}
+    and{" "}
+    <Link href="/privacy-policy" className="font-medium text-blue-600 hover:text-blue-700">
+      Privacy Policy
+    </Link>
+    .
+  </>
+);
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
@@ -93,8 +107,9 @@ export default function ResetPasswordPage() {
   // If no token is provided, show an error
   if (!token) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-        <Card className="w-full max-w-md">
+      <AuthPageViewport>
+        <AuthFlowShell footer={authFooter}>
+        <Card className="w-full border border-slate-200/70 bg-white/95 shadow-lg shadow-slate-900/5 ring-1 ring-slate-900/[0.04] backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="text-2xl">Invalid Reset Link</CardTitle>
             <CardDescription>
@@ -117,13 +132,15 @@ export default function ResetPasswordPage() {
             </Button>
           </CardFooter>
         </Card>
-      </div>
+        </AuthFlowShell>
+      </AuthPageViewport>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-      <Card className="w-full max-w-md">
+    <AuthPageViewport>
+      <AuthFlowShell footer={authFooter}>
+      <Card className="w-full border border-slate-200/70 bg-white/95 shadow-lg shadow-slate-900/5 ring-1 ring-slate-900/[0.04] backdrop-blur-sm">
         <CardHeader className="space-y-1">
           <div className="flex items-center">
             <Link
@@ -297,6 +314,7 @@ export default function ResetPasswordPage() {
           </div>
         </CardFooter>
       </Card>
-    </div>
+      </AuthFlowShell>
+    </AuthPageViewport>
   );
 }

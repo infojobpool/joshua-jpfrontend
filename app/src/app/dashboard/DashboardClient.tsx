@@ -46,6 +46,7 @@ import axiosInstance from "@/lib/axiosInstance";
 import { jobIdVariants } from "@/lib/jobIdVariants";
 import useStore from "@/lib/Zustand";
 import { formatDateWithTime } from "@/lib/utils";
+import { dueDisplayForListCard } from "@/lib/taskDueDisplay";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 import { storeTaskForNav, prefetchBidsForTask } from "@/lib/taskNavCache";
 import { useNotifications } from "@/lib/useNotifications";
@@ -1620,7 +1621,9 @@ export default function Dashboard() {
         postedAt: postedMeta.formatted,
         postedAtSortValue: postedMeta.sortValue,
         postedAtISO: postedMeta.iso,
-        dueDate: job.job_due_date ? new Date(job.job_due_date).toLocaleDateString("en-GB") : "Unknown",
+        dueDate: job.job_due_date
+          ? new Date(job.job_due_date).toLocaleDateString("en-GB")
+          : undefined,
         dueDateFlexible: job.due_date_flexible === true,
         offers: job.offers || 0,
         posted_by: job.posted_by || "Unknown",
@@ -1748,7 +1751,7 @@ export default function Dashboard() {
                 postedAtISO: postedMeta.iso,
                 dueDate: job.job_due_date
                   ? new Date(job.job_due_date).toLocaleDateString("en-GB")
-                  : "Unknown",
+                  : undefined,
                 dueDateFlexible: job.due_date_flexible === true,
                 offers: job.offers || 0, // Use original offers field as fallback
                 posted_by: job.posted_by || "Unknown",
@@ -4566,10 +4569,15 @@ export default function Dashboard() {
                     text: `Posted ${getCardPostedAt(task)}`,
                   });
                   if (task.dueDate || task.dueDateFlexible) {
+                    const dueRow = dueDisplayForListCard(task.dueDate, task.dueDateFlexible);
+                    const dueText =
+                      dueRow.showDaysBadge && task.dueDate?.trim()
+                        ? formatDateWithTime(task.dueDate.trim())
+                        : dueRow.display;
                     metaRowsMy.push({
                       key: "due",
                       icon: <CalendarDays className="h-4 w-4" aria-hidden />,
-                      text: task.dueDateFlexible || !task.dueDate ? "Flexible" : formatDateWithTime(task.dueDate),
+                      text: dueText,
                     });
                   }
                   if (task.location) {
@@ -5317,10 +5325,15 @@ export default function Dashboard() {
                     },
                   ];
                   if (task.dueDate || task.dueDateFlexible) {
+                    const dueRow = dueDisplayForListCard(task.dueDate, task.dueDateFlexible);
+                    const dueText =
+                      dueRow.showDaysBadge && task.dueDate?.trim()
+                        ? formatDateWithTime(task.dueDate.trim())
+                        : dueRow.display;
                     assignedMeta.push({
                       key: "due",
                       icon: <CalendarDays className="h-4 w-4" aria-hidden />,
-                      text: task.dueDateFlexible || !task.dueDate ? "Flexible" : formatDateWithTime(task.dueDate),
+                      text: dueText,
                     });
                   }
                   if (task.location) {

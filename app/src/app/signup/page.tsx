@@ -25,8 +25,7 @@ import { TrustBadges } from "@/components/TrustBadges";
 import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint";
 import { setPendingEmailVerifyFromSignupClient } from "@/lib/pendingEmailVerifySignin";
 import { isValidProfilePhone, normalizeProfilePhone } from "@/lib/profilePhone";
-
-type AccountType = "tasker" | "poster" | "both";
+import { AuthFlowShell, AuthPageViewport } from "@/components/auth/AuthFlowShell";
 
 interface FormData {
   user_fullname: string;
@@ -62,10 +61,6 @@ export default function SignUpPage() {
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleRadioChange = (value: AccountType) => {
-    setFormData((prev) => ({ ...prev, accountType: value }));
   };
 
   useEffect(() => {
@@ -141,18 +136,27 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/80 to-indigo-50 flex items-center justify-center p-4 py-6">
+    <AuthPageViewport>
+      <AuthFlowShell
+        dense
+        footer={
+          <>
+            By creating an account you agree to our{" "}
+            <Link href="/termsandconditions" className="font-medium text-blue-600 hover:text-blue-700">
+              Terms
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy-policy" className="font-medium text-blue-600 hover:text-blue-700">
+              Privacy Policy
+            </Link>
+            .
+          </>
+        }
+      >
       <Toaster />
-      
-      {/* Background Pattern */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-32 -right-32 w-64 h-64 bg-blue-200/40 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-indigo-200/40 rounded-full blur-3xl" />
-      </div>
 
-      <div className="relative w-full max-w-md">
         {/* Logo Section */}
-        <div className="text-center mb-6 mt-4 md:mt-6">
+        <div className="mb-6 text-center md:mt-1">
           <Link href="/" className="inline-flex items-center justify-center group">
             <img 
               src="/images/jobpool-logo.png" 
@@ -164,7 +168,7 @@ export default function SignUpPage() {
         </div>
 
         {/* Main Card - show success view or form */}
-        <Card className="backdrop-blur-sm bg-white/95 border-0 shadow-xl shadow-slate-200/50 rounded-2xl overflow-hidden">
+        <Card className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white/95 shadow-lg shadow-slate-900/5 ring-1 ring-slate-900/[0.04] backdrop-blur-sm">
           {signupSuccess ? (
             <div className="p-6 space-y-5">
               <div className="flex justify-center">
@@ -349,21 +353,7 @@ export default function SignUpPage() {
           </form>
           )}
         </Card>
-
-        {/* Footer */}
-        <div className="text-center mt-5">
-          <p className="text-sm text-gray-500">
-            By creating an account, you agree to our{" "}
-            <Link href="/termsandconditions" className="text-blue-600 hover:text-blue-700 transition-colors">
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link href="/privacy-policy" className="text-blue-600 hover:text-blue-700 transition-colors">
-              Privacy Policy
-            </Link>
-          </p>
-        </div>
-      </div>
-    </div>
+      </AuthFlowShell>
+    </AuthPageViewport>
   );
 }
