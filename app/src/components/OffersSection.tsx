@@ -1014,14 +1014,7 @@ export function OffersSection({
         </CardFooter>
       )}
       {!isTaskPoster && !shouldBlockSubmit && !hasSubmittedOffer && (
-        <CardFooter className="min-h-[200px] flex flex-col gap-4 items-center">
-          {/* Task Budget – Airtasker: centered above Make an offer */}
-          <div className="w-full max-w-sm mx-auto">
-            <div className="rounded-xl bg-gray-100 dark:bg-slate-800 p-4 text-center ring-1 ring-slate-200/60 dark:ring-slate-600/50">
-              <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-400 font-bold mb-1">Task Budget</p>
-              <p className="task-budget-amount text-2xl md:text-3xl text-slate-900 dark:text-slate-100">₹{task.budget}</p>
-            </div>
-          </div>
+        <CardFooter className="flex flex-col gap-4 items-center border-t border-slate-100 bg-slate-50/40 pt-5 dark:border-slate-700 dark:bg-slate-900/20">
           {verificationChecked && !isVerified ? (
             <div className="w-full p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-sm text-yellow-800 font-medium mb-2">
