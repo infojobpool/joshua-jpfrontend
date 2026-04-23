@@ -214,7 +214,14 @@ export function DashboardTaskSummaryCard({
                 >
                   {row.icon}
                 </span>
-                <span className="min-w-0">{row.text}</span>
+                <span
+                  className={cn(
+                    "min-w-0",
+                    compact && isMobile && row.key === "loc" && "line-clamp-2 break-words text-[12px] leading-snug sm:text-[13px]",
+                  )}
+                >
+                  {row.text}
+                </span>
               </div>
             ))}
           </div>

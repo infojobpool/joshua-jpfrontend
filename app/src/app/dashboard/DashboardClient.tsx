@@ -41,6 +41,9 @@ import {
   RotateCcw,
   SlidersHorizontal,
   CalendarDays,
+  Ban,
+  Trash2,
+  Eye,
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import { jobIdVariants } from "@/lib/jobIdVariants";
@@ -4644,11 +4647,11 @@ export default function Dashboard() {
                       belowTitle={
                         <>
                           <DashboardCardThumbnails images={task.images} className="mt-1 sm:mt-1.5" />
-                          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+                          <div className="mt-1.5 flex flex-col gap-2">
                             <Badge
                               variant="outline"
                               className={cn(
-                                "rounded-md px-2 py-0.5 text-xs font-medium",
+                                "w-fit rounded-lg px-2.5 py-1 text-[11px] font-semibold sm:text-xs",
                                 task.cancel_status && task.cancelled_by_role === "tasker"
                                   ? "border-orange-200 bg-orange-50/50 text-orange-600"
                                   : task.cancel_status
@@ -4675,30 +4678,32 @@ export default function Dashboard() {
                                         : "📋 Open"}
                             </Badge>
                             {!task.deletion_status && !task.cancel_status ? (
-                              <>
+                              <div className="flex flex-wrap gap-2">
                                 {(task.status === "open" || task.status === "in_progress") && (
-                                  <button
+                                  <Button
                                     type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 rounded-xl border-amber-200/90 bg-gradient-to-b from-amber-50/95 to-white px-3 text-xs font-semibold text-amber-900 shadow-sm ring-1 ring-amber-600/10 hover:border-amber-300 hover:from-amber-100 hover:to-amber-50/90 dark:border-amber-800/50 dark:from-amber-950/35 dark:to-slate-900 dark:text-amber-100 dark:ring-amber-500/20 sm:h-10 sm:text-[13px]"
                                     onClick={() => handleCancelClick(task.id)}
-                                    className="font-medium text-amber-600 hover:text-amber-700 hover:underline"
-                                    aria-label="Cancel task"
-                                    title="Cancel task"
                                   >
-                                    Cancel
-                                  </button>
+                                    <Ban className="mr-1.5 h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+                                    Cancel task
+                                  </Button>
                                 )}
                                 {task.status === "open" && (
-                                  <button
+                                  <Button
                                     type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 rounded-xl border-red-200/90 bg-gradient-to-b from-red-50/95 to-white px-3 text-xs font-semibold text-red-900 shadow-sm ring-1 ring-red-600/10 hover:border-red-300 hover:from-red-100 hover:to-red-50/90 dark:border-red-900/40 dark:from-red-950/30 dark:to-slate-900 dark:text-red-100 sm:h-10 sm:text-[13px]"
                                     onClick={() => handleDeleteClick(task.id)}
-                                    className="font-medium text-red-600 hover:text-red-700 hover:underline"
-                                    aria-label="Delete task"
-                                    title="Delete task"
                                   >
-                                    Delete
-                                  </button>
+                                    <Trash2 className="mr-1.5 h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+                                    Delete task
+                                  </Button>
                                 )}
-                              </>
+                              </div>
                             ) : null}
                           </div>
                         </>
@@ -4782,13 +4787,19 @@ export default function Dashboard() {
                                 } catch {}
                               }}
                             >
-                              <Button variant="outline" className="w-full rounded-xl border-slate-200 py-1.5 text-sm sm:py-2">
-                                👁️ View Details
+                              <Button
+                                variant="outline"
+                                className="w-full rounded-xl border-slate-200/90 bg-white py-1.5 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-900/5 hover:border-slate-300 hover:bg-slate-50/90 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:ring-slate-600/30 sm:py-2"
+                              >
+                                <span className="flex items-center justify-center gap-2">
+                                  <Eye className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden />
+                                  View details
+                                </span>
                               </Button>
                             </Link>
                             {task.job_completion_status !== 1 && task.job_completion_status !== "1" && !task.taskmaster_completed ? (
                               <Button
-                                className="min-w-0 flex-1 rounded-xl bg-blue-600 py-1.5 text-sm text-white hover:bg-blue-700 sm:py-2"
+                                className="min-w-0 flex-1 rounded-xl bg-blue-600 py-1.5 text-sm font-semibold text-white shadow-md shadow-blue-600/20 hover:bg-blue-700 sm:py-2"
                                 onClick={() => {
                                   setCompleteReviewTask(task);
                                   setCompleteReviewAsTaskmaster(true);
@@ -4825,8 +4836,14 @@ export default function Dashboard() {
                               } catch {}
                             }}
                           >
-                            <Button variant="outline" className="w-full rounded-xl border-slate-200 py-1.5 text-sm sm:py-2">
-                              👁️ View Details
+                            <Button
+                              variant="outline"
+                              className="w-full rounded-xl border-slate-200/90 bg-white py-1.5 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-900/5 hover:border-slate-300 hover:bg-slate-50/90 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:ring-slate-600/30 sm:py-2"
+                            >
+                              <span className="flex items-center justify-center gap-2">
+                                <Eye className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden />
+                                View details
+                              </span>
                             </Button>
                           </Link>
                         )
@@ -5491,7 +5508,7 @@ export default function Dashboard() {
                         isCancelled ? (
                           <Button
                             variant="outline"
-                            className="rounded-xl border-red-200 py-1.5 text-sm text-red-600 hover:bg-red-50 sm:py-2"
+                            className="w-full rounded-xl border-red-200/90 bg-gradient-to-b from-red-50/95 to-white py-1.5 text-sm font-semibold text-red-900 shadow-sm ring-1 ring-red-600/10 hover:border-red-300 hover:from-red-100 hover:to-red-50/90 dark:border-red-900/40 dark:from-red-950/30 sm:py-2"
                             onClick={() => {
                               if (confirm("⚠️ Delete this cancelled task?")) {
                                 setAssignedTasks((prev) => prev.filter((t) => t.id !== task.id));
@@ -5499,13 +5516,16 @@ export default function Dashboard() {
                               }
                             }}
                           >
-                            Delete
+                            <span className="flex items-center justify-center gap-2">
+                              <Trash2 className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                              Remove from list
+                            </span>
                           </Button>
                         ) : waitingForTaskmaster ? (
-                          <>
+                          <div className={cn("flex gap-2", isMobile ? "flex-col" : "flex-row flex-wrap")}>
                             <Link
                               href={`/tasks/${task.id}`}
-                              className="min-w-0 flex-1"
+                              className={cn("min-w-0", isMobile ? "w-full" : "flex-1")}
                               onClick={() => {
                                 try {
                                   sessionStorage.setItem("nav_from_assigned", "1");
@@ -5523,19 +5543,26 @@ export default function Dashboard() {
                                 } catch {}
                               }}
                             >
-                              <Button variant="outline" className="w-full rounded-xl border-slate-200 py-1.5 text-sm sm:py-2">
-                                👁️ View Details
+                              <Button
+                                variant="outline"
+                                className="w-full rounded-xl border-slate-200/90 bg-white py-1.5 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-900/5 hover:border-slate-300 hover:bg-slate-50/90 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:ring-slate-600/30 sm:py-2"
+                              >
+                                <span className="flex items-center justify-center gap-2">
+                                  <Eye className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden />
+                                  View details
+                                </span>
                               </Button>
                             </Link>
-                            <span className="flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-1.5 text-xs text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 sm:px-4 sm:py-2 sm:text-sm">
-                              ✅ Waiting for taskmaster
-                            </span>
-                          </>
+                            <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200/80 bg-gradient-to-b from-blue-50/95 to-white px-3 py-2 text-center text-xs font-semibold text-blue-900 shadow-sm ring-1 ring-blue-600/10 dark:border-blue-800/50 dark:from-blue-950/40 dark:to-slate-900 dark:text-blue-100 sm:text-sm">
+                              <CheckCircle className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
+                              Waiting for task owner
+                            </div>
+                          </div>
                         ) : (
-                          <>
+                          <div className={cn("flex gap-2", isMobile ? "flex-col" : "flex-row flex-wrap items-stretch")}>
                             <Link
                               href={`/tasks/${task.id}`}
-                              className="min-w-0 flex-1"
+                              className={cn("min-w-0", isMobile ? "w-full" : "min-w-[8rem] flex-1")}
                               onClick={() => {
                                 try {
                                   sessionStorage.setItem("nav_from_assigned", "1");
@@ -5553,28 +5580,48 @@ export default function Dashboard() {
                                 } catch {}
                               }}
                             >
-                              <Button variant="outline" className="w-full rounded-xl border-slate-200 py-1.5 text-sm sm:py-2">
-                                👁️ View Details
+                              <Button
+                                variant="outline"
+                                className="w-full rounded-xl border-slate-200/90 bg-white py-1.5 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-900/5 hover:border-slate-300 hover:bg-slate-50/90 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:ring-slate-600/30 sm:py-2"
+                              >
+                                <span className="flex items-center justify-center gap-2">
+                                  <Eye className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden />
+                                  View details
+                                </span>
                               </Button>
                             </Link>
                             <Button
+                              type="button"
                               variant="outline"
-                              className="rounded-xl border-amber-200 py-1.5 text-sm text-amber-600 hover:bg-amber-50 sm:py-2"
+                              className={cn(
+                                "rounded-xl border-amber-200/90 bg-gradient-to-b from-amber-50/95 to-white px-3 text-xs font-semibold text-amber-900 shadow-sm ring-1 ring-amber-600/10 hover:border-amber-300 hover:from-amber-100 hover:to-amber-50/90 dark:border-amber-800/50 dark:from-amber-950/35 dark:to-slate-900 dark:text-amber-100 dark:ring-amber-500/20 sm:text-sm h-9 sm:h-10",
+                                isMobile ? "w-full" : "shrink-0",
+                              )}
                               onClick={() => handleAssignedCancelClick(task.id)}
                             >
-                              Cancel
+                              <span className="flex items-center justify-center gap-2">
+                                <Ban className="h-3.5 w-3.5 shrink-0 opacity-90 sm:h-4 sm:w-4" aria-hidden />
+                                Cancel task
+                              </span>
                             </Button>
                             <Button
-                              className="min-w-0 flex-1 rounded-xl bg-blue-600 py-1.5 text-sm text-white hover:bg-blue-700 sm:py-2"
+                              type="button"
+                              className={cn(
+                                "rounded-xl bg-blue-600 py-1.5 text-sm font-semibold text-white shadow-md shadow-blue-600/20 transition-colors hover:bg-blue-700 sm:py-2",
+                                isMobile ? "w-full" : "min-w-0 flex-1",
+                              )}
                               onClick={() => {
                                 setCompleteReviewTask(task);
                                 setCompleteReviewAsTaskmaster(false);
                               }}
                               disabled={completingTaskId === task.id}
                             >
-                              ✅ {completingTaskId === task.id ? "Updating..." : "Mark as complete"}
+                              <span className="flex items-center justify-center gap-2">
+                                <CheckCircle className="h-4 w-4 shrink-0 opacity-95" aria-hidden />
+                                {completingTaskId === task.id ? "Updating…" : "Mark as complete"}
+                              </span>
                             </Button>
-                          </>
+                          </div>
                         )
                       }
                     />
@@ -5778,13 +5825,29 @@ export default function Dashboard() {
                       belowTitle={
                         <>
                           <DashboardCardThumbnails images={bid.images} className="mt-1 sm:mt-1.5" />
-                          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
-                            {bid.task_deleted ? (
-                              <Badge className="rounded-md bg-gray-600 px-2 py-0.5 text-xs text-white">🗑️ Deleted</Badge>
-                            ) : null}
-                            {bid.task_cancelled ? (
-                              <Badge className="rounded-md bg-red-600 px-2 py-0.5 text-xs text-white">❌ Cancelled</Badge>
-                            ) : null}
+                          <div className="mt-1.5 flex flex-col gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              {bid.task_deleted ? (
+                                <Badge className="rounded-lg border-0 bg-slate-600 px-2.5 py-1 text-[11px] font-semibold text-white">
+                                  Task removed
+                                </Badge>
+                              ) : null}
+                              {bid.task_cancelled ? (
+                                <Badge className="rounded-lg border-0 bg-red-600 px-2.5 py-1 text-[11px] font-semibold text-white">
+                                  Task cancelled
+                                </Badge>
+                              ) : null}
+                              {!bid.task_deleted && !bid.task_cancelled ? (
+                                <Badge
+                                  variant="outline"
+                                  className="rounded-lg border-blue-200/90 bg-blue-50/80 px-2.5 py-1 text-[11px] font-semibold text-blue-800 dark:border-blue-800/60 dark:bg-blue-950/40 dark:text-blue-100"
+                                >
+                                  {String(bid.status || "pending").toLowerCase() === "pending"
+                                    ? "Bid pending"
+                                    : `Bid · ${bid.status}`}
+                                </Badge>
+                              ) : null}
+                            </div>
                           </div>
                         </>
                       }
@@ -5803,23 +5866,34 @@ export default function Dashboard() {
                         ) : null
                       }
                       footer={
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0 flex-1 text-center">
-                            <p className="mb-0.5 text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                              Your Bid
-                            </p>
-                            <p className="text-xl font-bold tabular-nums text-slate-900 dark:text-slate-100">₹{bid.bid_amount}</p>
-                          </div>
-                          <div className="flex max-w-[10rem] shrink-0 items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 sm:gap-2 sm:text-sm">
-                            <Avatar
-                              className={cn(
-                                "border border-slate-200 dark:border-slate-600",
-                                isMobile ? "h-6 w-6" : "h-8 w-8",
-                              )}
-                            >
-                              <AvatarFallback className="text-[10px] sm:text-xs">{bid.posted_by?.charAt(0) || "?"}</AvatarFallback>
-                            </Avatar>
-                            <span className="truncate">{bid.posted_by}</span>
+                        <div className="rounded-xl border border-slate-200/80 bg-gradient-to-b from-slate-50/90 to-white px-3 py-2.5 shadow-sm ring-1 ring-slate-900/[0.04] dark:border-slate-600/70 dark:from-slate-900/50 dark:to-slate-900/30 dark:ring-slate-600/20">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0 flex-1 text-left">
+                              <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                Your bid
+                              </p>
+                              <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100 sm:text-xl">
+                                ₹{bid.bid_amount}
+                              </p>
+                            </div>
+                            <div className="flex max-w-[10rem] shrink-0 flex-col items-end gap-0.5 text-right text-xs text-slate-500 dark:text-slate-400 sm:max-w-[11rem] sm:text-sm">
+                              <span className="text-[10px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                                Poster
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <Avatar
+                                  className={cn(
+                                    "border border-slate-200 dark:border-slate-600",
+                                    isMobile ? "h-6 w-6" : "h-7 w-7 sm:h-8 sm:w-8",
+                                  )}
+                                >
+                                  <AvatarFallback className="text-[10px] sm:text-xs">
+                                    {bid.posted_by?.charAt(0) || "?"}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="truncate font-medium text-slate-700 dark:text-slate-200">{bid.posted_by}</span>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       }
@@ -5852,8 +5926,14 @@ export default function Dashboard() {
                             } catch {}
                           }}
                         >
-                          <Button variant="outline" className="w-full rounded-xl border-slate-200 py-1.5 text-sm sm:py-2">
-                            👁️ View Task Details
+                          <Button
+                            variant="outline"
+                            className="w-full rounded-xl border-slate-200/90 bg-white py-1.5 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-900/5 hover:border-slate-300 hover:bg-slate-50/90 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:ring-slate-600/30 sm:py-2"
+                          >
+                            <span className="flex items-center justify-center gap-2">
+                              <Eye className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden />
+                              View task details
+                            </span>
                           </Button>
                         </Link>
                       }
