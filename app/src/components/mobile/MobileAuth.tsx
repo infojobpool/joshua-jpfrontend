@@ -235,77 +235,84 @@ export function MobileSignIn() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/80 to-indigo-50 flex items-center justify-center p-4 py-6">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-32 -right-32 w-64 h-64 bg-blue-200/40 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-indigo-200/40 rounded-full blur-3xl" />
+    <div className="relative w-full bg-gradient-to-b from-slate-50 via-blue-50/70 to-indigo-50/90 pb-6 pt-1">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-24 -right-24 h-56 w-56 rounded-full bg-blue-200/35 blur-3xl" />
+        <div className="absolute -bottom-24 -left-24 h-56 w-56 rounded-full bg-indigo-200/35 blur-3xl" />
       </div>
-      <div className="relative w-full max-w-md">
-        <SignInVerificationOuterTip
-          open={showVerifyEmailBanner}
-          onDismiss={dismissVerifyEmailBanner}
-          variant="mobile"
-          hasEmail={!!formData.email.trim()}
-          onResend={handleResendVerification}
-          isResending={isResending}
-          emphasize={emphasizeFromSignup}
-          onVerifiedRefresh={() => router.refresh()}
-        />
-        <MobileCard className="overflow-hidden border-0 shadow-xl shadow-slate-200/50 rounded-2xl bg-white/95 backdrop-blur-sm">
-          <MobileCardHeader className="pb-2 pt-5">
+      <div className="relative mx-auto w-full max-w-md px-4">
+        <div className="flex flex-col gap-2">
+          <SignInVerificationOuterTip
+            open={showVerifyEmailBanner}
+            onDismiss={dismissVerifyEmailBanner}
+            variant="mobile"
+            hasEmail={!!formData.email.trim()}
+            onResend={handleResendVerification}
+            isResending={isResending}
+            emphasize={emphasizeFromSignup}
+            onVerifiedRefresh={() => router.refresh()}
+          />
+          <MobileCard className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-lg shadow-slate-900/5 ring-1 ring-slate-900/[0.03]">
+          <MobileCardHeader className="!p-0 px-5 pb-1 pt-3.5">
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Welcome Back</h1>
-              <p className="text-slate-600 text-sm mt-0.5">Sign in to your JobPool account</p>
+              <h1 className="text-xl font-semibold tracking-tight text-slate-900">Welcome back</h1>
+              <p className="mt-0.5 text-[13px] leading-snug text-slate-500">Sign in to continue</p>
             </div>
           </MobileCardHeader>
 
-          <MobileCardContent className="px-5 pb-5 pt-0 space-y-3">
-            <MobileForm onSubmit={handleSubmit} className="space-y-3">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-700">Email Address <span className="text-red-500">*</span></label>
+          <MobileCardContent className="!px-5 !pb-4 space-y-2 pt-0">
+            <MobileForm onSubmit={handleSubmit} className="space-y-2.5">
+              <div className="space-y-1">
+                <label className="text-[13px] font-medium text-slate-700">
+                  Email <span className="text-red-500">*</span>
+                </label>
                 <input
                   name="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder="you@example.com"
                   value={formData.email}
                   onChange={handleChange}
                   required
                   style={{ color: '#000000', WebkitTextFillColor: '#000000', caretColor: '#000000', fontWeight: 600 }}
-                  className="w-full h-11 px-4 border border-slate-200 rounded-xl text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all"
+                  className="h-10 w-full rounded-xl border border-slate-200 px-3.5 text-[15px] text-slate-900 placeholder:text-slate-400 transition-all focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-700">Password <span className="text-red-500">*</span></label>
+              <div className="space-y-1">
+                <label className="text-[13px] font-medium text-slate-700">
+                  Password <span className="text-red-500">*</span>
+                </label>
                 <input
                   name="password"
                   type="password"
-                  placeholder="Enter your password"
+                  placeholder="••••••••"
                   value={formData.password}
                   onChange={handleChange}
                   required
                   style={{ color: '#000000', WebkitTextFillColor: '#000000', caretColor: '#000000', fontWeight: 600 }}
-                  className="w-full h-11 px-4 border border-slate-200 rounded-xl text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all"
+                  className="h-10 w-full rounded-xl border border-slate-200 px-3.5 text-[15px] text-slate-900 placeholder:text-slate-400 transition-all focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25"
                 />
               </div>
 
-              <div className="flex items-center justify-between gap-2">
-                <label className="flex items-center cursor-pointer select-none">
+              <div className="flex items-start justify-between gap-3 pt-0.5">
+                <label className="flex cursor-pointer select-none items-center">
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="ml-2 text-sm text-slate-600">Remember me</span>
+                  <span className="ml-2 text-[13px] text-slate-600">Remember me</span>
                 </label>
-                <div className="flex flex-col items-end gap-0.5">
-                  <Link href="/forgotpassword" className="text-sm text-blue-600 hover:text-blue-700 font-medium">Forgot password?</Link>
+                <div className="flex shrink-0 flex-col items-end gap-0.5 text-right">
+                  <Link href="/forgotpassword" className="text-[13px] font-medium text-blue-600 hover:text-blue-700">
+                    Forgot password?
+                  </Link>
                   <button
                     type="button"
                     onClick={() => formData.email ? handleResendVerification() : toast.error("Enter email first")}
                     disabled={isResending || !formData.email}
-                    className="text-xs text-blue-600 hover:text-blue-700 disabled:text-slate-400 disabled:cursor-not-allowed"
+                    className="text-[11px] text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400"
                   >
                     {isResending ? "Sending..." : "Resend verification"}
                   </button>
@@ -347,7 +354,7 @@ export function MobileSignIn() {
 
               <MobileButton
                 type="submit"
-                className="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all"
+                className="h-10 w-full rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-md shadow-blue-600/20 transition-all hover:bg-blue-700 active:scale-[0.99]"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -360,13 +367,16 @@ export function MobileSignIn() {
                 )}
               </MobileButton>
 
-              <p className="text-center text-sm text-slate-600">
-                Don't have an account?{" "}
-                <Link href="/signup" className="text-blue-600 hover:text-blue-700 font-semibold">Sign up</Link>
+              <p className="pt-0.5 text-center text-[13px] text-slate-500">
+                No account?{" "}
+                <Link href="/signup" className="font-semibold text-blue-600 hover:text-blue-700">
+                  Sign up
+                </Link>
               </p>
             </MobileForm>
           </MobileCardContent>
         </MobileCard>
+        </div>
       </div>
     </div>
   );

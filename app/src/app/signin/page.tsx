@@ -259,24 +259,22 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
+    <div className="relative min-h-screen bg-gradient-to-b from-slate-50 via-blue-50/80 to-indigo-50/90 p-4 pb-10 pt-6 sm:pt-8">
       <Toaster />
-      
-      {/* Background Pattern */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
+
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -right-32 -top-32 h-72 w-72 rounded-full bg-blue-200/30 blur-3xl" />
+        <div className="absolute -bottom-32 -left-32 h-72 w-72 rounded-full bg-indigo-200/30 blur-3xl" />
       </div>
 
-      <div className="relative w-full max-w-md">
-        {/* Logo Section */}
-        <div className="text-center mb-8 mt-6 md:mt-8">
-          <Link href="/" className="inline-flex items-center justify-center group">
-            <img 
-              src="/images/jobpool-logo.png" 
-              alt="JobPool Logo" 
-              className="h-32 md:h-36 w-auto group-hover:opacity-90 transition-opacity"
-              style={{ mixBlendMode: 'multiply' }}
+      <div className="relative mx-auto w-full max-w-md">
+        <div className="mb-4 text-center sm:mb-5">
+          <Link href="/" className="group inline-flex items-center justify-center">
+            <img
+              src="/images/jobpool-logo.png"
+              alt="JobPool"
+              className="h-20 w-auto transition-opacity group-hover:opacity-90 sm:h-24"
+              style={{ mixBlendMode: "multiply" }}
             />
           </Link>
         </div>
@@ -292,39 +290,41 @@ export default function SignInPage() {
           onVerifiedRefresh={() => router.refresh()}
         />
 
-        {/* Main Card */}
-        <Card className="backdrop-blur-sm bg-white/90 border-0 shadow-2xl">
+        <Card className="border border-slate-200/70 bg-white/95 shadow-lg shadow-slate-900/5 ring-1 ring-slate-900/[0.04] backdrop-blur-sm">
           <form onSubmit={handleSubmit}>
-            <CardHeader className="text-center pb-4 pt-5">
-              <CardTitle className="text-2xl font-bold text-slate-900 tracking-tight">Welcome Back</CardTitle>
-              <CardDescription className="text-slate-600 text-sm mt-0.5">
-                Sign in to your JobPool account to continue
+            <CardHeader className="space-y-0.5 px-5 pb-2 pt-4 text-center sm:px-6">
+              <CardTitle className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+                Welcome back
+              </CardTitle>
+              <CardDescription className="text-[13px] text-slate-500 sm:text-sm">
+                Sign in to your JobPool account
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 px-6">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email Address</Label>
+            <CardContent className="space-y-3 px-5 pb-1 sm:px-6">
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-[13px] font-medium text-slate-700">
+                  Email
+                </Label>
                 <Input
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder="you@example.com"
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200"
+                  className="h-10 border-slate-200 transition-colors focus:border-blue-500 focus:ring-blue-500/20 sm:h-11"
                 />
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password</Label>
-                  <div className="flex flex-col items-end gap-1">
-                  <Link
-                    href="/forgotpassword"
-                    className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
-                  >
-                    Forgot password?
-                  </Link>
+              <div className="space-y-1.5">
+                <div className="flex items-start justify-between gap-3">
+                  <Label htmlFor="password" className="text-[13px] font-medium text-slate-700">
+                    Password
+                  </Label>
+                  <div className="flex shrink-0 flex-col items-end gap-0.5 text-right">
+                    <Link href="/forgotpassword" className="text-[13px] font-medium text-blue-600 hover:text-blue-700">
+                      Forgot password?
+                    </Link>
                     <button
                       type="button"
                       onClick={() => {
@@ -335,9 +335,9 @@ export default function SignInPage() {
                         }
                       }}
                       disabled={isResending || !formData.email}
-                      className="text-xs text-blue-600 hover:text-blue-700 transition-colors disabled:text-gray-400 disabled:cursor-not-allowed"
+                      className="text-[11px] text-blue-600 transition-colors hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400"
                     >
-                      {isResending ? "Sending..." : "Resend verification email"}
+                      {isResending ? "Sending..." : "Resend verification"}
                     </button>
                   </div>
                 </div>
@@ -346,11 +346,11 @@ export default function SignInPage() {
                     id="password"
                     name="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
+                    placeholder="••••••••"
                     value={formData.password}
                     onChange={handleChange}
                     required
-                    className="h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200 pr-12"
+                    className="h-10 border-slate-200 pr-12 transition-colors focus:border-blue-500 focus:ring-blue-500/20 sm:h-11"
                   />
                   <button
                     type="button"
@@ -403,10 +403,10 @@ export default function SignInPage() {
                 </div>
               )}
             </CardContent>
-            <CardFooter className="flex flex-col space-y-3 pt-4">
-              <Button 
-                type="submit" 
-                className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200" 
+            <CardFooter className="flex flex-col space-y-2 px-5 pb-4 pt-2 sm:px-6">
+              <Button
+                type="submit"
+                className="h-10 w-full bg-blue-600 text-sm font-semibold text-white shadow-md shadow-blue-600/15 transition-all hover:bg-blue-700 sm:h-11"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -419,39 +419,39 @@ export default function SignInPage() {
                 )}
               </Button>
               
-              <div className="relative">
+              <div className="relative py-1">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200"></div>
+                  <div className="w-full border-t border-slate-200" />
                 </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white text-gray-500">New to JobPool?</span>
+                <div className="relative flex justify-center text-[12px]">
+                  <span className="bg-white px-3 text-slate-500">New here?</span>
                 </div>
               </div>
-              
+
               <Link href="/signup" className="w-full">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  className="w-full h-12 border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-medium transition-all duration-200"
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 w-full border border-blue-200 text-sm font-semibold text-blue-700 hover:bg-blue-50/80 sm:h-11"
                 >
-                  Create Account
+                  Create account
                 </Button>
               </Link>
             </CardFooter>
           </form>
         </Card>
 
-        {/* Footer */}
-        <div className="text-center mt-5">
-          <p className="text-sm text-gray-500">
-            By signing in, you agree to our{" "}
-            <Link href="/termsandconditions" className="text-blue-600 hover:text-blue-700 transition-colors">
-              Terms of Service
+        <div className="mt-4 text-center">
+          <p className="text-[11px] leading-relaxed text-slate-500 sm:text-xs">
+            By signing in you agree to our{" "}
+            <Link href="/termsandconditions" className="text-blue-600 hover:text-blue-700">
+              Terms
             </Link>{" "}
             and{" "}
-            <Link href="/privacy-policy" className="text-blue-600 hover:text-blue-700 transition-colors">
+            <Link href="/privacy-policy" className="text-blue-600 hover:text-blue-700">
               Privacy Policy
             </Link>
+            .
           </p>
         </div>
       </div>
