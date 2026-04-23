@@ -3,6 +3,15 @@ export interface Image {
     url: string;
     alt: string;
   }
+
+  /** Short quote shown on task page under poster stats (from GET /profile reviews). */
+  export interface PosterReviewSnippet {
+    id: string;
+    rating: number;
+    comment: string;
+    reviewerName: string;
+    jobTitle?: string;
+  }
   
   export interface User {
     avatar: string;
@@ -14,6 +23,11 @@ export interface Image {
     email?: string;
     accountType?: string;
     isLoggedIn?: boolean;
+    /** Average from reviews where user was taskmaster/poster */
+    taskmasterAverageRating?: number | null;
+    taskmasterReviewCount?: number | null;
+    /** Last 1–2 reviews as poster (after /profile load); empty array = loaded, none */
+    recentPosterReviews?: PosterReviewSnippet[];
   }
   
   export interface Offer {

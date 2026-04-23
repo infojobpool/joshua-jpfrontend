@@ -139,7 +139,7 @@
 "use client";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Calendar, FileText, IndianRupee, MapPin, MessageSquare, SquarePen, Trash2, X } from "lucide-react";
+import { Calendar, FileText, IndianRupee, MapPin, MessageSquare, SquarePen, Star, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card";
@@ -160,6 +160,7 @@ import { useCallback, useEffect, useState } from "react";
 import { resolveApiMediaUrl } from "@/lib/profileImage";
 import { hasRealProfilePhotoUrl } from "@/lib/payoutProfileCompletion";
 import { useRouter } from "next/navigation";
+import type { PosterReviewSnippet } from "@/app/types";
 
 // Interfaces
 interface Task {
@@ -233,6 +234,7 @@ interface User {
   avatar?: string;
   taskmasterAverageRating?: number | null;
   taskmasterReviewCount?: number | null;
+  recentPosterReviews?: PosterReviewSnippet[];
 }
 
 interface TaskInfoProps {
@@ -699,6 +701,117 @@ export function TaskInfo({
                 ) : (
                   <p className="text-sm font-semibold text-slate-900 truncate">{task.poster?.name || "Unknown"}</p>
                 )}
+                {/* Poster review summary (filled after /profile + cache hydrate) */}
+                <div className="rounded-lg border border-slate-100 bg-slate-50/90 px-2.5 py-2 ring-1 ring-slate-900/[0.03] dark:border-slate-700 dark:bg-slate-900/40 dark:ring-slate-600/20">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    As a poster
+                  </p>
+                  {(() => {
+                    const tc = task.poster?.taskmasterReviewCount;
+                    const ta = task.poster?.taskmasterAverageRating;
+                    const hasVerified =
+                      tc != null && tc > 0 && ta != null && !Number.isNaN(Number(ta));
+                    const legacy = task.poster?.rating != null && Number(task.poster.rating) > 0;
+                    if (hasVerified) {
+                      const n = Number(ta);
+                      return (
+                        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-1 text-amber-500">
+                            <Star className="h-3.5 w-3.5 fill-current" aria-hidden />
+                            <span className="text-sm font-bold tabular-nums text-slate-900 dark:text-slate-100">
+                              {n.toFixed(1)}
+                            </span>
+                            <span className="text-xs text-slate-600 dark:text-slate-400">
+                              · {tc} review{tc === 1 ? "" : "s"}
+                            </span>
+                          </div>
+                          {task.poster?.id ? (
+                            <Link
+                              href={`/profilepage/${task.poster.id}`}
+                              className="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400"
+                            >
+                              View on profile
+                            </Link>
+                          ) : null}
+                        </div>
+                      );
+                    }
+                    if (legacy) {
+                      return (
+                        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-1 text-amber-500">
+                            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden />
+                            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              {Number(task.poster.rating).toFixed(1)}
+                            </span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400">profile rating</span>
+                          </div>
+                          {task.poster?.id ? (
+                            <Link
+                              href={`/profilepage/${task.poster.id}`}
+                              className="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400"
+                            >
+                              View profile
+                            </Link>
+                          ) : null}
+                        </div>
+                      );
+                    }
+                    return (
+                      <p className="mt-1 text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+                        Reviews from taskers show here after completed jobs.{" "}
+                        {task.poster?.id ? (
+                          <Link href={`/profilepage/${task.poster.id}`} className="font-medium text-blue-600 hover:underline dark:text-blue-400">
+                            Open profile
+                          </Link>
+                        ) : null}
+                      </p>
+                    );
+                  })()}
+                </div>
+                {Array.isArray(task.poster?.recentPosterReviews) && task.poster.recentPosterReviews.length > 0 ? (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Recent feedback
+                    </p>
+                    <div className="space-y-2">
+                      {task.poster.recentPosterReviews.map((rev) => {
+                        const stars = Math.min(5, Math.max(1, Math.round(Number(rev.rating) || 0)));
+                        return (
+                          <figure
+                            key={rev.id}
+                            className="rounded-lg border border-slate-200/80 bg-white/90 px-2.5 py-2 shadow-sm dark:border-slate-600 dark:bg-slate-900/50"
+                          >
+                            <div className="mb-1 flex items-center gap-0.5" aria-label={`${rev.rating} of 5 stars`}>
+                              {[1, 2, 3, 4, 5].map((i) => (
+                                <Star
+                                  key={i}
+                                  className={cn(
+                                    "h-3 w-3",
+                                    i <= stars ? "fill-amber-400 text-amber-400" : "fill-slate-100 text-slate-200 dark:fill-slate-800 dark:text-slate-600",
+                                  )}
+                                  aria-hidden
+                                />
+                              ))}
+                              <span className="ml-1 text-[11px] font-medium tabular-nums text-slate-600 dark:text-slate-300">
+                                {Number(rev.rating).toFixed(1)}
+                              </span>
+                            </div>
+                            {rev.comment ? (
+                              <blockquote className="text-xs leading-snug text-slate-700 line-clamp-3 dark:text-slate-200">
+                                &ldquo;{rev.comment}&rdquo;
+                              </blockquote>
+                            ) : null}
+                            <figcaption className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                              <span className="font-medium text-slate-600 dark:text-slate-300">{rev.reviewerName}</span>
+                              {rev.jobTitle ? <span className="text-slate-400"> · {rev.jobTitle}</span> : null}
+                            </figcaption>
+                          </figure>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="jp-bg-blue-pattern rounded-lg border border-blue-100/90 px-2.5 py-2 ring-1 ring-blue-900/[0.05]">
                   <div className="flex items-center gap-2">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-100 ring-1 ring-blue-200/50">

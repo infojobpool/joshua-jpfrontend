@@ -12,12 +12,14 @@ import axiosInstance from "@/lib/axiosInstance";
 import { jobIdVariants } from "@/lib/jobIdVariants";
 import { resolveApiMediaUrl, resolveProfileImageUrl } from "@/lib/profileImage";
 import { hasRealProfilePhotoUrl } from "@/lib/payoutProfileCompletion";
+import { readPosterProfileCache, writePosterProfileCache } from "@/lib/posterProfileCache";
+import { pickRecentPosterReviews } from "@/lib/posterReviewsFromProfile";
 import { isProfileComplete, getProfileImageFromUser } from "@/lib/profileUtils";
 import { storeBidsInCache } from "@/lib/taskNavCache";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Task, User, Bid, Offer, ApiBidResponse, ApiJobResponse } from "../../types";
 import { Button } from "@/components/ui/button";
@@ -138,12 +140,45 @@ export default function TaskDetailPage() {
   const [completeReviewAsTaskmaster, setCompleteReviewAsTaskmaster] = useState(false);
   const taskerId = offers.length > 0 ? offers[0].tasker.id : (task?.assignedTasker?.id ? String(task.assignedTasker.id) : null);
 
-  // Fetch poster profile for avatar, rating, and taskmaster review stats
+  // Hydrate poster avatar + stats from session cache before paint (repeat visits)
+  useLayoutEffect(() => {
+    if (!task?.id || !task?.poster?.id) return;
+    const posterId = String(task.poster.id);
+    const hit = readPosterProfileCache(posterId);
+    if (!hit) return;
+    setTask((prev) => {
+      if (!prev || String(prev.id) !== String(task.id) || String(prev.poster.id) !== posterId) return prev;
+      const poster = { ...prev.poster };
+      let changed = false;
+      if (!hasRealProfilePhotoUrl(poster.avatar) && hasRealProfilePhotoUrl(hit.avatar)) {
+        poster.avatar = hit.avatar;
+        changed = true;
+      }
+      if (poster.taskmasterReviewCount == null && hit.taskmasterReviewCount != null) {
+        poster.taskmasterReviewCount = hit.taskmasterReviewCount;
+        poster.taskmasterAverageRating = hit.taskmasterAverageRating ?? null;
+        changed = true;
+      }
+      if ((poster.rating == null || poster.rating === 0) && hit.rating != null && hit.rating > 0) {
+        poster.rating = hit.rating;
+        changed = true;
+      }
+      if (!Array.isArray(poster.recentPosterReviews) && Array.isArray(hit.recentPosterReviews)) {
+        poster.recentPosterReviews = hit.recentPosterReviews;
+        changed = true;
+      }
+      if (!changed) return prev;
+      return { ...prev, poster };
+    });
+  }, [task?.id, task?.poster?.id]);
+
+  // Fetch poster profile for avatar, rating, taskmaster stats, and recent review quotes
   useEffect(() => {
     if (!task?.poster?.id) return;
     const needsAvatar = !hasRealProfilePhotoUrl(task.poster.avatar);
     const needsTaskmasterStats = task.poster.taskmasterReviewCount == null;
-    if (!needsAvatar && !needsTaskmasterStats) return;
+    const needsRecentReviews = !Array.isArray(task.poster.recentPosterReviews);
+    if (!needsAvatar && !needsTaskmasterStats && !needsRecentReviews) return;
     let cancelled = false;
     (async () => {
       try {
@@ -166,6 +201,7 @@ export default function TaskDetailPage() {
         let taskmasterAverage: number | null = null;
         let taskmasterCount = 0;
         const reviews = payload?.reviews ?? d?.reviews ?? [];
+        const recentSnippets = pickRecentPosterReviews(reviews);
         if (Array.isArray(reviews)) {
           const taskmasterReviews = reviews.filter(
             (r: any) => (r?.role ?? "").toLowerCase() === "taskmaster" || (r?.role ?? "").toLowerCase() === "poster"
@@ -187,8 +223,16 @@ export default function TaskDetailPage() {
               rating: rating ?? prev.poster.rating,
               taskmasterAverageRating: taskmasterCount > 0 ? taskmasterAverage : (prev.poster.taskmasterAverageRating ?? null),
               taskmasterReviewCount: taskmasterCount,
+              recentPosterReviews: recentSnippets,
             },
           };
+        });
+        writePosterProfileCache(String(task.poster.id), {
+          avatar: img ?? undefined,
+          rating: rating ?? undefined,
+          taskmasterAverageRating: taskmasterCount > 0 ? taskmasterAverage : null,
+          taskmasterReviewCount: taskmasterCount,
+          recentPosterReviews: recentSnippets,
         });
       } catch (_) {}
     })();
