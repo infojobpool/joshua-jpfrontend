@@ -4546,25 +4546,7 @@ export default function Dashboard() {
                   if (task.cancel_status || task.deletion_status) accent = "rose";
                   else if (task.status === "completed") accent = "emerald";
 
-                  let myStatusLabel = "Open";
-                  let myStatusTone: DashboardTaskSummaryStatusTone = "open";
-                  if (task.cancel_status && task.cancelled_by_role === "tasker") {
-                    myStatusLabel = "Tasker cancelled";
-                    myStatusTone = "danger";
-                  } else if (task.cancel_status) {
-                    myStatusLabel = "Cancelled";
-                    myStatusTone = "danger";
-                  } else if (task.deletion_status) {
-                    myStatusLabel = "Deleted";
-                    myStatusTone = "neutral";
-                  } else if (task.status === "in_progress") {
-                    myStatusLabel = "In progress";
-                    myStatusTone = "progress";
-                  } else if (task.status === "completed") {
-                    myStatusLabel = "Completed";
-                    myStatusTone = "success";
-                  }
-
+                  /** Status is shown once in `belowTitle` (outline badge); omit footer `statusLabel` to avoid duplicate “Open”, etc. */
                   const metaRowsMy: { key: string; icon: ReactNode; text: string }[] = [];
                   metaRowsMy.push({
                     key: "posted",
@@ -4731,8 +4713,10 @@ export default function Dashboard() {
                           </div>
                         ) : null
                       }
-                      statusLabel={myStatusLabel}
-                      statusTone={myStatusTone}
+                      actionsWrapperClassName={cn(
+                        "border-t border-slate-100 dark:border-slate-700/60",
+                        isMobile ? "mt-1.5 pt-1.5" : "mt-2 pt-2",
+                      )}
                       actions={
                         task.cancel_status && task.cancelled_by_role === "tasker" ? (
                           <div className="flex w-full gap-2">
