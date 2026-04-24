@@ -33,6 +33,12 @@ import { ShareTaskButton } from "@/components/ShareTaskButton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { analytics } from "@/lib/analytics";
 
+/** Compare user ids from API/JWT/localStorage (number vs string caused poster to see bid form briefly). */
+function sameUserId(a: unknown, b: unknown): boolean {
+  if (a == null || b == null) return false;
+  return String(a).trim() === String(b).trim();
+}
+
 interface UserProfile {
   profile_id: string;
   name: string;
@@ -137,7 +143,7 @@ export default function TaskDetailPage() {
   useEffect(() => {
     const handleFocus = () => {
       if (typeof document === "undefined" || document.visibilityState !== "visible") return;
-      const isPoster = task && task.poster && task.poster.id === userId;
+      const isPoster = task && task.poster && sameUserId(task.poster.id, userId);
       if (isPoster && !bidsLoading && offers.length === 0 && !task?.assignedTasker?.id) {
         setBidsRetryKey((k) => k + 1);
       }
@@ -936,7 +942,7 @@ export default function TaskDetailPage() {
               }))
             : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
           poster: {
-            id: job.user_ref_id,
+            id: String(job.user_ref_id ?? "").trim() || String(job.user_id ?? "").trim(),
             name: job.posted_by,
             avatar:
               resolveProfileImageUrl(
@@ -1098,7 +1104,7 @@ export default function TaskDetailPage() {
         const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
 
         // Check if current user is the task poster
-        const isTaskPoster = task && task.poster && task.poster.id === userId;
+        const isTaskPoster = task && task.poster && sameUserId(task.poster.id, userId);
         
         let response;
         if (isTaskPoster) {
@@ -1319,7 +1325,7 @@ export default function TaskDetailPage() {
         try { if (id && taskBids?.length) storeBidsInCache(id, taskBids); } catch (_) {}
 
         // Taskmaster with 0 offers – retry once after 2s (handles intermittent API failures)
-        const isPoster = task && task.poster && task.poster.id === userId;
+        const isPoster = task && task.poster && sameUserId(task.poster.id, userId);
         if (isPoster && newOffers.length === 0 && !task?.assignedTasker?.id && bidsRetryKey === 0) {
           setTimeout(() => setBidsRetryKey((k) => k + 1), 2000);
         }
@@ -1361,7 +1367,11 @@ export default function TaskDetailPage() {
       toast.error("Please fill in all required fields");
       return;
     }
-    
+    if (task?.poster?.id != null && sameUserId(task.poster.id, userId)) {
+      toast.error("You cannot place a bid on your own task.");
+      return;
+    }
+
     // Wait for verification check to complete
     if (!verificationChecked) {
       toast.error("Please wait while we verify your account status...");
@@ -1708,7 +1718,7 @@ export default function TaskDetailPage() {
       setTask((prevTask: Task | null) =>
         prevTask ? { ...prevTask, job_completion_status: 1 } : prevTask
       );
-      if (task?.poster.id === userId) {
+      if (task?.poster?.id != null && sameUserId(task.poster.id, userId)) {
         setShowPaymentModal(true);
       }
     }, 1000);
@@ -1751,7 +1761,7 @@ export default function TaskDetailPage() {
 
     if (receiverId) {
       targetReceiverId = receiverId;
-    } else if (task.poster.id === userId) {
+    } else if (sameUserId(task.poster.id, userId)) {
       targetReceiverId = offers.length > 0 ? offers[0].tasker.id : undefined;
     } else {
       targetReceiverId = task.poster.id;
@@ -1760,7 +1770,7 @@ export default function TaskDetailPage() {
     if (!targetReceiverId) {
       console.error("handleMessageUser - No recipient available", {
         offers,
-        isTaskPoster: task.poster.id === userId,
+        isTaskPoster: sameUserId(task.poster.id, userId),
       });
       toast.error("No recipient available to message");
       return;
@@ -2053,8 +2063,9 @@ export default function TaskDetailPage() {
     );
   }
 
-  const isTaskPoster: boolean = task.poster.id === userId;
-  const hasSubmittedOffer = offers.some((offer) => offer.tasker.id === userId);
+  const viewerId = userId ?? user?.id ?? "";
+  const isTaskPoster: boolean = !!(task.poster?.id && viewerId && sameUserId(task.poster.id, viewerId));
+  const hasSubmittedOffer = offers.some((offer) => sameUserId(offer.tasker.id, viewerId));
   const bidAmountNumber = parseFloat(offerAmount) || 0;
   const acceptedOfferAmount =
     offers.find((o) => (o as { status?: string }).status === "accepted")?.amount ??
@@ -2138,7 +2149,7 @@ export default function TaskDetailPage() {
             <div className="mt-4 space-y-2">
               {/* Tasker completion button (only for assigned tasker, before they confirm) */}
               {!isTaskPoster &&
-                task.assignedTasker?.id === userId &&
+                sameUserId(task.assignedTasker?.id, viewerId) &&
                 !task.tasker_completed &&
                 task.job_completion_status !== 1 && (
                   <Button
@@ -2150,22 +2161,6 @@ export default function TaskDetailPage() {
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? "Updating..." : "Mark task as completed (Tasker)"}
-                  </Button>
-                )}
-
-              {/* Taskmaster completion button (only for poster, before they confirm) */}
-              {isTaskPoster &&
-                !task.taskmaster_completed &&
-                task.job_completion_status !== 1 && (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setCompleteReviewAsTaskmaster(true);
-                      setCompleteReviewOpen(true);
-                    }}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? "Updating..." : "Confirm completion (Taskmaster)"}
                   </Button>
                 )}
 
@@ -2260,8 +2255,8 @@ export default function TaskDetailPage() {
                   }
                   
                   // Determine user role: taskmaster (poster) or tasker (assigned)
-                  const isTaskMaster = task?.poster?.id === userId;
-                  const isTasker = task?.assignedTasker?.id === userId;
+                  const isTaskMaster = sameUserId(task?.poster?.id, userId);
+                  const isTasker = sameUserId(task?.assignedTasker?.id, userId);
                   const role = isTaskMaster ? "taskmaster" : isTasker ? "tasker" : "unknown";
                   
                   if (role === "unknown") {

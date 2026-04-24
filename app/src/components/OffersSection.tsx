@@ -379,6 +379,11 @@ export interface OffersSectionProps {
   bidsLoading?: boolean;
 }
 
+function sameOfferUserId(a: unknown, b: unknown): boolean {
+  if (a == null || b == null) return false;
+  return String(a).trim() === String(b).trim();
+}
+
 export function OffersSection({
   task,
   offers,
@@ -558,8 +563,17 @@ export function OffersSection({
   // Show all offers to all users (after deduplication)
   const visibleOffers = deduplicatedOffers;
 
+  // Parent `isTaskPoster` can be briefly wrong if poster id vs user id types differ — re-check here.
+  const effectiveIsTaskPoster =
+    isTaskPoster ||
+    (!!currentUserId && task.poster?.id != null && sameOfferUserId(task.poster.id, currentUserId));
+
   // Prevent brief flicker of the submit form on assigned/in-progress tasks
-  const isAssignedToMe = !!(currentUserId && task.assignedTasker && task.assignedTasker.id === currentUserId);
+  const isAssignedToMe = !!(
+    currentUserId &&
+    task.assignedTasker &&
+    sameOfferUserId(task.assignedTasker.id, currentUserId)
+  );
   const hasLocalAccepted = selectedFromSession && currentUserId && selectedFromSession === String(currentUserId);
   const shouldBlockSubmit =
     task.status === "completed" ||
@@ -825,7 +839,7 @@ export function OffersSection({
           <div>
             <CardTitle className="text-lg font-semibold text-slate-900">Offers ({offers.length})</CardTitle>
             <CardDescription className="text-slate-600 text-sm mt-1">
-          {isTaskPoster
+          {effectiveIsTaskPoster
             ? "Choose the best offer for your task"
             : hasSubmittedOffer
             ? "Your submitted offer"
@@ -855,7 +869,7 @@ export function OffersSection({
           ) : (
           <NoOffersEmptyState
             variant={
-              isTaskPoster
+              effectiveIsTaskPoster
                 ? "poster"
                 : hasSubmittedOffer
                 ? "processing"
@@ -897,7 +911,7 @@ export function OffersSection({
                   </Link>
                 </div>
                 <div className="text-right shrink-0">
-                  {(isTaskPoster || (currentUserId && offer.tasker.id === currentUserId)) && (
+                  {(effectiveIsTaskPoster || (currentUserId && sameOfferUserId(offer.tasker.id, currentUserId))) && (
                     <p className="font-bold text-slate-900 text-base tabular-nums">
                       <IndianRupee className="w-4 h-4 inline opacity-70" />{" "}
                       {offer.amount.toFixed(2)}
@@ -924,7 +938,9 @@ export function OffersSection({
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">What they said</p>
                 <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words">{offer.message}</p>
               </div>
-              {(offer.status === "accepted" || (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) || (selectedFromSession && selectedFromSession === offer.tasker.id)) && (
+              {(offer.status === "accepted" ||
+                (task.assignedTasker && sameOfferUserId(task.assignedTasker.id, offer.tasker.id)) ||
+                (selectedFromSession && sameOfferUserId(selectedFromSession, offer.tasker.id))) && (
                 <div className="flex flex-wrap items-center justify-end gap-2">
                     {isPaymentPending && selectedFromSession === offer.tasker.id ? (
                       <div className="flex flex-col items-end gap-1 w-full sm:w-auto">
@@ -944,12 +960,12 @@ export function OffersSection({
                     )}
                 </div>
               )}
-              {isTaskPoster && (
+              {effectiveIsTaskPoster && (
                 <div className="w-full flex flex-col sm:flex-row gap-2">
                   {task.status !== "completed" && task.status !== "in_progress" && 
-                   !((task.status === "in_progress" && isTaskPoster) || offer.status === "accepted" || 
-                     (task.assignedTasker && task.assignedTasker.id === offer.tasker.id) || 
-                     (selectedFromSession && selectedFromSession === offer.tasker.id)) && (
+                   !((task.status === "in_progress" && effectiveIsTaskPoster) || offer.status === "accepted" || 
+                     (task.assignedTasker && sameOfferUserId(task.assignedTasker.id, offer.tasker.id)) || 
+                     (selectedFromSession && sameOfferUserId(selectedFromSession, offer.tasker.id))) && (
                     <Button
                       className="jp-btn-blue-gradient w-full border-0 sm:flex-1"
                       size="sm"
@@ -1157,14 +1173,14 @@ export function OffersSection({
           )}
         </DialogContent>
       </Dialog>
-      {!isTaskPoster && shouldBlockSubmit && (
+      {!effectiveIsTaskPoster && shouldBlockSubmit && (
         <CardFooter>
           <p className="text-muted-foreground">
             This task is no longer accepting offers.
           </p>
         </CardFooter>
       )}
-      {!isTaskPoster && !shouldBlockSubmit && !hasSubmittedOffer && (
+      {!effectiveIsTaskPoster && !shouldBlockSubmit && !hasSubmittedOffer && (
         <CardFooter className="flex flex-col gap-4 items-center border-t border-slate-100 bg-slate-50/40 pt-5 dark:border-slate-700 dark:bg-slate-900/20">
           {verificationChecked && !isVerified ? (
             <div className="w-full p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -1231,7 +1247,7 @@ export function OffersSection({
           )}
         </CardFooter>
       )}
-      {!isTaskPoster && task.status !== "completed" && task.status !== "in_progress" && hasSubmittedOffer && (
+      {!effectiveIsTaskPoster && task.status !== "completed" && task.status !== "in_progress" && hasSubmittedOffer && (
         <CardFooter>
           <p className="text-muted-foreground">
             You have already submitted an offer for this task.
