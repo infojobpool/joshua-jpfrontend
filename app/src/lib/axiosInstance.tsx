@@ -17,6 +17,16 @@ function isHomePublicRead(url: string | undefined): boolean {
   return u.includes('get-all-jobs') || u.includes('recent-open-jobs') || u.includes('offerings/feed');
 }
 
+/** Task detail + bid + profile-by-user reads — many parallel calls were hitting the 35/15s throttle and stalling for seconds. */
+function isTaskDetailRead(url: string | undefined): boolean {
+  if (!url) return false;
+  const u = url.toLowerCase();
+  if (u.includes('get-job-with-bids') || u.includes('get-job')) return true;
+  if (u.includes('get-bids') || u.includes('get-user-bids')) return true;
+  if (u.includes('profile') && u.includes('user_id')) return true;
+  return false;
+}
+
 function shouldSkip401Refresh(url: string): boolean {
   const u = url.toLowerCase();
   if (u.includes('refresh-token')) return true;
@@ -93,7 +103,8 @@ axiosInstance.interceptors.request.use(
     
     // Check request throttling (disabled for development)
     if (!isDev) {
-      const skipThrottle = isChatInboxLightRead(urlStr) || isHomePublicRead(urlStr);
+      const skipThrottle =
+        isChatInboxLightRead(urlStr) || isHomePublicRead(urlStr) || isTaskDetailRead(urlStr);
       const now = Date.now();
       if (now - requestThrottle.windowStart > requestThrottle.windowSize) {
         // Reset window

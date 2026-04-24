@@ -423,32 +423,42 @@ export function OffersSection({
   const addNotifications = useStore((s) => s.addNotifications);
   const [taskerReviewStats, setTaskerReviewStats] = useState<Record<string, { average: number; count: number }>>({});
 
-  // Fetch tasker profiles to get review stats (as tasker)
+  // Tasker review lines: fetch profiles in parallel but merge each as it arrives (faster perceived load).
   useEffect(() => {
     const taskerIds = [...new Set(offers.map((o) => o.tasker.id).filter(Boolean))];
-    if (taskerIds.length === 0) return;
+    if (taskerIds.length === 0) {
+      setTaskerReviewStats({});
+      return;
+    }
     let cancelled = false;
-    (async () => {
-      const results: Record<string, { average: number; count: number }> = {};
-      await Promise.all(
-        taskerIds.map(async (tid) => {
-          try {
-            const res = await axiosInstance.get(`/profile?user_id=${tid}`);
-            const payload = res.data?.data ?? res.data;
-            const reviews = payload?.reviews ?? [];
-            if (!Array.isArray(reviews)) return;
-            const taskerReviews = reviews.filter((r: any) => (r?.role ?? "").toLowerCase() === "tasker");
-            const count = taskerReviews.length;
-            if (count > 0) {
-              const sum = taskerReviews.reduce((s: number, r: any) => s + (Number(r?.rating) || 0), 0);
-              results[tid] = { average: sum / count, count };
-            }
-          } catch (_) {}
-        })
-      );
-      if (!cancelled) setTaskerReviewStats((prev) => ({ ...prev, ...results }));
-    })();
-    return () => { cancelled = true; };
+    setTaskerReviewStats((prev) => {
+      const next = { ...prev };
+      for (const k of Object.keys(next)) {
+        if (!taskerIds.includes(k)) delete next[k];
+      }
+      return next;
+    });
+    void Promise.all(
+      taskerIds.map(async (tid) => {
+        try {
+          const res = await axiosInstance.get(`/profile?user_id=${tid}`);
+          const payload = res.data?.data ?? res.data;
+          const reviews = payload?.reviews ?? [];
+          if (!Array.isArray(reviews)) return;
+          const taskerReviews = reviews.filter((r: any) => (r?.role ?? "").toLowerCase() === "tasker");
+          const count = taskerReviews.length;
+          if (count === 0) return;
+          const sum = taskerReviews.reduce((s: number, r: any) => s + (Number(r?.rating) || 0), 0);
+          const row = { average: sum / count, count };
+          if (!cancelled) {
+            setTaskerReviewStats((prev) => ({ ...prev, [tid]: row }));
+          }
+        } catch (_) {}
+      }),
+    );
+    return () => {
+      cancelled = true;
+    };
   }, [offers]);
 
   // Try to read accepted tasker from sessionStorage (when accept was done earlier in this browser)

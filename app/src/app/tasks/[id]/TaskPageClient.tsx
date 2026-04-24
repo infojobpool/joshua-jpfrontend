@@ -21,7 +21,7 @@ import { hasRealProfilePhotoUrl } from "@/lib/payoutProfileCompletion";
 import { readPosterProfileCache, writePosterProfileCache } from "@/lib/posterProfileCache";
 import { pickRecentPosterReviews } from "@/lib/posterReviewsFromProfile";
 import { isProfileComplete, getProfileImageFromUser } from "@/lib/profileUtils";
-import { storeBidsInCache } from "@/lib/taskNavCache";
+import { getBidsFromCache, getNavTask, storeBidsInCache } from "@/lib/taskNavCache";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
@@ -594,7 +594,6 @@ export default function TaskDetailPage() {
       try {
         setLoadError(null);
         // Instant display: use nav cache (from dashboard/browse click) or localStorage
-        const { getNavTask, getBidsFromCache } = await import("@/lib/taskNavCache");
         const navTask = getNavTask(id);
         if (navTask?.task) {
           setTask(navTask.task);
@@ -690,63 +689,54 @@ export default function TaskDetailPage() {
           id.replace(/^task_/, ""),
         ].filter((x, i, arr) => arr.indexOf(x) === i);
 
-        // Try get-job-with-bids first (returns job + bids in one call)
-        const combinedResults = await Promise.allSettled(
-          tryIds.map((tryId) =>
-            fetch(`${API_BASE}/get-job-with-bids/${tryId}/`, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-              },
-              credentials: 'omit',
-              signal: controller.signal,
-            }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-          )
-        );
-
+        // Try get-job-with-bids sequentially (one ID format at a time) — avoids 3 competing requests per load.
         let data: any;
         let job: any;
         let combinedBids: any[] | null = null;
+        let lastFetchErr: unknown;
 
-        for (let i = 0; i < combinedResults.length; i++) {
-          if (combinedResults[i].status === 'fulfilled') {
-            const res = (combinedResults[i] as PromiseFulfilledResult<any>).value;
+        const fetchJson = async (path: string) => {
+          const r = await fetch(`${API_BASE}${path}`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            credentials: "omit",
+            signal: controller.signal,
+          });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        };
+
+        for (const tryId of tryIds) {
+          try {
+            const res = await fetchJson(`/get-job-with-bids/${tryId}/`);
             if (res?.status_code === 200 && res?.data) {
               data = res;
-              // get-job-with-bids: data.data.job and data.data.bids
               job = res.data.job ?? res.data;
-              combinedBids = Array.isArray(res.data.bids) ? res.data.bids : null;
-              console.log("✅ Loaded from get-job-with-bids:", { hasJob: !!job, bidsCount: combinedBids?.length ?? 0 });
+              const rawBids = res.data.bids;
+              combinedBids = Array.isArray(rawBids) ? rawBids : null;
               break;
             }
-          }
-          if (i < tryIds.length - 1) {
-            console.warn(`get-job-with-bids/${tryIds[i]}/ failed, trying next ID format`);
+          } catch (e) {
+            lastFetchErr = e;
           }
         }
 
         // Fallback: get-job only (loadBids effect will fetch bids separately)
         if (!job) {
           clearTimeout(timeoutId);
-          const jobResults = await Promise.allSettled(
-            tryIds.map((tryId) =>
-              fetch(`${API_BASE}/get-job/${tryId}/`, {
-                method: 'GET',
-                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-                credentials: 'omit',
-                signal: controller.signal,
-              }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-            )
-          );
-          for (let i = 0; i < jobResults.length; i++) {
-            if (jobResults[i].status === 'fulfilled') {
-              const res = (jobResults[i] as PromiseFulfilledResult<any>).value;
+          for (const tryId of tryIds) {
+            try {
+              const res = await fetchJson(`/get-job/${tryId}/`);
               if (res?.status_code === 200) {
                 data = res;
                 job = res.data;
                 break;
               }
+            } catch (e) {
+              lastFetchErr = e;
             }
           }
           if (!job) {
@@ -755,10 +745,8 @@ export default function TaskDetailPage() {
               data = axiosResp.data;
               job = data?.data;
             } catch (fallbackErr) {
-              throw (combinedResults[0]?.status === 'rejected' ? (combinedResults[0] as PromiseRejectedResult).reason : fallbackErr);
+              throw lastFetchErr ?? fallbackErr;
             }
-          } else {
-            clearTimeout(timeoutId);
           }
         } else {
           clearTimeout(timeoutId);
@@ -1256,24 +1244,7 @@ export default function TaskDetailPage() {
         const posterIdStr = String(posterId || "").trim();
         const validBids = (taskBidsToUse || []).filter((bid: any) => {
           const bidderId = String(bid.bidder_id ?? bid.user_id ?? bid.tasker_id ?? "").trim();
-          
-          // Log bid details for debugging
-          console.log("🔍 Bid mapping:", {
-            bid_id: bid.bid_id || bid.id,
-            bidder_id: bid.bidder_id,
-            bidder_name: bid.bidder_name,
-            poster_id: posterId,
-            is_same: bidderId === posterIdStr,
-            task_id: id
-          });
-          
-          // Exclude bids where bidder is the poster (compare as strings for type coercion)
           if (bidderId && posterIdStr && String(bidderId) === String(posterIdStr)) {
-            console.warn("⚠️ Excluding bid: bidder is the same as poster", {
-              bidder_id: bidderId,
-              bidder_name: bid.bidder_name,
-              poster_id: posterIdStr
-            });
             return false;
           }
           return true;
@@ -1327,7 +1298,7 @@ export default function TaskDetailPage() {
         // Taskmaster with 0 offers – retry once after 2s (handles intermittent API failures)
         const isPoster = task && task.poster && sameUserId(task.poster.id, userId);
         if (isPoster && newOffers.length === 0 && !task?.assignedTasker?.id && bidsRetryKey === 0) {
-          setTimeout(() => setBidsRetryKey((k) => k + 1), 2000);
+          setTimeout(() => setBidsRetryKey((k) => k + 1), 1200);
         }
 
         // If any bid is accepted/assigned, force task status to in_progress for UI consistency
