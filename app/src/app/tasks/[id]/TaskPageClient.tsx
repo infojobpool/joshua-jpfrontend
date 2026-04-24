@@ -2073,8 +2073,7 @@ export default function TaskDetailPage() {
     (task.assignedTasker
       ? offers.find((o) => String(o.tasker.id) === String(task.assignedTasker.id))?.amount
       : undefined) ??
-    Number(task.budget) ||
-    0;
+    (Number(task.budget) || 0);
   const paymentPosterBidAmount = acceptedOfferAmount;
 
   return (
