@@ -40,7 +40,7 @@ function normalizeAuthUser(parsed: unknown, tokenUserId?: string): UserData | nu
     accountType: String(p.accountType ?? p.account_type ?? "user"),
     isLoggedIn: Boolean(p.isLoggedIn ?? p.is_logged_in ?? true),
     verification_status: Number(p.verification_status ?? p.verificationStatus ?? 0),
-    profile_image: (p.profile_image ?? p.profile_img) as string | undefined,
+    profile_image: (p.profile_image ?? p.profile_img ?? p.avatar) as string | undefined,
   };
 }
 
@@ -257,7 +257,9 @@ const useStore = create<StoreState>((set) => ({
             currentState.userId !== decoded.userId ||
             currentState.isAuthenticated !== true ||
             currentState.user?.id !== normalized.id ||
-            currentState.user?.name !== normalized.name
+            currentState.user?.name !== normalized.name ||
+            currentState.user?.profile_image !== normalized.profile_image ||
+            currentState.user?.verification_status !== normalized.verification_status
           ) {
             set({
               userId: decoded.userId,

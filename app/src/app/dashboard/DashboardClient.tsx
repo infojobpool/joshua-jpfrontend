@@ -900,7 +900,8 @@ export default function Dashboard() {
       try {
         const res = await axiosInstance.get(`/profile?user_id=${effectiveUserId}`, { signal: controller.signal });
         const payload = res.data?.data ?? res.data;
-        const img = payload?.profile_img;
+        const raw = payload?.profile_img ?? payload?.profile_image ?? payload?.avatar ?? "";
+        const img = typeof raw === "string" ? raw.trim() : "";
         if (img) updateUserProfileImage(img);
       } catch {}
     })();

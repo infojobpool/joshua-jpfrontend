@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import useStore from "@/lib/Zustand";
+import axiosInstance from "@/lib/axiosInstance";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 
@@ -30,10 +31,34 @@ export function MobileHeroSection() {
   const logout = useStore((s) => s.logout);
   const isAuthenticated = useStore((s) => s.isAuthenticated);
   const user = useStore((s) => s.user);
+  const userId = useStore((s) => s.userId);
+  const updateUserProfileImage = useStore((s) => s.updateUserProfileImage);
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  // Home hero only reads the auth store; login payload often omits photo. Sync from GET /profile (same as dashboard).
+  useEffect(() => {
+    if (!userId || !updateUserProfileImage) return;
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await axiosInstance.get(`/profile?user_id=${userId}`, { signal: controller.signal });
+        const payload = res.data?.data ?? res.data;
+        const raw =
+          payload?.profile_img ??
+          payload?.profile_image ??
+          payload?.avatar ??
+          "";
+        const img = typeof raw === "string" ? raw.trim() : "";
+        if (img) updateUserProfileImage(img);
+      } catch {
+        /* optional */
+      }
+    })();
+    return () => controller.abort();
+  }, [userId, updateUserProfileImage]);
 
   useEffect(() => {
     if (!profileOpen) return;
@@ -74,16 +99,23 @@ export function MobileHeroSection() {
   };
 
   const profileImg = user
-    ? resolveProfileImageUrl(user.profile_image || (user as { profile_img?: string }).profile_img || "") ||
+    ? resolveProfileImageUrl(
+          user.profile_image ||
+            (user as { profile_img?: string }).profile_img ||
+            (user as { avatar?: string }).avatar ||
+            "",
+        ) ||
       user.profile_image ||
       (user as { profile_img?: string }).profile_img ||
+      (user as { avatar?: string }).avatar ||
       ""
     : "";
   const displayName = user?.name || "User";
 
   return (
     <section className="md:hidden w-full bg-white -mt-px">
-      <div className="relative w-full overflow-hidden rounded-none bg-gradient-to-b from-blue-500 via-blue-700 to-[#0c1e4a] text-white shadow-[0_16px_48px_-12px_rgba(30,64,175,0.55)] ring-1 ring-white/10">
+      {/* Do not use overflow-y-hidden here: the account menu is absolutely positioned and would be clipped, forcing odd scroll behavior on mobile. */}
+      <div className="relative w-full min-w-0 overflow-x-hidden rounded-none bg-gradient-to-b from-blue-500 via-blue-700 to-[#0c1e4a] text-white shadow-[0_16px_48px_-12px_rgba(30,64,175,0.55)] ring-1 ring-white/10">
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_100%_70%_at_50%_-30%,rgba(255,255,255,0.22),transparent_50%)]"
           aria-hidden
@@ -109,7 +141,7 @@ export function MobileHeroSection() {
                   <button
                     type="button"
                     onClick={() => setProfileOpen((o) => !o)}
-                    className={heroHeaderProfilePill}
+                    className={cn(heroHeaderProfilePill, "touch-manipulation")}
                     aria-label="Account menu"
                     aria-expanded={profileOpen}
                   >
