@@ -364,9 +364,8 @@ export default function PostTaskPage() {
       }
       if (typeof d.dueDateFlexible === "boolean") setDueDateFlexible(d.dueDateFlexible);
       if (typeof d.customCategoryName === "string") setCustomCategoryName(d.customCategoryName);
-      if (typeof d.currentStep === "number" && d.currentStep >= 1 && d.currentStep <= TOTAL_STEPS) {
-        setCurrentStep(d.currentStep);
-      }
+      // Intentionally do NOT restore `currentStep` from draft — reopening "Post a task" should start
+      // at step 1 so users are not dropped on the review screen with no context. Form fields still merge above.
     } catch {
       /* ignore corrupt draft */
     }
@@ -396,7 +395,6 @@ export default function PostTaskPage() {
           formData,
           dueDateFlexible,
           customCategoryName,
-          currentStep,
         })
       );
     } catch {
