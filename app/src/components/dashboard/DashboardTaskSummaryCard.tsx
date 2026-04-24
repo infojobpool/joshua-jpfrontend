@@ -10,13 +10,24 @@ export const dashboardTaskSummaryShell =
 
 export type DashboardTaskCardAccent = "none" | "blue" | "emerald" | "amber" | "rose";
 
-const accentClass: Record<DashboardTaskCardAccent, string> = {
-  none: "",
-  blue: "border-l-[3px] border-l-blue-500 dark:border-l-blue-400",
-  emerald: "border-l-[3px] border-l-emerald-500 dark:border-l-emerald-400",
-  amber: "border-l-[3px] border-l-amber-500 dark:border-l-amber-400",
-  rose: "border-l-[3px] border-l-rose-500 dark:border-l-rose-400",
+/** Thin top rail (premium) instead of a heavy left border — keeps status color coding. */
+const accentTopStripClass: Record<Exclude<DashboardTaskCardAccent, "none">, string> = {
+  blue: "bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 dark:from-blue-400 dark:via-indigo-400 dark:to-blue-500",
+  emerald:
+    "bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 dark:from-emerald-400 dark:via-green-400 dark:to-emerald-500",
+  amber: "bg-gradient-to-r from-amber-500 via-orange-400 to-amber-600 dark:from-amber-400 dark:via-orange-400 dark:to-amber-500",
+  rose: "bg-gradient-to-r from-rose-500 via-red-500 to-rose-600 dark:from-rose-400 dark:via-red-400 dark:to-rose-500",
 };
+
+function DashboardTaskAccentStrip({ accent }: { accent: DashboardTaskCardAccent }) {
+  if (accent === "none") return null;
+  return (
+    <div
+      className={cn("h-[2px] w-full shrink-0", accentTopStripClass[accent])}
+      aria-hidden
+    />
+  );
+}
 
 export type DashboardTaskSummaryStatusTone = "open" | "progress" | "success" | "warning" | "danger" | "neutral";
 
@@ -120,10 +131,11 @@ export function DashboardTaskSummaryCard({
   );
 
   return (
-    <Card className={cn(dashboardTaskSummaryShell, accentClass[accent], className)}>
+    <Card className={cn(dashboardTaskSummaryShell, className)}>
+      <DashboardTaskAccentStrip accent={accent} />
       {lead}
       <div className={cn("relative flex min-h-0 flex-1 flex-col", pad, bodyClassName)}>
-        {showTopProgressBar ? (
+        {showTopProgressBar && accent === "none" ? (
           <div
             className="pointer-events-none absolute left-0 right-0 top-0 h-0.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600"
             aria-hidden
