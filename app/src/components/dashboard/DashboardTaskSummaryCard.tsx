@@ -23,7 +23,7 @@ function DashboardTaskAccentStrip({ accent }: { accent: DashboardTaskCardAccent 
   if (accent === "none") return null;
   return (
     <div
-      className={cn("h-[2px] w-full shrink-0", accentTopStripClass[accent])}
+      className={cn("h-px w-full shrink-0 opacity-[0.72]", accentTopStripClass[accent])}
       aria-hidden
     />
   );
@@ -255,16 +255,29 @@ export function DashboardTaskSummaryCard({
         ) : defaultFooter ? (
           <div
             className={cn(
-              "flex items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-700/60",
+              "flex items-center justify-between gap-2 border-t border-slate-100/90 dark:border-slate-700/60",
               compact && isMobile ? "mt-1.5 pt-1.5" : compact ? "mt-2 pt-2" : "mt-4 gap-3 pt-3",
             )}
           >
             {statusLabel ? (
               <span className={cn("min-w-0", statusClassName ?? defaultStatusClass(statusTone))}>{statusLabel}</span>
+            ) : footerTrailing ? (
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                Posted by
+              </span>
             ) : (
               <span />
             )}
-            {footerTrailing ? <div className="flex shrink-0 items-center gap-2">{footerTrailing}</div> : null}
+            {footerTrailing ? (
+              <div
+                className={cn(
+                  "flex min-w-0 items-center justify-end gap-2",
+                  statusLabel ? "max-w-[58%] shrink-0 sm:max-w-[55%]" : "flex-1",
+                )}
+              >
+                {footerTrailing}
+              </div>
+            ) : null}
           </div>
         ) : null}
 

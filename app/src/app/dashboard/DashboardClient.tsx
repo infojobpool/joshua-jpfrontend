@@ -5322,7 +5322,7 @@ export default function Dashboard() {
                 />
               </div>
             ) : (
-              <div className={`grid gap-2.5 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
+              <div className={`grid gap-3 dashboard-card-stagger md:gap-4 ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
                 {sortedAssignedTasks.map((task) => {
                   const isCancelled = task.cancel_status || task.cancelled || task.status === "canceled" || task.status === "cancelled";
                   const cancelledByTasker = task.cancelled_by_role === "tasker";
@@ -5357,19 +5357,7 @@ export default function Dashboard() {
                     });
                   }
 
-                  let assignedStatusLabel = "In progress";
-                  let assignedStatusTone: DashboardTaskSummaryStatusTone = "progress";
-                  if (isCancelled) {
-                    assignedStatusLabel = "Cancelled";
-                    assignedStatusTone = "danger";
-                  } else if (waitingForTaskmaster) {
-                    assignedStatusLabel = "Awaiting owner";
-                    assignedStatusTone = "warning";
-                  } else if (waitingForTasker) {
-                    assignedStatusLabel = "Owner confirmed";
-                    assignedStatusTone = "success";
-                  }
-
+                  /** Status lives in `belowTitle` badges; footer row is poster only (+ “Posted by” in card). */
                   return (
                     <DashboardTaskSummaryCard
                       key={task.id}
@@ -5377,7 +5365,6 @@ export default function Dashboard() {
                       accent={isCancelled ? "rose" : "blue"}
                       density="compact"
                       isMobile={!!isMobile}
-                      showTopProgressBar={!isCancelled}
                       title={task.title}
                       titleClassName={isCancelled ? "text-gray-500 line-through" : undefined}
                       price={`₹${task.budget}`}
@@ -5394,30 +5381,54 @@ export default function Dashboard() {
                       belowTitle={
                         <>
                           <DashboardCardThumbnails images={task.images} className="mt-1 sm:mt-1.5" />
-                          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+                          <div className="mt-1.5 flex flex-wrap items-center gap-2">
                             {isCancelled && cancelledByTasker ? (
-                              <Badge variant="outline" className="border-gray-300 text-xs text-gray-600">
+                              <Badge
+                                variant="outline"
+                                className="w-fit rounded-lg border-slate-200/90 bg-slate-50/80 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-200"
+                              >
                                 ❌ Cancelled by you
                               </Badge>
                             ) : null}
                             {isCancelled && cancelledByTaskmaster ? (
-                              <Badge variant="outline" className="border-orange-200 text-xs text-orange-600">
+                              <Badge
+                                variant="outline"
+                                className="w-fit rounded-lg border-orange-200/90 bg-orange-50/70 px-2.5 py-1 text-[11px] font-semibold text-orange-800 dark:border-orange-800/50 dark:bg-orange-950/30 dark:text-orange-100"
+                              >
                                 ⚠️ Cancelled by Taskmaster
                               </Badge>
                             ) : null}
                             {isCancelled && !cancelledByTasker && !cancelledByTaskmaster ? (
-                              <Badge variant="outline" className="border-gray-300 text-xs text-gray-600">
+                              <Badge
+                                variant="outline"
+                                className="w-fit rounded-lg border-slate-200/90 bg-slate-50/80 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-200"
+                              >
                                 ❌ Cancelled
                               </Badge>
                             ) : null}
                             {!isCancelled && waitingForTaskmaster ? (
-                              <Badge className="rounded-md bg-blue-600 px-2 py-0.5 text-xs text-white">⏳ Waiting for taskmaster</Badge>
+                              <Badge
+                                variant="outline"
+                                className="w-fit rounded-lg border-blue-200/90 bg-blue-50/80 px-2.5 py-1 text-[11px] font-semibold text-blue-900 shadow-sm dark:border-blue-800/50 dark:bg-blue-950/35 dark:text-blue-100"
+                              >
+                                ⏳ Waiting for taskmaster
+                              </Badge>
                             ) : null}
                             {!isCancelled && waitingForTasker ? (
-                              <Badge className="rounded-md bg-emerald-600 px-2 py-0.5 text-xs text-white">✓ Task owner confirmed</Badge>
+                              <Badge
+                                variant="outline"
+                                className="w-fit rounded-lg border-emerald-200/90 bg-emerald-50/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-900 shadow-sm dark:border-emerald-800/50 dark:bg-emerald-950/30 dark:text-emerald-100"
+                              >
+                                ✓ Task owner confirmed
+                              </Badge>
                             ) : null}
                             {!isCancelled && !waitingForTaskmaster && !waitingForTasker ? (
-                              <Badge className="rounded-md bg-orange-600 px-2 py-0.5 text-xs text-white">🚀 In Progress</Badge>
+                              <Badge
+                                variant="outline"
+                                className="w-fit rounded-lg border-amber-200/90 bg-amber-50/70 px-2.5 py-1 text-[11px] font-semibold text-amber-950 shadow-sm dark:border-amber-800/45 dark:bg-amber-950/25 dark:text-amber-100"
+                              >
+                                🚀 In progress
+                              </Badge>
                             ) : null}
                           </div>
                         </>
@@ -5469,8 +5480,6 @@ export default function Dashboard() {
                           ) : null}
                         </>
                       }
-                      statusLabel={assignedStatusLabel}
-                      statusTone={assignedStatusTone}
                       footerTrailing={
                         task.posted_by ? (
                           <div className="flex max-w-[10rem] items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 sm:gap-2 sm:text-sm">
@@ -5506,7 +5515,7 @@ export default function Dashboard() {
                             </span>
                           </Button>
                         ) : waitingForTaskmaster ? (
-                          <div className={cn("flex gap-2", isMobile ? "flex-col" : "flex-row flex-wrap")}>
+                          <div className={cn("flex gap-2.5", isMobile ? "flex-col" : "flex-row flex-wrap")}>
                             <Link
                               href={`/tasks/${task.id}`}
                               className={cn("min-w-0", isMobile ? "w-full" : "flex-1")}
@@ -5543,7 +5552,7 @@ export default function Dashboard() {
                             </div>
                           </div>
                         ) : (
-                          <div className={cn("flex gap-2", isMobile ? "flex-col" : "flex-row flex-wrap items-stretch")}>
+                          <div className={cn("flex gap-2.5", isMobile ? "flex-col" : "flex-row flex-wrap items-stretch")}>
                             <Link
                               href={`/tasks/${task.id}`}
                               className={cn("min-w-0", isMobile ? "w-full" : "min-w-[8rem] flex-1")}
