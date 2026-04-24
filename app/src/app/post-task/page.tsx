@@ -685,8 +685,6 @@ export default function PostTaskPage() {
   };
 
   const budgetAmount = parseFloat(formData.budget.toString()) || 0;
-  const fee = budgetAmount * 0.28;
-  const totalAmount = budgetAmount + fee;
 
   const stepMeta = WIZARD_STEPS[currentStep - 1];
 
@@ -1046,23 +1044,6 @@ export default function PostTaskPage() {
                             </button>
                           </dd>
                         </div>
-                        {budgetAmount > 0 && (
-                          <div className="rounded-xl bg-white border border-slate-200/80 px-3 py-2.5 text-xs text-slate-600">
-                            <p className="font-medium text-slate-800 mb-1">Payment estimate</p>
-                            <div className="flex justify-between gap-2">
-                              <span>Task budget</span>
-                              <span>₹{budgetAmount.toLocaleString("en-IN")}</span>
-                            </div>
-                            <div className="flex justify-between gap-2 text-slate-500">
-                              <span>Platform fee (28%)</span>
-                              <span>₹{fee.toFixed(0)}</span>
-                            </div>
-                            <div className="flex justify-between gap-2 font-semibold text-slate-900 pt-1 mt-1 border-t border-slate-100">
-                              <span>Total</span>
-                              <span>₹{totalAmount.toFixed(0)}</span>
-                            </div>
-                          </div>
-                        )}
                       </dl>
                     </div>
                   </div>
