@@ -1392,9 +1392,14 @@ export default function TaskDetailPage() {
       return;
     }
 
-    // Soft profile nudge: if profile incomplete, show nudge before confirm bid
+    // Soft profile nudge: only when we still have no real photo after checking both
+    // localStorage (profile_* / avatar) and the latest GET /profile result (userProfile).
     const parsedUser = storedUser ? JSON.parse(storedUser) : null;
-    if (parsedUser && !isProfileComplete(getProfileImageFromUser(parsedUser))) {
+    const lsImg = getProfileImageFromUser(parsedUser);
+    const apiImg =
+      userProfile?.avatar && hasRealProfilePhotoUrl(userProfile.avatar) ? userProfile.avatar : null;
+    const hasRealPhoto = isProfileComplete(lsImg) || isProfileComplete(apiImg);
+    if (parsedUser && !hasRealPhoto) {
       setShowProfileNudgeForBid(true);
       return;
     }
@@ -2406,9 +2411,33 @@ export default function TaskDetailPage() {
             ) : taskerFeeLoading || !taskerFeePreview ? (
               <p className="text-sm text-muted-foreground">Loading fee estimate…</p>
             ) : taskerFeePreview.promo_fees_waived ? (
-              <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900">
-                Fees waived — you receive the full bid ({formatInr(bidAmountNumber)}).
-              </p>
+              <div className="space-y-2">
+                {feeLinesForDisplay(taskerFeePreview.lines).length > 0 ? (
+                  <div className="space-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+                    {feeLinesForDisplay(taskerFeePreview.lines).map((line, idx) => (
+                      <div key={line.id || `${line.label}-${idx}`} className="flex justify-between gap-2">
+                        <span className="text-slate-600">{line.label}</span>
+                        <span className="font-medium tabular-nums text-slate-900">{formatInr(Number(line.amount))}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900">
+                  Promo active: platform fees are waived — you receive the full bid amount shown above.
+                </p>
+                <div className="flex items-center justify-between rounded-lg border border-emerald-100 bg-emerald-50/60 px-3 py-2 text-sm font-semibold text-emerald-950">
+                  <span>Estimated payout</span>
+                  <span className="tabular-nums text-emerald-800">
+                    {formatInr(
+                      Number(
+                        taskerFeePreview.estimated_net ??
+                          taskerFeePreview.payable_amount ??
+                          bidAmountNumber,
+                      ),
+                    )}
+                  </span>
+                </div>
+              </div>
             ) : (
               <div className="space-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
                 {feeLinesForDisplay(taskerFeePreview.lines).map((line, idx) => (

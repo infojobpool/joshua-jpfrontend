@@ -302,7 +302,13 @@ import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import axiosInstance from "../lib/axiosInstance";
-import { buildPaymentDescriptionFromPosterPreview, fetchFeePreview, type PosterFeeData } from "@/lib/feePreview";
+import {
+  buildPaymentDescriptionFromPosterPreview,
+  feeLinesForDisplay,
+  fetchFeePreview,
+  formatInr,
+  type PosterFeeData,
+} from "@/lib/feePreview";
 import { jobIdVariants } from "../lib/jobIdVariants";
 import { toast } from "sonner";
 import useStore from "@/lib/Zustand";
@@ -404,6 +410,11 @@ export function OffersSection({
   const [isAccepting, setIsAccepting] = useState<string | null>(null);
   const [paymentUrlForApp, setPaymentUrlForApp] = useState<string | null>(null);
   const [paymentLinkLoading, setPaymentLinkLoading] = useState(false);
+  /** Poster reviews fees before accept-bid + payment (web & PWA). */
+  const [acceptFeeOffer, setAcceptFeeOffer] = useState<Offer | null>(null);
+  const [acceptFeePreview, setAcceptFeePreview] = useState<PosterFeeData | null>(null);
+  const [acceptFeePreviewLoading, setAcceptFeePreviewLoading] = useState(false);
+  const [acceptFeePreviewError, setAcceptFeePreviewError] = useState<string | null>(null);
   const addNotifications = useStore((s) => s.addNotifications);
   const [taskerReviewStats, setTaskerReviewStats] = useState<Record<string, { average: number; count: number }>>({});
 
@@ -558,14 +569,35 @@ export function OffersSection({
     blockSubmitInitial;
 
 
-  const handleAcceptOffer = async (offer: Offer) => {
-    setIsAccepting(offer.id);
-    try {
-      const response = await axiosInstance.put(
-        `/accept-bid/${task.id}/${offer.tasker.id}/`
-      );
+  const resetAcceptFeeDialog = () => {
+    setAcceptFeeOffer(null);
+    setAcceptFeePreview(null);
+    setAcceptFeePreviewError(null);
+    setAcceptFeePreviewLoading(false);
+  };
 
-      if (response.data.status_code === 200) {
+  const openAcceptFeeDialog = (offer: Offer) => {
+    setAcceptFeeOffer(offer);
+    setAcceptFeePreview(null);
+    setAcceptFeePreviewError(null);
+    setAcceptFeePreviewLoading(true);
+    void fetchFeePreview(offer.amount, "poster")
+      .then((d) => {
+        setAcceptFeePreview(d as PosterFeeData);
+        setAcceptFeePreviewError(null);
+      })
+      .catch((e: unknown) => {
+        setAcceptFeePreview(null);
+        setAcceptFeePreviewError(e instanceof Error ? e.message : "Unable to load fees");
+      })
+      .finally(() => setAcceptFeePreviewLoading(false));
+  };
+
+  /** After poster confirms fee breakdown: accept bid + session + payment navigation. */
+  const runAcceptBidAndPaymentFlow = async (offer: Offer, posterFeesForPayment?: PosterFeeData | null) => {
+    const response = await axiosInstance.put(`/accept-bid/${task.id}/${offer.tasker.id}/`);
+
+    if (response.data.status_code === 200) {
         toast.success(response.data.message || "Bid accepted successfully");
         addNotifications([{
           id: `accept-${task.id}-${offer.tasker.id}-${Date.now()}`,
@@ -636,7 +668,9 @@ export function OffersSection({
           try {
             let posterFees: PosterFeeData;
             try {
-              posterFees = (await fetchFeePreview(offer.amount, "poster")) as PosterFeeData;
+              posterFees =
+                posterFeesForPayment ??
+                ((await fetchFeePreview(offer.amount, "poster")) as PosterFeeData);
             } catch (feeErr: unknown) {
               const msg = feeErr instanceof Error ? feeErr.message : "Unable to load fees";
               toast.error(msg);
@@ -701,15 +735,30 @@ export function OffersSection({
           return;
         }
         router.push("/payments");
-      } else {
-        toast.error(response.data.message || "Failed to accept bid");
-      }
+    } else {
+      toast.error(response.data.message || "Failed to accept bid");
+      throw new Error(response.data.message || "Failed to accept bid");
+    }
+  };
+
+  const handleConfirmAcceptAfterFeeReview = async () => {
+    const offer = acceptFeeOffer;
+    if (!offer) return;
+    if (acceptFeePreviewLoading || !acceptFeePreview || acceptFeePreviewError) {
+      toast.error("Wait for the payment breakdown to load, or fix the error above.");
+      return;
+    }
+    setIsAccepting(offer.id);
+    try {
+      await runAcceptBidAndPaymentFlow(offer, acceptFeePreview);
+      resetAcceptFeeDialog();
     } catch (error: any) {
       console.error("Error accepting bid:", error);
-      toast.error(
-        error.response?.data?.message ||
-          "An error occurred while accepting the bid"
-      );
+      if (!error?.message || error.message === "Failed to accept bid") {
+        toast.error(
+          error.response?.data?.message || "An error occurred while accepting the bid",
+        );
+      }
     } finally {
       setIsAccepting(null);
     }
@@ -904,8 +953,8 @@ export function OffersSection({
                     <Button
                       className="jp-btn-blue-gradient w-full border-0 sm:flex-1"
                       size="sm"
-                      onClick={() => handleAcceptOffer(offer)}
-                      disabled={isAccepting === offer.id}
+                      onClick={() => openAcceptFeeDialog(offer)}
+                      disabled={isAccepting === offer.id || acceptFeeOffer?.id === offer.id}
                     >
                       {isAccepting === offer.id ? "Accepting..." : "Accept Offer"}
                     </Button>
@@ -927,6 +976,101 @@ export function OffersSection({
           ))
         )}
       </CardContent>
+      <Dialog
+        open={!!acceptFeeOffer}
+        onOpenChange={(open) => {
+          if (!open) resetAcceptFeeDialog();
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Accept offer & pay</DialogTitle>
+            <DialogDescription>
+              Review what you&apos;ll pay (including taxes and platform fee). You can still cancel here without accepting the bid.
+            </DialogDescription>
+          </DialogHeader>
+          {acceptFeeOffer ? (
+            <div className="space-y-3 text-sm">
+              <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
+                <p className="font-medium text-slate-900">{task.title}</p>
+                <p className="text-slate-600">
+                  Bid from <span className="font-semibold text-slate-800">{acceptFeeOffer.tasker.name}</span> ·{" "}
+                  <span className="tabular-nums font-semibold">{formatInr(acceptFeeOffer.amount)}</span>
+                </p>
+              </div>
+              {acceptFeePreviewError ? (
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800">{acceptFeePreviewError}</p>
+              ) : acceptFeePreviewLoading || !acceptFeePreview ? (
+                <p className="text-muted-foreground">Loading payment breakdown…</p>
+              ) : acceptFeePreview.promo_fees_waived ? (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-900">
+                  <p className="font-semibold">Promo active</p>
+                  <p className="mt-1">Fees and taxes are waived — you pay the task budget only.</p>
+                </div>
+              ) : (
+                <div className="space-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Your payment</p>
+                  {feeLinesForDisplay(acceptFeePreview.lines).map((line, idx) => (
+                    <div key={line.id || `${line.label}-${idx}`} className="flex justify-between gap-2">
+                      <span className="text-slate-600">{line.label}</span>
+                      <span className="font-medium tabular-nums">{formatInr(Number(line.amount))}</span>
+                    </div>
+                  ))}
+                  {(!acceptFeePreview.lines || acceptFeePreview.lines.length === 0) && (
+                    <>
+                      <div className="flex justify-between gap-2">
+                        <span className="text-slate-600">Task budget</span>
+                        <span className="tabular-nums font-medium">
+                          {formatInr(Number(acceptFeePreview.bid_amount ?? acceptFeeOffer.amount))}
+                        </span>
+                      </div>
+                      {(acceptFeePreview.commission_amount != null || acceptFeePreview.platform_fee != null) && (
+                        <div className="flex justify-between gap-2 text-slate-600">
+                          <span>Platform fee</span>
+                          <span className="tabular-nums">
+                            {formatInr(Number(acceptFeePreview.commission_amount ?? acceptFeePreview.platform_fee ?? 0))}
+                          </span>
+                        </div>
+                      )}
+                      {acceptFeePreview.gst_amount != null && (
+                        <div className="flex justify-between gap-2 text-slate-600">
+                          <span>Taxes (GST)</span>
+                          <span className="tabular-nums">{formatInr(Number(acceptFeePreview.gst_amount))}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {acceptFeePreview.payable_amount != null && (
+                    <div className="flex justify-between border-t border-slate-100 pt-2 text-base font-semibold text-slate-900">
+                      <span>Total to pay</span>
+                      <span className="tabular-nums text-blue-700">{formatInr(Number(acceptFeePreview.payable_amount))}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : null}
+          <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button type="button" variant="outline" onClick={resetAcceptFeeDialog} disabled={isAccepting === acceptFeeOffer?.id}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="jp-btn-blue-gradient border-0"
+              onClick={() => void handleConfirmAcceptAfterFeeReview()}
+              disabled={
+                !acceptFeeOffer ||
+                acceptFeePreviewLoading ||
+                !!acceptFeePreviewError ||
+                !acceptFeePreview ||
+                isAccepting === acceptFeeOffer.id
+              }
+            >
+              {isAccepting === acceptFeeOffer?.id ? "Accepting…" : "Accept & continue to payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={completeOpen} onOpenChange={setCompleteOpen}>
         <DialogContent>
           <DialogHeader>

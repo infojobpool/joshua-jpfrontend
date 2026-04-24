@@ -18,11 +18,21 @@ export function isProfileComplete(
   return true;
 }
 
-/** Get user's profile image from store/localStorage user object */
+/** Get user's profile image from store/localStorage user object (login often stores `avatar` only). */
 export function getProfileImageFromUser(user: {
   profile_image?: string | null;
   profile_img?: string | null;
+  avatar?: string | null;
 } | null): string | null {
   if (!user) return null;
-  return user.profile_image || (user as any).profile_img || null;
+  const u = user as Record<string, unknown>;
+  const pick = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  return (
+    pick(user.profile_image) ||
+    pick(user.profile_img) ||
+    pick(user.avatar) ||
+    pick(u.profile_photo) ||
+    pick(u.photo_url) ||
+    null
+  );
 }
