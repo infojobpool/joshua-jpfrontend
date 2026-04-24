@@ -10,6 +10,11 @@ import { Task } from "../types";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import axiosInstance from "../../lib/axiosInstance";
+import {
+  buildPaymentDescriptionFromPosterPreview,
+  fetchFeePreview,
+  type PosterFeeData,
+} from "@/lib/feePreview";
 
 // Mock task data (replace with actual task data, e.g., via API or props)
 const mockTask: Task = {
@@ -80,6 +85,9 @@ export default function PaymentPage() {
     };
   }, []);
   const [paymentUrlForSafari, setPaymentUrlForSafari] = useState<string | null>(null);
+  const [posterFees, setPosterFees] = useState<PosterFeeData | null>(null);
+  const [posterFeesLoading, setPosterFeesLoading] = useState(false);
+  const [posterFeesError, setPosterFeesError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -145,35 +153,70 @@ export default function PaymentPage() {
   const taskerId = paymentData?.taskerId || searchParams.get("taskerId") || "";
   const taskPosterId = paymentData?.taskPosterId || searchParams.get("taskPosterId") || mockTask.poster.id;
 
+  useEffect(() => {
+    if (!bidAmount || bidAmount <= 0) {
+      setPosterFees(null);
+      setPosterFeesError(null);
+      setPosterFeesLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setPosterFeesLoading(true);
+    setPosterFeesError(null);
+    void (async () => {
+      try {
+        const data = (await fetchFeePreview(bidAmount, "poster")) as PosterFeeData;
+        if (!cancelled) {
+          setPosterFees(data);
+        }
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setPosterFees(null);
+          setPosterFeesError(e instanceof Error ? e.message : "Unable to load fees");
+        }
+      } finally {
+        if (!cancelled) setPosterFeesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [bidAmount]);
+
   const handlePayment = async () => {
     if (isSubmitting) return;
+    if (!posterFees || posterFeesLoading) {
+      toast.error("Payment fees are still loading. Please wait.");
+      return;
+    }
+    if (posterFeesError) {
+      toast.error(posterFeesError);
+      return;
+    }
     setIsSubmitting(true);
     setErrorMessage("");
     setPaymentStatus(null);
 
-    const commissionAmount = bidAmount * 0.05; // 5% commission
-    const gstAmount = (bidAmount + commissionAmount) * 0.18; // 18% GST
-    const totalAmount = bidAmount + commissionAmount + gstAmount;
+    const gstAmount = Number(posterFees.gst_amount ?? 0);
+    const commissionAmount = Number(posterFees.commission_amount ?? posterFees.platform_fee ?? 0);
+    const payableAmount = Number(posterFees.payable_amount ?? 0);
+    if (!payableAmount || payableAmount <= 0) {
+      toast.error("Invalid payment total from server. Refresh and try again.");
+      setIsSubmitting(false);
+      return;
+    }
     const taskTitle = paymentData?.taskTitle || mockTask.title;
 
     const orderPayload = {
       postId: taskId,
-      bid_amount: Number(bidAmount.toFixed(2)),
+      bid_amount: Number((posterFees.bid_amount ?? bidAmount).toFixed(2)),
       gst_amount: Number(gstAmount.toFixed(2)),
       commission_amount: Number(commissionAmount.toFixed(2)),
-      payable_amount: Number(totalAmount.toFixed(2)),
+      payable_amount: Number(payableAmount.toFixed(2)),
       tasker_id: taskerId,
       taskmanager_id: taskPosterId,
       task_title: taskTitle,
-      payment_description: [
-        `Payment for: ${taskTitle || `Task ${taskId}`}`,
-        "",
-        "Cost breakdown:",
-        `• Bid amount: ₹${bidAmount.toFixed(2)}`,
-        `• Commission (5%): ₹${commissionAmount.toFixed(2)}`,
-        `• GST (18%): ₹${gstAmount.toFixed(2)}`,
-        `• Total: ₹${totalAmount.toFixed(2)}`,
-      ].join("\n"),
+      payment_description: buildPaymentDescriptionFromPosterPreview(taskTitle || `Task ${taskId}`, posterFees),
     };
 
     // PWA or mobile: use payment link. Modal shows blank on PWA; mobile UA ensures consistency.
@@ -201,10 +244,10 @@ export default function PaymentPage() {
               order_id: d?.order_id || "",
               tasker_id: taskerId,
               taskmanager_id: taskPosterId,
-              bid_amount: bidAmount,
-              gst_amount: gstAmount,
-              commission_amount: commissionAmount,
-              payable_amount: Number(orderPayload.payable_amount),
+              bid_amount: orderPayload.bid_amount,
+              gst_amount: orderPayload.gst_amount,
+              commission_amount: orderPayload.commission_amount,
+              payable_amount: orderPayload.payable_amount,
             })
           );
         } catch (_) {}
@@ -246,10 +289,10 @@ export default function PaymentPage() {
               signature: res.razorpay_signature,
               tasker_id: taskerId,
               taskmanager_id: taskPosterId,
-              bid_amount: orderDetails.bid_amount ?? bidAmount,
-              gst_amount: orderDetails.gst_amount ?? gstAmount,
-              commission_amount: orderDetails.commission_amount ?? commissionAmount,
-              payable_amount: orderDetails.payable_amount ?? Number((bidAmount + commissionAmount + gstAmount).toFixed(2)),
+              bid_amount: orderDetails.bid_amount ?? orderPayload.bid_amount,
+              gst_amount: orderDetails.gst_amount ?? orderPayload.gst_amount,
+              commission_amount: orderDetails.commission_amount ?? orderPayload.commission_amount,
+              payable_amount: orderDetails.payable_amount ?? orderPayload.payable_amount,
             });
             if (verifyResp.data?.status_code === 200 && verifyResp.data?.data?.payment_status === "captured") {
               try {
@@ -350,6 +393,11 @@ export default function PaymentPage() {
         closeModal={closeModal}
         isSubmitting={isSubmitting}
         razorpayReady={razorpayLoaded}
+        externalFeePreview={{
+          data: posterFees,
+          loading: posterFeesLoading,
+          error: posterFeesError,
+        }}
       />
       <PaymentFailed
         show={showPaymentFailed}

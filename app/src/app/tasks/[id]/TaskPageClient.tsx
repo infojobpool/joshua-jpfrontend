@@ -9,6 +9,12 @@ import { TaskInfo } from "@/components/TaskInfo";
 import { ExpandableTaskLocationSection } from "@/components/TaskLocationMap";
 import { Toaster } from "@/components/ui/sonner";
 import axiosInstance from "@/lib/axiosInstance";
+import {
+  fetchFeePreview,
+  feeLinesForDisplay,
+  formatInr,
+  type TaskerFeeData,
+} from "@/lib/feePreview";
 import { jobIdVariants } from "@/lib/jobIdVariants";
 import { resolveApiMediaUrl, resolveProfileImageUrl } from "@/lib/profileImage";
 import { hasRealProfilePhotoUrl } from "@/lib/payoutProfileCompletion";
@@ -104,6 +110,9 @@ export default function TaskDetailPage() {
   const prefetchedBidsRef = useRef<{ id: string; data: any } | null>(null);
   const bidsFromCombinedRef = useRef<boolean>(false);
   const [completeReviewOpen, setCompleteReviewOpen] = useState(false);
+  const [taskerFeePreview, setTaskerFeePreview] = useState<TaskerFeeData | null>(null);
+  const [taskerFeeLoading, setTaskerFeeLoading] = useState(false);
+  const [taskerFeeError, setTaskerFeeError] = useState<string | null>(null);
 
   // Reset retries and payment check when switching to a different task
   useEffect(() => {
@@ -137,6 +146,48 @@ export default function TaskDetailPage() {
     document.addEventListener("visibilitychange", handleFocus);
     return () => document.removeEventListener("visibilitychange", handleFocus);
   }, [task, userId, offers.length, bidsLoading]);
+
+  useEffect(() => {
+    if (!showConfirmBid) {
+      setTaskerFeePreview(null);
+      setTaskerFeeError(null);
+      setTaskerFeeLoading(false);
+      return;
+    }
+    const n = parseFloat(offerAmount) || 0;
+    if (n <= 0) {
+      setTaskerFeePreview(null);
+      setTaskerFeeError(null);
+      setTaskerFeeLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setTaskerFeeLoading(true);
+    setTaskerFeeError(null);
+    const t = setTimeout(() => {
+      void (async () => {
+        try {
+          const data = (await fetchFeePreview(n, "tasker")) as TaskerFeeData;
+          if (!cancelled) {
+            setTaskerFeePreview(data);
+            setTaskerFeeError(null);
+          }
+        } catch (e: unknown) {
+          if (!cancelled) {
+            setTaskerFeePreview(null);
+            setTaskerFeeError(e instanceof Error ? e.message : "Unable to load fees");
+          }
+        } finally {
+          if (!cancelled) setTaskerFeeLoading(false);
+        }
+      })();
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [showConfirmBid, offerAmount]);
+
   const [completeReviewAsTaskmaster, setCompleteReviewAsTaskmaster] = useState(false);
   const taskerId = offers.length > 0 ? offers[0].tasker.id : (task?.assignedTasker?.id ? String(task.assignedTasker.id) : null);
 
@@ -2017,8 +2068,14 @@ export default function TaskDetailPage() {
   const isTaskPoster: boolean = task.poster.id === userId;
   const hasSubmittedOffer = offers.some((offer) => offer.tasker.id === userId);
   const bidAmountNumber = parseFloat(offerAmount) || 0;
-  const handlingCharges = bidAmountNumber * 0.20; // 20% handling charges (excluding GST)
-  const totalAmount = Math.max(bidAmountNumber - handlingCharges, 0); // amount user receives after charges
+  const acceptedOfferAmount =
+    offers.find((o) => (o as { status?: string }).status === "accepted")?.amount ??
+    (task.assignedTasker
+      ? offers.find((o) => String(o.tasker.id) === String(task.assignedTasker.id))?.amount
+      : undefined) ??
+    Number(task.budget) ||
+    0;
+  const paymentPosterBidAmount = acceptedOfferAmount;
 
   return (
     <div className="min-h-0 bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 md:min-h-screen">
@@ -2170,6 +2227,7 @@ export default function TaskDetailPage() {
         handlePayment={handlePayment}
         closeModal={() => setShowPaymentModal(false)}
         isSubmitting={isSubmitting}
+        bidAmount={paymentPosterBidAmount > 0 ? paymentPosterBidAmount : Number(task.budget) || 0}
       />
       <ImageGalleryModal
         show={showImageGallery}
@@ -2340,18 +2398,50 @@ export default function TaskDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="flex justify-between items-center py-3 bg-blue-50 rounded-lg px-3">
-              <span className="font-bold text-gray-800">Bid Amount:</span>
-              <span className="font-bold text-blue-600 text-lg">₹{bidAmountNumber.toFixed(2)}</span>
+            <div className="flex items-center justify-between rounded-lg bg-blue-50 px-3 py-3">
+              <span className="font-bold text-gray-800">Bid amount</span>
+              <span className="text-lg font-bold tabular-nums text-blue-600">{formatInr(bidAmountNumber)}</span>
             </div>
-            <div className="flex justify-between items-center py-3 bg-gray-50 rounded-lg px-3">
-              <span className="text-gray-700">Handling Charges (Excluding GST):</span>
-              <span className="font-semibold text-red-600">₹{handlingCharges.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between items-center py-3 bg-green-50 rounded-lg px-3 border border-green-200">
-              <span className="font-bold text-gray-800">You Receive:</span>
-              <span className="font-bold text-green-600 text-lg">₹{totalAmount.toFixed(2)}</span>
-            </div>
+            {taskerFeeError ? (
+              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{taskerFeeError}</p>
+            ) : taskerFeeLoading || !taskerFeePreview ? (
+              <p className="text-sm text-muted-foreground">Loading fee estimate…</p>
+            ) : taskerFeePreview.promo_fees_waived ? (
+              <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900">
+                Fees waived — you receive the full bid ({formatInr(bidAmountNumber)}).
+              </p>
+            ) : (
+              <div className="space-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+                {feeLinesForDisplay(taskerFeePreview.lines).map((line, idx) => (
+                  <div key={line.id || `${line.label}-${idx}`} className="flex justify-between gap-2">
+                    <span className="text-slate-600">{line.label}</span>
+                    <span className="font-medium tabular-nums text-slate-900">{formatInr(Number(line.amount))}</span>
+                  </div>
+                ))}
+                {(!taskerFeePreview.lines || taskerFeePreview.lines.length === 0) && (
+                  <>
+                    {taskerFeePreview.reference_taxes != null && (
+                      <div className="flex justify-between gap-2 text-slate-600">
+                        <span>Reference taxes / deductions</span>
+                        <span className="tabular-nums">{formatInr(Number(taskerFeePreview.reference_taxes))}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+                <div className="flex items-center justify-between border-t border-green-100 bg-green-50/80 px-2 py-2 text-base font-bold">
+                  <span className="text-gray-800">You receive (est.)</span>
+                  <span className="tabular-nums text-green-600">
+                    {formatInr(
+                      Number(
+                        taskerFeePreview.estimated_net ??
+                          taskerFeePreview.payable_amount ??
+                          bidAmountNumber,
+                      ),
+                    )}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -2361,7 +2451,10 @@ export default function TaskDetailPage() {
             >
               Cancel
             </Button>
-            <Button onClick={confirmBidSubmission} disabled={isSubmitting}>
+            <Button
+              onClick={confirmBidSubmission}
+              disabled={isSubmitting || taskerFeeLoading || !!taskerFeeError || !taskerFeePreview}
+            >
               {isSubmitting ? "Submitting..." : "Confirm Bid"}
             </Button>
           </DialogFooter>

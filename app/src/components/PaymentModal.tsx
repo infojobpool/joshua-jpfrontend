@@ -1,229 +1,197 @@
-// import { Button } from "./ui/button";
-// import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
+"use client";
 
-// interface Task {
-//     id: string;
-//     title: string;
-//     description: string;
-//     budget: number;
-//     location: string;
-//     status: boolean;
-//     postedAt: string;
-//     dueDate: string;
-//     category: string;
-//     images: Image[];
-//     poster: User;
-//     offers: Offer[];
-//     assignedTasker?: User;
-//   }
-//   interface Image {
-//     id: string;
-//     url: string;
-//     alt: string;
-//   }
-//   interface Offer {
-//     id: string;
-//     tasker: User;
-//     amount: number;
-//     message: string;
-//     createdAt: string;
-//   }
-  
-//   interface User {
-//     id: string;
-//     name: string;
-//     rating: number;
-//     taskCount: number;
-//     joinedDate: string;
-//   }
-  
-
-// interface PaymentModalProps {
-//     show: boolean;
-//     task: Task;
-//     handlePayment: () => void;
-//     closeModal: () => void;
-//     isSubmitting: boolean;
-//   }
-  
-//   export  function PaymentModal({ show, task, handlePayment, closeModal, isSubmitting }: PaymentModalProps) {
-//     if (!show) return null;
-  
-//     return (
-//       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-//         <Card className="w-full max-w-md">
-//           <CardHeader>
-//             <CardTitle>Complete Payment</CardTitle>
-//             <CardDescription>Pay the tasker for completing the task</CardDescription>
-//           </CardHeader>
-//           <CardContent className="space-y-4">
-//             <div className="border rounded-lg p-4 space-y-2">
-//               <div className="flex justify-between">
-//                 <span className="text-muted-foreground">Task Amount</span>
-//                 <span className="font-medium">${task.budget.toFixed(2)}</span>
-//               </div>
-//               <div className="flex justify-between">
-//                 <span className="text-muted-foreground">Service Fee (10%)</span>
-//                 <span className="font-medium">${(task.budget * 0.1).toFixed(2)}</span>
-//               </div>
-//               <div className="border-t pt-2 mt-2 flex justify-between">
-//                 <span className="font-medium">Total</span>
-//                 <span className="font-bold">${(task.budget * 1.1).toFixed(2)}</span>
-//               </div>
-//             </div>
-//             <div className="space-y-2">
-//               <label className="text-sm font-medium">Payment Method</label>
-//               <div className="flex items-center space-x-2 border rounded-md p-3">
-//                 <input
-//                   type="radio"
-//                   id="card1"
-//                   name="paymentMethod"
-//                   className="h-4 w-4"
-//                   defaultChecked
-//                 />
-//                 <label htmlFor="card1" className="flex-1">
-//                   <div className="flex items-center justify-between">
-//                     <span>Credit Card ending in 4242</span>
-//                     <span className="text-xs bg-muted px-2 py-1 rounded">Default</span>
-//                   </div>
-//                 </label>
-//               </div>
-//               <div className="flex items-center space-x-2 border rounded-md p-3">
-//                 <input
-//                   type="radio"
-//                   id="card2"
-//                   name="paymentMethod"
-//                   className="h-4 w-4"
-//                 />
-//                 <label htmlFor="card2" className="flex-1">
-//                   <span>Add New Payment Method</span>
-//                 </label>
-//               </div>
-//             </div>
-//           </CardContent>
-//           <CardFooter className="flex justify-between">
-//             <Button variant="outline" onClick={closeModal}>
-//               Cancel
-//             </Button>
-//             <Button onClick={handlePayment} disabled={isSubmitting}>
-//               {isSubmitting ? "Processing..." : "Pay Now"}
-//             </Button>
-//           </CardFooter>
-//         </Card>
-//       </div>
-//     );
-//   }
-
-
-"use client"
-
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { TrustBadges } from "@/components/TrustBadges"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { TrustBadges } from "@/components/TrustBadges";
+import {
+  fetchFeePreview,
+  feeLinesForDisplay,
+  feeTotalLine,
+  formatInr,
+  type PosterFeeData,
+} from "@/lib/feePreview";
 
 interface Task {
-  id: string
-  title: string
-  description: string
-  budget: number
-  location: string
-  status: boolean
-  postedAt: string
-  dueDate: string
-  category: string
-  images: Image[]
-  poster: User
-  offers: Offer[]
-  assignedTasker?: User
+  id: string;
+  title: string;
+  description: string;
+  budget: number;
+  location: string;
+  status: boolean;
+  postedAt: string;
+  dueDate: string;
+  category: string;
+  images: Image[];
+  poster: User;
+  offers: Offer[];
+  assignedTasker?: User;
 }
 
 interface Image {
-  id: string
-  url: string
-  alt: string
+  id: string;
+  url: string;
+  alt: string;
 }
 
 interface Offer {
-  id: string
-  tasker: User
-  amount: number
-  message: string
-  createdAt: string
+  id: string;
+  tasker: User;
+  amount: number;
+  message: string;
+  createdAt: string;
 }
 
 interface User {
-  id: string
-  name: string
-  rating: number
-  taskCount: number
-  joinedDate: string
+  id: string;
+  name: string;
+  rating: number;
+  taskCount: number;
+  joinedDate: string;
 }
+
+/** When provided, the modal uses this preview instead of calling /fee-preview/ again (e.g. payments page). */
+export type ExternalPosterFeePreview = {
+  data: PosterFeeData | null;
+  loading: boolean;
+  error: string | null;
+};
 
 interface PaymentModalProps {
-  show: boolean
-  task: Task
-  handlePayment: () => void
-  closeModal: () => void
-  isSubmitting: boolean
-  bidAmount: number
-  razorpayReady?: boolean
+  show: boolean;
+  task: Task;
+  handlePayment: () => void;
+  closeModal: () => void;
+  isSubmitting: boolean;
+  bidAmount: number;
+  razorpayReady?: boolean;
+  externalFeePreview?: ExternalPosterFeePreview | null;
 }
 
-export function PaymentModal({ show, task, handlePayment, closeModal, isSubmitting, bidAmount, razorpayReady = true }: PaymentModalProps) {
-  if (!show) return null
+export function PaymentModal({
+  show,
+  task,
+  handlePayment,
+  closeModal,
+  isSubmitting,
+  bidAmount,
+  razorpayReady = true,
+  externalFeePreview,
+}: PaymentModalProps) {
+  const [fees, setFees] = useState<PosterFeeData | null>(null);
+  const [loadingFees, setLoadingFees] = useState(false);
+  const [feeError, setFeeError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (externalFeePreview != null) {
+      setFees(externalFeePreview.data);
+      setLoadingFees(externalFeePreview.loading);
+      setFeeError(externalFeePreview.error);
+      return;
+    }
+    if (!show || bidAmount <= 0) {
+      setFees(null);
+      setFeeError(null);
+      setLoadingFees(false);
+      return;
+    }
+    let cancelled = false;
+    setLoadingFees(true);
+    setFeeError(null);
+    void (async () => {
+      try {
+        const data = (await fetchFeePreview(bidAmount, "poster")) as PosterFeeData;
+        if (!cancelled) {
+          setFees(data);
+          setFeeError(null);
+        }
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setFees(null);
+          setFeeError(e instanceof Error ? e.message : "Unable to load fees");
+        }
+      } finally {
+        if (!cancelled) setLoadingFees(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [show, bidAmount, externalFeePreview]);
 
-  // Handling charges: single 23% on the bid amount
-  const handling = bidAmount * 0.23
-  const totalAmount = bidAmount + handling
+  if (!show) return null;
+
+  const displayLines = feeLinesForDisplay(fees?.lines);
+  const totalLine = feeTotalLine(fees?.lines);
+  const payable =
+    fees?.payable_amount ??
+    (typeof totalLine?.amount === "number" ? totalLine.amount : undefined);
+  const payDisabled =
+    isSubmitting || !razorpayReady || loadingFees || !fees || !!feeError || bidAmount <= 0;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Payment Details</CardTitle>
           <CardDescription>Review and complete your payment</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="border rounded-lg p-4 space-y-3">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Bid Amount</span>
-              <span className="font-medium">₹{bidAmount.toFixed(2)}</span>
+          {feeError ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{feeError}</div>
+          ) : null}
+
+          {fees?.promo_fees_waived ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900">
+              Fees and taxes are waived for this period — you pay the task budget only.
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Handling Charges</span>
-              <span className="font-medium">₹{handling.toFixed(2)}</span>
-            </div>
-            <div className="border-t pt-3 mt-3 flex justify-between">
-              <span className="font-semibold text-lg">Total Amount</span>
-              <span className="font-bold text-lg text-green-600">₹{totalAmount.toFixed(2)}</span>
-            </div>
+          ) : null}
+
+          <div className="space-y-3 rounded-lg border p-4">
+            {loadingFees || !fees ? (
+              <p className="text-sm text-muted-foreground">Loading fee breakdown…</p>
+            ) : (
+              <>
+                {displayLines.length > 0 ? (
+                  displayLines.map((line, idx) => (
+                    <div key={line.id || `${line.label}-${idx}`} className="flex justify-between gap-2 text-sm">
+                      <span className="text-muted-foreground">{line.label}</span>
+                      <span className="font-medium tabular-nums">{formatInr(Number(line.amount))}</span>
+                    </div>
+                  ))
+                ) : (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Bid amount</span>
+                      <span className="font-medium tabular-nums">{formatInr(Number(fees.bid_amount ?? bidAmount))}</span>
+                    </div>
+                    {(fees.commission_amount != null || fees.platform_fee != null) && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Platform fee</span>
+                        <span className="font-medium tabular-nums">
+                          {formatInr(Number(fees.commission_amount ?? fees.platform_fee ?? 0))}
+                        </span>
+                      </div>
+                    )}
+                    {fees.gst_amount != null && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Taxes (GST)</span>
+                        <span className="font-medium tabular-nums">{formatInr(Number(fees.gst_amount))}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+                {payable != null && (
+                  <div className="mt-3 flex justify-between border-t pt-3 text-base font-semibold">
+                    <span>Total</span>
+                    <span className="text-green-600 tabular-nums">{formatInr(Number(payable))}</span>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
-          <TrustBadges
-            heading="Secure payment"
-            subtext="Encrypted & protected"
-            variant="compact"
-          />
-
-          {/* <div className="space-y-2">
-            <label className="text-sm font-medium">Payment Method</label>
-            <div className="flex items-center space-x-2 border rounded-md p-3">
-              <input type="radio" id="card1" name="paymentMethod" className="h-4 w-4" defaultChecked />
-              <label htmlFor="card1" className="flex-1">
-                <div className="flex items-center justify-between">
-                  <span>Credit Card ending in 4242</span>
-                  <span className="text-xs bg-muted px-2 py-1 rounded">Default</span>
-                </div>
-              </label>
-            </div>
-            <div className="flex items-center space-x-2 border rounded-md p-3">
-              <input type="radio" id="card2" name="paymentMethod" className="h-4 w-4" />
-              <label htmlFor="card2" className="flex-1">
-                <span>Add New Payment Method</span>
-              </label>
-            </div>
-          </div> */}
+          <TrustBadges heading="Secure payment" subtext="Encrypted & protected" variant="compact" />
         </CardContent>
         <CardFooter className="flex justify-between">
           <Button variant="outline" onClick={closeModal} disabled={isSubmitting}>
@@ -231,13 +199,13 @@ export function PaymentModal({ show, task, handlePayment, closeModal, isSubmitti
           </Button>
           <Button
             onClick={handlePayment}
-            disabled={isSubmitting || !razorpayReady}
+            disabled={payDisabled}
             className="bg-green-600 hover:bg-green-700"
           >
-            {isSubmitting ? "Processing..." : !razorpayReady ? "Loading..." : "Proceed to Pay"}
+            {isSubmitting ? "Processing…" : !razorpayReady ? "Loading…" : loadingFees ? "Loading fees…" : "Proceed to Pay"}
           </Button>
         </CardFooter>
       </Card>
     </div>
-  )
+  );
 }

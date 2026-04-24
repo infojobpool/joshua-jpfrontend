@@ -20,6 +20,12 @@ import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, IndianRupee, Loader, Pencil, Upload, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import axiosInstance from "../../lib/axiosInstance";
+import {
+  fetchFeePreview,
+  feeLinesForDisplay,
+  formatInr,
+  type PosterFeeData,
+} from "@/lib/feePreview";
 import useStore from "../../lib/Zustand";
 import { handleAxiosError } from "../../lib/handleAxiosError";
 import LocationDetector from "../../components/LocationDetector";
@@ -143,6 +149,9 @@ export default function PostTaskPage() {
     total: number;
     remaining: number;
   } | null>(null);
+  const [posterFeePreview, setPosterFeePreview] = useState<PosterFeeData | null>(null);
+  const [posterFeePreviewLoading, setPosterFeePreviewLoading] = useState(false);
+  const [posterFeePreviewError, setPosterFeePreviewError] = useState<string | null>(null);
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
 
   useEffect(() => {
@@ -686,6 +695,43 @@ export default function PostTaskPage() {
 
   const budgetAmount = parseFloat(formData.budget.toString()) || 0;
 
+  useEffect(() => {
+    if (currentStep !== 4) {
+      return;
+    }
+    if (budgetAmount <= 0) {
+      setPosterFeePreview(null);
+      setPosterFeePreviewError(null);
+      setPosterFeePreviewLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setPosterFeePreviewLoading(true);
+    setPosterFeePreviewError(null);
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const data = (await fetchFeePreview(budgetAmount, "poster")) as PosterFeeData;
+          if (!cancelled) {
+            setPosterFeePreview(data);
+            setPosterFeePreviewError(null);
+          }
+        } catch (e: unknown) {
+          if (!cancelled) {
+            setPosterFeePreview(null);
+            setPosterFeePreviewError(e instanceof Error ? e.message : "Unable to load fee estimate");
+          }
+        } finally {
+          if (!cancelled) setPosterFeePreviewLoading(false);
+        }
+      })();
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [currentStep, budgetAmount]);
+
   const stepMeta = WIZARD_STEPS[currentStep - 1];
 
   return (
@@ -1044,6 +1090,58 @@ export default function PostTaskPage() {
                             </button>
                           </dd>
                         </div>
+                        {budgetAmount > 0 ? (
+                          <div className="rounded-xl border border-slate-200/80 bg-white px-3 py-2.5 text-xs text-slate-600">
+                            <p className="mb-1 font-medium text-slate-800">Payment estimate</p>
+                            {posterFeePreviewError ? (
+                              <p className="text-red-600">{posterFeePreviewError}</p>
+                            ) : posterFeePreviewLoading || !posterFeePreview ? (
+                              <p className="text-slate-500">Loading estimate…</p>
+                            ) : posterFeePreview.promo_fees_waived ? (
+                              <p className="text-emerald-800">
+                                Fees and taxes are waived — you&apos;ll pay the task budget only (
+                                {formatInr(Number(posterFeePreview.bid_amount ?? budgetAmount))}).
+                              </p>
+                            ) : (
+                              <>
+                                {feeLinesForDisplay(posterFeePreview.lines).map((line, idx) => (
+                                  <div key={line.id || `${line.label}-${idx}`} className="flex justify-between gap-2">
+                                    <span>{line.label}</span>
+                                    <span className="tabular-nums">{formatInr(Number(line.amount))}</span>
+                                  </div>
+                                ))}
+                                {(!posterFeePreview.lines || posterFeePreview.lines.length === 0) && (
+                                  <>
+                                    <div className="flex justify-between gap-2">
+                                      <span>Task budget</span>
+                                      <span className="tabular-nums">{formatInr(Number(posterFeePreview.bid_amount ?? budgetAmount))}</span>
+                                    </div>
+                                    {(posterFeePreview.commission_amount != null || posterFeePreview.platform_fee != null) && (
+                                      <div className="flex justify-between gap-2 text-slate-500">
+                                        <span>Platform fee</span>
+                                        <span className="tabular-nums">
+                                          {formatInr(Number(posterFeePreview.commission_amount ?? posterFeePreview.platform_fee ?? 0))}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {posterFeePreview.gst_amount != null && (
+                                      <div className="flex justify-between gap-2 text-slate-500">
+                                        <span>Taxes (GST)</span>
+                                        <span className="tabular-nums">{formatInr(Number(posterFeePreview.gst_amount))}</span>
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                                {posterFeePreview.payable_amount != null && (
+                                  <div className="mt-1 flex justify-between gap-2 border-t border-slate-100 pt-1 font-semibold text-slate-900">
+                                    <span>Total</span>
+                                    <span className="tabular-nums">{formatInr(Number(posterFeePreview.payable_amount))}</span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        ) : null}
                       </dl>
                     </div>
                   </div>

@@ -302,6 +302,7 @@ import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import axiosInstance from "../lib/axiosInstance";
+import { buildPaymentDescriptionFromPosterPreview, fetchFeePreview, type PosterFeeData } from "@/lib/feePreview";
 import { jobIdVariants } from "../lib/jobIdVariants";
 import { toast } from "sonner";
 import useStore from "@/lib/Zustand";
@@ -633,24 +634,30 @@ export function OffersSection({
         if (isStandalone) {
           setPaymentLinkLoading(true);
           try {
-            const commissionAmount = offer.amount * 0.05;
-            const gstAmount = (offer.amount + commissionAmount) * 0.18;
-            const totalAmount = offer.amount + commissionAmount + gstAmount;
-            const paymentDescription = [
-              `Payment for: ${task.title}`,
-              "",
-              "Cost breakdown:",
-              `• Bid amount: ₹${offer.amount.toFixed(2)}`,
-              `• Commission (5%): ₹${commissionAmount.toFixed(2)}`,
-              `• GST (18%): ₹${gstAmount.toFixed(2)}`,
-              `• Total: ₹${totalAmount.toFixed(2)}`,
-            ].join("\n");
+            let posterFees: PosterFeeData;
+            try {
+              posterFees = (await fetchFeePreview(offer.amount, "poster")) as PosterFeeData;
+            } catch (feeErr: unknown) {
+              const msg = feeErr instanceof Error ? feeErr.message : "Unable to load fees";
+              toast.error(msg);
+              setPaymentLinkLoading(false);
+              return;
+            }
+            const gstAmount = Number(posterFees.gst_amount ?? 0);
+            const commissionAmount = Number(posterFees.commission_amount ?? posterFees.platform_fee ?? 0);
+            const payableAmount = Number(posterFees.payable_amount ?? 0);
+            if (!payableAmount || payableAmount <= 0) {
+              toast.error("Invalid fee preview from server.");
+              setPaymentLinkLoading(false);
+              return;
+            }
+            const paymentDescription = buildPaymentDescriptionFromPosterPreview(task.title, posterFees);
             const paymentUrlRes = await axiosInstance.post("/create-payment-link/", {
               postId: task.id,
-              bid_amount: Number(offer.amount.toFixed(2)),
+              bid_amount: Number((posterFees.bid_amount ?? offer.amount).toFixed(2)),
               gst_amount: Number(gstAmount.toFixed(2)),
               commission_amount: Number(commissionAmount.toFixed(2)),
-              payable_amount: Number(totalAmount.toFixed(2)),
+              payable_amount: Number(payableAmount.toFixed(2)),
               tasker_id: offer.tasker.id,
               taskmanager_id: task.poster.id,
               task_title: task.title,
@@ -668,10 +675,10 @@ export function OffersSection({
                     order_id: d?.order_id || "",
                     tasker_id: offer.tasker.id,
                     taskmanager_id: task.poster.id,
-                    bid_amount: offer.amount,
-                    gst_amount: gstAmount,
-                    commission_amount: commissionAmount,
-                    payable_amount: Number((offer.amount + commissionAmount + gstAmount).toFixed(2)),
+                    bid_amount: Number((posterFees.bid_amount ?? offer.amount).toFixed(2)),
+                    gst_amount: Number(gstAmount.toFixed(2)),
+                    commission_amount: Number(commissionAmount.toFixed(2)),
+                    payable_amount: Number(payableAmount.toFixed(2)),
                   })
                 );
               } catch (_) {}
