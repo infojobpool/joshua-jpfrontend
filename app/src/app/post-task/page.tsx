@@ -414,6 +414,45 @@ export default function PostTaskPage() {
     return () => window.clearTimeout(id);
   }, [currentStep]);
 
+  // Must run unconditionally (same order every render) — was after `if (loading)` and caused Rules of Hooks crash.
+  useEffect(() => {
+    if (currentStep !== TOTAL_STEPS) {
+      return;
+    }
+    const budgetAmt = parseFloat(String(formData.budget)) || 0;
+    if (budgetAmt <= 0) {
+      setPosterFeePreview(null);
+      setPosterFeePreviewError(null);
+      setPosterFeePreviewLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setPosterFeePreviewLoading(true);
+    setPosterFeePreviewError(null);
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const data = (await fetchFeePreview(budgetAmt, "poster")) as PosterFeeData;
+          if (!cancelled) {
+            setPosterFeePreview(data);
+            setPosterFeePreviewError(null);
+          }
+        } catch (e: unknown) {
+          if (!cancelled) {
+            setPosterFeePreview(null);
+            setPosterFeePreviewError(e instanceof Error ? e.message : "Unable to load fee estimate");
+          }
+        } finally {
+          if (!cancelled) setPosterFeePreviewLoading(false);
+        }
+      })();
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [currentStep, formData.budget]);
+
   const validateStep = (step: number): boolean => {
     switch (step) {
       case 1:
@@ -694,43 +733,6 @@ export default function PostTaskPage() {
   };
 
   const budgetAmount = parseFloat(formData.budget.toString()) || 0;
-
-  useEffect(() => {
-    if (currentStep !== 4) {
-      return;
-    }
-    if (budgetAmount <= 0) {
-      setPosterFeePreview(null);
-      setPosterFeePreviewError(null);
-      setPosterFeePreviewLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setPosterFeePreviewLoading(true);
-    setPosterFeePreviewError(null);
-    const timer = setTimeout(() => {
-      void (async () => {
-        try {
-          const data = (await fetchFeePreview(budgetAmount, "poster")) as PosterFeeData;
-          if (!cancelled) {
-            setPosterFeePreview(data);
-            setPosterFeePreviewError(null);
-          }
-        } catch (e: unknown) {
-          if (!cancelled) {
-            setPosterFeePreview(null);
-            setPosterFeePreviewError(e instanceof Error ? e.message : "Unable to load fee estimate");
-          }
-        } finally {
-          if (!cancelled) setPosterFeePreviewLoading(false);
-        }
-      })();
-    }, 400);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [currentStep, budgetAmount]);
 
   const stepMeta = WIZARD_STEPS[currentStep - 1];
 
