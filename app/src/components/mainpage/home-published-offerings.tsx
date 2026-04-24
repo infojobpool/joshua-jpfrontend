@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { MapPin, Package } from "lucide-react";
 import type { Offering } from "@/lib/offerings/types";
-import { getHomeOfferingsCached } from "@/lib/homeOfferingsCache";
+import { getHomeOfferingsCached, readPersistedHomeOfferingsSnapshot } from "@/lib/homeOfferingsCache";
 import { cn } from "@/lib/utils";
 import useStore from "@/lib/Zustand";
 
@@ -133,6 +133,15 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
   const [rows, setRows] = useState<Offering[]>([]);
   const [loading, setLoading] = useState(true);
   const currentUserId = useStore((s) => s.user?.id ?? null);
+
+  /** Same pattern as recent tasks: last session snapshot before paint → no long empty skeleton on repeat visits. */
+  useLayoutEffect(() => {
+    const snap = readPersistedHomeOfferingsSnapshot(DESKTOP_MAX);
+    if (snap.fromCache) {
+      setRows(snap.rows);
+      setLoading(false);
+    }
+  }, []);
   const visibleRows = useMemo(() => {
     if (!currentUserId) return rows;
     return rows.filter((o) => String(o.userId) !== String(currentUserId));
