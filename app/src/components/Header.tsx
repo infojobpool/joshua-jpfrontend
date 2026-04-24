@@ -19,9 +19,15 @@ interface User {
 interface HeaderProps {
   user: User;
   onSignOut: () => void;
+  /** Hide logo + account menu (inner flows that use Back to Dashboard / local nav). */
+  minimal?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ user, onSignOut }) => {
+const Header: React.FC<HeaderProps> = ({ user, onSignOut, minimal }) => {
+  if (minimal) {
+    return null;
+  }
+
   return (
     <header className="border-b">
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">

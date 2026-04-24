@@ -626,7 +626,11 @@ export default function ProfilePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 via-slate-100/30 to-white">
-      <Header user={{ ...profileuser, avatar: resolveAvatarUrl(profileuser.avatar) || profileuser.avatar }} onSignOut={handleSignOut} />
+      <Header
+        user={{ ...profileuser, avatar: resolveAvatarUrl(profileuser.avatar) || profileuser.avatar }}
+        onSignOut={handleSignOut}
+        minimal
+      />
       <main className="flex-1 w-full min-w-0 max-w-6xl mx-auto box-border overflow-x-hidden py-6 md:py-10 px-4 md:px-6 pb-28 md:pb-10">
         <Link
           href="/dashboard"

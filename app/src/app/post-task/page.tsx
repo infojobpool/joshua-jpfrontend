@@ -740,6 +740,7 @@ export default function PostTaskPage() {
       <Header
         user={{ name: user.name, avatar: "/images/placeholder.svg" }}
         onSignOut={handleSignOut}
+        minimal
       />
       <main className="flex-1 container mx-auto max-w-3xl py-6 md:py-10 px-4 md:px-6">
         <Link

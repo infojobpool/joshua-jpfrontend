@@ -459,7 +459,11 @@ export default function CompletePageClient({ params }: TaskDetailPageProps) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header user={{ name: user.name, avatar: "/images/placeholder.svg" }} onSignOut={handleSignOut} />
+      <Header
+        user={{ name: user.name, avatar: "/images/placeholder.svg" }}
+        onSignOut={handleSignOut}
+        minimal
+      />
       <main className="flex-1 container py-6 md:py-10 px-4 md:px-6">
         <div className="max-w-2xl mx-auto">
           <div className="mb-6">

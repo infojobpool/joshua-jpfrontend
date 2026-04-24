@@ -398,7 +398,14 @@ export default function WalletPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 via-slate-100/30 to-white">
-      <Header user={headerUser} onSignOut={() => { useStore.getState().logout(); router.push("/"); }} />
+      <Header
+        user={headerUser}
+        onSignOut={() => {
+          useStore.getState().logout();
+          router.push("/");
+        }}
+        minimal
+      />
       <main className="flex-1 container mx-auto max-w-2xl py-6 px-4 md:px-6">
         <Link
           href="/dashboard"

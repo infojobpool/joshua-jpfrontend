@@ -197,7 +197,7 @@ export default function ListingRequestPage() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
         <Toaster />
-        <Header user={headerUser} onSignOut={handleSignOut} />
+        <Header user={headerUser} onSignOut={handleSignOut} minimal />
         <div className="container max-w-lg mx-auto px-4 py-10 pb-24">
           <Card className="border-0 shadow-lg rounded-2xl ring-1 ring-slate-200/80 overflow-hidden">
             <CardHeader className="bg-gradient-to-br from-blue-50 to-white border-b border-slate-100">
@@ -244,7 +244,7 @@ export default function ListingRequestPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50/80">
       <Toaster />
-      <Header user={headerUser} onSignOut={handleSignOut} />
+      <Header user={headerUser} onSignOut={handleSignOut} minimal />
       <div className="container max-w-xl mx-auto px-4 py-6 pb-28 md:pb-12">
         <div className="mb-6">
           <Link

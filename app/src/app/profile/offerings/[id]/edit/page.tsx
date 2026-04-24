@@ -96,6 +96,7 @@ export default function EditOfferingPage() {
           logout();
           router.push("/");
         }}
+        minimal
       />
       <main className="container mx-auto max-w-2xl pb-16">
         <OfferingEditorForm userId={userId} initial={offering} isNew={false} />

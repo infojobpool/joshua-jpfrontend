@@ -29,7 +29,6 @@ import { FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Task, User, Bid, Offer, ApiBidResponse, ApiJobResponse } from "../../types";
 import { Button } from "@/components/ui/button";
-import Header from "@/components/Header";
 import { ShareTaskButton } from "@/components/ShareTaskButton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { analytics } from "@/lib/analytics";
@@ -1834,15 +1833,6 @@ export default function TaskDetailPage() {
     );
   };
 
-  const handleSignOut = () => {
-    console.log("handleSignOut called");
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-    localStorage.removeItem("bids");
-    logout();
-    router.push("/");
-  };
-
   // Clear stale payment flags immediately when task is in_progress (avoids verification-pending flicker)
   useEffect(() => {
     if (!task || !id) return;
@@ -2036,13 +2026,6 @@ export default function TaskDetailPage() {
     );
   }
 
-  // Don't block on userProfile – use user from store/localStorage for header; profile loads in background
-  const headerUser = userProfile
-    ? { name: userProfile.name, avatar: userProfile.avatar }
-    : user
-      ? { name: user.name, avatar: user.avatar || "/images/placeholder.svg" }
-      : { name: "User", avatar: "/images/placeholder.svg" };
-
   if (!task) {
     const isConnectionErr = loadError === "connection";
     return (
@@ -2084,8 +2067,7 @@ export default function TaskDetailPage() {
   return (
     <div className="min-h-0 bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 md:min-h-screen">
       <Toaster position="top-right" />
-      <Header user={headerUser} onSignOut={handleSignOut} />
-      
+
       {/* Premium Back Navigation */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 shadow-sm">
         <div className="container mx-auto max-w-7xl px-4 md:px-6 py-4 flex items-center justify-between">
