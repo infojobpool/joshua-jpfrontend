@@ -254,6 +254,35 @@ export function readPersistedHomeSnapshot(limit: number): {
 }
 
 /**
+ * Dashboard / browse fast path: only GET /recent-open-jobs/ (small payload).
+ * Does not touch the home cache or fall back to get-all-jobs — avoids duplicate heavy calls
+ * when the dashboard also fetches the full list in parallel.
+ */
+export async function fetchRecentOpenJobsQuick(
+  limit = 48,
+  signal?: AbortSignal
+): Promise<RawJob[]> {
+  try {
+    const recent = await axiosInstance.get("/recent-open-jobs/", {
+      params: { limit },
+      signal,
+      timeout: 12_000,
+    });
+    const rd = recent?.data;
+    if (!isGetAllJobsResponseOk(rd, recent?.status)) return [];
+    let jobs = extractJobsArray(rd);
+    if (jobs.length === 0 && rd && typeof rd === "object") {
+      const r = rd as Record<string, unknown>;
+      if (Array.isArray(r.results)) jobs = r.results as RawJob[];
+    }
+    if (jobs.length === 0) return [];
+    return jobs.map(coerceRecentRowToRawJob);
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Single-flight cached fetch for homepage sections (recent tasks + scroller).
  * Avoids duplicate /get-all-jobs/ when both components mount (mobile + desktop hidden siblings).
  */

@@ -6,28 +6,6 @@ import { ChevronDown, Smartphone, UserCheck, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePayoutSetupIncomplete } from "@/hooks/usePayoutSetupIncomplete";
 
-function WelcomeBonusCardSkeleton() {
-  return (
-    <section
-      className="md:hidden scroll-mt-4 bg-slate-100 px-4 pt-1 pb-3"
-      aria-busy="true"
-      aria-label="Loading welcome offer"
-    >
-      <div className="max-w-md mx-auto overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="px-2.5 pt-3 pb-1">
-          <div className="relative w-full aspect-[512/341] overflow-hidden rounded-3xl bg-slate-200/80 animate-pulse" />
-        </div>
-        <div className="px-4 pt-3 pb-4 space-y-3">
-          <div className="h-4 w-48 rounded-md bg-slate-200/90 animate-pulse" />
-          <div className="h-3 w-full max-w-[18rem] rounded-md bg-slate-100 animate-pulse" />
-          <div className="h-3 w-full max-w-[14rem] rounded-md bg-slate-100 animate-pulse" />
-          <div className="mt-4 h-11 w-full rounded-xl bg-slate-100 animate-pulse" />
-        </div>
-      </div>
-    </section>
-  );
-}
-
 /**
  * Mobile-only: minimal ₹100 welcome bonus card with expand/collapse (hash #welcome-bonus opens it).
  */
@@ -48,8 +26,9 @@ export function MobileWelcomeBonus() {
     return () => window.removeEventListener("hashchange", syncHash);
   }, [syncHash]);
 
+  // Avoid a large skeleton between hero and "Recent tasks" while profile+wallet load (often several seconds).
   if (awaitingEligibility) {
-    return <WelcomeBonusCardSkeleton />;
+    return null;
   }
 
   // Only mount the banner (and image) once eligibility is known. Showing while

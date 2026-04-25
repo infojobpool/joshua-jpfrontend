@@ -46,6 +46,7 @@ import {
   Eye,
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
+import { fetchRecentOpenJobsQuick } from "@/lib/homeJobsCache";
 import { jobIdVariants } from "@/lib/jobIdVariants";
 import useStore from "@/lib/Zustand";
 import { formatDateWithTime } from "@/lib/utils";
@@ -1612,6 +1613,9 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user || !(userId || effectiveUserId)) return;
 
+    const quickFetchController = new AbortController();
+    let fullAvailableFetchSettled = false;
+
     const mapJobToTask = (job: any): Task => {
       const jobStatus = job.job_completion_status === 1 ? "completed" : job.deletion_status ? "deleted" : job.cancel_status ? "canceled" : "open";
       const postedMeta = formatTimestampValue(job.created_at || job.tstamp || job.timestamp || job.job_tstamp || job.job_created_at || job.created_date);
@@ -1643,6 +1647,29 @@ export default function Dashboard() {
         distance_km: typeof job.distance_km === "number" ? job.distance_km : undefined,
       };
     };
+
+    const uid = (userId || effectiveUserId)?.toString();
+    void fetchRecentOpenJobsQuick(56, quickFetchController.signal).then((raw) => {
+      if (quickFetchController.signal.aborted || fullAvailableFetchSettled || raw.length === 0) return;
+      try {
+        const quickTasks = raw
+          .filter((job: any) => {
+            const jobPostedById = String(job.user_ref_id ?? "");
+            const isNotPostedByUser = jobPostedById !== uid;
+            const isOpen =
+              job.job_completion_status !== 1 &&
+              !job.deletion_status &&
+              !job.cancel_status;
+            return isNotPostedByUser && isOpen;
+          })
+          .map(mapJobToTask);
+        if (quickTasks.length > 0) {
+          setAvailableTasks(dedupeTasksByContent(dedupeTasksById(quickTasks)));
+        }
+      } catch {
+        /* ignore */
+      }
+    });
 
     const fetchAllTasks = async () => {
       try {
@@ -1812,12 +1839,16 @@ export default function Dashboard() {
         console.log("🔄 Keeping existing available tasks due to API error");
         // Quiet down the UI: log the issue but avoid spamming the user with toasts
       } finally {
+        fullAvailableFetchSettled = true;
         console.log("🔍 fetchAllTasks completed");
         // avoid global loader flicker
       }
     };
 
     fetchAllTasks();
+    return () => {
+      quickFetchController.abort();
+    };
   }, [user, userId, refetchAvailableTrigger, nearMeMode, userCoords, radiusKm]);
 
   // Fetch user's bids
