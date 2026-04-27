@@ -112,7 +112,6 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { resolveProfileImageUrl } from '@/lib/profileImage';
-import { profilePageHref } from '@/lib/profilePublicView';
 
 interface User {
   id: string;
@@ -166,7 +165,7 @@ export function PosterInfo({ poster, isTaskPoster, handleMessageUser, isPaymentP
           </div>
           <div className="flex-1">
             <Link
-              href={profilePageHref(String(poster.id), "task")}
+              href={`/profilepage/${poster.id}`}
               className="text-sm font-semibold text-gray-800 hover:text-blue-600 transition-colors duration-200"
             >
               {poster.name}

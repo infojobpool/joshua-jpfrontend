@@ -1,5 +1,3 @@
-import { Suspense } from "react";
-import { BrandedPageLoader } from "@/components/BrandedPageLoader";
 import ProfilePageClient from "./ProfilePageClient";
 
 export async function generateStaticParams() {
@@ -7,10 +5,6 @@ export async function generateStaticParams() {
 }
 
 export default function ProfilePage() {
-  return (
-    <Suspense fallback={<BrandedPageLoader subtitle="Opening profile" />}>
-      <ProfilePageClient />
-    </Suspense>
-  );
+  return <ProfilePageClient />;
 }
 

@@ -314,7 +314,6 @@ import { toast } from "sonner";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { profilePageHref } from "@/lib/profilePublicView";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./ui/dialog";
 import { NoOffersEmptyState } from "./NoOffersEmptyState";
 
@@ -895,7 +894,7 @@ export function OffersSection({
               <div className="flex justify-between items-start gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <Link
-                    href={profilePageHref(String(offer.tasker.id), "bids")}
+                    href={`/profilepage/${offer.tasker.id}`}
                     className="flex items-center gap-3 min-w-0 hover:opacity-90"
                   >
                     <Avatar className="h-10 w-10 shrink-0 ring-2 ring-slate-100">

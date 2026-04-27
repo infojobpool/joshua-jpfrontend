@@ -246,7 +246,11 @@ export default function ProfilePage() {
     const fetchProfile = async () => {
       const now = Date.now();
       if (fetchProfileRef.current) return;
-      if (now - lastFetchTimeRef.current < FETCH_COOLDOWN_MS && lastFetchTimeRef.current > 0) return;
+      // Cooldown skip must clear loading — this path skips try/finally, which otherwise leaves a stuck spinner.
+      if (now - lastFetchTimeRef.current < FETCH_COOLDOWN_MS && lastFetchTimeRef.current > 0) {
+        setIsLoading(false);
+        return;
+      }
       // Derive userId from localStorage as a fallback for slow hydration
       let effectiveUserId = userId as any;
       if (!effectiveUserId) {
@@ -396,7 +400,8 @@ export default function ProfilePage() {
       }
     }, 8000);
     return () => clearTimeout(retry);
-  }, [userId, logout, router]);
+    // Omit `router` from deps — it can change identity on client navigations and retrigger fetch + cooldown early-return without finally.
+  }, [userId, logout]);
 
   const handleSignOut = () => {
     logout();
@@ -612,14 +617,22 @@ export default function ProfilePage() {
     }
   };
 
-  if (isLoading) return (
-    <div className="flex h-screen items-center justify-center bg-white">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-10 h-10 rounded-full border border-slate-200 border-t-blue-500 animate-spin" style={{ animationDuration: "0.85s" }} />
-        <span className="text-sm text-slate-500 font-medium">Loading profile...</span>
+  if (isLoading) {
+    const tab = searchParams.get("tab");
+    const loadingLabel =
+      tab === "listings" ? "Loading listings…" : tab === "reviews" ? "Loading reviews…" : "Loading profile…";
+    return (
+      <div className="flex h-screen items-center justify-center bg-white">
+        <div className="flex flex-col items-center gap-4">
+          <div
+            className="w-10 h-10 rounded-full border border-slate-200 border-t-blue-500 animate-spin"
+            style={{ animationDuration: "0.85s" }}
+          />
+          <span className="text-sm text-slate-500 font-medium">{loadingLabel}</span>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
   if (error) return <div>Error: {error}</div>;
 
   // Use unified profile page for both mobile and desktop so data is consistent

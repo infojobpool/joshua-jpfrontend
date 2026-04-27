@@ -161,7 +161,6 @@ import { resolveApiMediaUrl } from "@/lib/profileImage";
 import { hasRealProfilePhotoUrl } from "@/lib/payoutProfileCompletion";
 import { useRouter } from "next/navigation";
 import type { PosterReviewSnippet } from "@/app/types";
-import { profilePageHref } from "@/lib/profilePublicView";
 
 // Interfaces
 interface Task {
@@ -663,7 +662,7 @@ export function TaskInfo({
             <div className="flex gap-3">
               {task.poster?.id ? (
                 <Link
-                  href={profilePageHref(String(task.poster.id), "task")}
+                  href={`/profilepage/${task.poster.id}`}
                   className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 shadow-sm ring-2 ring-white transition-shadow hover:ring-blue-200"
                 >
                   {showPosterPhoto ? (
@@ -694,7 +693,7 @@ export function TaskInfo({
               <div className="min-w-0 flex-1 space-y-2">
                 {task.poster?.id ? (
                   <Link
-                    href={profilePageHref(String(task.poster.id), "task")}
+                    href={`/profilepage/${task.poster.id}`}
                     className="block truncate text-sm font-semibold text-slate-900 hover:text-blue-700"
                   >
                     {task.poster?.name || "Unknown"}
@@ -728,7 +727,7 @@ export function TaskInfo({
                           </div>
                           {task.poster?.id ? (
                             <Link
-                              href={profilePageHref(String(task.poster.id), "task")}
+                              href={`/profilepage/${task.poster.id}`}
                               className="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400"
                             >
                               View on profile
@@ -749,7 +748,7 @@ export function TaskInfo({
                           </div>
                           {task.poster?.id ? (
                             <Link
-                              href={profilePageHref(String(task.poster.id), "task")}
+                              href={`/profilepage/${task.poster.id}`}
                               className="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400"
                             >
                               View profile
@@ -762,7 +761,7 @@ export function TaskInfo({
                       <p className="mt-1 text-[11px] leading-snug text-slate-500 dark:text-slate-400">
                         Reviews from taskers show here after completed jobs.{" "}
                         {task.poster?.id ? (
-                          <Link href={profilePageHref(String(task.poster.id), "task")} className="font-medium text-blue-600 hover:underline dark:text-blue-400">
+                          <Link href={`/profilepage/${task.poster.id}`} className="font-medium text-blue-600 hover:underline dark:text-blue-400">
                             Open profile
                           </Link>
                         ) : null}

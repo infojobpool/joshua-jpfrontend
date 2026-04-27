@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Star, MapPin, Briefcase, Package, BadgeCheck } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
@@ -31,11 +31,6 @@ import { Button } from "@/components/ui/button";
 import { PublicOfferingsList } from "@/components/profile/PublicOfferingsList";
 import { ProfilePortfolioSlider } from "@/components/profile/ProfilePortfolioSlider";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
-import {
-  readProfileListingsSessionOptIn,
-  shouldHidePublicListingsFromParams,
-  writeProfileListingsSessionOptIn,
-} from "@/lib/profilePublicView";
 import { BrandedPageLoader } from "@/components/BrandedPageLoader";
 
 interface Address {
@@ -69,7 +64,6 @@ interface Review {
 export default function ProfilePageClient() {
   const router = useRouter();
   const { userId } = useParams();
-  const searchParams = useSearchParams();
   const { userId: loggedInUserId } = useStore();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +77,6 @@ export default function ProfilePageClient() {
     verification_status: 0,
   });
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [sessionListingsOptIn, setSessionListingsOptIn] = useState(false);
 
   const averageRating =
     reviews.length > 0
@@ -94,21 +87,6 @@ export default function ProfilePageClient() {
   const profileIdStr = String(userId ?? "");
   const viewerIsOwner =
     Boolean(loggedInUserId) && String(loggedInUserId) === profileIdStr;
-
-  useEffect(() => {
-    setSessionListingsOptIn(readProfileListingsSessionOptIn(profileIdStr));
-  }, [profileIdStr]);
-
-  useEffect(() => {
-    const show = searchParams.get("showListings")?.trim().toLowerCase();
-    if (show === "1" || show === "true" || show === "yes") {
-      writeProfileListingsSessionOptIn(profileIdStr);
-      setSessionListingsOptIn(true);
-    }
-  }, [searchParams, profileIdStr]);
-
-  const hideFromParams = !viewerIsOwner && shouldHidePublicListingsFromParams(searchParams);
-  const hidePublicListings = hideFromParams && !sessionListingsOptIn;
 
   const isFullyVerified = profileUser.verification_status >= 3;
 
@@ -271,51 +249,29 @@ export default function ProfilePageClient() {
             <Card className="border-0 shadow-lg rounded-2xl overflow-hidden ring-1 ring-slate-200/80">
               <CardHeader className="border-b border-slate-100/80 bg-gradient-to-b from-slate-50/95 via-white to-white py-6">
                 <CardTitle className="text-xl font-bold text-slate-800">About this member</CardTitle>
-                <CardDescription>
-                  {hidePublicListings
-                    ? "Portfolio and reviews — listings hidden for this quick view."
-                    : "Portfolio showcase, then listings and reviews below"}
-                </CardDescription>
+                <CardDescription>Portfolio showcase, then listings and reviews below</CardDescription>
               </CardHeader>
               <CardContent className="pt-5 px-3 sm:px-6 pb-6 space-y-6">
                 <ProfilePortfolioSlider userId={profileIdStr} viewerIsOwner={viewerIsOwner} />
-                {hidePublicListings ? (
-                  <p className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-center text-sm text-slate-600">
-                    Service listings are tucked away for this view.{" "}
-                    <Link
-                      href={`/profilepage/${encodeURIComponent(profileIdStr)}?showListings=1`}
-                      className="font-semibold text-blue-700 hover:text-blue-800 hover:underline"
-                    >
-                      Show public listings
-                    </Link>
-                  </p>
-                ) : null}
-                <Accordion
-                  key={`profile-sections-${profileIdStr}-${hidePublicListings ? "compact" : "full"}`}
-                  type="multiple"
-                  defaultValue={hidePublicListings ? ["reviews"] : ["listings"]}
-                  className="w-full space-y-3"
-                >
-                  {!hidePublicListings ? (
-                    <AccordionItem
-                      value="listings"
-                      className="rounded-2xl border border-blue-200/70 bg-blue-50/25 px-3 sm:px-4 border-b-0"
-                    >
-                      <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
-                        <span className="flex flex-wrap items-center gap-2 pr-2">
-                          <Package className="h-5 w-5 text-blue-600 shrink-0" />
-                          <span className="text-base font-semibold text-slate-900">Public listings</span>
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent className="pb-4">
-                        <PublicOfferingsList
-                          profileUserId={profileIdStr}
-                          providerName={profileUser.name || "Member"}
-                          viewerIsOwner={viewerIsOwner}
-                        />
-                      </AccordionContent>
-                    </AccordionItem>
-                  ) : null}
+                <Accordion type="multiple" defaultValue={["listings"]} className="w-full space-y-3">
+                  <AccordionItem
+                    value="listings"
+                    className="rounded-2xl border border-blue-200/70 bg-blue-50/25 px-3 sm:px-4 border-b-0"
+                  >
+                    <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
+                      <span className="flex flex-wrap items-center gap-2 pr-2">
+                        <Package className="h-5 w-5 text-blue-600 shrink-0" />
+                        <span className="text-base font-semibold text-slate-900">Public listings</span>
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-4">
+                      <PublicOfferingsList
+                        profileUserId={profileIdStr}
+                        providerName={profileUser.name || "Member"}
+                        viewerIsOwner={viewerIsOwner}
+                      />
+                    </AccordionContent>
+                  </AccordionItem>
 
                   <AccordionItem
                     value="reviews"

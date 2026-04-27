@@ -21,7 +21,8 @@ import { toast } from "sonner";
 import axiosInstance from "../lib/axiosInstance";
 import useStore from "../lib/Zustand";
 import axios, { AxiosError } from "axios";
-import { getApiErrorMessage } from "../lib/apiError";
+import { adminLoginPostPath } from "../lib/adminLoginPath";
+import { formatAxiosApiError, getApiErrorMessage } from "../lib/apiError";
 import { Alert, AlertDescription, AlertTitle } from "../components/ui/alert";
 
 export default function AdminLoginPage() {
@@ -54,7 +55,7 @@ export default function AdminLoginPage() {
     try {
       setIsLoading(true);
       setLoginError(null);
-      const response = await axiosInstance.post("/admin-login/", {
+      const response = await axiosInstance.post(adminLoginPostPath(), {
         user_email: formData.user_email,
         email: formData.user_email,
         password: formData.password,
@@ -84,18 +85,25 @@ export default function AdminLoginPage() {
         const axiosError = err as AxiosError<Record<string, unknown>>;
         const status = axiosError.response?.status;
         const msg = getApiErrorMessage(err);
+        /** No HTTP response (CORS, DNS, offline, wrong API URL) — show URL + env hint, not generic "Request failed". */
+        const noResponseDetail = formatAxiosApiError(err);
 
         if (status === 403) {
           setLoginError(msg);
           toast.error(msg, { duration: 8000 });
         } else if (status === 404) {
-          setLoginError(msg || "User not found.");
-          toast.error(msg || "User not found.");
+          setLoginError(
+            `${noResponseDetail} If your API uses another path, set Vercel env NEXT_PUBLIC_ADMIN_LOGIN_PATH (e.g. admin/login/) and redeploy.`,
+          );
+          toast.error("Admin login URL not found (404). Check API route and env NEXT_PUBLIC_ADMIN_LOGIN_PATH.");
         } else if (status === 401) {
           setLoginError(msg || "Invalid email or password.");
           toast.error(
             msg || "Invalid email or password. Try again or use Forgot password."
           );
+        } else if (status == null) {
+          setLoginError(noResponseDetail);
+          toast.error("Cannot reach API — check Network tab and Vercel env NEXT_PUBLIC_API_BASE_URL.");
         } else {
           setLoginError(msg || "Login failed. Please try again.");
           toast.error(msg || "An error occurred while logging in");

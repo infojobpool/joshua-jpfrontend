@@ -125,6 +125,60 @@ interface TaskOrder {
   created_at?: string;
 }
 
+const DASHBOARD_CACHE_KEY = "admin_dashboard_data";
+const DASHBOARD_CACHE_TTL_MS = 120_000;
+/** Admin list endpoints can be slow on cold API; avoid aborting before first byte. */
+const DASHBOARD_FETCH_TIMEOUT_MS = 45_000;
+
+function coerceUserList(res: { data?: unknown }): User[] {
+  const root = res?.data as Record<string, unknown> | undefined;
+  const raw = (root?.data ?? root) as unknown;
+  if (Array.isArray(raw)) return raw as User[];
+  if (raw && typeof raw === "object") {
+    const o = raw as Record<string, unknown>;
+    for (const k of ["users", "results", "items", "user_list"]) {
+      const v = o[k];
+      if (Array.isArray(v)) return v as User[];
+    }
+  }
+  return [];
+}
+
+function coerceJobList(res: { data?: unknown }): Job[] {
+  const root = res?.data as Record<string, unknown> | undefined;
+  const inner = root?.data as Record<string, unknown> | undefined;
+  let jobs: unknown =
+    inner?.jobs ?? (root as Record<string, unknown> | undefined)?.jobs ?? root?.data ?? root;
+  if (Array.isArray(jobs)) return jobs as Job[];
+  if (jobs && typeof jobs === "object") {
+    const o = jobs as Record<string, unknown>;
+    for (const k of ["jobs", "results", "items"]) {
+      const v = o[k];
+      if (Array.isArray(v)) return v as Job[];
+    }
+  }
+  return [];
+}
+
+function coerceTaskOrderRows(res: { data?: unknown }): unknown[] {
+  const root = res?.data as Record<string, unknown> | undefined;
+  const inner = root?.data as Record<string, unknown> | undefined;
+  const raw =
+    inner?.task_orders ??
+    (root as Record<string, unknown> | undefined)?.task_orders ??
+    root?.data ??
+    [];
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === "object") {
+    const o = raw as Record<string, unknown>;
+    for (const k of ["task_orders", "orders", "results", "items"]) {
+      const v = o[k];
+      if (Array.isArray(v)) return v;
+    }
+  }
+  return [];
+}
+
 export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -132,48 +186,71 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchData = async () => {
+    const cacheKey = DASHBOARD_CACHE_KEY;
+    const tsKey = `${cacheKey}_timestamp`;
+    let hadRenderableCache = false;
+
+    const applyCache = (cachedStr: string) => {
+      const data = JSON.parse(cachedStr) as {
+        users?: unknown;
+        jobs?: unknown;
+        taskOrders?: unknown;
+      };
+      const u = Array.isArray(data.users) ? data.users : [];
+      const j = Array.isArray(data.jobs) ? data.jobs : [];
+      const o = Array.isArray(data.taskOrders) ? data.taskOrders : [];
+      if (u.length || j.length || o.length) {
+        setUsers(u as User[]);
+        setJobs(j as Job[]);
+        setTaskOrders(o as TaskOrder[]);
+        return true;
+      }
+      return false;
+    };
+
     try {
-      setIsLoading(true);
-      
-      // Check cache first
-      const cacheKey = "admin_dashboard_data";
       const cachedData = localStorage.getItem(cacheKey);
-      const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
-      
-      // Use cache if less than 2 minutes old
-      if (cachedData && cacheTimestamp) {
-        const age = Date.now() - parseInt(cacheTimestamp);
-        if (age < 120000) { // 2 minutes
-          console.log("Dashboard: Using cached data");
-          const data = JSON.parse(cachedData);
-          setUsers(data.users || []);
-          setJobs(data.jobs || []);
-          setTaskOrders(data.taskOrders || []);
-          setIsLoading(false);
-          return;
+      const cacheTimestamp = localStorage.getItem(tsKey);
+
+      if (cachedData) {
+        try {
+          if (applyCache(cachedData)) {
+            hadRenderableCache = true;
+            const age = cacheTimestamp ? Date.now() - parseInt(cacheTimestamp, 10) : Number.POSITIVE_INFINITY;
+            if (age < DASHBOARD_CACHE_TTL_MS) {
+              setIsLoading(false);
+              return;
+            }
+            setIsLoading(true);
+          }
+        } catch {
+          /* ignore corrupt cache */
         }
       }
-      
-      console.log("Dashboard: Fetching fresh data...");
-      
-      // Add timeouts to prevent hanging requests
+
+      if (!hadRenderableCache) {
+        setIsLoading(true);
+      }
+
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
-      
+      const timeoutId = setTimeout(() => controller.abort(), DASHBOARD_FETCH_TIMEOUT_MS);
+
       const [usersResponse, jobsResponse, taskOrdersResponse] = await Promise.all([
         axiosInstance.get("all-user-details/", { signal: controller.signal }),
         axiosInstance.get("get-all-jobs-admin/", { signal: controller.signal }),
-        axiosInstance.get("get-all-task-orders/", { signal: controller.signal }).catch(() => ({ data: { data: { task_orders: [] } } })),
+        axiosInstance
+          .get("get-all-task-orders/", { signal: controller.signal })
+          .catch(() => ({ data: { data: { task_orders: [] as unknown[] } } })),
       ]);
-      
+
       clearTimeout(timeoutId);
 
-      const users = usersResponse.data?.data || usersResponse.data || [];
-      const jobs = jobsResponse.data?.data?.jobs || [];
-      const rawOrders = taskOrdersResponse?.data?.data?.task_orders || [];
+      const users = coerceUserList(usersResponse);
+      const jobs = coerceJobList(jobsResponse);
+      const rawOrders = coerceTaskOrderRows(taskOrdersResponse);
       const orders: TaskOrder[] = rawOrders.map((o: any) => ({
         order_id: o.order_id,
-        status: typeof o.status === "number" ? o.status : parseInt(o.status, 10),
+        status: typeof o.status === "number" ? o.status : parseInt(String(o.status), 10),
         bid_amount: Number(o.bid_amount) || 0,
         tasker_name: o.tasker_name,
         created_at: o.created_at || o.updated_at,
@@ -182,19 +259,23 @@ export default function AdminDashboard() {
       setUsers(users);
       setJobs(jobs);
       setTaskOrders(orders);
-      
-      // Cache the data
-      localStorage.setItem(cacheKey, JSON.stringify({ users, jobs, taskOrders: orders }));
-      localStorage.setItem(`${cacheKey}_timestamp`, Date.now().toString());
-      
+
+      if (users.length || jobs.length || orders.length) {
+        localStorage.setItem(cacheKey, JSON.stringify({ users, jobs, taskOrders: orders }));
+        localStorage.setItem(tsKey, Date.now().toString());
+      }
+
       console.log(`Dashboard: Loaded ${users.length} users and ${jobs.length} jobs`);
-      
     } catch (error: any) {
       console.error("Dashboard fetch error:", error);
-      if (error.name === 'AbortError') {
-        toast.error("Request timed out. Please try again.");
-      } else {
-        toast.error("An error occurred while fetching data");
+      if (!hadRenderableCache) {
+        if (error?.name === "AbortError") {
+          toast.error("Request timed out. Please try again.");
+        } else {
+          toast.error("An error occurred while fetching data");
+        }
+      } else if (error?.name === "AbortError") {
+        toast.message("Still showing last loaded data; refresh timed out.");
       }
     } finally {
       setIsLoading(false);
@@ -206,8 +287,8 @@ export default function AdminDashboard() {
   }, []);
 
   const handleRefresh = () => {
-    localStorage.removeItem("admin_dashboard_data");
-    localStorage.removeItem("admin_dashboard_data_timestamp");
+    localStorage.removeItem(DASHBOARD_CACHE_KEY);
+    localStorage.removeItem(`${DASHBOARD_CACHE_KEY}_timestamp`);
     fetchData();
   };
 

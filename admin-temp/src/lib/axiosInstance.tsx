@@ -25,7 +25,8 @@ const axiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: true,
+  /** Must stay false unless the API sends real cookies + CORS uses a concrete origin (not `*`). Credentialed + `*` = browser blocks → "Provisional headers" + failed admin-login. */
+  withCredentials: false,
   timeout: 30000,
   maxRedirects: 0,
 });
@@ -113,7 +114,7 @@ axiosInstance.interceptors.response.use(
         `${API_BASE}/refresh-token/`,
         {},
         {
-          withCredentials: true,
+          withCredentials: false,
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
