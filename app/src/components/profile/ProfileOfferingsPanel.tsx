@@ -60,21 +60,22 @@ export function ProfileOfferingsPanel({ userId }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="min-w-0">
-          <p className="text-sm text-slate-700">
-            <span className="font-semibold text-slate-900">{used}</span>
-            <span className="text-slate-500"> / {maxSlots} live slots</span>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="min-w-0 rounded-lg bg-slate-50/90 px-3 py-2 ring-1 ring-slate-100 sm:px-3.5 sm:py-2.5">
+          <p className="text-sm text-slate-800">
+            <span className="font-bold tabular-nums text-emerald-800">{used}</span>
+            <span className="font-medium text-slate-500"> / {maxSlots}</span>
+            <span className="text-slate-500"> live slots</span>
             {readOfferingSubscriptionMock() ? (
               <span className="text-slate-500"> · subscription</span>
             ) : null}
           </p>
-          <p className="text-xs text-slate-500 mt-0.5 leading-snug">
+          <p className="mt-0.5 text-[11px] leading-snug text-slate-500 sm:text-xs">
             Drafts don&apos;t use a slot. Limits are enforced on the server.
           </p>
         </div>
         {list.length > 0 ? (
-          <Button asChild size="sm" className="rounded-lg bg-emerald-600 hover:bg-emerald-700 shrink-0 w-full sm:w-auto">
+          <Button asChild size="sm" className="h-10 w-full shrink-0 rounded-xl bg-emerald-600 text-sm font-semibold hover:bg-emerald-700 sm:h-9 sm:w-auto">
             <Link href="/profile/offerings/new">
               <Plus className="mr-2 h-4 w-4" />
               Add listing
@@ -84,13 +85,19 @@ export function ProfileOfferingsPanel({ userId }: Props) {
       </div>
 
       {list.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200/90 bg-slate-50/40 px-4 py-6 sm:p-8 text-center">
-          <Package className="mx-auto h-10 w-10 text-slate-300" />
-          <p className="mt-2 text-sm font-semibold text-slate-800">No listings yet</p>
-          <p className="mt-1 text-xs sm:text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
-            Add a service or product clients can book from your public profile.
+        <div className="rounded-xl border border-dashed border-emerald-200/60 bg-gradient-to-b from-emerald-50/40 to-white px-4 py-5 text-center sm:py-6">
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100/80 text-emerald-700 ring-4 ring-white">
+            <Package className="h-5 w-5" aria-hidden />
+          </div>
+          <p className="mt-3 text-sm font-bold text-slate-900">Nothing live yet</p>
+          <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-slate-600 sm:text-sm">
+            Add your first service or product so clients can book you from your public profile and the listings feed.
           </p>
-          <Button asChild size="sm" className="mt-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 w-full max-w-xs mx-auto">
+          <Button
+            asChild
+            size="sm"
+            className="mx-auto mt-4 h-11 w-full max-w-xs rounded-xl bg-emerald-600 text-sm font-semibold shadow-sm hover:bg-emerald-700"
+          >
             <Link href="/profile/offerings/new">
               <Plus className="mr-2 h-4 w-4" />
               Add listing

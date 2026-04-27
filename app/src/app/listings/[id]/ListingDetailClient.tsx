@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, MapPin, Package } from "lucide-react";
+import { useParams } from "next/navigation";
+import { Check, ChevronLeft, ChevronRight, MapPin, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getPublicOfferingByIdApi } from "@/lib/offerings/api";
 import type { Offering } from "@/lib/offerings/types";
@@ -26,7 +26,6 @@ function buildListingRequestHref(o: Offering): string {
 
 export default function ListingDetailClient() {
   const params = useParams();
-  const router = useRouter();
   const id = typeof params?.id === "string" ? params.id : "";
   const userId = useStore((s) => s.userId);
 
@@ -142,35 +141,14 @@ export default function ListingDetailClient() {
     });
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-28 md:pb-12">
-      <ListingDetailChrome listingTitle={o.title} />
+    <div className="min-h-screen bg-gradient-to-b from-slate-100/80 via-slate-50 to-white pb-28 md:pb-12">
+      <ListingDetailChrome />
 
-      <div className="mx-auto max-w-6xl px-4 pt-2">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="inline-flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-slate-900"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Back
-        </button>
-      </div>
-
-      <article className="mx-auto max-w-6xl px-4 pb-10 pt-4">
-        <nav className="mb-3 hidden text-xs text-slate-500 sm:flex sm:flex-wrap sm:items-center sm:gap-1.5">
-          <Link href="/listings" className="hover:text-slate-800">
-            Listings
-          </Link>
-          <span aria-hidden className="text-slate-300">
-            /
-          </span>
-          <span className="font-medium text-slate-700">{category}</span>
-        </nav>
-
-        <div className="flex flex-col gap-8 md:flex-row md:items-start md:gap-10">
+      <article className="mx-auto max-w-6xl px-4 pb-12 pt-4 sm:px-5 sm:pt-5">
+        <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8 lg:gap-10">
           {/* Main column */}
-          <div className="min-w-0 flex-1 space-y-6">
-            <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm">
+          <div className="min-w-0 flex-1 space-y-5">
+            <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-md ring-1 ring-slate-100/80">
               <div
                 className="relative aspect-[16/10] w-full bg-slate-100 touch-pan-y"
                 onTouchStart={(e) => {
@@ -192,7 +170,7 @@ export default function ListingDetailClient() {
                 <img
                   key={hero}
                   src={hero}
-                  alt=""
+                  alt={o.title || "Listing photo"}
                   className="h-full w-full object-cover"
                   loading="eager"
                   decoding="async"
@@ -251,9 +229,16 @@ export default function ListingDetailClient() {
               ) : null}
             </div>
 
-            <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm sm:p-6">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{category}</p>
-              <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{o.title}</h1>
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm ring-1 ring-slate-100/60 sm:p-6">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-blue-800 ring-1 ring-blue-100/80">
+                  {category}
+                </span>
+                <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                  {typeLabel}
+                </span>
+              </div>
+              <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{o.title}</h1>
 
               <div className="mt-4 border-b border-slate-100 pb-4 md:hidden">
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Starting from</p>
@@ -261,27 +246,41 @@ export default function ListingDetailClient() {
               </div>
 
               {o.locationText ? (
-                <p className="mt-4 flex items-center gap-2 text-sm text-slate-600">
-                  <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
-                  {o.locationText}
+                <p className="mt-4 flex items-center gap-2 text-sm text-slate-700">
+                  <MapPin className="h-4 w-4 shrink-0 text-blue-500/90" aria-hidden />
+                  <span>{o.locationText}</span>
                 </p>
               ) : null}
 
-              <p className="mt-2 text-xs text-slate-500">{typeLabel} on JobPool</p>
+              {isOwnListing ? (
+                <p className="mt-3 text-sm leading-snug text-slate-600">
+                  This is how customers see your listing. Update details anytime from your workspace.
+                </p>
+              ) : (
+                <p className="mt-3 text-sm leading-snug text-slate-600">
+                  Book this {typeLabel.toLowerCase()} securely on JobPool. Use{" "}
+                  <span className="font-medium text-slate-800">Request booking</span> to send dates and budget — the
+                  provider will respond in chat.
+                </p>
+              )}
 
               {!isOwnListing && o.userId ? (
-                <div className="mt-5 flex items-center gap-3 border-t border-slate-100 pt-5">
+                <div className="mt-6 flex items-center gap-3 rounded-xl bg-slate-50/90 p-4 ring-1 ring-slate-100">
                   <div
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700 ring-1 ring-slate-200/80"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-100 to-slate-200/90 text-sm font-bold text-slate-700 shadow-inner ring-1 ring-white/80"
                     aria-hidden
                   >
                     {(o.providerDisplayName || "Provider").trim().charAt(0)}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-slate-900">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Provider</p>
+                    <p className="truncate text-base font-semibold text-slate-900">
                       {o.providerDisplayName?.trim() || "Provider"}
                     </p>
-                    <Link href={profileLink} className="text-sm font-medium text-blue-700 underline-offset-2 hover:text-blue-800 hover:underline">
+                    <Link
+                      href={profileLink}
+                      className="text-sm font-semibold text-blue-700 underline-offset-2 hover:text-blue-800 hover:underline"
+                    >
                       View profile
                     </Link>
                   </div>
@@ -289,7 +288,7 @@ export default function ListingDetailClient() {
               ) : null}
 
               {o.description?.trim() ? (
-                <div className="mt-6 rounded-xl border border-slate-100 bg-slate-50/80 p-4 sm:p-5">
+                <div className="mt-6 rounded-xl border border-slate-100 bg-slate-50/70 p-4 sm:p-5">
                   <p className="text-sm font-semibold text-slate-900">About this listing</p>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{o.description}</p>
                 </div>
@@ -308,7 +307,7 @@ export default function ListingDetailClient() {
                     </Button>
                   </>
                 ) : (
-                  <Button asChild className="h-11 w-full rounded-xl bg-blue-600 hover:bg-blue-700">
+                  <Button asChild className="h-12 w-full rounded-xl bg-blue-600 text-base font-semibold shadow-sm hover:bg-blue-700">
                     <Link href={buildListingRequestHref(o)}>Request booking</Link>
                   </Button>
                 )}
@@ -316,28 +315,28 @@ export default function ListingDetailClient() {
             </div>
           </div>
 
-          {/* Sticky booking card — tablet/desktop */}
-          <aside className="hidden w-full shrink-0 md:block md:w-[300px] lg:w-[340px] xl:w-[360px]">
-            <div className="sticky top-20 space-y-4">
-              <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Starting from</p>
-                <p className="mt-1 text-3xl font-semibold tabular-nums tracking-tight text-slate-900">{priceLabel}</p>
+          {/* Sticky booking card — tablet/desktop (top aligns with hero; sticky clears slim header) */}
+          <aside className="hidden w-full shrink-0 md:block md:w-[min(100%,320px)] lg:w-[340px]">
+            <div className="sticky top-16 space-y-4 lg:top-[4.5rem]">
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md ring-1 ring-slate-100/80">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Starting from</p>
+                <p className="mt-1.5 text-3xl font-bold tabular-nums tracking-tight text-slate-900">{priceLabel}</p>
 
                 {o.locationText ? (
-                  <p className="mt-4 flex items-start gap-2 text-sm text-slate-600">
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                  <p className="mt-4 flex items-start gap-2 text-sm text-slate-700">
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-500/90" aria-hidden />
                     <span>{o.locationText}</span>
                   </p>
                 ) : null}
 
-                <ul className="mt-5 space-y-2.5 border-t border-slate-100 pt-5 text-sm text-slate-600">
-                  <li className="flex gap-2">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" aria-hidden />
-                    <span>{typeLabel} listing</span>
+                <ul className="mt-5 space-y-3 border-t border-slate-100 pt-5 text-sm text-slate-600">
+                  <li className="flex gap-2.5">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" strokeWidth={2.25} aria-hidden />
+                    <span>Clear pricing before you book</span>
                   </li>
-                  <li className="flex gap-2">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" aria-hidden />
-                    <span>Book securely through JobPool</span>
+                  <li className="flex gap-2.5">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" strokeWidth={2.25} aria-hidden />
+                    <span>Chat on JobPool after you request</span>
                   </li>
                 </ul>
 
@@ -354,14 +353,14 @@ export default function ListingDetailClient() {
                     </>
                   ) : (
                     <>
-                      <Button asChild className="h-11 w-full rounded-xl bg-blue-600 hover:bg-blue-700">
+                      <Button asChild className="h-12 w-full rounded-xl bg-blue-600 text-base font-semibold shadow-sm hover:bg-blue-700">
                         <Link href={buildListingRequestHref(o)}>Request booking</Link>
                       </Button>
                       {o.userId ? (
-                        <p className="text-center text-sm">
+                        <p className="text-center text-sm text-slate-600">
                           <Link
                             href={profileLink}
-                            className="font-medium text-blue-700 underline-offset-2 hover:text-blue-800 hover:underline"
+                            className="font-semibold text-blue-700 underline-offset-2 hover:text-blue-800 hover:underline"
                           >
                             View provider profile
                           </Link>
@@ -379,26 +378,25 @@ export default function ListingDetailClient() {
   );
 }
 
-function ListingDetailChrome({ listingTitle }: { listingTitle?: string }) {
+/** One slim bar: back to feed + home — listing title lives only in the page H1 (avoids triple repetition). */
+function ListingDetailChrome() {
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
-      <div className="mx-auto flex h-12 max-w-6xl items-center justify-between gap-3 px-4 sm:px-5">
+    <header className="sticky top-0 z-30 border-b border-slate-200/90 bg-white/95 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-white/85">
+      <div className="mx-auto flex h-12 max-w-6xl items-center justify-between gap-3 px-4 sm:h-14 sm:px-5">
         <Link
           href="/listings"
-          className="inline-flex min-w-0 items-center gap-1 text-sm font-medium text-slate-700 hover:text-slate-900"
+          className="inline-flex min-w-0 items-center gap-1 rounded-lg px-1.5 py-1.5 -ml-1 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100 hover:text-slate-950"
         >
-          <ChevronLeft className="h-4 w-4 shrink-0" />
-          <span className="truncate">Listings</span>
+          <ChevronLeft className="h-4 w-4 shrink-0" aria-hidden />
+          <span className="truncate">All listings</span>
         </Link>
-        <Link href="/" className="shrink-0 text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900">
+        <Link
+          href="/"
+          className="shrink-0 rounded-lg px-2 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+        >
           JobPool
         </Link>
       </div>
-      {listingTitle ? (
-        <p className="mx-auto max-w-6xl truncate px-4 pb-2 text-center text-[11px] text-slate-500 sm:text-xs sm:px-5">
-          {listingTitle}
-        </p>
-      ) : null}
     </header>
   );
 }

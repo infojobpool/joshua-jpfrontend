@@ -40,6 +40,11 @@ const MainHeader: React.FC = () => {
     return null;
   }
 
+  // Browse + listing detail use a slim sticky chrome (back / brand); avoid stacking two top bars.
+  if (pathname?.startsWith("/listings")) {
+    return null;
+  }
+
   // Hide header on key authenticated app pages to reduce clutter (they use their own Header)
   const hideOnPrefixes = [
     "/post-task",

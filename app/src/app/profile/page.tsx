@@ -124,6 +124,13 @@ function isProfileMainTab(v: string | null): v is ProfileMainTab {
   return v === "profile" || v === "listings" || v === "reviews";
 }
 
+/** Sub-areas inside Profile → Listings (URL: `?tab=listings&section=…`). */
+type ListingsWorkspaceSection = "offerings" | "portfolio" | "bookings";
+
+function isListingsWorkspaceSection(v: string): v is ListingsWorkspaceSection {
+  return v === "offerings" || v === "portfolio" || v === "bookings";
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -171,7 +178,31 @@ export default function ProfilePage() {
     (v: string) => {
       if (!isProfileMainTab(v)) return;
       setMainTab(v);
-      router.replace(`/profile?tab=${v}`, { scroll: false });
+      if (v === "listings") {
+        const s = searchParams.get("section");
+        const section =
+          s === "portfolio" || s === "bookings" || s === "requests"
+            ? `&section=${s === "requests" ? "bookings" : s}`
+            : "";
+        router.replace(`/profile?tab=listings${section}`, { scroll: false });
+      } else {
+        router.replace(`/profile?tab=${v}`, { scroll: false });
+      }
+    },
+    [router, searchParams],
+  );
+
+  const listingsWorkspaceSection: ListingsWorkspaceSection = useMemo(() => {
+    const s = searchParams.get("section");
+    if (s === "portfolio") return "portfolio";
+    if (s === "bookings" || s === "requests") return "bookings";
+    return "offerings";
+  }, [searchParams]);
+
+  const onListingsWorkspaceChange = useCallback(
+    (v: string) => {
+      if (!isListingsWorkspaceSection(v)) return;
+      router.replace(`/profile?tab=listings&section=${v}`, { scroll: false });
     },
     [router],
   );
@@ -645,28 +676,51 @@ export default function ProfilePage() {
         minimal
       />
       <main className="flex-1 w-full min-w-0 max-w-6xl mx-auto box-border overflow-x-hidden py-6 md:py-10 px-4 md:px-6 pb-28 md:pb-10">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-emerald-600 transition-colors mb-6 font-medium"
-        >
-          ← Back to Dashboard
-        </Link>
+        {mainTab === "listings" ? (
+          <div className="mb-3 flex min-w-0 items-center justify-between gap-2 sm:mb-4">
+            <Link
+              href="/dashboard"
+              className="inline-flex min-w-0 items-center gap-1 text-sm font-semibold text-slate-700 transition-colors hover:text-emerald-700"
+            >
+              <span className="text-lg leading-none text-slate-400" aria-hidden>
+                ←
+              </span>
+              <span className="truncate">Dashboard</span>
+            </Link>
+            <Link
+              href="/wallet"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200/80 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow-sm ring-1 ring-slate-200/40 transition-colors hover:bg-emerald-50/80 active:scale-[0.98]"
+            >
+              <Wallet className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
+              Wallet
+            </Link>
+          </div>
+        ) : (
+          <>
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-emerald-600 transition-colors mb-6 font-medium"
+            >
+              ← Back to Dashboard
+            </Link>
 
-        <Link
-          href="/wallet"
-          className="mb-4 flex w-full min-w-0 items-center justify-between gap-3 rounded-xl border border-emerald-100/80 bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200/60 transition-colors hover:bg-emerald-50/40 active:scale-[0.99]"
-        >
-          <span className="flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
-              <Wallet className="h-5 w-5 text-emerald-600" aria-hidden />
-            </span>
-            <span className="min-w-0 text-left">
-              <span className="block text-sm font-semibold text-slate-900">Wallet</span>
-              <span className="block text-xs text-slate-500">Balance, UPI, and withdrawals</span>
-            </span>
-          </span>
-          <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />
-        </Link>
+            <Link
+              href="/wallet"
+              className="mb-4 flex w-full min-w-0 items-center justify-between gap-3 rounded-xl border border-emerald-100/80 bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200/60 transition-colors hover:bg-emerald-50/40 active:scale-[0.99]"
+            >
+              <span className="flex min-w-0 items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                  <Wallet className="h-5 w-5 text-emerald-600" aria-hidden />
+                </span>
+                <span className="min-w-0 text-left">
+                  <span className="block text-sm font-semibold text-slate-900">Wallet</span>
+                  <span className="block text-xs text-slate-500">Balance, UPI, and withdrawals</span>
+                </span>
+              </span>
+              <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />
+            </Link>
+          </>
+        )}
 
         <Tabs value={mainTab} onValueChange={onMainTabChange} className="mt-2 w-full min-w-0">
           <TabsList
@@ -1192,82 +1246,83 @@ export default function ProfilePage() {
           </TabsContent>
 
           <TabsContent value="listings" className="mt-4 min-w-0 focus-visible:outline-none md:mt-6" tabIndex={-1}>
-          <Card className="border-0 gap-0 py-0 shadow-[0_20px_50px_-12px_rgba(15,23,42,0.1)] rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200/70 relative z-0">
-            <CardHeader className="border-b border-slate-100/90 bg-white py-3.5 sm:py-4 px-4 sm:px-6">
-              <CardTitle className="text-lg sm:text-xl font-semibold text-slate-900 tracking-tight text-left">
-                Listings &amp; workspace
+          <Card className="relative z-0 gap-0 overflow-hidden rounded-2xl border-0 bg-white py-0 shadow-[0_16px_40px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70">
+            <CardHeader className="space-y-1 border-b border-slate-100/90 bg-gradient-to-br from-white to-emerald-50/20 px-4 py-4 sm:px-6 sm:py-5">
+              <CardTitle className="text-left text-base font-bold tracking-tight text-slate-900 sm:text-lg">
+                Your listing workspace
               </CardTitle>
+              <CardDescription className="text-left text-sm leading-relaxed text-slate-600">
+                Manage what you sell, your gallery, and new booking leads — one focused step per tab.
+              </CardDescription>
             </CardHeader>
-            <CardContent className="pt-3 sm:pt-4 px-3 sm:px-6 pb-6 space-y-3 bg-slate-50/30">
-              {userId ? (
-                <ProfilePortfolioSlider userId={userId} viewerIsOwner />
-              ) : null}
-              <Accordion type="multiple" defaultValue={["offerings"]} className="w-full rounded-2xl bg-slate-100/60 p-2 sm:p-2.5 space-y-2 ring-1 ring-slate-200/40">
-                <AccordionItem
-                  id="profile-offerings"
-                  value="offerings"
-                  className="rounded-xl border-0 bg-white px-1 sm:px-2 border-b-0 scroll-mt-4 shadow-sm ring-1 ring-slate-200/50 data-[state=open]:ring-emerald-200/60 data-[state=open]:shadow-md"
+            <CardContent className="space-y-4 bg-slate-50/40 px-3 pb-6 pt-4 sm:px-5 sm:pt-5">
+              <Tabs
+                value={listingsWorkspaceSection}
+                onValueChange={onListingsWorkspaceChange}
+                className="w-full min-w-0"
+              >
+                <TabsList
+                  className="grid h-auto min-h-0 w-full grid-cols-3 gap-1 rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-200/70"
+                  aria-label="Listing workspace sections"
                 >
-                  <AccordionTrigger className="hover:no-underline py-3 sm:py-3.5 px-2 sm:px-3 text-left rounded-lg hover:bg-slate-50/80 [&[data-state=open]]:bg-emerald-50/40">
-                    <span className="flex items-center gap-3 pr-2">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-                        <Package className="h-5 w-5" aria-hidden />
-                      </span>
-                      <span className="text-[15px] font-semibold text-slate-900">Service listings</span>
+                  <TabsTrigger
+                    value="offerings"
+                    className="min-h-[2.75rem] rounded-lg px-1 py-2 text-[10px] font-semibold leading-tight data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm sm:min-h-0 sm:px-2 sm:py-2.5 sm:text-xs"
+                  >
+                    <span className="flex flex-col items-center justify-center gap-0.5 text-center sm:flex-row sm:gap-1.5">
+                      <Package className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
+                      <span className="max-[360px]:leading-tight">My listings</span>
                     </span>
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-4 pt-0 px-2 sm:px-3">
-                    {userId ? (
-                      <ProfileOfferingsPanel userId={userId} />
-                    ) : (
-                      <p className="text-sm text-slate-500">Sign in to manage offerings.</p>
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="portfolio"
+                    className="min-h-[2.75rem] rounded-lg px-1 py-2 text-[10px] font-semibold leading-tight data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm sm:min-h-0 sm:px-2 sm:py-2.5 sm:text-xs"
+                  >
+                    <span className="flex flex-col items-center justify-center gap-0.5 sm:flex-row sm:gap-1.5">
+                      <Images className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
+                      Portfolio
+                    </span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="bookings"
+                    className="min-h-[2.75rem] rounded-lg px-1 py-2 text-[10px] font-semibold leading-tight data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm sm:min-h-0 sm:px-2 sm:py-2.5 sm:text-xs"
+                  >
+                    <span className="flex flex-col items-center justify-center gap-0.5 sm:flex-row sm:gap-1.5">
+                      <Inbox className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
+                      Bookings
+                    </span>
+                  </TabsTrigger>
+                </TabsList>
 
-                <AccordionItem
-                  id="profile-portfolio"
-                  value="portfolio"
-                  className="rounded-xl border-0 bg-white px-1 sm:px-2 border-b-0 scroll-mt-4 shadow-sm ring-1 ring-slate-200/50 data-[state=open]:shadow-md"
-                >
-                  <AccordionTrigger className="hover:no-underline py-3 sm:py-3.5 px-2 sm:px-3 text-left rounded-lg hover:bg-slate-50/80">
-                    <span className="flex items-center gap-3 pr-2">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                        <Images className="h-5 w-5" aria-hidden />
-                      </span>
-                      <span className="text-[15px] font-semibold text-slate-900">Portfolio gallery</span>
-                    </span>
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-4 pt-0 px-2 sm:px-3">
-                    {userId ? (
-                      <PortfolioEditorPanel userId={userId} />
-                    ) : (
-                      <p className="text-sm text-slate-500">Sign in to manage your portfolio.</p>
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
+                <TabsContent value="offerings" id="profile-offerings" className="mt-4 min-w-0 rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200/60 sm:p-4">
+                  {userId ? (
+                    <ProfileOfferingsPanel userId={userId} />
+                  ) : (
+                    <p className="text-sm text-slate-500">Sign in to manage offerings.</p>
+                  )}
+                </TabsContent>
 
-                <AccordionItem
-                  value="listing-requests"
-                  className="rounded-xl border-0 bg-white px-1 sm:px-2 border-b-0 shadow-sm ring-1 ring-slate-200/50"
-                >
-                  <AccordionTrigger className="hover:no-underline py-3 sm:py-3.5 px-2 sm:px-3 text-left rounded-lg hover:bg-slate-50/80">
-                    <span className="flex items-center gap-3 pr-2">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                        <Inbox className="h-5 w-5" aria-hidden />
-                      </span>
-                      <span className="text-[15px] font-semibold text-slate-900">Booking requests</span>
-                    </span>
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-4 px-2 sm:px-3">
-                    {userId ? (
-                      <ListingRequestsPanel userId={userId} />
-                    ) : (
-                      <p className="text-sm text-slate-500">Sign in to see requests.</p>
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
+                <TabsContent value="portfolio" id="profile-portfolio" className="mt-4 min-w-0 space-y-4">
+                  {userId ? (
+                    <>
+                      <ProfilePortfolioSlider userId={userId} viewerIsOwner />
+                      <div className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200/60 sm:p-4">
+                        <PortfolioEditorPanel userId={userId} />
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-slate-500">Sign in to manage your portfolio.</p>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="bookings" className="mt-4 min-w-0 rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200/60 sm:p-4">
+                  {userId ? (
+                    <ListingRequestsPanel userId={userId} />
+                  ) : (
+                    <p className="text-sm text-slate-500">Sign in to see booking requests.</p>
+                  )}
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
           </TabsContent>

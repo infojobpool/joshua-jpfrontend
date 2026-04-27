@@ -109,7 +109,7 @@ export function ProfilePortfolioSlider({ userId, viewerIsOwner, className }: Pro
   }
 
   if (items.length === 0) {
-    /* Owner builds portfolio in the Profile → Portfolio accordion; avoid duplicate huge CTA above it */
+    /* Owner edits portfolio under Profile → Listings → Portfolio tab */
     return null;
   }
 
@@ -122,7 +122,7 @@ export function ProfilePortfolioSlider({ userId, viewerIsOwner, className }: Pro
         </div>
         {viewerIsOwner ? (
           <Link
-            href="/profile#profile-portfolio"
+            href="/profile?tab=listings&section=portfolio"
             className="text-xs font-semibold text-blue-700 hover:underline shrink-0"
           >
             Edit portfolio

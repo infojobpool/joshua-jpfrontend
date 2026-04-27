@@ -45,24 +45,24 @@ export default function ListingsBrowsePage() {
   const canLoadMore = rows.length > 0 && rows.length < total;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50/90 pb-28 md:pb-16">
-      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
-        <div className="mx-auto flex h-12 max-w-4xl items-center justify-between gap-3 px-3 sm:px-4">
+    <div className="min-h-screen bg-gradient-to-b from-slate-100/80 via-slate-50 to-white pb-28 md:pb-16">
+      <header className="sticky top-0 z-30 border-b border-slate-200/90 bg-white/95 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-white/85">
+        <div className="mx-auto flex h-12 max-w-4xl items-center justify-between gap-3 px-4 sm:h-14 sm:px-5">
           <Link
             href="/"
-            className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:text-blue-700"
+            className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1.5 -ml-1 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100 hover:text-slate-950"
           >
-            <ChevronLeft className="h-4 w-4 shrink-0" />
+            <ChevronLeft className="h-4 w-4 shrink-0" aria-hidden />
             Home
           </Link>
-          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Browse</span>
+          <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Browse listings</span>
         </div>
       </header>
 
-      <div className="mx-auto max-w-4xl px-4 pb-8 pt-6">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Service listings</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Book services from JobPool providers. Open a listing for details, then request a booking or send a message.
+      <div className="mx-auto max-w-4xl px-4 pb-10 pt-6 sm:px-5">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Service listings</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-[15px]">
+          Explore services from JobPool providers. Tap a card for photos, pricing, and location — then request a booking to agree on timing and details in chat.
         </p>
 
         {loading ? (
