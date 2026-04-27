@@ -48,9 +48,14 @@ export default async function BlogArticlePage({ params }: PageProps) {
         </header>
 
         {hero ? (
-          <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
+          <div className="mt-8 w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={hero} alt="" className="max-h-[min(70vh,480px)] w-full object-contain" />
+            <img
+              src={hero}
+              alt=""
+              className="block h-auto w-full max-w-full object-contain align-middle max-h-[min(88vh,720px)]"
+              sizes="(max-width: 768px) 100vw, 48rem"
+            />
           </div>
         ) : null}
 

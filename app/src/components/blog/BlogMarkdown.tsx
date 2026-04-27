@@ -30,7 +30,7 @@ const mdShell =
   "[&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-sm dark:[&_code]:bg-slate-800 " +
   "[&_pre]:mb-4 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-slate-900 [&_pre]:p-4 [&_pre]:text-sm [&_pre]:text-slate-100 " +
   "[&_hr]:my-8 [&_hr]:border-slate-200 dark:[&_hr]:border-slate-700 " +
-  "[&_img]:my-4 [&_img]:mx-auto [&_img]:block [&_img]:h-auto [&_img]:w-auto [&_img]:max-h-[220px] sm:[&_img]:max-h-[260px] md:[&_img]:max-h-[300px] [&_img]:max-w-[min(100%,28rem)] [&_img]:rounded-lg [&_img]:object-contain " +
+  "[&_img]:my-4 [&_img]:mx-auto [&_img]:block [&_img]:h-auto [&_img]:w-full [&_img]:max-w-full [&_img]:rounded-lg [&_img]:object-contain [&_img]:max-h-[min(88vh,920px)] " +
   "[&_table]:mb-4 [&_table]:w-full [&_table]:border-collapse [&_th]:border [&_th]:border-slate-200 [&_th]:bg-slate-50 [&_th]:px-2 [&_th]:py-1.5 [&_th]:text-left [&_td]:border [&_td]:border-slate-200 [&_td]:px-2 [&_td]:py-1.5";
 
 const JP_TEXT: Record<string, string> = {

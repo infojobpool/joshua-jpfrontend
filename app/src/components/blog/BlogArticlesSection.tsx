@@ -67,7 +67,7 @@ export function BlogArticlesSection() {
         </p>
         <ul className="mt-8 grid list-none gap-6 p-0 sm:grid-cols-2 lg:grid-cols-3">
           {posts.map((post) => (
-            <li key={post.slug}>
+            <li key={post.slug} className="min-w-0">
               <BlogArticleCard post={post} />
             </li>
           ))}

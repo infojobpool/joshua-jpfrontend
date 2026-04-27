@@ -11,12 +11,20 @@ export function BlogArticleCard({ post }: Props) {
   const img = post.hero_image_url ? resolveApiMediaUrl(post.hero_image_url) : null;
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-md ring-1 ring-slate-900/[0.04] transition hover:shadow-lg dark:border-slate-800 dark:bg-slate-900/40">
-      <Link href={href} className="block shrink-0 bg-gradient-to-br from-slate-100 to-sky-50/50 dark:from-slate-800 dark:to-slate-900">
-        <div className="relative aspect-[16/10] w-full overflow-hidden">
+    <article className="flex min-w-0 w-full max-w-full flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-md ring-1 ring-slate-900/[0.04] transition hover:shadow-lg dark:border-slate-800 dark:bg-slate-900/40">
+      <Link
+        href={href}
+        className="block w-full min-w-0 shrink-0 bg-gradient-to-br from-slate-100 to-sky-50/50 dark:from-slate-800 dark:to-slate-900"
+      >
+        <div className="relative aspect-[16/10] w-full min-w-0 max-w-full overflow-hidden">
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={img} alt="" className="h-full w-full object-cover" />
+            <img
+              src={img}
+              alt=""
+              className="h-full w-full max-w-full object-cover object-center"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-sm font-medium text-slate-400">
               JobPool
