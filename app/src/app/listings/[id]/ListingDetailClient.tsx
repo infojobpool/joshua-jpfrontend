@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, MapPin, MessageSquare, Package, User } from "lucide-react";
+import { ChevronLeft, MapPin, MessageSquare, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getPublicOfferingByIdApi } from "@/lib/offerings/api";
 import type { Offering } from "@/lib/offerings/types";
@@ -163,6 +163,25 @@ export default function ListingDetailClient() {
                   {o.locationText}
                 </p>
               ) : null}
+              {!isOwnListing && o.userId ? (
+                <div className="mt-3 flex items-center gap-2.5 border-t border-slate-100/90 pt-3">
+                  <div
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-slate-100 text-[11px] font-bold uppercase text-blue-900 ring-1 ring-slate-200/80"
+                    aria-hidden
+                  >
+                    {(o.providerDisplayName || "Provider").trim().charAt(0)}
+                  </div>
+                  <p className="min-w-0 flex-1 text-sm leading-snug text-slate-600">
+                    <span className="font-medium text-slate-800">
+                      {o.providerDisplayName?.trim() || "Provider"}
+                    </span>
+                    <span className="text-slate-300"> · </span>
+                    <Link href={profileLink} className="font-medium text-blue-700 hover:underline">
+                      View profile
+                    </Link>
+                  </p>
+                </div>
+              ) : null}
             </div>
 
             {o.description?.trim() ? (
@@ -212,14 +231,6 @@ export default function ListingDetailClient() {
                     </Link>
                   </Button>
                 </div>
-
-                <Link
-                  href={profileLink}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50"
-                >
-                  <User className="h-4 w-4 text-blue-600" />
-                  View provider profile
-                </Link>
               </>
             )}
           </div>
