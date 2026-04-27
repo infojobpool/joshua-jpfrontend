@@ -20,6 +20,7 @@ export function BlogArticleCard({ post }: Props) {
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
+              key={img}
               src={img}
               alt=""
               className="h-full w-full max-w-full object-cover object-center"

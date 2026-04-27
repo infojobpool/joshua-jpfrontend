@@ -88,7 +88,7 @@ export async function fetchPublicBlogPostSummariesServer(
 ): Promise<{ posts: PublicBlogPostSummary[]; total: number }> {
   const base = apiBase();
   const url = `${base}/public-blog-posts/?limit=${encodeURIComponent(String(limit))}&offset=${encodeURIComponent(String(offset))}`;
-  const res = await fetch(url, { next: { revalidate: 120 } });
+  const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) return { posts: [], total: 0 };
   const json = (await res.json()) as unknown;
   return parseBlogListResponse(json);
@@ -100,7 +100,7 @@ export async function fetchPublicBlogPostBySlugServer(slug: string): Promise<Pub
   if (!s) return null;
   const base = apiBase();
   const url = `${base}/public-blog-posts/by-slug/${s}/`;
-  const res = await fetch(url, { next: { revalidate: 120 } });
+  const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) return null;
   const json = (await res.json()) as unknown;
   return parseBlogDetailResponse(json);

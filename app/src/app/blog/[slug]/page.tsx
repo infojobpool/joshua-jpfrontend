@@ -10,6 +10,8 @@ type PageProps = {
 };
 
 export const dynamicParams = true;
+/** Avoid stale hero/body after edits — public blog fetch uses cache: "no-store" too. */
+export const dynamic = "force-dynamic";
 
 export async function generateStaticParams() {
   try {
@@ -51,6 +53,7 @@ export default async function BlogArticlePage({ params }: PageProps) {
           <div className="mt-8 w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
+              key={hero}
               src={hero}
               alt=""
               className="block h-auto w-full max-w-full object-contain align-middle max-h-[min(88vh,720px)]"

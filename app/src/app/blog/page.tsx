@@ -21,7 +21,7 @@ export default function BlogListPage() {
     else setLoading(true);
     setError(null);
     try {
-      const res = await fetch(buildPublicBlogListUrl(PAGE_SIZE, from));
+      const res = await fetch(buildPublicBlogListUrl(PAGE_SIZE, from), { cache: "no-store" });
       const json = (await res.json()) as unknown;
       const parsed = parseBlogListResponse(json);
       setTotal(parsed.total);

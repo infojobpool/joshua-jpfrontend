@@ -19,7 +19,7 @@ export function BlogArticlesSection() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(buildPublicBlogListUrl(HOME_LIMIT, 0));
+        const res = await fetch(buildPublicBlogListUrl(HOME_LIMIT, 0), { cache: "no-store" });
         const json = (await res.json()) as unknown;
         const parsed = parseBlogListResponse(json);
         if (!cancelled) setPosts(parsed.posts);
