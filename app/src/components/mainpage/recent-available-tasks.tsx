@@ -403,7 +403,9 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     return (
       <section className="hidden py-12 md:block bg-gray-50 overflow-hidden">
         <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-          <div className="mx-auto mb-8 h-10 max-w-md animate-pulse rounded-lg bg-gray-200" />
+          <div className="mx-auto mb-8 max-w-7xl">
+            <div className="h-10 max-w-md animate-pulse rounded-lg bg-gray-200" />
+          </div>
           <div className="mx-auto flex max-w-7xl justify-center gap-4">
             {[1, 2, 3, 4].map((i) => (
               <div
@@ -422,7 +424,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
       <section className="hidden py-12 md:block bg-gray-50 overflow-hidden">
         <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
           <motion.div
-            className="mb-8 text-center"
+            className="mx-auto mb-8 max-w-7xl text-left"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
@@ -431,7 +433,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
             <h2 className="font-home-section-title mb-2 text-2xl text-slate-900 md:text-3xl">
               <span className="border-b-[3px] border-blue-500 pb-0.5">Recent available tasks</span>
             </h2>
-            <p className="font-home-section-desc mx-auto max-w-2xl text-sm text-gray-600 md:text-base">
+            <p className="font-home-section-desc max-w-2xl text-sm text-gray-600 md:text-base">
               {SECTION_SUBTITLE}
             </p>
           </motion.div>
@@ -472,7 +474,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     <section className="hidden py-12 md:block bg-gray-50 overflow-hidden">
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
         <motion.div
-          className="mb-8 text-center"
+          className="mx-auto mb-8 max-w-7xl text-left"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
@@ -481,7 +483,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
           <h2 className="font-home-section-title mb-2 text-2xl text-slate-900 md:text-3xl">
             <span className="border-b-[3px] border-blue-500 pb-0.5">Recent available tasks</span>
           </h2>
-          <p className="font-home-section-desc mx-auto max-w-2xl text-sm text-gray-600 md:text-base">
+          <p className="font-home-section-desc max-w-2xl text-sm text-gray-600 md:text-base">
             {SECTION_SUBTITLE}
           </p>
           <Link

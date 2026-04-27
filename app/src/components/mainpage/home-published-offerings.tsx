@@ -427,7 +427,9 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
     return (
       <section className="hidden border-t border-emerald-100/60 py-12 md:block overflow-hidden bg-gradient-to-b from-emerald-50/40 via-white to-white">
         <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-          <div className="mx-auto mb-8 h-10 max-w-md animate-pulse rounded-lg bg-emerald-100/50" />
+          <div className="mx-auto mb-8 max-w-7xl">
+            <div className="h-10 max-w-md animate-pulse rounded-lg bg-emerald-100/50" />
+          </div>
           <div className="mx-auto flex max-w-7xl justify-center gap-4">
             {[1, 2, 3, 4].map((i) => (
               <div
@@ -447,7 +449,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
       <section className="hidden border-t border-emerald-100/60 py-10 md:block overflow-hidden bg-gradient-to-b from-emerald-50/35 via-white to-white">
         <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
           <motion.div
-            className="mb-6 text-center"
+            className="mx-auto mb-6 max-w-7xl text-left"
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -456,7 +458,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
             <h2 className="font-home-section-title mb-2 text-2xl text-slate-900 md:text-3xl">
               <span className="border-b-[3px] border-blue-500 pb-0.5">{title}</span>
             </h2>
-            <p className="font-home-section-desc mx-auto max-w-2xl text-sm text-gray-600 md:text-base">{subtitle}</p>
+            <p className="font-home-section-desc max-w-2xl text-sm text-gray-600 md:text-base">{subtitle}</p>
           </motion.div>
           <div className="mx-auto max-w-2xl rounded-2xl border border-dashed border-emerald-200/90 bg-slate-50/80 py-10 px-6 text-center">
             <Package className="mx-auto h-12 w-12 text-emerald-200" />
@@ -502,20 +504,18 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
     <section className="hidden border-t border-emerald-100/60 py-12 md:block overflow-hidden bg-gradient-to-b from-emerald-50/40 via-white to-white">
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
         <motion.div
-          className="mb-8 text-center"
+          className="mx-auto mb-8 max-w-7xl text-left"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <div className="mx-auto flex max-w-4xl flex-col items-center gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
-            <div className="text-center sm:text-left">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+            <div className="min-w-0">
               <h2 className="font-home-section-title mb-2 text-2xl text-slate-900 md:text-3xl">
                 <span className="border-b-[3px] border-blue-500 pb-0.5">{title}</span>
               </h2>
-              <p className="font-home-section-desc mx-auto max-w-2xl text-sm text-gray-600 md:text-base sm:mx-0">
-                {subtitle}
-              </p>
+              <p className="font-home-section-desc max-w-2xl text-sm text-gray-600 md:text-base">{subtitle}</p>
             </div>
             <Link
               href="/listings"

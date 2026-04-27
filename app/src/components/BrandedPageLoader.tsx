@@ -8,7 +8,7 @@ type BrandedPageLoaderProps = {
 };
 
 /**
- * Full-viewport loader: soft “incoming” glow, dual ring motion, mark-only logo, tagline + dots.
+ * Full-viewport loader: soft glow, dual ring motion, centred JobPool lockup, tagline + dots.
  * Safe for client pages and server `loading.tsx` via composition.
  */
 export function BrandedPageLoader({ subtitle }: BrandedPageLoaderProps) {
@@ -21,9 +21,9 @@ export function BrandedPageLoader({ subtitle }: BrandedPageLoaderProps) {
       aria-busy="true"
     >
       <div className="flex flex-col items-center gap-5 animate-in fade-in zoom-in-95 duration-300">
-        <div className="relative h-[4.75rem] w-[4.75rem] md:h-[5.25rem] md:w-[5.25rem]">
+        <div className="relative flex h-40 w-40 shrink-0 items-center justify-center md:h-44 md:w-44">
           <div
-            className="absolute -inset-3 rounded-full bg-blue-500/15 blur-md animate-loader-breathe motion-reduce:animate-none"
+            className="absolute -inset-2 rounded-full bg-blue-500/15 blur-md animate-loader-breathe motion-reduce:animate-none"
             aria-hidden
           />
           <div
@@ -35,16 +35,16 @@ export function BrandedPageLoader({ subtitle }: BrandedPageLoaderProps) {
             aria-hidden
           />
           <div
-            className="absolute inset-[5px] rounded-full border border-blue-100/90 border-b-blue-600/70 motion-reduce:animate-none motion-safe:animate-[spin_0.95s_linear_infinite_reverse]"
+            className="absolute inset-2 rounded-full border border-blue-100/90 border-b-blue-600/70 motion-reduce:animate-none motion-safe:animate-[spin_0.95s_linear_infinite_reverse]"
             aria-hidden
           />
-          <div className="absolute inset-[10px] flex items-center justify-center rounded-full bg-white/95 shadow-inner">
+          <div className="relative z-10 flex max-w-[min(220px,78vw)] items-center justify-center rounded-2xl bg-white/95 px-3 py-2.5 shadow-inner ring-1 ring-slate-200/70 md:max-w-[240px] md:px-4 md:py-3">
             <Image
-              src="/images/jobpool-mark.svg"
-              alt=""
-              width={44}
-              height={44}
-              className="h-9 w-9 object-contain animate-loader-nudge motion-reduce:animate-none md:h-10 md:w-10"
+              src="/images/jobpool-logo-header.png"
+              alt="JobPool"
+              width={280}
+              height={112}
+              className="h-12 w-auto object-contain object-center animate-loader-nudge motion-reduce:animate-none md:h-14"
               priority
             />
           </div>
