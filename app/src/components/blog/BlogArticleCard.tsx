@@ -16,7 +16,7 @@ export function BlogArticleCard({ post }: Props) {
         href={href}
         className="block w-full min-w-0 shrink-0 bg-gradient-to-br from-slate-100 to-sky-50/50 dark:from-slate-800 dark:to-slate-900"
       >
-        <div className="relative aspect-[16/10] w-full min-w-0 max-w-full overflow-hidden">
+        <div className="relative aspect-[16/10] min-h-[200px] w-full min-w-0 max-w-full overflow-hidden sm:min-h-[220px]">
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
