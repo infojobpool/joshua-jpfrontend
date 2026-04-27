@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Star, MapPin, Briefcase, Package, BadgeCheck } from "lucide-react";
+import { Star, MapPin, Briefcase, BadgeCheck } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
@@ -14,12 +14,6 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
   Card,
   CardContent,
   CardDescription,
@@ -28,7 +22,6 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { PublicOfferingsList } from "@/components/profile/PublicOfferingsList";
 import { ProfilePortfolioSlider } from "@/components/profile/ProfilePortfolioSlider";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 import { BrandedPageLoader } from "@/components/BrandedPageLoader";
@@ -244,94 +237,98 @@ export default function ProfilePageClient() {
             </div>
           </div>
 
-          {/* Listings and reviews — collapsible */}
+          {/* Portfolio + reviews only — public listings are not shown here (use /listings). */}
           <div className="md:col-span-2 space-y-4 min-w-0">
             <Card className="border-0 shadow-lg rounded-2xl overflow-hidden ring-1 ring-slate-200/80">
               <CardHeader className="border-b border-slate-100/80 bg-gradient-to-b from-slate-50/95 via-white to-white py-6">
                 <CardTitle className="text-xl font-bold text-slate-800">About this member</CardTitle>
-                <CardDescription>Portfolio showcase, then listings and reviews below</CardDescription>
+                <CardDescription>Portfolio and reviews — bookable services are on the listings feed, not on profiles.</CardDescription>
               </CardHeader>
-              <CardContent className="pt-5 px-3 sm:px-6 pb-6 space-y-6">
+              <CardContent className="space-y-6 pt-5 px-3 sm:px-6 pb-6">
                 <ProfilePortfolioSlider userId={profileIdStr} viewerIsOwner={viewerIsOwner} />
-                <Accordion type="multiple" defaultValue={["listings"]} className="w-full space-y-3">
-                  <AccordionItem
-                    value="listings"
-                    className="rounded-2xl border border-blue-200/70 bg-blue-50/25 px-3 sm:px-4 border-b-0"
-                  >
-                    <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
-                      <span className="flex flex-wrap items-center gap-2 pr-2">
-                        <Package className="h-5 w-5 text-blue-600 shrink-0" />
-                        <span className="text-base font-semibold text-slate-900">Public listings</span>
-                      </span>
-                    </AccordionTrigger>
-                    <AccordionContent className="pb-4">
-                      <PublicOfferingsList
-                        profileUserId={profileIdStr}
-                        providerName={profileUser.name || "Member"}
-                        viewerIsOwner={viewerIsOwner}
-                      />
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  <AccordionItem
-                    value="reviews"
-                    className="rounded-2xl border border-slate-200/80 bg-white px-3 sm:px-4 border-b-0"
-                  >
-                    <AccordionTrigger className="hover:no-underline py-4 text-left [&[data-state=open]]:pb-2">
-                      <span className="flex items-center gap-2">
-                        <Star className="h-5 w-5 text-amber-500 shrink-0 fill-amber-400/25" />
-                        <span className="text-base font-semibold text-slate-900">Reviews</span>
-                      </span>
-                    </AccordionTrigger>
-                    <AccordionContent className="pb-2">
-                      <p className="text-sm text-slate-600 mb-4">What others say about {profileUser.name}</p>
-            <Tabs defaultValue="tasker">
-              <TabsList className="w-full grid grid-cols-2 rounded-xl bg-slate-100 p-1.5 mb-6">
-                <TabsTrigger value="tasker" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-700 data-[state=active]:font-semibold">As Tasker</TabsTrigger>
-                <TabsTrigger value="taskmaster" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-700 data-[state=active]:font-semibold">As Taskmaster</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="tasker" className="space-y-4">
-                {reviews
-                  .filter((review) => review.role === "tasker")
-                  .map((review) => (
-                    <ReviewCard key={review.id} review={review} />
-                  ))}
-                {reviews.filter((review) => review.role === "tasker").length ===
-                  0 && (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
-                    <Star className="h-12 w-12 mx-auto text-slate-300 mb-3" />
-                    <p className="text-slate-500 font-medium">No tasker reviews available.</p>
-                    <p className="text-sm text-slate-400 mt-1">Reviews will appear when tasks are completed.</p>
-                  </div>
-                )}
-                <div className="text-center mt-6">
-                  <Button variant="outline">Load More Reviews</Button>
+                <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 px-3 py-3 text-sm leading-relaxed text-slate-700 sm:px-4">
+                  {viewerIsOwner ? (
+                    <>
+                      Your published services appear on the{" "}
+                      <Link href="/listings" className="font-semibold text-blue-700 underline-offset-2 hover:underline">
+                        public listings feed
+                      </Link>
+                      . Manage drafts and slots in{" "}
+                      <Link href="/profile?tab=listings" className="font-semibold text-emerald-700 underline-offset-2 hover:underline">
+                        Profile → Listings
+                      </Link>
+                      .
+                    </>
+                  ) : (
+                    <>
+                      To browse or book services from JobPool providers, use the{" "}
+                      <Link href="/listings" className="font-semibold text-blue-700 underline-offset-2 hover:underline">
+                        listings feed
+                      </Link>{" "}
+                      — catalogs are not listed on member profiles.
+                    </>
+                  )}
                 </div>
-              </TabsContent>
 
-              <TabsContent value="taskmaster" className="space-y-4">
-                {reviews
-                  .filter((review) => review.role === "taskmaster")
-                  .map((review) => (
-                    <ReviewCard key={review.id} review={review} />
-                  ))}
-                {reviews.filter((review) => review.role === "taskmaster").length ===
-                  0 && (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
-                    <Star className="h-12 w-12 mx-auto text-slate-300 mb-3" />
-                    <p className="text-slate-500 font-medium">No taskmaster reviews available.</p>
-                    <p className="text-sm text-slate-400 mt-1">Reviews will appear when posted tasks are completed.</p>
+                <div className="rounded-2xl border border-slate-200/80 bg-white px-3 py-4 sm:px-4 sm:py-5">
+                  <div className="mb-4 flex items-center gap-2">
+                    <Star className="h-5 w-5 shrink-0 fill-amber-400/25 text-amber-500" aria-hidden />
+                    <h2 className="text-base font-semibold text-slate-900">Reviews</h2>
                   </div>
-                )}
-                <div className="text-center mt-6">
-                  <Button variant="outline">Load More Reviews</Button>
+                  <p className="mb-4 text-sm text-slate-600">What others say about {profileUser.name}</p>
+                  <Tabs defaultValue="tasker">
+                    <TabsList className="mb-6 grid w-full grid-cols-2 rounded-xl bg-slate-100 p-1.5">
+                      <TabsTrigger
+                        value="tasker"
+                        className="rounded-lg data-[state=active]:bg-white data-[state=active]:font-semibold data-[state=active]:text-blue-700 data-[state=active]:shadow-sm"
+                      >
+                        As Tasker
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="taskmaster"
+                        className="rounded-lg data-[state=active]:bg-white data-[state=active]:font-semibold data-[state=active]:text-blue-700 data-[state=active]:shadow-sm"
+                      >
+                        As Taskmaster
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="tasker" className="space-y-4">
+                      {reviews
+                        .filter((review) => review.role === "tasker")
+                        .map((review) => (
+                          <ReviewCard key={review.id} review={review} />
+                        ))}
+                      {reviews.filter((review) => review.role === "tasker").length === 0 && (
+                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
+                          <Star className="mx-auto mb-3 h-12 w-12 text-slate-300" />
+                          <p className="font-medium text-slate-500">No tasker reviews available.</p>
+                          <p className="mt-1 text-sm text-slate-400">Reviews will appear when tasks are completed.</p>
+                        </div>
+                      )}
+                      <div className="mt-6 text-center">
+                        <Button variant="outline">Load More Reviews</Button>
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="taskmaster" className="space-y-4">
+                      {reviews
+                        .filter((review) => review.role === "taskmaster")
+                        .map((review) => (
+                          <ReviewCard key={review.id} review={review} />
+                        ))}
+                      {reviews.filter((review) => review.role === "taskmaster").length === 0 && (
+                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
+                          <Star className="mx-auto mb-3 h-12 w-12 text-slate-300" />
+                          <p className="font-medium text-slate-500">No taskmaster reviews available.</p>
+                          <p className="mt-1 text-sm text-slate-400">Reviews will appear when posted tasks are completed.</p>
+                        </div>
+                      )}
+                      <div className="mt-6 text-center">
+                        <Button variant="outline">Load More Reviews</Button>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </div>
-              </TabsContent>
-            </Tabs>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
               </CardContent>
             </Card>
           </div>
