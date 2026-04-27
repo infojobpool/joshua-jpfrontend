@@ -15,6 +15,15 @@ const mdShell =
   "[&_h1]:mb-4 [&_h1]:mt-8 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:tracking-tight [&_h1]:text-slate-900 dark:[&_h1]:text-white " +
   "[&_h2]:mb-3 [&_h2]:mt-8 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-slate-900 dark:[&_h2]:text-white " +
   "[&_h3]:mb-2 [&_h3]:mt-6 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-slate-900 dark:[&_h3]:text-slate-100 " +
+  "[&_h4]:mb-2 [&_h4]:mt-5 [&_h4]:text-base [&_h4]:font-semibold [&_h4]:text-slate-900 dark:[&_h4]:text-slate-100 " +
+  "[&_h5]:mb-1 [&_h5]:mt-4 [&_h5]:text-sm [&_h5]:font-semibold [&_h5]:text-slate-800 dark:[&_h5]:text-slate-200 " +
+  "[&_h6]:mb-1 [&_h6]:mt-3 [&_h6]:text-xs [&_h6]:font-semibold [&_h6]:uppercase [&_h6]:tracking-wide [&_h6]:text-slate-700 dark:[&_h6]:text-slate-300 " +
+  "[&_p.jp-blog-h7]:mb-1 [&_p.jp-blog-h7]:mt-4 [&_p.jp-blog-h7]:text-sm [&_p.jp-blog-h7]:font-semibold [&_p.jp-blog-h7]:text-slate-800 dark:[&_p.jp-blog-h7]:text-slate-200 " +
+  "[&_p.jp-blog-h8]:mb-1 [&_p.jp-blog-h8]:mt-3 [&_p.jp-blog-h8]:text-xs [&_p.jp-blog-h8]:font-medium [&_p.jp-blog-h8]:text-slate-600 dark:[&_p.jp-blog-h8]:text-slate-400 " +
+  "[&_del]:text-slate-500 dark:[&_del]:text-slate-400 [&_del]:line-through " +
+  "[&_u]:underline [&_u]:decoration-slate-600 dark:[&_u]:decoration-slate-400 [&_u]:underline-offset-2 " +
+  "[&_mark]:rounded-sm [&_mark]:bg-amber-200/90 dark:[&_mark]:bg-amber-300/80 [&_mark]:px-0.5 [&_mark]:text-slate-900 " +
+  "[&_sub]:text-[0.75em] [&_sup]:text-[0.75em] " +
   "[&_p]:mb-4 [&_p]:leading-relaxed [&_a]:font-medium [&_a]:text-blue-600 [&_a]:underline-offset-2 hover:[&_a]:underline " +
   "[&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:mb-4 [&_ol]:list-decimal [&_ol]:pl-6 " +
   "[&_li]:mb-1 [&_blockquote]:border-l-4 [&_blockquote]:border-slate-200 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-600 " +

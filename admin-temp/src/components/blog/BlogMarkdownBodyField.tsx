@@ -9,6 +9,7 @@ import {
   Heading2,
   Heading3,
   Heading4,
+  Highlighter,
   ImageIcon,
   Italic,
   Link2,
@@ -17,6 +18,10 @@ import {
   Minus,
   Palette,
   Quote,
+  Strikethrough,
+  Subscript,
+  Superscript,
+  Underline,
   Upload,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -41,6 +46,14 @@ const PREVIEW_MD_CLASS =
   "[&_h2]:mb-2 [&_h2]:mt-5 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-slate-900 " +
   "[&_h3]:mb-2 [&_h3]:mt-4 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-slate-900 " +
   "[&_h4]:mb-1 [&_h4]:mt-3 [&_h4]:text-base [&_h4]:font-semibold " +
+  "[&_h5]:mb-1 [&_h5]:mt-3 [&_h5]:text-sm [&_h5]:font-semibold [&_h5]:text-slate-800 " +
+  "[&_h6]:mb-1 [&_h6]:mt-2.5 [&_h6]:text-xs [&_h6]:font-semibold [&_h6]:uppercase [&_h6]:tracking-wide [&_h6]:text-slate-700 " +
+  "[&_p.jp-blog-h7]:mb-1 [&_p.jp-blog-h7]:mt-3 [&_p.jp-blog-h7]:text-sm [&_p.jp-blog-h7]:font-semibold [&_p.jp-blog-h7]:text-slate-800 " +
+  "[&_p.jp-blog-h8]:mb-1 [&_p.jp-blog-h8]:mt-2 [&_p.jp-blog-h8]:text-xs [&_p.jp-blog-h8]:font-medium [&_p.jp-blog-h8]:text-slate-600 " +
+  "[&_del]:text-slate-500 [&_del]:line-through " +
+  "[&_u]:underline [&_u]:decoration-slate-600 [&_u]:underline-offset-2 " +
+  "[&_mark]:rounded-sm [&_mark]:bg-amber-200/90 [&_mark]:px-0.5 [&_mark]:text-slate-900 " +
+  "[&_sub]:text-[0.75em] [&_sup]:text-[0.75em] " +
   "[&_p]:mb-3 [&_p]:leading-relaxed [&_a]:text-blue-600 [&_a]:underline " +
   "[&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-0.5 " +
   "[&_blockquote]:border-l-4 [&_blockquote]:border-slate-200 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-slate-600 " +
@@ -249,6 +262,20 @@ export function BlogMarkdownBodyField({
     wrapSelection("```\n", "\n```", "code");
   };
 
+  /** “H7” / “H8”: not valid HTML heading levels — small titled paragraphs with stable classes. */
+  const insertCaptionHeading = (cls: "jp-blog-h7" | "jp-blog-h8") => {
+    const el = taRef.current;
+    if (!el || disabled) return;
+    const pos = el.selectionStart;
+    const placeholder = cls === "jp-blog-h7" ? "Subsection title" : "Caption or fine print";
+    const snippet = `\n\n<p class="${cls}">${placeholder}</p>\n\n`;
+    const next = replaceRange(value, pos, pos, snippet);
+    const openLen = `\n\n<p class="${cls}">`.length;
+    const startSel = pos + openLen;
+    const endSel = startSel + placeholder.length;
+    applyChange(next, startSel, endSel);
+  };
+
   const onInlineImageFile = async (file: File | null) => {
     if (!file || !uploadInlineImage || disabled) return;
     const alt = window.prompt("Image description (alt text)", "Image");
@@ -283,16 +310,19 @@ export function BlogMarkdownBodyField({
     title,
     onClick,
     children,
+    buttonClassName,
   }: {
     title: string;
     onClick: () => void;
     children: ReactNode;
+    /** e.g. min width for H5–H8 text labels */
+    buttonClassName?: string;
   }) => (
     <Button
       type="button"
       variant="outline"
       size="sm"
-      className="h-8 w-8 shrink-0 p-0"
+      className={cn("h-8 shrink-0 p-0", buttonClassName ?? "w-8 min-w-8")}
       title={title}
       disabled={disabled}
       onClick={() => {
@@ -354,12 +384,47 @@ export function BlogMarkdownBodyField({
             <ToolBtn title="Heading 4" onClick={() => setHeadingLine("####")}>
               <Heading4 className="h-4 w-4" />
             </ToolBtn>
+            <ToolBtn title="Heading 5" onClick={() => setHeadingLine("#####")} buttonClassName="min-w-[2.125rem] px-1">
+              <span className="font-mono text-[10px] font-bold leading-none">H5</span>
+            </ToolBtn>
+            <ToolBtn title="Heading 6" onClick={() => setHeadingLine("######")} buttonClassName="min-w-[2.125rem] px-1">
+              <span className="font-mono text-[10px] font-bold leading-none">H6</span>
+            </ToolBtn>
+            <ToolBtn
+              title="Subsection (styled caption — not a native H7)"
+              onClick={() => insertCaptionHeading("jp-blog-h7")}
+              buttonClassName="min-w-[2.125rem] px-1"
+            >
+              <span className="font-mono text-[10px] font-bold leading-none">H7</span>
+            </ToolBtn>
+            <ToolBtn
+              title="Fine print (smallest caption — not a native H8)"
+              onClick={() => insertCaptionHeading("jp-blog-h8")}
+              buttonClassName="min-w-[2.125rem] px-1"
+            >
+              <span className="font-mono text-[10px] font-bold leading-none">H8</span>
+            </ToolBtn>
             <span className="mx-0.5 w-px self-stretch bg-border" />
             <ToolBtn title="Bold" onClick={() => wrapSelection("**", "**", "bold")}>
               <Bold className="h-4 w-4" />
             </ToolBtn>
             <ToolBtn title="Italic" onClick={() => wrapSelection("*", "*", "italic")}>
               <Italic className="h-4 w-4" />
+            </ToolBtn>
+            <ToolBtn title="Strikethrough" onClick={() => wrapSelection("~~", "~~", "strikethrough")}>
+              <Strikethrough className="h-4 w-4" />
+            </ToolBtn>
+            <ToolBtn title="Underline (HTML)" onClick={() => wrapSelection("<u>", "</u>", "underlined")}>
+              <Underline className="h-4 w-4" />
+            </ToolBtn>
+            <ToolBtn title="Highlight" onClick={() => wrapSelection("<mark>", "</mark>", "highlighted")}>
+              <Highlighter className="h-4 w-4" />
+            </ToolBtn>
+            <ToolBtn title="Subscript" onClick={() => wrapSelection("<sub>", "</sub>", "sub")}>
+              <Subscript className="h-4 w-4" />
+            </ToolBtn>
+            <ToolBtn title="Superscript" onClick={() => wrapSelection("<sup>", "</sup>", "sup")}>
+              <Superscript className="h-4 w-4" />
             </ToolBtn>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

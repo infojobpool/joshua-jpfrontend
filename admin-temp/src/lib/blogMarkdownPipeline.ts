@@ -19,11 +19,23 @@ const JP_BLOG_SPAN_CLASSNAME: [string, ...string[]] = [
   "jp-bc-sky-600",
 ];
 
+const JP_BLOG_P_CLASSNAME: [string, ...string[]] = ["className", "jp-blog-h7", "jp-blog-h8"];
+
 export const blogMarkdownSanitizeSchema: Schema = {
   ...defaultSchema,
+  /** Extra inline / caption tags for the admin toolbar (underline, highlight, sub/sup). */
+  tagNames: Array.from(
+    new Set([...(defaultSchema.tagNames ?? []), "u", "mark", "sub", "sup", "del"]),
+  ),
   attributes: {
     ...defaultSchema.attributes,
     span: [JP_BLOG_SPAN_CLASSNAME],
+    p: JP_BLOG_P_CLASSNAME,
+    u: [],
+    mark: [],
+    sub: [],
+    sup: [],
+    del: [],
   },
 };
 
