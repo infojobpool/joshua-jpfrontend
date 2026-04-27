@@ -7,6 +7,7 @@ import { motion } from "framer-motion"
 import { Button } from "../../components/ui/button"
 import { ArrowRight, ThumbsUp, Check } from "lucide-react"
 import useStore from "@/lib/Zustand"
+import { HomeSocialProofStats } from "@/components/mainpage/HomeSocialProofStats"
 
 export function HeroSection() {
   const checkAuth = useStore((s) => s.checkAuth)
@@ -20,14 +21,14 @@ export function HeroSection() {
   }, [checkAuth])
 
   return (
-    <section className="relative overflow-hidden bg-white pt-4 pb-16 md:pt-6 md:pb-20 lg:pt-8 lg:pb-24">
-      <div className="w-full px-4 md:px-6 lg:px-10 xl:px-14 2xl:px-16 max-w-[90rem] mx-auto">
+    <section className="relative overflow-hidden bg-white pb-10 pt-3 md:pb-12 md:pt-5 lg:pb-14 lg:pt-6">
+      <div className="mx-auto w-full max-w-[90rem] px-4 md:px-6 lg:px-10 xl:px-14 2xl:px-16">
         {isAuthenticated && firstName ? (
-          <p className="mb-5 text-center text-sm font-semibold text-slate-600 md:mb-6 md:text-base">
+          <p className="mb-3 text-center text-sm font-semibold text-slate-600 md:mb-4 md:text-base">
             Welcome back, {firstName}!
           </p>
         ) : null}
-        <div className="grid gap-12 lg:gap-14 xl:gap-20 items-center lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] xl:grid-cols-[minmax(0,1fr)_minmax(0,1.28fr)]">
+        <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.28fr)] xl:gap-14">
           {/* Left: Post your first task CTA */}
           <motion.div
             className="flex flex-col justify-center max-w-xl"
@@ -40,25 +41,25 @@ export function HeroSection() {
               <br />
               <span className="text-blue-600">task in seconds</span>
             </h1>
-            <p className="mt-6 text-gray-600 text-base md:text-lg max-w-md leading-relaxed">
+            <p className="mt-4 max-w-md text-base leading-relaxed text-gray-600 md:mt-5 md:text-lg">
               Save yourself hours and get your to-do list completed.
             </p>
-            <ul className="mt-10 space-y-5">
+            <ul className="mt-6 space-y-3.5 md:mt-8 md:space-y-4">
               {[
                 "Describe what you need done",
                 "Set your budget",
                 "Receive quotes and pick the best Tasker",
               ].map((step, i) => (
-                <li key={i} className="flex items-center gap-4">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 font-semibold text-sm">
+                <li key={i} className="flex items-center gap-3 md:gap-4">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-600 md:h-11 md:w-11">
                     {i + 1}
                   </span>
-                  <span className="text-gray-700 text-base md:text-lg">{step}</span>
+                  <span className="text-base text-gray-700 md:text-lg">{step}</span>
                 </li>
               ))}
             </ul>
-            <Link href="/post-task" className="mt-10 inline-flex">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-base font-medium rounded-xl">
+            <Link href="/post-task" className="mt-7 inline-flex md:mt-9">
+              <Button className="rounded-xl bg-blue-600 px-7 py-5 text-base font-medium text-white hover:bg-blue-700 md:px-8 md:py-6">
                 Post your task
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
@@ -96,6 +97,8 @@ export function HeroSection() {
             </div>
           </motion.div>
         </div>
+
+        <HomeSocialProofStats className="mt-8 border-t border-slate-100/90 pt-7 md:mt-10 md:pt-8" />
       </div>
     </section>
   )

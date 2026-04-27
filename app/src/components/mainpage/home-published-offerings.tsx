@@ -425,9 +425,9 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
   // desktop
   if (loading) {
     return (
-      <section className="hidden border-t border-emerald-100/60 py-12 md:block overflow-hidden bg-gradient-to-b from-emerald-50/40 via-white to-white">
+      <section className="hidden border-t border-emerald-100/60 bg-gradient-to-b from-emerald-50/40 via-white to-white py-8 md:block md:py-10 overflow-hidden">
         <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-          <div className="mx-auto mb-8 max-w-7xl">
+          <div className="mx-auto mb-6 max-w-7xl">
             <div className="h-10 max-w-md animate-pulse rounded-lg bg-emerald-100/50" />
           </div>
           <div className="mx-auto flex max-w-7xl justify-center gap-4">
@@ -501,10 +501,10 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
   };
 
   return (
-    <section className="hidden border-t border-emerald-100/60 py-12 md:block overflow-hidden bg-gradient-to-b from-emerald-50/40 via-white to-white">
+    <section className="hidden border-t border-emerald-100/60 bg-gradient-to-b from-emerald-50/40 via-white to-white py-8 md:block md:py-10 overflow-hidden">
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
         <motion.div
-          className="mx-auto mb-8 max-w-7xl text-left"
+          className="mx-auto mb-6 max-w-7xl text-left"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}

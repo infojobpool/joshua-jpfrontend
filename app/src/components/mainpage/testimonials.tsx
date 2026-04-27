@@ -46,104 +46,86 @@ export function Testimonials() {
   const t = testimonials[current]
 
   return (
-    <section className="py-12 bg-white">
+    <section className="border-t border-slate-100/80 bg-gradient-to-b from-slate-50/90 via-white to-white py-8 md:py-11">
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
         <motion.div
-          className="text-center mb-12"
+          className="mx-auto mb-6 max-w-2xl text-center md:mb-7"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl md:text-4xl">
             What People Say
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="mt-2 text-sm text-slate-600 sm:text-base">
             Real stories from our community
           </p>
         </motion.div>
 
-        <motion.div
-          className="flex justify-center gap-8 mb-12"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-        >
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">50K+</div>
-            <div className="text-sm text-gray-600">Happy Users</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">4.9★</div>
-            <div className="text-sm text-gray-600">Rating</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">₹2M+</div>
-            <div className="text-sm text-gray-600">Earned</div>
-          </div>
-        </motion.div>
-
-        <div className="relative max-w-4xl mx-auto">
+        <div className="relative mx-auto max-w-3xl">
           <AnimatePresence mode="wait">
             <motion.div
               key={t.id + String(current)}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.5 }}
-              className="bg-gray-50 p-8 rounded-2xl border border-gray-200 relative"
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.45 }}
+              className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.18)] ring-1 ring-slate-900/[0.04] sm:p-8"
             >
-              <div className="absolute top-6 left-6 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <Quote className="h-4 w-4 text-blue-600" />
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500"
+                aria-hidden
+              />
+              <div className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 sm:right-6 sm:top-6">
+                <Quote className="h-4 w-4" aria-hidden />
               </div>
 
-              <div className="relative z-10">
-                <div className="flex justify-center mb-4">
+              <div className="relative z-10 pt-1">
+                <div className="mb-3 flex justify-center gap-0.5">
                   {[...Array(t.rating)].map((_, i) => (
-                    <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400 mx-1" />
+                    <Star key={i} className="mx-0.5 h-4 w-4 fill-amber-400 text-amber-400 sm:h-[1.05rem] sm:w-[1.05rem]" />
                   ))}
                 </div>
 
-                <p className="text-lg text-gray-700 mb-6 italic text-center leading-relaxed">
-                  &ldquo;{t.text}&rdquo;
-                </p>
+                <blockquote className="mb-6 text-center text-[0.9375rem] font-medium leading-relaxed text-slate-700 sm:text-lg">
+                  <span className="text-slate-400">&ldquo;</span>
+                  {t.text}
+                  <span className="text-slate-400">&rdquo;</span>
+                </blockquote>
 
                 {t.category ? (
-                  <div className="flex justify-center mb-6">
-                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
+                  <div className="mb-6 flex justify-center">
+                    <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800 ring-1 ring-blue-100/80">
                       {t.category}
                     </span>
                   </div>
                 ) : null}
 
-                <div className="flex items-center justify-center gap-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage
-                      src={t.avatarUrl || PLACEHOLDER_AVATAR}
-                      alt={t.name}
-                    />
-                    <AvatarFallback className="bg-blue-100 text-blue-700 text-sm font-bold">
+                <div className="flex items-center justify-center gap-3 border-t border-slate-100 pt-5 sm:gap-4">
+                  <Avatar className="h-11 w-11 ring-2 ring-white shadow-md sm:h-12 sm:w-12">
+                    <AvatarImage src={t.avatarUrl || PLACEHOLDER_AVATAR} alt={t.name} />
+                    <AvatarFallback className="bg-gradient-to-br from-blue-100 to-indigo-100 text-sm font-bold text-blue-800">
                       {t.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
 
-                  <div className="text-left">
-                    <h4 className="font-semibold text-gray-900">{t.name}</h4>
-                    <p className="text-sm text-gray-600">{t.role || "JobPool customer"}</p>
+                  <div className="min-w-0 text-left">
+                    <h4 className="truncate font-semibold text-slate-900">{t.name}</h4>
+                    <p className="truncate text-xs text-slate-600 sm:text-sm">{t.role || "JobPool customer"}</p>
                   </div>
                 </div>
               </div>
             </motion.div>
           </AnimatePresence>
 
-          <div className="flex justify-center items-center mt-8 gap-6">
+          <div className="mt-6 flex items-center justify-center gap-5 sm:mt-7 sm:gap-6">
             <Button
               variant="outline"
               size="icon"
               onClick={previous}
               disabled={testimonials.length <= 1}
-              className="rounded-full w-10 h-10"
+              className="h-10 w-10 rounded-full border-slate-200 shadow-sm hover:bg-slate-50"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -153,9 +135,12 @@ export function Testimonials() {
                 <button
                   key={index}
                   type="button"
-                  onClick={() => setCurrent(index)}
-                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                    index === current ? "bg-blue-600" : "bg-gray-300 hover:bg-gray-400"
+                  onClick={() => {
+                    setAutoplay(false)
+                    setCurrent(index)
+                  }}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    index === current ? "w-6 bg-blue-600" : "w-2 bg-slate-300 hover:bg-slate-400"
                   }`}
                   aria-label={`Show testimonial ${index + 1}`}
                 />
@@ -167,7 +152,7 @@ export function Testimonials() {
               size="icon"
               onClick={next}
               disabled={testimonials.length <= 1}
-              className="rounded-full w-10 h-10"
+              className="h-10 w-10 rounded-full border-slate-200 shadow-sm hover:bg-slate-50"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>

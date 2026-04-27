@@ -401,9 +401,9 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
   // desktop
   if (loading) {
     return (
-      <section className="hidden py-12 md:block bg-gray-50 overflow-hidden">
+      <section className="hidden bg-gray-50 py-8 md:block md:py-10 overflow-hidden">
         <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-          <div className="mx-auto mb-8 max-w-7xl">
+          <div className="mx-auto mb-6 max-w-7xl">
             <div className="h-10 max-w-md animate-pulse rounded-lg bg-gray-200" />
           </div>
           <div className="mx-auto flex max-w-7xl justify-center gap-4">
@@ -421,10 +421,10 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
 
   if (tasks.length === 0) {
     return (
-      <section className="hidden py-12 md:block bg-gray-50 overflow-hidden">
+      <section className="hidden bg-gray-50 py-8 md:block md:py-10 overflow-hidden">
         <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
           <motion.div
-            className="mx-auto mb-8 max-w-7xl text-left"
+            className="mx-auto mb-6 max-w-7xl text-left"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
@@ -471,10 +471,10 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
   };
 
   return (
-    <section className="hidden py-12 md:block bg-gray-50 overflow-hidden">
+    <section className="hidden bg-gray-50 py-8 md:block md:py-10 overflow-hidden">
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
         <motion.div
-          className="mx-auto mb-8 max-w-7xl text-left"
+          className="mx-auto mb-6 max-w-7xl text-left"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}

@@ -97,9 +97,9 @@ import {
   ClipboardList, 
   Users, 
   CheckCircle, 
-  ArrowRight, 
-  Shield, 
-  Star, 
+  ArrowRight,
+  Headphones,
+  Star,
   MessageCircle, 
   CreditCard,
   Smartphone,
@@ -180,18 +180,19 @@ export function HowItWorks() {
       highlight: "Get paid quickly and securely"
     },
     {
-      icon: <Shield className="h-8 w-8 text-purple-600" />,
-      title: "Peace of mind, insured",
-      description: "Liability insurance is sorted for Taskers performing most Tasks. JobPool Insurance is provided by reputable insurance brands.",
-      highlight: "Work with confidence and protection"
-    }
+      icon: <Headphones className="h-8 w-8 text-purple-600" />,
+      title: "Help when you need it",
+      description:
+        "Stuck on a task, a payout, or your account? Reach out to JobPool support so you can keep earning without guesswork.",
+      highlight: "Real people, real answers",
+    },
   ]
 
   return (
-    <section id="how-it-works" className="py-12 bg-white" ref={containerRef}>
+    <section id="how-it-works" className="bg-white py-8 md:py-11" ref={containerRef}>
       <motion.div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16" style={{ opacity, y }}>
         {/* Header */}
-        <div className="text-center mb-16">
+        <div className="mb-10 text-center md:mb-12">
           <motion.h2
             className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl"
             initial={{ opacity: 0, y: -20 }}
@@ -227,7 +228,7 @@ export function HowItWorks() {
         </div>
 
         {/* Main Steps */}
-        <div className="grid md:grid-cols-3 gap-8 relative mb-20">
+        <div className="relative mb-10 grid gap-6 md:mb-12 md:grid-cols-3 md:gap-8">
           {steps.map((step, index) => (
             <motion.div
               key={index}
@@ -260,9 +261,9 @@ export function HowItWorks() {
           ))}
         </div>
 
-        {/* We've got you covered */}
+        {/* We've got you covered — mobile homepage only */}
         <motion.div
-          className="mb-16"
+          className="mb-10 md:hidden"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
@@ -294,13 +295,13 @@ export function HowItWorks() {
 
         {/* Tasker Benefits */}
         <motion.div
-          className="bg-blue-50 rounded-2xl p-8 mb-16"
+          className="mb-10 rounded-2xl bg-blue-50 p-6 md:mb-12 md:p-8"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <div className="text-center mb-8">
+          <div className="mb-6 text-center md:mb-7">
             <h3 className="text-2xl font-bold text-gray-900 mb-4">Earn Money as a Tasker</h3>
             <p className="text-gray-600 max-w-2xl mx-auto">
               Join thousands of Taskers who are earning money by helping others with their tasks.

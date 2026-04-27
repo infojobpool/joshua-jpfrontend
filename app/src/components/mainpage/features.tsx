@@ -139,10 +139,10 @@ export function Features() {
   const imageX = useTransform(scrollYProgress, [0, 1], [100, -100])
 
   return (
-    <section className="py-12 bg-slate-50" ref={containerRef}>
+    <section className="bg-slate-50 py-8 md:py-10" ref={containerRef}>
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <div className="space-y-8">
+        <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-10">
+          <div className="space-y-6 md:space-y-7">
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               whileInView={{ opacity: 1, y: 0 }}

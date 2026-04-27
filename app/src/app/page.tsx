@@ -11,7 +11,6 @@ import { HowItWorks } from '../components/mainpage/how-it-works'
 import { Features } from '../components/mainpage/features'
 import { Testimonials } from '../components/mainpage/testimonials'
 import { TrustBadgesSection } from '../components/mainpage/TrustBadgesSection'
-import { MobileWrapper } from '../components/mobile/MobileWrapper'
 
 export default function Home() {
   return (
@@ -19,6 +18,7 @@ export default function Home() {
       {/* Mobile landing (default on small screens) */}
       <div className="md:hidden min-w-0 w-full">
         <MobileHeroSection />
+        <TrustBadgesSection />
         <MobileWelcomeBonus />
         <RecentAvailableTasks variant="mobile" />
         <HomePublishedOfferings variant="mobile" />
@@ -30,7 +30,6 @@ export default function Home() {
       {/* Desktop landing (md and up) */}
       <div className="hidden md:block">
         <HeroSection />
-        <TrustBadgesSection />
         <RecentAvailableTasks variant="desktop" />
         <HomePublishedOfferings variant="desktop" />
         <HowItWorks />
