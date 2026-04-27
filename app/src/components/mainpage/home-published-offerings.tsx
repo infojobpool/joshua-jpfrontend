@@ -19,7 +19,11 @@ function formatFromPriceParts(n: number) {
   return { prefix: "From", amount };
 }
 
-function profileHref(o: Offering): string {
+/** Public listing page when we have an id; otherwise fall back to provider profile. */
+function listingPublicHref(o: Offering): string {
+  if (o.id?.trim()) {
+    return `/listings/${encodeURIComponent(o.id)}`;
+  }
   if (!o.userId) return "/browse-tasks";
   return `/profilepage/${encodeURIComponent(o.userId)}`;
 }
@@ -373,10 +377,18 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
 
     return (
       <div className="md:hidden w-full min-w-0 max-w-full border-t border-emerald-100/70 bg-gradient-to-b from-emerald-50/45 via-gray-50/90 to-gray-50 px-4 py-4">
-        <h3 className="font-home-section-title mb-1 border-l-[3px] border-blue-500 pl-2.5 text-lg text-slate-900">
-          {title}
-        </h3>
-        <p className="font-home-section-desc mb-3 text-sm text-gray-500">{subtitle}</p>
+        <div className="mb-3 flex items-end justify-between gap-3 border-l-[3px] border-blue-500 pl-2.5">
+          <div className="min-w-0">
+            <h3 className="font-home-section-title text-lg text-slate-900">{title}</h3>
+            <p className="font-home-section-desc mt-1 text-sm text-gray-500">{subtitle}</p>
+          </div>
+          <Link
+            href="/listings"
+            className="shrink-0 text-sm font-semibold text-emerald-700 hover:underline"
+          >
+            See all
+          </Link>
+        </div>
         <div
           ref={mobileScrollRef}
           className="w-full min-w-0 max-w-full overflow-x-scroll overflow-y-hidden overscroll-x-contain touch-pan-x pb-2 [overflow-anchor:none] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
@@ -400,7 +412,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
               <PremiumOfferingCard
                 key={`${o.id}-${idx}`}
                 o={o}
-                href={profileHref(o)}
+                href={listingPublicHref(o)}
                 widthClass="w-[15.5rem]"
               />
             ))}
@@ -496,10 +508,22 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <h2 className="font-home-section-title mb-2 text-2xl text-slate-900 md:text-3xl">
-            <span className="border-b-[3px] border-blue-500 pb-0.5">{title}</span>
-          </h2>
-          <p className="font-home-section-desc mx-auto max-w-2xl text-sm text-gray-600 md:text-base">{subtitle}</p>
+          <div className="mx-auto flex max-w-4xl flex-col items-center gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+            <div className="text-center sm:text-left">
+              <h2 className="font-home-section-title mb-2 text-2xl text-slate-900 md:text-3xl">
+                <span className="border-b-[3px] border-blue-500 pb-0.5">{title}</span>
+              </h2>
+              <p className="font-home-section-desc mx-auto max-w-2xl text-sm text-gray-600 md:text-base sm:mx-0">
+                {subtitle}
+              </p>
+            </div>
+            <Link
+              href="/listings"
+              className="shrink-0 text-sm font-semibold text-emerald-700 hover:underline sm:pb-1"
+            >
+              See all listings
+            </Link>
+          </div>
         </motion.div>
 
         <div className="relative mx-auto max-w-7xl">
@@ -527,7 +551,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
               <div className="flex w-max gap-4 md:gap-5 transform-gpu will-change-transform">
                 {loopDesktop.map((o, idx) => (
                   <div key={`${o.id}-${idx}`} className="flex-shrink-0 scroll-snap-start">
-                    <PremiumOfferingCard o={o} href={profileHref(o)} widthClass="w-[16rem] md:w-[17rem]" />
+                    <PremiumOfferingCard o={o} href={listingPublicHref(o)} widthClass="w-[16rem] md:w-[17rem]" />
                   </div>
                 ))}
               </div>

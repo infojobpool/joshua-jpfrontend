@@ -289,6 +289,43 @@ export async function listPublishedOfferingsForHomeApi(limit = 24): Promise<Offe
   return offerings.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, limit);
 }
 
+/**
+ * Public listing detail for `/listings/[id]`.
+ * Tries GET `offerings/{id}/` first; if missing or non-public, scans the public feed (paginated cap).
+ */
+export async function getPublicOfferingByIdApi(id: string): Promise<Offering | null> {
+  const clean = id?.trim();
+  if (!clean) return null;
+
+  try {
+    const res = await axiosInstance.get(`offerings/${encodeURIComponent(clean)}/`, {
+      timeout: 15_000,
+    });
+    const raw = unwrapOfferingEnvelope(res) ?? res.data;
+    let single: unknown = raw;
+    if (Array.isArray(raw) && raw.length > 0) single = raw[0];
+    const m = mapOfferingFromApi(single);
+    if (m && m.status === "published" && !m.adminHidden) return m;
+  } catch {
+    /* fall through to feed scan */
+  }
+
+  try {
+    const pageSize = 72;
+    let offset = 0;
+    for (let page = 0; page < 12; page++) {
+      const { offerings } = await listOfferingFeedApi(pageSize, offset);
+      const found = offerings.find((o) => o.id === clean);
+      if (found) return found;
+      if (offerings.length < pageSize) break;
+      offset += pageSize;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
 function newIdempotencyKey(): string {
   try {
     if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
