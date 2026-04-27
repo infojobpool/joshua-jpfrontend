@@ -32,6 +32,7 @@ import {
   reportTaskPublicQuestion,
   type TaskPublicQAItem,
 } from "@/lib/taskPublicQaApi";
+import { profilePageHref } from "@/lib/profilePublicView";
 
 function formatWhen(iso: string): string {
   if (!iso) return "";
@@ -445,7 +446,7 @@ function QuestionThreadRow({
           <div className="flex items-center gap-2 flex-wrap">
             {q.askerId ? (
               <Link
-                href={`/profilepage/${q.askerId}`}
+                href={profilePageHref(String(q.askerId), "questions")}
                 className="font-semibold text-slate-900 hover:text-blue-700 truncate"
               >
                 {q.askerName}

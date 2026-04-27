@@ -138,6 +138,55 @@ html {
   animation: loadingDot 1.2s ease-in-out infinite;
 }
 
+/* Branded full-page loader — soft “incoming” glow + mark */
+@keyframes loaderBreathe {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+@keyframes loaderNudge {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+@keyframes loaderDotBob {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
+}
+.animate-loader-breathe {
+  animation: loaderBreathe 2.4s ease-in-out infinite;
+}
+.animate-loader-nudge {
+  animation: loaderNudge 2.2s ease-in-out infinite;
+}
+.animate-loader-dot-bob {
+  animation: loaderDotBob 1s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-loader-breathe,
+  .animate-loader-nudge,
+  .animate-loader-dot-bob {
+    animation: none !important;
+  }
+}
+
 /* Dashboard animations - moved from styled-jsx to fix React 310 */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(30px); }

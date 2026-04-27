@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import useStore from "@/lib/Zustand";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
+import { profilePageHref } from "@/lib/profilePublicView";
 import type { OfferingType } from "@/lib/offerings/types";
 import { newBookingId, saveBookingRequest } from "@/lib/listingBookings/storage";
 import { toast } from "sonner";
@@ -232,7 +233,9 @@ export default function ListingRequestPage() {
                 </Link>
               </Button>
               <Button asChild variant="outline" className="w-full rounded-xl">
-                <Link href={providerId ? `/profilepage/${providerId}` : "/dashboard"}>Back to profile</Link>
+                <Link href={providerId ? profilePageHref(String(providerId), "booking") : "/dashboard"}>
+                  Back to profile
+                </Link>
               </Button>
             </CardFooter>
           </Card>
@@ -248,7 +251,7 @@ export default function ListingRequestPage() {
       <div className="container max-w-xl mx-auto px-4 py-6 pb-28 md:pb-12">
         <div className="mb-6">
           <Link
-            href={providerId ? `/profilepage/${providerId}` : "/dashboard"}
+            href={providerId ? profilePageHref(String(providerId), "booking") : "/dashboard"}
             className="inline-flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-blue-700"
           >
             <ChevronLeft className="h-4 w-4" />
