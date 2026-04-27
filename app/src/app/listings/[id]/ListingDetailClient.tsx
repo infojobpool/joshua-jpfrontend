@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, MapPin, MessageSquare, Package } from "lucide-react";
+import { ChevronLeft, MapPin, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getPublicOfferingByIdApi } from "@/lib/offerings/api";
 import type { Offering } from "@/lib/offerings/types";
@@ -22,27 +22,6 @@ function buildListingRequestHref(o: Offering): string {
   if (o.locationText?.trim()) q.set("location", o.locationText.trim());
   q.set("type", o.type === "product" ? "product" : "service");
   return `/listing-request?${q.toString()}`;
-}
-
-function buildMessageHrefWhenSignedOut(o: Offering): string {
-  const q = new URLSearchParams({
-    receiver: o.userId,
-    receiverName: (o.providerDisplayName || "Provider").trim() || "Provider",
-  });
-  q.set("offering_id", o.id);
-  q.set("context", `Hi — I'm interested in "${(o.title || "your listing").slice(0, 80)}". `);
-  const dest = `/messages/new?${q.toString()}`;
-  return `/signin?next=${encodeURIComponent(dest)}`;
-}
-
-function buildMessageHrefSignedIn(o: Offering): string {
-  const q = new URLSearchParams({
-    receiver: o.userId,
-    receiverName: (o.providerDisplayName || "Provider").trim() || "Provider",
-  });
-  q.set("offering_id", o.id);
-  q.set("context", `Hi — I'm interested in "${(o.title || "your listing").slice(0, 80)}". `);
-  return `/messages/new?${q.toString()}`;
 }
 
 export default function ListingDetailClient() {
@@ -216,22 +195,11 @@ export default function ListingDetailClient() {
                 </Button>
               </div>
             ) : (
-              <>
-                <div className="flex flex-col gap-2 border-t border-slate-100 pt-5 sm:flex-row">
-                  <Button asChild className="w-full rounded-xl bg-blue-600 hover:bg-blue-700">
-                    <Link href={buildListingRequestHref(o)}>Request booking</Link>
-                  </Button>
-                  <Button asChild variant="outline" className="w-full rounded-xl">
-                    <Link
-                      href={userId ? buildMessageHrefSignedIn(o) : buildMessageHrefWhenSignedOut(o)}
-                      className="inline-flex items-center justify-center gap-2"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                      Message provider
-                    </Link>
-                  </Button>
-                </div>
-              </>
+              <div className="border-t border-slate-100 pt-5">
+                <Button asChild className="w-full rounded-xl bg-blue-600 hover:bg-blue-700">
+                  <Link href={buildListingRequestHref(o)}>Request booking</Link>
+                </Button>
+              </div>
             )}
           </div>
         </div>
