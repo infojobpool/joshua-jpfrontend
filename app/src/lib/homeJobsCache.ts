@@ -3,14 +3,37 @@ import { resolveProfileImageUrl } from "@/lib/profileImage";
 
 /** Fresh window: serve from memory without hitting the network. */
 const TTL_MS = 120_000;
-/** Persist at most this many raw rows to keep sessionStorage small and fast. */
+/** Persist at most this many raw rows to keep disk cache small and fast. */
 const PERSIST_JOB_CAP = 100;
 const STORAGE_KEY = "jobpool_home_get_all_jobs_v1";
 /** Ignore disk snapshot older than this. */
-const DISK_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const DISK_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 let inflight: Promise<RawJob[]> | null = null;
 let cache: { jobs: RawJob[]; fetchedAt: number } | null = null;
+
+function readDiskSnapshotRaw(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(STORAGE_KEY) || sessionStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeDiskSnapshotRaw(value: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, value);
+  } catch {
+    /* ignore localStorage quota / private mode */
+  }
+  try {
+    sessionStorage.setItem(STORAGE_KEY, value);
+  } catch {
+    /* ignore sessionStorage quota / private mode */
+  }
+}
 
 /** Raw job row from GET /get-all-jobs/ */
 export type RawJob = Record<string, unknown>;
@@ -54,7 +77,7 @@ export function extractJobsArray(data: unknown): RawJob[] {
 function tryHydrateCacheFromDisk(): void {
   if (typeof window === "undefined" || cache) return;
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw = readDiskSnapshotRaw();
     if (!raw) return;
     const p = JSON.parse(raw) as { jobs?: RawJob[]; fetchedAt?: number };
     if (!p || typeof p.fetchedAt !== "number" || !Array.isArray(p.jobs)) return;
@@ -69,10 +92,7 @@ function persistJobs(jobs: RawJob[]): void {
   if (typeof window === "undefined") return;
   try {
     const slice = jobs.slice(0, PERSIST_JOB_CAP);
-    sessionStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ jobs: slice, fetchedAt: Date.now() })
-    );
+    writeDiskSnapshotRaw(JSON.stringify({ jobs: slice, fetchedAt: Date.now() }));
   } catch {
     /* quota / private mode */
   }
@@ -239,7 +259,7 @@ export function readPersistedHomeSnapshot(limit: number): {
     return { tasks: [], fromCache: false };
   }
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw = readDiskSnapshotRaw();
     if (!raw) return { tasks: [], fromCache: false };
     const p = JSON.parse(raw) as { jobs?: RawJob[]; fetchedAt?: number };
     if (!p || typeof p.fetchedAt !== "number" || !Array.isArray(p.jobs)) {
@@ -299,7 +319,7 @@ export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
   inflight = (async () => {
     try {
       try {
-        const recent = await axiosInstance.get("/recent-open-jobs/", { params: { limit: 24 } });
+        const recent = await axiosInstance.get("/recent-open-jobs/", { params: { limit: 16 } });
         const rd = recent?.data;
         if (isGetAllJobsResponseOk(rd, recent?.status)) {
           let jobs = extractJobsArray(rd);

@@ -2,20 +2,43 @@ import { listPublishedOfferingsForHomeApi } from "@/lib/offerings/api";
 import type { Offering } from "@/lib/offerings/types";
 
 const TTL_MS = 45_000;
-const DEFAULT_LIMIT = 24;
-/** Persist at most this many rows to keep sessionStorage small. */
+const DEFAULT_LIMIT = 16;
+/** Persist at most this many rows to keep disk cache small. */
 const PERSIST_CAP = 48;
 const STORAGE_KEY = "jobpool_home_offerings_feed_v1";
 /** Same as home jobs: allow snapshot reads for returning visitors. */
-const DISK_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const DISK_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 let inflight: Promise<Offering[]> | null = null;
 let cache: { rows: Offering[]; fetchedAt: number } | null = null;
 
+function readDiskSnapshotRaw(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(STORAGE_KEY) || sessionStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeDiskSnapshotRaw(value: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, value);
+  } catch {
+    /* ignore localStorage quota / private mode */
+  }
+  try {
+    sessionStorage.setItem(STORAGE_KEY, value);
+  } catch {
+    /* ignore sessionStorage quota / private mode */
+  }
+}
+
 function tryHydrateOfferingsFromDisk(): void {
   if (typeof window === "undefined" || cache) return;
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw = readDiskSnapshotRaw();
     if (!raw) return;
     const p = JSON.parse(raw) as { rows?: Offering[]; fetchedAt?: number };
     if (!p || typeof p.fetchedAt !== "number" || !Array.isArray(p.rows)) return;
@@ -30,10 +53,7 @@ function persistOfferings(rows: Offering[]): void {
   if (typeof window === "undefined") return;
   try {
     const slice = rows.slice(0, PERSIST_CAP);
-    sessionStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ rows: slice, fetchedAt: Date.now() }),
-    );
+    writeDiskSnapshotRaw(JSON.stringify({ rows: slice, fetchedAt: Date.now() }));
   } catch {
     /* quota / private mode */
   }
@@ -50,7 +70,7 @@ export function readPersistedHomeOfferingsSnapshot(limit: number): {
     return { rows: [], fromCache: false };
   }
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw = readDiskSnapshotRaw();
     if (!raw) return { rows: [], fromCache: false };
     const p = JSON.parse(raw) as { rows?: Offering[]; fetchedAt?: number };
     if (!p || typeof p.fetchedAt !== "number" || !Array.isArray(p.rows)) {
