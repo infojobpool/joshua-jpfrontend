@@ -13,6 +13,8 @@ import {
 import { prefetchBidsForTask } from "@/lib/taskNavCache";
 import { HOME_BROWSE_ALL_TASKS_HREF, HOME_EXPLORE_ALL_TASKS_LABEL } from "@/lib/homeSectionNav";
 import { cn } from "@/lib/utils";
+import { toViewTransitionKey } from "@/lib/viewTransition";
+import { TransitionLink } from "@/components/TransitionLink";
 
 const DESKTOP_MAX = 12;
 const SECTION_SUBTITLE = "See open tasks and apply.";
@@ -42,7 +44,7 @@ function PremiumRecentTaskCard({
   const budget = formatBudget(task.budget);
 
   return (
-    <Link
+    <TransitionLink
       href={href}
       className={cn(
         "group block shrink-0 overflow-hidden",
@@ -52,13 +54,15 @@ function PremiumRecentTaskCard({
       onMouseEnter={onPrefetch}
       onTouchStart={onPrefetch}
     >
-      <article
+      <motion.article
         className={cn(
           "flex h-full min-h-[10.5rem] flex-col overflow-hidden rounded-2xl bg-white md:min-h-[11rem] md:rounded-2xl",
           "shadow-[0_14px_44px_-28px_rgba(15,23,42,0.35)] ring-1 ring-slate-200/90",
           "transition-all duration-300 ease-out",
           "hover:-translate-y-0.5 hover:shadow-[0_22px_50px_-24px_rgba(37,99,235,0.22)] hover:ring-blue-200/70",
         )}
+        whileTap={{ scale: 0.985 }}
+        transition={{ type: "spring", stiffness: 360, damping: 28, mass: 0.55 }}
       >
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 px-3 py-2.5 md:px-3.5 md:py-3">
           <span className="text-[8px] font-semibold uppercase tracking-[0.2em] text-blue-100/90 md:text-[9px]" style={archivo}>
@@ -81,7 +85,12 @@ function PremiumRecentTaskCard({
           </p>
           <h3
             className="task-title line-clamp-2 min-w-0 overflow-hidden break-words text-[0.875rem] font-bold leading-snug tracking-[-0.02em] text-slate-900 md:text-[0.9375rem]"
-            style={archivo}
+            style={{
+              ...archivo,
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-ignore viewTransitionName is supported in modern Chromium.
+              viewTransitionName: `task-title-${toViewTransitionKey(task.id)}`,
+            }}
           >
             {task.title}
           </h3>
@@ -97,8 +106,8 @@ function PremiumRecentTaskCard({
             </p>
           )}
         </div>
-      </article>
-    </Link>
+      </motion.article>
+    </TransitionLink>
   );
 }
 
@@ -285,7 +294,12 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
   if (variant === "mobile") {
     if (loading) {
       return (
-        <div className="md:hidden px-4 py-4 bg-white">
+        <motion.div
+          className="md:hidden px-4 py-4 bg-white"
+          initial={{ opacity: 0.55 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+        >
           <div className="mb-3 h-5 w-48 animate-pulse rounded bg-gray-200" />
           <div className="flex gap-3">
             {[1, 2, 3].map((i) => (
@@ -295,7 +309,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
               />
             ))}
           </div>
-        </div>
+        </motion.div>
       );
     }
 
@@ -341,7 +355,12 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     };
 
     return (
-        <div className="md:hidden w-full min-w-0 max-w-full px-4 py-4 bg-white">
+      <motion.div
+        className="md:hidden w-full min-w-0 max-w-full px-4 py-4 bg-white"
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+      >
           <div className="mb-3 flex items-end justify-between gap-3">
             <div className="min-w-0 flex-1">
               <h3 className="font-home-section-title border-l-[3px] border-blue-500 pl-2.5 text-lg text-slate-900">
@@ -394,14 +413,19 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
             ))}
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   // desktop
   if (loading) {
     return (
-      <section className="hidden bg-gray-50 py-8 md:block md:py-10 overflow-hidden">
+      <motion.section
+        className="hidden bg-gray-50 py-8 md:block md:py-10 overflow-hidden"
+        initial={{ opacity: 0.55 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+      >
         <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
           <div className="mx-auto mb-6 max-w-7xl">
             <div className="h-10 max-w-md animate-pulse rounded-lg bg-gray-200" />
@@ -415,7 +439,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
     );
   }
 
@@ -471,7 +495,12 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
   };
 
   return (
-    <section className="hidden bg-gray-50 py-8 md:block md:py-10 overflow-hidden">
+    <motion.section
+      className="hidden bg-gray-50 py-8 md:block md:py-10 overflow-hidden"
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.22, ease: "easeOut" }}
+    >
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
         <motion.div
           className="mx-auto mb-6 max-w-7xl text-left"
@@ -546,6 +575,6 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
           }
         `}</style>
       </div>
-    </section>
+    </motion.section>
   );
 }

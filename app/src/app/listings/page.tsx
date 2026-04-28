@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { listOfferingFeedApi } from "@/lib/offerings/api";
 import type { Offering } from "@/lib/offerings/types";
 import { resolveApiMediaUrl } from "@/lib/profileImage";
+import { TransitionLink } from "@/components/TransitionLink";
+import { toViewTransitionKey } from "@/lib/viewTransition";
 
 const PAGE = 24;
 const PLACEHOLDER = "/images/placeholder.svg";
@@ -89,11 +91,18 @@ export default function ListingsBrowsePage() {
                 const cat = o.category || (o.type === "product" ? "Product" : "Service");
                 return (
                   <li key={o.id}>
-                    <Link
+                    <TransitionLink
                       href={`/listings/${encodeURIComponent(o.id)}`}
                       className="group flex overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-100 transition-all hover:-translate-y-0.5 hover:shadow-md hover:ring-blue-100"
                     >
-                      <div className="relative h-28 w-28 shrink-0 bg-slate-100 sm:h-32 sm:w-32">
+                      <div
+                        className="relative h-28 w-28 shrink-0 bg-slate-100 sm:h-32 sm:w-32"
+                        style={{
+                          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                          // @ts-ignore viewTransitionName is supported in modern Chromium.
+                          viewTransitionName: `listing-image-${toViewTransitionKey(o.id)}`,
+                        }}
+                      >
                         <img
                           src={img}
                           alt=""
@@ -103,7 +112,16 @@ export default function ListingsBrowsePage() {
                       </div>
                       <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 p-3 sm:p-4">
                         <p className="text-[9px] font-bold uppercase tracking-wider text-blue-700">{cat}</p>
-                        <p className="line-clamp-2 text-sm font-semibold text-slate-900 sm:text-base">{o.title}</p>
+                        <p
+                          className="line-clamp-2 text-sm font-semibold text-slate-900 sm:text-base"
+                          style={{
+                            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                            // @ts-ignore viewTransitionName is supported in modern Chromium.
+                            viewTransitionName: `listing-title-${toViewTransitionKey(o.id)}`,
+                          }}
+                        >
+                          {o.title}
+                        </p>
                         {o.locationText ? (
                           <p className="flex items-center gap-1 truncate text-xs text-slate-500">
                             <MapPin className="h-3 w-3 shrink-0" />
@@ -112,7 +130,7 @@ export default function ListingsBrowsePage() {
                         ) : null}
                         <p className="text-sm font-bold tabular-nums text-blue-800">From {price}</p>
                       </div>
-                    </Link>
+                    </TransitionLink>
                   </li>
                 );
               })}

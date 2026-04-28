@@ -161,6 +161,7 @@ import { resolveApiMediaUrl } from "@/lib/profileImage";
 import { hasRealProfilePhotoUrl } from "@/lib/payoutProfileCompletion";
 import { useRouter } from "next/navigation";
 import type { PosterReviewSnippet } from "@/app/types";
+import { toViewTransitionKey } from "@/lib/viewTransition";
 
 // Interfaces
 interface Task {
@@ -599,7 +600,14 @@ export function TaskInfo({
                 className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xl font-bold focus:border-blue-500"
               />
             ) : (
-              <CardTitle className="task-title text-xl sm:text-2xl md:text-3xl text-slate-900 leading-snug font-semibold tracking-tight pr-1">
+              <CardTitle
+                className="task-title text-xl sm:text-2xl md:text-3xl text-slate-900 leading-snug font-semibold tracking-tight pr-1"
+                style={{
+                  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                  // @ts-ignore viewTransitionName is supported in modern Chromium.
+                  viewTransitionName: `task-title-${toViewTransitionKey(String(task.id ?? ""))}`,
+                }}
+              >
                 {task.title}
               </CardTitle>
             )}

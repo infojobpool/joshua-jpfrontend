@@ -19,6 +19,7 @@ import { AppEntranceWrapper } from "@/components/mobile/AppEntranceWrapper";
 import { SupportPill } from "@/components/SupportPill";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { PwaInstallTracker } from "@/components/PwaInstallTracker";
+import { RouteTransition } from "@/components/RouteTransition";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -102,7 +103,9 @@ export default function RootLayout({
           <MobileLayout>
             <AppEntranceWrapper>
               <MainHeader />
-              <AppMain>{children}</AppMain>
+              <AppMain>
+                <RouteTransition>{children}</RouteTransition>
+              </AppMain>
               <Footer />
             </AppEntranceWrapper>
             <Suspense fallback={null}>

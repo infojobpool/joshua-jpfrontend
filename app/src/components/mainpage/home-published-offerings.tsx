@@ -8,6 +8,8 @@ import type { Offering } from "@/lib/offerings/types";
 import { getHomeOfferingsCached, readPersistedHomeOfferingsSnapshot } from "@/lib/homeOfferingsCache";
 import { cn } from "@/lib/utils";
 import useStore from "@/lib/Zustand";
+import { toViewTransitionKey } from "@/lib/viewTransition";
+import { TransitionLink } from "@/components/TransitionLink";
 
 const PLACEHOLDER = "/images/placeholder.svg";
 const DESKTOP_MAX = 12;
@@ -65,7 +67,7 @@ function PremiumOfferingCard({
   const archivo = { fontFamily: "var(--font-archivo), var(--font-geist-sans), system-ui, sans-serif" } as const;
 
   return (
-    <Link
+    <TransitionLink
       href={href}
       className={cn(
         "group block shrink-0 overflow-hidden",
@@ -73,15 +75,26 @@ function PremiumOfferingCard({
         scrollSnap && "snap-start [scroll-snap-stop:always]",
       )}
     >
-      <article
+      <motion.article
         className={cn(
           "flex h-full flex-col overflow-hidden rounded-2xl bg-white md:rounded-2xl",
           "shadow-[0_14px_44px_-28px_rgba(15,23,42,0.35)] ring-1 ring-slate-200/90",
           "transition-all duration-300 ease-out",
           "hover:-translate-y-0.5 hover:shadow-[0_22px_50px_-24px_rgba(37,99,235,0.22)] hover:ring-blue-200/70",
         )}
+        whileTap={{ scale: 0.985 }}
+        transition={{ type: "spring", stiffness: 360, damping: 28, mass: 0.55 }}
       >
-        <div className="relative h-[7.25rem] w-full shrink-0 overflow-hidden bg-slate-100 sm:h-[7.75rem] md:h-[8.25rem]">
+        <div
+          className="relative h-[7.25rem] w-full shrink-0 overflow-hidden bg-slate-100 sm:h-[7.75rem] md:h-[8.25rem]"
+          style={{
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore viewTransitionName is supported in modern Chromium.
+            viewTransitionName: o.id?.trim()
+              ? `listing-image-${toViewTransitionKey(o.id)}`
+              : undefined,
+          }}
+        >
           <OfferingCardImage url={o.photoUrls?.[0] || PLACEHOLDER} alt="" />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/88 via-slate-900/20 to-slate-900/0" />
           <div className="absolute inset-x-0 bottom-0 px-2.5 pb-2 pt-6 md:px-3 md:pb-2.5">
@@ -107,7 +120,16 @@ function PremiumOfferingCard({
           </p>
           <h3
             className="line-clamp-2 min-w-0 text-[0.875rem] font-bold leading-snug tracking-[-0.02em] text-slate-900 md:text-[0.9375rem]"
-            style={archivo}
+            style={{
+              ...archivo,
+              ...(o.id?.trim()
+                ? {
+                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                    // @ts-ignore viewTransitionName is supported in modern Chromium.
+                    viewTransitionName: `listing-title-${toViewTransitionKey(o.id)}`,
+                  }
+                : {}),
+            }}
           >
             {o.title || "Listing"}
           </h3>
@@ -128,8 +150,8 @@ function PremiumOfferingCard({
             </p>
           )}
         </div>
-      </article>
-    </Link>
+      </motion.article>
+    </TransitionLink>
   );
 }
 
@@ -316,7 +338,12 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
   if (variant === "mobile") {
     if (loading) {
       return (
-        <div className="md:hidden border-t border-emerald-100/70 bg-gradient-to-b from-emerald-50/45 via-gray-50/90 to-gray-50 px-4 py-4">
+        <motion.div
+          className="md:hidden border-t border-emerald-100/70 bg-gradient-to-b from-emerald-50/45 via-gray-50/90 to-gray-50 px-4 py-4"
+          initial={{ opacity: 0.55 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+        >
           <div className="mb-3 h-5 w-56 animate-pulse rounded bg-emerald-100/60" />
           <div className="flex gap-3">
             {[1, 2, 3].map((i) => (
@@ -326,7 +353,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
               />
             ))}
           </div>
-        </div>
+        </motion.div>
       );
     }
 
@@ -376,7 +403,12 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
     };
 
     return (
-      <div className="md:hidden w-full min-w-0 max-w-full border-t border-emerald-100/70 bg-gradient-to-b from-emerald-50/45 via-gray-50/90 to-gray-50 px-4 py-4">
+      <motion.div
+        className="md:hidden w-full min-w-0 max-w-full border-t border-emerald-100/70 bg-gradient-to-b from-emerald-50/45 via-gray-50/90 to-gray-50 px-4 py-4"
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+      >
         <div className="mb-3 flex items-end justify-between gap-3 border-l-[3px] border-blue-500 pl-2.5">
           <div className="min-w-0">
             <h3 className="font-home-section-title text-lg text-slate-900">{title}</h3>
@@ -418,14 +450,19 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
             ))}
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   // desktop
   if (loading) {
     return (
-      <section className="hidden border-t border-emerald-100/60 bg-gradient-to-b from-emerald-50/40 via-white to-white py-8 md:block md:py-10 overflow-hidden">
+      <motion.section
+        className="hidden border-t border-emerald-100/60 bg-gradient-to-b from-emerald-50/40 via-white to-white py-8 md:block md:py-10 overflow-hidden"
+        initial={{ opacity: 0.55 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+      >
         <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
           <div className="mx-auto mb-6 max-w-7xl">
             <div className="h-10 max-w-md animate-pulse rounded-lg bg-emerald-100/50" />
@@ -439,7 +476,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
     );
   }
 
@@ -501,7 +538,12 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
   };
 
   return (
-    <section className="hidden border-t border-emerald-100/60 bg-gradient-to-b from-emerald-50/40 via-white to-white py-8 md:block md:py-10 overflow-hidden">
+    <motion.section
+      className="hidden border-t border-emerald-100/60 bg-gradient-to-b from-emerald-50/40 via-white to-white py-8 md:block md:py-10 overflow-hidden"
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.22, ease: "easeOut" }}
+    >
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
         <motion.div
           className="mx-auto mb-6 max-w-7xl text-left"
@@ -565,6 +607,6 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
           }
         `}</style>
       </div>
-    </section>
+    </motion.section>
   );
 }

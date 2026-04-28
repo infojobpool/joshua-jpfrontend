@@ -9,6 +9,7 @@ import { getPublicOfferingByIdApi } from "@/lib/offerings/api";
 import type { Offering } from "@/lib/offerings/types";
 import { resolveApiMediaUrl } from "@/lib/profileImage";
 import useStore from "@/lib/Zustand";
+import { toViewTransitionKey } from "@/lib/viewTransition";
 
 const PLACEHOLDER = "/images/placeholder.svg";
 
@@ -126,6 +127,7 @@ export default function ListingDetailClient() {
   const priceLabel = `₹${Math.round(o.startingPriceInr || 0).toLocaleString("en-IN")}`;
   const profileLink = o.userId ? `/profilepage/${encodeURIComponent(o.userId)}` : "/listings";
   const typeLabel = o.type === "product" ? "Product" : "Service";
+  const vtId = toViewTransitionKey(o.id);
 
   const goPrev = () =>
     setActivePhoto((i) => {
@@ -174,6 +176,11 @@ export default function ListingDetailClient() {
                   className="h-full w-full object-cover"
                   loading="eager"
                   decoding="async"
+                  style={{
+                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                    // @ts-ignore viewTransitionName is supported in modern Chromium.
+                    viewTransitionName: `listing-image-${vtId}`,
+                  }}
                 />
                 {showCarousel ? (
                   <>
@@ -238,7 +245,16 @@ export default function ListingDetailClient() {
                   {typeLabel}
                 </span>
               </div>
-              <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{o.title}</h1>
+              <h1
+                className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl"
+                style={{
+                  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                  // @ts-ignore viewTransitionName is supported in modern Chromium.
+                  viewTransitionName: `listing-title-${vtId}`,
+                }}
+              >
+                {o.title}
+              </h1>
 
               <div className="mt-4 border-b border-slate-100 pb-4 md:hidden">
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Starting from</p>
