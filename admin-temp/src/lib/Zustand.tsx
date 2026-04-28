@@ -75,6 +75,12 @@ interface StoreState
   resetTheme: () => void;
 }
 
+function isTokenUsable(decoded: JwtPayload | null): decoded is JwtPayload {
+  if (!decoded || decoded.userId === undefined) return false;
+  if (decoded.exp == null || Number.isNaN(Number(decoded.exp))) return false;
+  return Number(decoded.exp) * 1000 > Date.now();
+}
+
 // 🔹 Store
 const useStore = create<StoreState>((set) => ({
   // 🔸 Auth
@@ -92,7 +98,7 @@ const useStore = create<StoreState>((set) => ({
 
     try {
       const decoded = jwt.decode(token) as JwtPayload | null;
-      if (decoded && decoded.userId !== undefined && decoded.role !== undefined) {
+      if (isTokenUsable(decoded) && decoded.role !== undefined) {
         const normalizedUser = {
           name: user.user_fullname,
           status: user.status,
@@ -114,6 +120,11 @@ const useStore = create<StoreState>((set) => ({
         }
       } else {
         console.error("Invalid token payload", decoded);
+        stopTokenRefreshCycle();
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+        }
       }
     } catch (error) {
       console.error("Error decoding token:", error);
@@ -141,34 +152,38 @@ const useStore = create<StoreState>((set) => ({
     if (typeof window === "undefined") return;
     const token = localStorage.getItem("token");
     const user = localStorage.getItem("user");
-    if (token && user) {
-      try {
-        const decoded = jwt.decode(token) as JwtPayload | null;
-        const parsedUser = JSON.parse(user) as UserData;
-        if (decoded && decoded.userId !== undefined && parsedUser) {
-          set({
-            userId: decoded.userId,
-            role: decoded.role != null ? String(decoded.role) : null,
-            exp: decoded.exp,
-            isAuthenticated: true,
-            user: {
-              name: parsedUser.user_fullname,
-              status: parsedUser.status,
-              email: parsedUser.user_email,
-            },
-          });
-          notifyTokenUpdated();
-        } else {
-          stopTokenRefreshCycle();
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-        }
-      } catch (error) {
-        console.error("Token or user data decode failed:", error);
+    if (!token || !user) {
+      stopTokenRefreshCycle();
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      return;
+    }
+    try {
+      const decoded = jwt.decode(token) as JwtPayload | null;
+      const parsedUser = JSON.parse(user) as UserData;
+      if (isTokenUsable(decoded) && parsedUser) {
+        set({
+          userId: decoded.userId,
+          role: decoded.role != null ? String(decoded.role) : null,
+          exp: decoded.exp,
+          isAuthenticated: true,
+          user: {
+            name: parsedUser.user_fullname,
+            status: parsedUser.status,
+            email: parsedUser.user_email,
+          },
+        });
+        notifyTokenUpdated();
+      } else {
         stopTokenRefreshCycle();
         localStorage.removeItem("token");
         localStorage.removeItem("user");
       }
+    } catch (error) {
+      console.error("Token or user data decode failed:", error);
+      stopTokenRefreshCycle();
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
     }
   },
 

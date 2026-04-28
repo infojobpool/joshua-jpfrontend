@@ -10,6 +10,12 @@ const RESUME_THRESHOLD_MS = 20 * 60 * 1000;
 let proactiveTimer: ReturnType<typeof setTimeout> | null = null;
 let visibilityListenerAttached = false;
 
+function clearStoredAuth() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+}
+
 export function parseRefreshTokenBody(data: unknown): string | null {
   if (!data || typeof data !== "object") return null;
   const b = data as Record<string, unknown>;
@@ -71,7 +77,7 @@ async function postRefresh(): Promise<string | null> {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      withCredentials: true,
+      withCredentials: false,
     }
   );
   const newToken = parseRefreshTokenBody(res.data);
@@ -99,7 +105,8 @@ function scheduleProactiveRefresh() {
         scheduleProactiveRefresh();
       }
     } catch {
-      /* 401 path may refresh on next request */
+      clearStoredAuth();
+      stopTokenRefreshCycle();
     }
   }, delay);
 }
@@ -122,12 +129,26 @@ function onVisibilityChange() {
           scheduleProactiveRefresh();
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        clearStoredAuth();
+        stopTokenRefreshCycle();
+      });
   }
 }
 
 export function notifyTokenUpdated() {
   if (typeof window === "undefined") return;
+  const token = localStorage.getItem("token");
+  if (!token) {
+    stopTokenRefreshCycle();
+    return;
+  }
+  const expMs = decodeJwtExpMs(token);
+  if (!expMs || expMs <= Date.now()) {
+    clearStoredAuth();
+    stopTokenRefreshCycle();
+    return;
+  }
   scheduleProactiveRefresh();
   if (!visibilityListenerAttached) {
     document.addEventListener("visibilitychange", onVisibilityChange);
