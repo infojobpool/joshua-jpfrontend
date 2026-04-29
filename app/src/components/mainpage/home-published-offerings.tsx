@@ -163,7 +163,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
   /** Same pattern as recent tasks: last session snapshot before paint → no long empty skeleton on repeat visits. */
   useLayoutEffect(() => {
     const snap = readPersistedHomeOfferingsSnapshot(DESKTOP_MAX);
-    if (snap.fromCache) {
+    if (snap.fromCache && snap.rows.length > 0) {
       setRows(snap.rows);
       setLoading(false);
     }

@@ -300,9 +300,15 @@ export default function ProfilePage() {
       }
 
       fetchProfileRef.current = true;
+      const profileAbort = new AbortController();
+      const profileTimeoutMs = 22_000;
+      const profileTimeoutId = setTimeout(() => profileAbort.abort(), profileTimeoutMs);
       try {
         setIsLoading(true);
-        const response = await axiosInstance.get(`/profile?user_id=${effectiveUserId}`);
+        const response = await axiosInstance.get(`/profile?user_id=${effectiveUserId}`, {
+          signal: profileAbort.signal,
+          timeout: profileTimeoutMs,
+        });
         const data = response.data;
         const payload = data?.data ?? data;
         if (data?.status_code && data.status_code !== 200) {
@@ -315,7 +321,10 @@ export default function ProfilePage() {
           upiVpa = fromProfile.trim();
         } else {
           try {
-            const wres = await axiosInstance.get(`/wallet?user_id=${effectiveUserId}&limit=1`);
+            const wres = await axiosInstance.get(`/wallet?user_id=${effectiveUserId}&limit=1`, {
+              signal: profileAbort.signal,
+              timeout: 12_000,
+            });
             const wd = wres.data?.data ?? wres.data;
             const u = wd?.upi_vpa ?? wd?.upi;
             if (typeof u === "string" && u.trim()) upiVpa = u.trim();
@@ -405,18 +414,27 @@ export default function ProfilePage() {
           );
         }
       } catch (err: any) {
-        const message =
-          err?.response?.data?.message ||
-          err?.message ||
-          "Failed to load profile";
+        const msgLower = String(err?.message ?? "").toLowerCase();
+        const timedOut =
+          err?.code === "ERR_CANCELED" ||
+          err?.code === "ECONNABORTED" ||
+          err?.name === "CanceledError" ||
+          msgLower.includes("timeout") ||
+          msgLower.includes("aborted");
+        const message = timedOut
+          ? "Profile request timed out. Check your connection and try again."
+          : err?.response?.data?.message ||
+            err?.message ||
+            "Failed to load profile";
         setError(message);
-        fetchProfileRef.current = false;
         if (err.response?.status === 401) {
           logout();
           router.push("/signin");
         }
       } finally {
+        clearTimeout(profileTimeoutId);
         setIsLoading(false);
+        fetchProfileRef.current = false;
       }
     };
 

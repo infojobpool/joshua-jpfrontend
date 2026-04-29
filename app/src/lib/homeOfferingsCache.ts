@@ -98,10 +98,20 @@ export async function getHomeOfferingsCached(limit = DEFAULT_LIMIT): Promise<Off
     return rows.slice(0, limit);
   }
   inflight = (async () => {
-    const rows = await listPublishedOfferingsForHomeApi(limit);
-    cache = { rows, fetchedAt: Date.now() };
-    persistOfferings(rows);
-    return rows;
+    try {
+      const rows = await listPublishedOfferingsForHomeApi(limit);
+      cache = { rows, fetchedAt: Date.now() };
+      if (rows.length > 0) {
+        persistOfferings(rows);
+      }
+      return rows;
+    } catch {
+      tryHydrateOfferingsFromDisk();
+      if (cache && cache.rows.length > 0) {
+        return cache.rows.slice(0, limit);
+      }
+      return [];
+    }
   })();
   try {
     const rows = await inflight;

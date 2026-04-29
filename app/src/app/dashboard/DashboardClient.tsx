@@ -253,9 +253,13 @@ function filterRealJobImages(images?: Image[] | null): Image[] {
 /** Centered strip under card title — real photos only (no placeholder). */
 function DashboardCardThumbnails({ images, className }: { images?: Image[]; className?: string }) {
   const real = filterRealJobImages(images);
-  if (real.length === 0) return null;
+  /** Reserve one thumbnail row so cards with/without photos align in the grid. */
+  const slotMin = "min-h-[4.5rem] sm:min-h-[5rem]";
+  if (real.length === 0) {
+    return <div className={cn("flex w-full justify-center", slotMin, className)} aria-hidden />;
+  }
   return (
-    <div className={cn("mt-2 flex w-full justify-center sm:mt-2.5", className)}>
+    <div className={cn("mt-2 flex w-full justify-center sm:mt-2.5", slotMin, className)}>
       <div className="grid w-full max-w-[200px] grid-cols-3 gap-1.5 sm:max-w-[240px] sm:gap-2">
         {real.slice(0, 3).map((img) => (
           <div
@@ -4572,7 +4576,9 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             ) : (
-              <div className={`grid gap-2.5 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
+              <div
+                className={`grid items-stretch gap-2.5 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}
+              >
                 {sortedPostedTasksForMyTasks.map((task) => {
                   let accent: DashboardTaskCardAccent = "blue";
                   if (task.cancel_status || task.deletion_status) accent = "rose";
@@ -5255,7 +5261,9 @@ export default function Dashboard() {
                 />
                   </div>
                 ) : (
-                  <div className={`grid gap-2.5 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
+                  <div
+                    className={`grid items-stretch gap-2.5 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}
+                  >
                     {sortedAvailableTasks.map((task) => {
                       const hasUserBid = requestedTasks.some(bid => bid.task_id === task.id);
                       const statusLabel =
@@ -5354,7 +5362,9 @@ export default function Dashboard() {
                 />
               </div>
             ) : (
-              <div className={`grid gap-3 dashboard-card-stagger md:gap-4 ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
+              <div
+                className={`grid items-stretch gap-3 dashboard-card-stagger md:gap-4 ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}
+              >
                 {sortedAssignedTasks.map((task) => {
                   const isCancelled = task.cancel_status || task.cancelled || task.status === "canceled" || task.status === "cancelled";
                   const cancelledByTasker = task.cancelled_by_role === "tasker";
@@ -5695,7 +5705,9 @@ export default function Dashboard() {
                 action={{ label: "View Assigned Tasks", onClick: () => selectDashboardTaskTab("assigned") }}
               />
             ) : (
-              <div className={`grid gap-2.5 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
+              <div
+                className={`grid items-stretch gap-2.5 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}
+              >
                 {sortedCompletedTasks.map((task) => {
                   const completedMeta: { key: string; icon: ReactNode; text: string }[] = [
                     {
@@ -5812,7 +5824,9 @@ export default function Dashboard() {
                 action={{ label: "Browse Available Tasks", onClick: () => selectDashboardTaskTab("available") }}
               />
             ) : (
-              <div className={`grid gap-2.5 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}>
+              <div
+                className={`grid items-stretch gap-2.5 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}
+              >
                 {sortedRequestedTasks.map((bid) => {
                   const bidMeta: { key: string; icon: ReactNode; text: string }[] = [
                     {

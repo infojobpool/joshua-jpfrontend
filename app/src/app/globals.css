@@ -179,7 +179,57 @@ html {
 .animate-loader-dot-bob {
   animation: loaderDotBob 1s ease-in-out infinite;
 }
+
+/* BrandedPageLoader — premium indeterminate bar + soft entrance */
+@keyframes loaderPremiumBar {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+@keyframes loaderLogoRise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes loaderOrbFloat {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.06);
+  }
+}
+.animate-loader-premium-bar {
+  animation: loaderPremiumBar 1.75s cubic-bezier(0.45, 0.02, 0.2, 1) infinite;
+  will-change: transform;
+}
+.animate-loader-logo-rise {
+  animation: loaderLogoRise 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.animate-loader-orb-float {
+  animation: loaderOrbFloat 5s ease-in-out infinite;
+}
 @media (prefers-reduced-motion: reduce) {
+  .animate-loader-premium-bar,
+  .animate-loader-logo-rise,
+  .animate-loader-orb-float {
+    animation: none !important;
+  }
+  .animate-loader-logo-rise {
+    opacity: 1;
+    transform: none;
+  }
   .animate-loader-breathe,
   .animate-loader-nudge,
   .animate-loader-dot-bob {

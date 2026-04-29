@@ -319,7 +319,10 @@ export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
   inflight = (async () => {
     try {
       try {
-        const recent = await axiosInstance.get("/recent-open-jobs/", { params: { limit: 16 } });
+        const recent = await axiosInstance.get("/recent-open-jobs/", {
+          params: { limit: 16 },
+          timeout: 14_000,
+        });
         const rd = recent?.data;
         if (isGetAllJobsResponseOk(rd, recent?.status)) {
           let jobs = extractJobsArray(rd);
@@ -338,23 +341,20 @@ export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
         /* Older API without recent-open-jobs */
       }
 
-      const response = await axiosInstance.get("/get-all-jobs/");
+      const response = await axiosInstance.get("/get-all-jobs/", { timeout: 26_000 });
       const data = response?.data;
       if (isGetAllJobsResponseOk(data, response?.status)) {
         const jobs = extractJobsArray(data);
         cache = { jobs, fetchedAt: Date.now() };
-        persistJobs(jobs);
+        if (jobs.length > 0) {
+          persistJobs(jobs);
+        }
         return jobs;
       }
     } catch {
       /* ignore */
     }
     cache = { jobs: [], fetchedAt: Date.now() };
-    try {
-      persistJobs([]);
-    } catch {
-      /* ignore */
-    }
     return [];
   })();
   try {

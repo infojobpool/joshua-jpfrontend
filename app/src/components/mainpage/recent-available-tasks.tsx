@@ -118,7 +118,9 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
   /** Apply last session snapshot before paint (client-only; avoids SSR hydration mismatch). */
   useLayoutEffect(() => {
     const snap = readPersistedHomeSnapshot(DESKTOP_MAX);
-    if (snap.fromCache) {
+    // Only skip skeleton when snapshot has real rows — empty snapshots still wait on network
+    // so we do not flash "No open tasks" from a stale/blank disk write.
+    if (snap.fromCache && snap.tasks.length > 0) {
       setTasks(snap.tasks);
       setLoading(false);
     }
