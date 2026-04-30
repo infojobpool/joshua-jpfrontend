@@ -5,7 +5,12 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { motion } from "framer-motion";
 import { MapPin, Package } from "lucide-react";
 import type { Offering } from "@/lib/offerings/types";
-import { getHomeOfferingsCached, readPersistedHomeOfferingsSnapshot } from "@/lib/homeOfferingsCache";
+import { Button } from "@/components/ui/button";
+import {
+  getHomeOfferingsCached,
+  invalidateHomeOfferingsCache,
+  readPersistedHomeOfferingsSnapshot,
+} from "@/lib/homeOfferingsCache";
 import { cn } from "@/lib/utils";
 import useStore from "@/lib/Zustand";
 import { toViewTransitionKey } from "@/lib/viewTransition";
@@ -158,6 +163,8 @@ function PremiumOfferingCard({
 export function HomePublishedOfferings({ variant }: { variant: "mobile" | "desktop" }) {
   const [rows, setRows] = useState<Offering[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [fetchFailed, setFetchFailed] = useState(false);
   const currentUserId = useStore((s) => s.user?.id ?? null);
 
   /** Same pattern as recent tasks: last session snapshot before paint → no long empty skeleton on repeat visits. */
@@ -190,12 +197,20 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
     }, 3200);
   }, []);
 
+  const retryFetch = useCallback(() => {
+    invalidateHomeOfferingsCache();
+    setFetchFailed(false);
+    setLoading(true);
+    setReloadKey((k) => k + 1);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const data = await getHomeOfferingsCached(DESKTOP_MAX);
         if (!cancelled) {
+          setFetchFailed(false);
           setRows((prev) => {
             if (data.length > 0) return data;
             if (prev.length > 0) return prev;
@@ -203,7 +218,10 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
           });
         }
       } catch {
-        if (!cancelled) setRows((prev) => prev);
+        if (!cancelled) {
+          setFetchFailed(true);
+          setRows((prev) => prev);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -211,7 +229,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   useEffect(() => {
     marqueePausedRef.current = marqueePaused;
@@ -376,10 +394,15 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
             </p>
             <p className="mt-1 text-xs text-gray-500 max-w-sm mx-auto leading-relaxed">
               {feedEmpty ? (
-                <>
-                  Published services from the public feed appear here. If this is empty, check that{" "}
-                  <span className="font-medium text-gray-600">GET /offerings/feed/</span> is deployed and returning rows.
-                </>
+                fetchFailed ? (
+                  <>
+                    We couldn&apos;t load listings just now. Check your connection and tap <span className="font-medium text-gray-700">Retry</span>, or try again in a moment.
+                  </>
+                ) : (
+                  <>
+                    When providers publish services, they appear here. You can still browse open tasks above or publish your own listing from Profile.
+                  </>
+                )
               ) : (
                 <>
                   Your own listings are not shown in this row. Manage them under{" "}
@@ -387,6 +410,17 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
                 </>
               )}
             </p>
+            {feedEmpty ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-4 rounded-xl border-emerald-200 text-emerald-900 hover:bg-emerald-50"
+                onClick={retryFetch}
+              >
+                Retry
+              </Button>
+            ) : null}
             <Link
               href="/profile?tab=listings"
               className="mt-4 inline-block text-sm font-semibold text-emerald-700 hover:underline"
@@ -510,10 +544,14 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
             </p>
             <p className="mt-2 text-sm text-gray-500 leading-relaxed">
               {feedEmpty ? (
-                <>
-                  Published offerings from providers will appear in this row. Until the feed returns data here, visitors
-                  can still open any public profile to book a service.
-                </>
+                fetchFailed ? (
+                  <>We couldn&apos;t load listings just now. Check your connection and tap Retry.</>
+                ) : (
+                  <>
+                    Published offerings from providers will appear in this row. Visitors can still post a task or open a
+                    provider profile to book a service.
+                  </>
+                )
               ) : (
                 <>
                   Your own listings are omitted here so this strip highlights other pros. Edit yours under Profile →
@@ -521,6 +559,17 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
                 </>
               )}
             </p>
+            {feedEmpty ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-4 rounded-xl border-emerald-200 text-emerald-900 hover:bg-emerald-50"
+                onClick={retryFetch}
+              >
+                Retry
+              </Button>
+            ) : null}
             <Link
               href="/profile?tab=listings"
               className="mt-5 inline-block text-sm font-semibold text-emerald-700 hover:underline"

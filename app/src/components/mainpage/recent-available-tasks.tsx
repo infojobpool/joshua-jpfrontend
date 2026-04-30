@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Briefcase, MapPin } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   getAllJobsForHomeCached,
+  invalidateHomeJobsCache,
   readPersistedHomeSnapshot,
   selectOpenRecentTaskCards,
   type HomeTaskCard,
@@ -114,6 +116,8 @@ function PremiumRecentTaskCard({
 export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop" }) {
   const [tasks, setTasks] = useState<HomeTaskCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [fetchFailed, setFetchFailed] = useState(false);
 
   /** Apply last session snapshot before paint (client-only; avoids SSR hydration mismatch). */
   useLayoutEffect(() => {
@@ -145,6 +149,13 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     }, 3200);
   }, []);
 
+  const retryFetch = useCallback(() => {
+    invalidateHomeJobsCache();
+    setFetchFailed(false);
+    setLoading(true);
+    setReloadKey((k) => k + 1);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -152,6 +163,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
         const jobs = await getAllJobsForHomeCached();
         const rows = selectOpenRecentTaskCards(jobs, DESKTOP_MAX);
         if (!cancelled) {
+          setFetchFailed(false);
           setTasks((prev) => {
             if (rows.length > 0) return rows;
             if (prev.length > 0) return prev;
@@ -159,7 +171,10 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
           });
         }
       } catch {
-        if (!cancelled) setTasks((prev) => prev);
+        if (!cancelled) {
+          setFetchFailed(true);
+          setTasks((prev) => prev);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -167,7 +182,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   useEffect(() => {
     marqueePausedRef.current = marqueePaused;
@@ -331,6 +346,20 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
           <div className="mt-4 flex flex-col items-center rounded-2xl border border-gray-100 bg-gray-50 py-8">
             <Briefcase className="mb-2 h-10 w-10 text-gray-300" />
             <p className="text-sm font-medium text-gray-600">No open tasks yet</p>
+            <p className="mt-1 max-w-sm px-4 text-center text-xs text-gray-500 leading-relaxed">
+              {fetchFailed
+                ? "We couldn’t load tasks just now. Check your connection and tap Retry."
+                : "Open tasks will show here when people post jobs you can apply for."}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3 rounded-xl border-slate-200"
+              onClick={retryFetch}
+            >
+              Retry
+            </Button>
             <div className="mt-4 flex flex-col items-center gap-2 sm:flex-row">
               <Link href="/post-task" className="text-sm font-medium text-blue-600 hover:underline">
                 Post a task
@@ -472,7 +501,20 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
           <div className="mx-auto max-w-7xl rounded-2xl border border-gray-100 bg-white py-12 text-center">
             <Briefcase className="mx-auto mb-3 h-12 w-12 text-gray-300" />
             <p className="font-medium text-gray-600">No open tasks yet</p>
-            <p className="mt-1 text-sm text-gray-400">Be the first to post one</p>
+            <p className="mt-1 max-w-md px-4 text-sm text-gray-500">
+              {fetchFailed
+                ? "We couldn’t load tasks just now. Check your connection and tap Retry."
+                : "Be the first to post one, or check back soon for new listings."}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-4 rounded-xl border-slate-200"
+              onClick={retryFetch}
+            >
+              Retry
+            </Button>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
               <Link href="/post-task" className="font-medium text-blue-600 hover:underline">
                 Post a task

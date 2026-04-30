@@ -127,3 +127,9 @@ export function warmHomeOfferingsCache(): void {
   tryHydrateOfferingsFromDisk();
   void getHomeOfferingsCached();
 }
+
+/** Clear memory cache so the next fetch hits the network (e.g. user taps Retry). */
+export function invalidateHomeOfferingsCache(): void {
+  cache = null;
+  inflight = null;
+}

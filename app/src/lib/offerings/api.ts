@@ -294,8 +294,9 @@ export async function listOfferingFeedApi(limit = 24, offset = 0): Promise<Offer
     if (total <= 0) total = offerings.length;
 
     return { offerings, total };
-  } catch {
-    return { offerings: [], total: 0 };
+  } catch (e) {
+    /** Do not return [] on network/throttle errors — callers treat empty as “real empty feed” and cache it. */
+    throw e;
   }
 }
 

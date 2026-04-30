@@ -320,6 +320,7 @@ export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
     return inflight;
   }
   inflight = (async () => {
+    let gotSuccessfulHttpParse = false;
     try {
       try {
         const recent = await axiosInstance.get("/recent-open-jobs/", {
@@ -328,6 +329,7 @@ export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
         });
         const rd = recent?.data;
         if (isGetAllJobsResponseOk(rd, recent?.status)) {
+          gotSuccessfulHttpParse = true;
           let jobs = extractJobsArray(rd);
           if (jobs.length === 0 && rd && typeof rd === "object") {
             const r = rd as Record<string, unknown>;
@@ -347,6 +349,7 @@ export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
       const response = await axiosInstance.get("/get-all-jobs/", { timeout: 26_000 });
       const data = response?.data;
       if (isGetAllJobsResponseOk(data, response?.status)) {
+        gotSuccessfulHttpParse = true;
         const jobs = extractJobsArray(data);
         cache = { jobs, fetchedAt: Date.now() };
         if (jobs.length > 0) {
@@ -357,7 +360,16 @@ export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
     } catch {
       /* ignore */
     }
-    cache = { jobs: [], fetchedAt: Date.now() };
+    if (cache && cache.jobs.length > 0) {
+      return cache.jobs;
+    }
+    tryHydrateCacheFromDisk();
+    if (cache && cache.jobs.length > 0) {
+      return cache.jobs;
+    }
+    if (!gotSuccessfulHttpParse) {
+      throw Object.assign(new Error("HOME_JOBS_FETCH_FAILED"), { code: "HOME_JOBS_FETCH_FAILED" });
+    }
     return [];
   })();
   try {
@@ -371,5 +383,13 @@ export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
 export function warmHomeJobsCache(): void {
   if (typeof window === "undefined") return;
   tryHydrateCacheFromDisk();
-  void getAllJobsForHomeCached();
+  void getAllJobsForHomeCached().catch(() => {
+    /* prefetch must not surface as unhandled rejection */
+  });
+}
+
+/** Clear memory cache so the next home fetch hits the network (e.g. user taps Retry). */
+export function invalidateHomeJobsCache(): void {
+  cache = null;
+  inflight = null;
 }
