@@ -47,6 +47,7 @@ import {
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import { fetchRecentOpenJobsQuick } from "@/lib/homeJobsCache";
+import { isCoercedTruthy, isJobCompletedFlag, isOpenForAvailableList } from "@/lib/jobStatusNormalize";
 import { jobIdVariants } from "@/lib/jobIdVariants";
 import useStore from "@/lib/Zustand";
 import { formatDateWithTime } from "@/lib/utils";
@@ -1576,42 +1577,38 @@ export default function Dashboard() {
     fetchUserTasks();
   }, [user, userId, effectiveUserId, taskOrders, refetchPostedTrigger]);
 
-  // Load available tasks from localStorage on mount
+  // Load available tasks from localStorage (instant paint after login / revisit)
   useEffect(() => {
     const loadCachedTasks = () => {
       try {
-        const cachedTasks = localStorage.getItem('availableTasks');
-        const timestamp = localStorage.getItem('availableTasksTimestamp');
-        
-        if (cachedTasks && timestamp) {
-          const age = Date.now() - parseInt(timestamp);
-          const maxAge = 30 * 60 * 1000; // 30 minutes
-          
-          if (age < maxAge) {
-            const tasks = dedupeTasksByContent(dedupeTasksById(JSON.parse(cachedTasks) as Task[]));
-            console.log("🔄 Loading cached available tasks:", tasks.length);
-            setAvailableTasks(tasks);
-            
-            // Also store in shared cache for other tabs
-            const cachedData = localStorage.getItem('all_jobs_data');
-            if (cachedData) {
-              localStorage.setItem(`all_jobs_data_${userId}`, cachedData);
-            }
-            return true;
-        } else {
-            console.log("🔄 Cached tasks are too old, will fetch fresh");
-            localStorage.removeItem('availableTasks');
-            localStorage.removeItem('availableTasksTimestamp');
+        const cachedTasks = localStorage.getItem("availableTasks");
+        const timestamp = localStorage.getItem("availableTasksTimestamp");
+        if (!cachedTasks || !timestamp) return;
+
+        const age = Date.now() - parseInt(timestamp, 10);
+        const maxAge = 6 * 60 * 60 * 1000; // 6h — show while network refreshes
+        if (Number.isNaN(age) || age >= maxAge) {
+          localStorage.removeItem("availableTasks");
+          localStorage.removeItem("availableTasksTimestamp");
+          return;
         }
-      }
+
+        const tasks = dedupeTasksByContent(dedupeTasksById(JSON.parse(cachedTasks) as Task[]));
+        if (tasks.length > 0) {
+          setAvailableTasks((prev) => (prev.length > 0 ? prev : tasks));
+          const uid = (userId || effectiveUserId)?.toString();
+          const cachedData = localStorage.getItem("all_jobs_data");
+          if (cachedData && uid) {
+            localStorage.setItem(`all_jobs_data_${uid}`, cachedData);
+          }
+        }
       } catch (error) {
         console.error("Error loading cached tasks:", error);
       }
-      return false;
     };
 
     loadCachedTasks();
-  }, []);
+  }, [userId, effectiveUserId]);
 
   // Fetch all available tasks (jobs-nearby when Near me on, else get-all-jobs)
   useEffect(() => {
@@ -1621,7 +1618,11 @@ export default function Dashboard() {
     let fullAvailableFetchSettled = false;
 
     const mapJobToTask = (job: any): Task => {
-      const jobStatus = job.job_completion_status === 1 ? "completed" : job.deletion_status ? "deleted" : job.cancel_status ? "canceled" : "open";
+      const j = job as Record<string, unknown>;
+      const completed = isJobCompletedFlag(j);
+      const deleted = isCoercedTruthy(job.deletion_status);
+      const cancelled = isCoercedTruthy(job.cancel_status) || isCoercedTruthy(job.cancelled);
+      const jobStatus = completed ? "completed" : deleted ? "deleted" : cancelled ? "canceled" : "open";
       const postedMeta = formatTimestampValue(job.created_at || job.tstamp || job.timestamp || job.job_tstamp || job.job_created_at || job.created_date);
       return {
         id: job.job_id.toString(),
@@ -1642,9 +1643,9 @@ export default function Dashboard() {
         posted_by_profile_image: job.posted_by_profile_image || job.taskmanager_profile_image || job.taskmanager_profile_img || job.poster?.profile_img || job.profile_img || job.user_profile_img,
         posted_by_id: job.user_ref_id || job.posted_by_id || job.user_id,
         category: job.job_category || "general",
-        job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
-        deletion_status: job.deletion_status || false,
-        cancel_status: job.cancel_status ?? false,
+        job_completion_status: completed ? "Completed" : "Not Completed",
+        deletion_status: deleted,
+        cancel_status: cancelled,
         images: job.job_images?.urls?.length ? job.job_images.urls.map((url: string, index: number) => ({ id: `img${index + 1}`, url: typeof url === "string" && url.includes("placeholder.com") ? "/images/placeholder.svg" : url, alt: `Job image ${index + 1}` })) : [{ id: "img1", url: "/images/placeholder.svg", alt: "Default job image" }],
         latitude: typeof job.latitude === "number" ? job.latitude : undefined,
         longitude: typeof job.longitude === "number" ? job.longitude : undefined,
@@ -1657,15 +1658,7 @@ export default function Dashboard() {
       if (quickFetchController.signal.aborted || fullAvailableFetchSettled || raw.length === 0) return;
       try {
         const quickTasks = raw
-          .filter((job: any) => {
-            const jobPostedById = String(job.user_ref_id ?? "");
-            const isNotPostedByUser = jobPostedById !== uid;
-            const isOpen =
-              job.job_completion_status !== 1 &&
-              !job.deletion_status &&
-              !job.cancel_status;
-            return isNotPostedByUser && isOpen;
-          })
+          .filter((job: any) => isOpenForAvailableList(job as Record<string, unknown>, uid))
           .map(mapJobToTask);
         if (quickTasks.length > 0) {
           setAvailableTasks(dedupeTasksByContent(dedupeTasksById(quickTasks)));
@@ -1676,10 +1669,28 @@ export default function Dashboard() {
     });
 
     const fetchAllTasks = async () => {
+      const hydrateAvailableFromLocalCache = () => {
+        try {
+          const cachedTasks = localStorage.getItem("availableTasks");
+          const timestamp = localStorage.getItem("availableTasksTimestamp");
+          if (!cachedTasks || !timestamp) return;
+          const age = Date.now() - parseInt(timestamp, 10);
+          if (Number.isNaN(age) || age > 6 * 60 * 60 * 1000) return;
+          const tasks = dedupeTasksByContent(dedupeTasksById(JSON.parse(cachedTasks) as Task[]));
+          if (tasks.length > 0) {
+            setAvailableTasks((prev) => (prev.length > 0 ? prev : tasks));
+          }
+        } catch {
+          /* ignore */
+        }
+      };
+
+      hydrateAvailableFromLocalCache();
+
       try {
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000);
+        const timeoutId = setTimeout(() => controller.abort(), 18_000);
         const uid = (userId || effectiveUserId)?.toString();
 
         // When Near me is on, use jobs-nearby (returns lat/lng → maps show)
@@ -1697,7 +1708,7 @@ export default function Dashboard() {
               const data = await res.json();
               if (data?.status_code === 200 && Array.isArray(data?.data?.jobs)) {
                 const tasks: Task[] = data.data.jobs
-                  .filter((j: any) => String(j.user_ref_id) !== uid && j.job_completion_status !== 1 && !j.deletion_status && !j.cancel_status)
+                  .filter((j: any) => isOpenForAvailableList(j as Record<string, unknown>, uid))
                   .map(mapJobToTask);
                 const deduped = dedupeTasksByContent(dedupeTasksById(tasks));
                 setAvailableTasks(deduped);
@@ -1745,26 +1756,17 @@ export default function Dashboard() {
 
 
         if (result.status_code === 200 && result.data?.jobs) {
+          const currentUserId = (userId || effectiveUserId)?.toString();
           const tasks: Task[] = result.data.jobs
-            .filter((job: any) => {
-              const jobPostedById = job.user_ref_id;
-              const currentUserId = (userId || effectiveUserId)?.toString();
-              const isNotPostedByUser = jobPostedById !== currentUserId;
-              const isOpen = job.job_completion_status !== 1 && 
-                           !job.deletion_status && 
-                           !job.cancel_status;
-              return isNotPostedByUser && isOpen;
-            })
+            .filter((job: any) => isOpenForAvailableList(job as Record<string, unknown>, currentUserId || ""))
             .map((job: any) => {
               let jobStatus = "open";
-              
-              // For available tasks, we only care about basic status
-              // All available tasks should be "open" for bidding
-              if (job.job_completion_status === 1) {
+              const jr = job as Record<string, unknown>;
+              if (isJobCompletedFlag(jr)) {
                 jobStatus = "completed";
-              } else if (job.deletion_status) {
+              } else if (isCoercedTruthy(job.deletion_status)) {
                 jobStatus = "deleted";
-              } else if (job.cancel_status) {
+              } else if (isCoercedTruthy(job.cancel_status) || isCoercedTruthy(job.cancelled)) {
                 jobStatus = "canceled";
               }
               // All other tasks remain "open" for bidding
@@ -1793,9 +1795,9 @@ export default function Dashboard() {
                 posted_by_profile_image: job.posted_by_profile_image || job.taskmanager_profile_image || job.taskmanager_profile_img || job.poster?.profile_img || job.poster?.profile_image || job.profile_img || job.user_profile_img,
                 posted_by_id: job.user_ref_id || job.posted_by_id || job.user_id,
                 category: job.job_category || "general",
-                job_completion_status: job.job_completion_status === 1 ? "Completed" : "Not Completed",
-                deletion_status: job.deletion_status || false,
-                cancel_status: job.cancel_status ?? false,
+                job_completion_status: isJobCompletedFlag(jr) ? "Completed" : "Not Completed",
+                deletion_status: isCoercedTruthy(job.deletion_status),
+                cancel_status: isCoercedTruthy(job.cancel_status) || isCoercedTruthy(job.cancelled),
                 distance_km: typeof job.distance_km === "number" ? job.distance_km : undefined,
                 images: job.job_images?.urls?.length
                   ? job.job_images.urls.map((url: string, index: number) => ({
@@ -1824,10 +1826,19 @@ export default function Dashboard() {
           console.warn("No jobs found or API error:", result.message);
         }
       } catch (err) {
-        // Handle AbortError separately (don't show error for timeouts)
+        // Handle AbortError separately (don't show error toast)
         if ((err as any)?.name === 'AbortError') {
           console.log("⏰ Fetch all tasks was aborted (timeout)");
-          return; // Don't show error toast or clear tasks
+          try {
+            const cachedTasks = localStorage.getItem("availableTasks");
+            if (cachedTasks) {
+              const tasks = dedupeTasksByContent(dedupeTasksById(JSON.parse(cachedTasks) as Task[]));
+              if (tasks.length > 0) setAvailableTasks(tasks);
+            }
+          } catch {
+            /* ignore */
+          }
+          return;
         }
         
         console.error("❌ Failed to fetch all tasks:", err);

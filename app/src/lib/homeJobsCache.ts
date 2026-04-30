@@ -1,4 +1,5 @@
 import axiosInstance from "@/lib/axiosInstance";
+import { isJobCompletedFlag, isJobDeletedOrCancelled } from "@/lib/jobStatusNormalize";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 
 /** Fresh window: serve from memory without hitting the network. */
@@ -203,7 +204,9 @@ function resolveHomeCardImageUrl(raw: string | null): string | null {
  * means open; `true` means taken/in progress. Also accepts common string statuses.
  */
 export function isOpenListingJob(job: RawJob): boolean {
-  if (job.deletion_status === true) return false;
+  const j = job as Record<string, unknown>;
+  if (isJobDeletedOrCancelled(j)) return false;
+  if (isJobCompletedFlag(j)) return false;
 
   const st = job.status;
 
