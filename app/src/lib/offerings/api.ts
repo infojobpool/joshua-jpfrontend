@@ -40,6 +40,22 @@ export function extractOfferingsPayload(res: unknown): unknown[] {
   return [];
 }
 
+/** Match listing ids across feed vs detail (numeric pk vs string, trimming). */
+function offeringIdsMatch(listId: string, requested: string): boolean {
+  const a = String(listId ?? "").trim();
+  const b = String(requested ?? "").trim();
+  if (!a || !b) return false;
+  if (a === b) return true;
+  if (/^\d+$/.test(a) && /^\d+$/.test(b)) {
+    try {
+      return BigInt(a) === BigInt(b);
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 export function mapOfferingFromApi(raw: unknown): Offering | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
@@ -294,7 +310,13 @@ export async function listPublishedOfferingsForHomeApi(limit = 24): Promise<Offe
  * Tries GET `offerings/{id}/` first; if missing or non-public, scans the public feed (paginated cap).
  */
 export async function getPublicOfferingByIdApi(id: string): Promise<Offering | null> {
-  const clean = id?.trim();
+  let clean = String(id ?? "").trim();
+  if (!clean) return null;
+  try {
+    clean = decodeURIComponent(clean).trim();
+  } catch {
+    /* keep clean as-is */
+  }
   if (!clean) return null;
 
   try {
@@ -315,7 +337,7 @@ export async function getPublicOfferingByIdApi(id: string): Promise<Offering | n
     let offset = 0;
     for (let page = 0; page < 12; page++) {
       const { offerings } = await listOfferingFeedApi(pageSize, offset);
-      const found = offerings.find((o) => o.id === clean);
+      const found = offerings.find((o) => offeringIdsMatch(o.id, clean));
       if (found) return found;
       if (offerings.length < pageSize) break;
       offset += pageSize;

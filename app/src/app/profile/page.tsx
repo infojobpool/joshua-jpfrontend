@@ -139,7 +139,8 @@ export default function ProfilePage() {
   const [tempAvatar, setTempAvatar] = useState<string | null>(null);
   const [tempCoverImage, setTempCoverImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
+  const [profileRetryNonce, setProfileRetryNonce] = useState(0);
   const { userId, logout, user: storeUser, updateUserProfileImage } = useStore();
   const [user, setUser] = useState<User | null>(null);
 
@@ -294,7 +295,7 @@ export default function ProfilePage() {
         } catch {}
       }
       if (!effectiveUserId) {
-        setError("Failed to load profile: missing user id");
+        setProfileLoadError("Failed to load profile: missing user id");
         setIsLoading(false);
         return;
       }
@@ -305,6 +306,7 @@ export default function ProfilePage() {
       const profileTimeoutId = setTimeout(() => profileAbort.abort(), profileTimeoutMs);
       try {
         setIsLoading(true);
+        setProfileLoadError(null);
         const response = await axiosInstance.get(`/profile?user_id=${effectiveUserId}`, {
           signal: profileAbort.signal,
           timeout: profileTimeoutMs,
@@ -426,7 +428,26 @@ export default function ProfilePage() {
           : err?.response?.data?.message ||
             err?.message ||
             "Failed to load profile";
-        setError(message);
+        setProfileLoadError(message);
+        try {
+          const raw = localStorage.getItem("user");
+          if (raw) {
+            const p = JSON.parse(raw) as Record<string, unknown>;
+            const name = String(p.name ?? p.user_fullname ?? p.full_name ?? "").trim();
+            const email = String(p.email ?? p.user_email ?? "").trim();
+            const pid = String(p.profile_id ?? p.profileId ?? "").trim();
+            const img = String(p.profile_image ?? p.profile_img ?? p.avatar ?? "").trim();
+            setProfileUser((prev) => ({
+              ...prev,
+              name: name || prev.name,
+              email: email || prev.email,
+              profile_id: pid || prev.profile_id,
+              avatar: img ? resolveProfileImageUrl(img) || img : prev.avatar,
+            }));
+          }
+        } catch {
+          /* session parse optional */
+        }
         if (err.response?.status === 401) {
           logout();
           router.push("/signin");
@@ -450,7 +471,7 @@ export default function ProfilePage() {
     }, 8000);
     return () => clearTimeout(retry);
     // Omit `router` from deps — it can change identity on client navigations and retrigger fetch + cooldown early-return without finally.
-  }, [userId, logout]);
+  }, [userId, logout, profileRetryNonce]);
 
   const handleSignOut = () => {
     logout();
@@ -575,7 +596,7 @@ export default function ProfilePage() {
     const formData = new FormData(form);
 
     if (!profileuser.profile_id) {
-      setError("Profile ID is required");
+      toast.error("Profile ID is required. Try refreshing after profile loads.");
       setIsLoading(false);
       return;
     }
@@ -656,7 +677,7 @@ export default function ProfilePage() {
       setTempAvatar(null);
       setTempCoverImage(null);
     } catch (err: any) {
-      setError("Failed to update profile");
+      toast.error(err?.response?.data?.message || "Failed to update profile");
       if (err.response?.status === 401) {
         logout();
         router.push("/signin");
@@ -682,7 +703,6 @@ export default function ProfilePage() {
       </div>
     );
   }
-  if (error) return <div>Error: {error}</div>;
 
   // Use unified profile page for both mobile and desktop so data is consistent
 
@@ -694,6 +714,29 @@ export default function ProfilePage() {
         minimal
       />
       <main className="flex-1 w-full min-w-0 max-w-6xl mx-auto box-border overflow-x-hidden py-6 md:py-10 px-4 md:px-6 pb-28 md:pb-10">
+        {profileLoadError ? (
+          <div
+            role="alert"
+            className="mb-4 flex flex-col gap-3 rounded-xl border border-amber-200/90 bg-amber-50/95 px-4 py-3 text-sm text-amber-950 shadow-sm ring-1 ring-amber-100 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <span className="min-w-0 leading-snug">{profileLoadError}</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0 border-amber-300 bg-white text-amber-950 hover:bg-amber-100/80"
+              onClick={() => {
+                setProfileLoadError(null);
+                lastFetchTimeRef.current = 0;
+                fetchSuccessRef.current = false;
+                fetchProfileRef.current = false;
+                setProfileRetryNonce((n) => n + 1);
+              }}
+            >
+              Retry
+            </Button>
+          </div>
+        ) : null}
         {mainTab === "listings" ? (
           <div className="mb-3 flex min-w-0 items-center justify-between gap-2 sm:mb-4">
             <Link

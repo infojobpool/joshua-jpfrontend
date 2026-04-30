@@ -25,9 +25,20 @@ function buildListingRequestHref(o: Offering): string {
   return `/listing-request?${q.toString()}`;
 }
 
+function listingIdFromParams(params: ReturnType<typeof useParams>): string {
+  const raw = params?.id;
+  const segment = Array.isArray(raw) ? raw[0] : typeof raw === "string" ? raw : "";
+  if (!segment?.trim()) return "";
+  try {
+    return decodeURIComponent(segment.trim());
+  } catch {
+    return segment.trim();
+  }
+}
+
 export default function ListingDetailClient() {
   const params = useParams();
-  const id = typeof params?.id === "string" ? params.id : "";
+  const id = listingIdFromParams(params);
   const userId = useStore((s) => s.userId);
 
   const [offering, setOffering] = useState<Offering | null>(null);
@@ -101,9 +112,18 @@ export default function ListingDetailClient() {
           <Package className="mx-auto h-12 w-12 text-slate-300" />
           <h1 className="mt-4 text-lg font-semibold text-slate-900">Listing not found</h1>
           <p className="mt-2 text-sm text-slate-600">
-            It may be unpublished, removed, or the link is incorrect.
+            It may be unpublished, removed, or the link is incorrect. If you came from the home page, open Home and
+            wait for listings to refresh, then try again.
           </p>
           <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Button
+              type="button"
+              variant="secondary"
+              className="rounded-xl"
+              onClick={() => void load()}
+            >
+              Retry
+            </Button>
             <Button asChild variant="outline" className="rounded-xl">
               <Link href="/listings">Browse listings</Link>
             </Button>

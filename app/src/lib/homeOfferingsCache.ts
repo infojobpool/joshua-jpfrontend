@@ -5,9 +5,9 @@ const TTL_MS = 45_000;
 const DEFAULT_LIMIT = 16;
 /** Persist at most this many rows to keep disk cache small. */
 const PERSIST_CAP = 48;
-const STORAGE_KEY = "jobpool_home_offerings_feed_v1";
-/** Same as home jobs: allow snapshot reads for returning visitors. */
-const DISK_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const STORAGE_KEY = "jobpool_home_offerings_feed_v2";
+/** Persisted home strip must not stay valid for days — stale ids cause “Listing not found” after tap. */
+const DISK_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 
 let inflight: Promise<Offering[]> | null = null;
 let cache: { rows: Offering[]; fetchedAt: number } | null = null;
