@@ -96,10 +96,14 @@ export default function SignInPage() {
       setIsLoading(true);
       
       // Use axiosInstance which has timeout configured (60s)
-      const response = await axiosInstance.post('/login/', {
-        email: formData.email.trim().toLowerCase(),
-        password: formData.password,
-      });
+      const response = await axiosInstance.post(
+        '/login/',
+        {
+          email: formData.email.trim().toLowerCase(),
+          password: formData.password,
+        },
+        { timeout: 15_000 }
+      );
 
       if (response.data.status_code === 200 && response.data.data) {
         const { token, user } = response.data.data;

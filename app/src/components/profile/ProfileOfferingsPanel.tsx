@@ -29,17 +29,36 @@ function statusBadge(status: Offering["status"]) {
 export function ProfileOfferingsPanel({ userId }: Props) {
   const [list, setList] = useState<Offering[]>([]);
   const [loading, setLoading] = useState(true);
+  const [missingUserId, setMissingUserId] = useState(false);
   const maxSlots = getMaxOfferingSlots(readOfferingSubscriptionMock());
   const used = countSlotsUsed(list);
 
   const refresh = useCallback(async () => {
-    if (!userId) return;
+    let effectiveUserId = String(userId || "").trim();
+    if (!effectiveUserId) {
+      try {
+        const raw = localStorage.getItem("user");
+        if (raw) {
+          const parsed = JSON.parse(raw) as Record<string, unknown>;
+          effectiveUserId = String(parsed.id ?? parsed.user_id ?? parsed.userId ?? "").trim();
+        }
+      } catch {
+        /* optional local fallback */
+      }
+    }
+    if (!effectiveUserId) {
+      setMissingUserId(true);
+      setLoading(false);
+      setList([]);
+      return;
+    }
+    setMissingUserId(false);
     setLoading(true);
     try {
-      const data = await listOfferingsApi(userId);
+      const data = await listOfferingsApi(effectiveUserId);
       setList(data);
     } catch {
-      toast.error("Could not load listings from the server.");
+      toast.error("Could not load listings from the server.", { id: "profile-offerings-load" });
       setList([]);
     } finally {
       setLoading(false);
@@ -89,20 +108,38 @@ export function ProfileOfferingsPanel({ userId }: Props) {
           <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100/80 text-emerald-700 ring-4 ring-white">
             <Package className="h-5 w-5" aria-hidden />
           </div>
-          <p className="mt-3 text-sm font-bold text-slate-900">Nothing live yet</p>
-          <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-slate-600 sm:text-sm">
-            Add your first service or product so clients can book you from your public profile and the listings feed.
+          <p className="mt-3 text-sm font-bold text-slate-900">
+            {missingUserId ? "Fetching your listings…" : "Nothing live yet"}
           </p>
-          <Button
-            asChild
-            size="sm"
-            className="mx-auto mt-4 h-11 w-full max-w-xs rounded-xl bg-emerald-600 text-sm font-semibold shadow-sm hover:bg-emerald-700"
-          >
-            <Link href="/profile/offerings/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Add listing
-            </Link>
-          </Button>
+          <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-slate-600 sm:text-sm">
+            {missingUserId
+              ? "Your account session is still loading. Please wait a moment or tap retry."
+              : "Add your first service or product so clients can book you from your public profile and the listings feed."}
+          </p>
+          {missingUserId ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="mx-auto mt-4 h-11 w-full max-w-xs rounded-xl border-emerald-200 text-emerald-800 hover:bg-emerald-50"
+              onClick={() => {
+                void refresh();
+              }}
+            >
+              Retry
+            </Button>
+          ) : (
+            <Button
+              asChild
+              size="sm"
+              className="mx-auto mt-4 h-11 w-full max-w-xs rounded-xl bg-emerald-600 text-sm font-semibold shadow-sm hover:bg-emerald-700"
+            >
+              <Link href="/profile/offerings/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Add listing
+              </Link>
+            </Button>
+          )}
         </div>
       ) : (
         <ul className="space-y-3">

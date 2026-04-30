@@ -73,10 +73,14 @@ export function MobileSignIn() {
     try {
       const normalizedEmail = (formData.email || "").trim().toLowerCase();
       // Use axiosInstance which has timeout configured (60s)
-      const response = await axiosInstance.post('/login/', {
-        email: normalizedEmail,
-        password: formData.password,
-      });
+      const response = await axiosInstance.post(
+        '/login/',
+        {
+          email: normalizedEmail,
+          password: formData.password,
+        },
+        { timeout: 15_000 }
+      );
       
       if (response.data && response.data.status_code === 200 && response.data.data) {
         const { token, user } = response.data.data;

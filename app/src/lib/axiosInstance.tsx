@@ -27,6 +27,22 @@ function isTaskDetailRead(url: string | undefined): boolean {
   return false;
 }
 
+/** Listings workspace read: GET offerings with user_id should not be throttled by client budget. */
+function isProfileListingsRead(
+  url: string | undefined,
+  params: unknown
+): boolean {
+  if (!url) return false;
+  const u = url.toLowerCase();
+  if (!(u === 'offerings/' || u.endsWith('/offerings/') || u.includes('/offerings?') || u.includes('/offerings/?'))) {
+    return false;
+  }
+  if (!params || typeof params !== 'object') return false;
+  const p = params as Record<string, unknown>;
+  const uid = String(p.user_id ?? '').trim();
+  return uid.length > 0;
+}
+
 function shouldSkip401Refresh(url: string): boolean {
   const u = url.toLowerCase();
   if (u.includes('refresh-token')) return true;
@@ -104,7 +120,10 @@ axiosInstance.interceptors.request.use(
     // Check request throttling (disabled for development)
     if (!isDev) {
       const skipThrottle =
-        isChatInboxLightRead(urlStr) || isHomePublicRead(urlStr) || isTaskDetailRead(urlStr);
+        isChatInboxLightRead(urlStr) ||
+        isHomePublicRead(urlStr) ||
+        isTaskDetailRead(urlStr) ||
+        isProfileListingsRead(urlStr, config.params);
       const now = Date.now();
       if (now - requestThrottle.windowStart > requestThrottle.windowSize) {
         // Reset window
