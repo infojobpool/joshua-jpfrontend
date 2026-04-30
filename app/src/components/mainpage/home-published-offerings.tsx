@@ -195,9 +195,15 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
     (async () => {
       try {
         const data = await getHomeOfferingsCached(DESKTOP_MAX);
-        if (!cancelled) setRows(data);
+        if (!cancelled) {
+          setRows((prev) => {
+            if (data.length > 0) return data;
+            if (prev.length > 0) return prev;
+            return data;
+          });
+        }
       } catch {
-        if (!cancelled) setRows([]);
+        if (!cancelled) setRows((prev) => prev);
       } finally {
         if (!cancelled) setLoading(false);
       }

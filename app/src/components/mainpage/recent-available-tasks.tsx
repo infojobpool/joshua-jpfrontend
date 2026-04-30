@@ -151,9 +151,15 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
       try {
         const jobs = await getAllJobsForHomeCached();
         const rows = selectOpenRecentTaskCards(jobs, DESKTOP_MAX);
-        if (!cancelled) setTasks(rows);
+        if (!cancelled) {
+          setTasks((prev) => {
+            if (rows.length > 0) return rows;
+            if (prev.length > 0) return prev;
+            return rows;
+          });
+        }
       } catch {
-        if (!cancelled) setTasks([]);
+        if (!cancelled) setTasks((prev) => prev);
       } finally {
         if (!cancelled) setLoading(false);
       }

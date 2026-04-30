@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import axiosInstance from "@/lib/axiosInstance";
 import {
@@ -139,6 +139,7 @@ export default function ProfilePage() {
   const [tempAvatar, setTempAvatar] = useState<string | null>(null);
   const [tempCoverImage, setTempCoverImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
   const [profileRetryNonce, setProfileRetryNonce] = useState(0);
   const { userId, logout, user: storeUser, updateUserProfileImage } = useStore();
@@ -170,10 +171,14 @@ export default function ProfilePage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [mainTab, setMainTab] = useState<ProfileMainTab>("profile");
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const t = searchParams.get("tab");
     if (isProfileMainTab(t)) setMainTab(t);
   }, [searchParams]);
+
+  /** Listings workspace should not block on slow /profile — URL is source of truth for this gate. */
+  const isListingsTab =
+    searchParams.get("tab") === "listings" || mainTab === "listings";
 
   const onMainTabChange = useCallback(
     (v: string) => {
@@ -597,7 +602,6 @@ export default function ProfilePage() {
 
     if (!profileuser.profile_id) {
       toast.error("Profile ID is required. Try refreshing after profile loads.");
-      setIsLoading(false);
       return;
     }
 
@@ -611,7 +615,7 @@ export default function ProfilePage() {
     const phoneForApi = normalizeProfilePhone(phoneRaw);
 
     try {
-      setIsLoading(true);
+      setIsSavingProfile(true);
       const addresses = profileuser.addresses.map((addr) => ({
         address: addr.address,
         isDefault: addr.isDefault,
@@ -683,11 +687,11 @@ export default function ProfilePage() {
         router.push("/signin");
       }
     } finally {
-      setIsLoading(false);
+      setIsSavingProfile(false);
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !isListingsTab) {
     const tab = searchParams.get("tab");
     const loadingLabel =
       tab === "listings" ? "Loading listings…" : tab === "reviews" ? "Loading reviews…" : "Loading profile…";
@@ -714,6 +718,11 @@ export default function ProfilePage() {
         minimal
       />
       <main className="flex-1 w-full min-w-0 max-w-6xl mx-auto box-border overflow-x-hidden py-6 md:py-10 px-4 md:px-6 pb-28 md:pb-10">
+        {isListingsTab && isLoading ? (
+          <p className="mb-3 text-center text-xs font-medium text-slate-500" aria-live="polite">
+            Updating profile in the background…
+          </p>
+        ) : null}
         {profileLoadError ? (
           <div
             role="alert"
@@ -1095,12 +1104,17 @@ export default function ProfilePage() {
                       size="sm"
                       className="rounded-xl"
                       onClick={toggleEditProfile}
-                      disabled={isLoading}
+                      disabled={isLoading || isSavingProfile}
                     >
                       Cancel
                     </Button>
-                    <Button type="submit" size="sm" disabled={isLoading} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">
-                      {isLoading ? "Saving..." : "Save Changes"}
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={isLoading || isSavingProfile}
+                      className="rounded-xl bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      {isSavingProfile ? "Saving..." : "Save Changes"}
                     </Button>
                   </div>
                 </form>
