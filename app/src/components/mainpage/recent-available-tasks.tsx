@@ -12,7 +12,11 @@ import {
   selectOpenRecentTaskCards,
   type HomeTaskCard,
 } from "@/lib/homeJobsCache";
-import { prefetchBidsForTask } from "@/lib/taskNavCache";
+import {
+  prefetchBidsForTask,
+  prefetchJobWithBidsForTask,
+  storeTaskForNav,
+} from "@/lib/taskNavCache";
 import { HOME_BROWSE_ALL_TASKS_HREF, HOME_EXPLORE_ALL_TASKS_LABEL } from "@/lib/homeSectionNav";
 import { cn } from "@/lib/utils";
 import { toViewTransitionKey } from "@/lib/viewTransition";
@@ -441,10 +445,29 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
                 widthClass="w-[15.5rem]"
                 onPrefetch={() => {
                   try {
+                    storeTaskForNav({
+                      id: t.id,
+                      title: t.title,
+                      description: t.description,
+                      budget: t.budget,
+                      location: t.location || undefined,
+                      category: t.category_name,
+                      posted_by: t.posted_by,
+                      posted_by_id: t.posted_by_id,
+                      posted_by_profile_image: t.posted_by_profile_image,
+                      images: t.imageUrl
+                        ? [{ url: t.imageUrl, alt: t.title }]
+                        : [],
+                    });
+                  } catch {
+                    /* ignore */
+                  }
+                  try {
                     prefetchBidsForTask(t.id);
                   } catch {
                     /* ignore */
                   }
+                  prefetchJobWithBidsForTask(t.id);
                 }}
               />
             ))}
@@ -607,10 +630,29 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
                     scrollSnap
                     onPrefetch={() => {
                       try {
+                        storeTaskForNav({
+                          id: task.id,
+                          title: task.title,
+                          description: task.description,
+                          budget: task.budget,
+                          location: task.location || undefined,
+                          category: task.category_name,
+                          posted_by: task.posted_by,
+                          posted_by_id: task.posted_by_id,
+                          posted_by_profile_image: task.posted_by_profile_image,
+                          images: task.imageUrl
+                            ? [{ url: task.imageUrl, alt: task.title }]
+                            : [],
+                        });
+                      } catch {
+                        /* ignore */
+                      }
+                      try {
                         prefetchBidsForTask(task.id);
                       } catch {
                         /* ignore */
                       }
+                      prefetchJobWithBidsForTask(task.id);
                     }}
                   />
                 ))}

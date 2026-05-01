@@ -640,15 +640,15 @@ export default function ChatPageClient() {
           lastMessagesStableKeyRef.current = messagesListStableKey(next);
           return next;
         });
-        setMessage("")
+        setMessage("");
 
-        try {
-          await axiosInstance.put(`/mark-as-read/${encodeURIComponent(mid)}`, undefined, {
+        // Do not await — slow mark-as-read kept the send spinner up for seconds after the message already sent.
+        void axiosInstance
+          .put(`/mark-as-read/${encodeURIComponent(mid)}`, undefined, {
             params: userId ? { user_id: userId } : undefined,
+            timeout: 12_000,
           })
-        } catch {
-          // Ignore
-        }
+          .catch(() => {});
       } else {
         const reason =
           (typeof body?.reason === "string" && body.reason) ||

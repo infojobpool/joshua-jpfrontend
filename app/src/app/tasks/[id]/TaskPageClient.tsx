@@ -15,13 +15,19 @@ import {
   formatInr,
   type TaskerFeeData,
 } from "@/lib/feePreview";
-import { jobIdVariants } from "@/lib/jobIdVariants";
+import { jobIdVariants, jobIdTryList } from "@/lib/jobIdVariants";
 import { resolveApiMediaUrl, resolveProfileImageUrl } from "@/lib/profileImage";
 import { hasRealProfilePhotoUrl } from "@/lib/payoutProfileCompletion";
 import { readPosterProfileCache, writePosterProfileCache } from "@/lib/posterProfileCache";
 import { pickRecentPosterReviews } from "@/lib/posterReviewsFromProfile";
 import { isProfileComplete, getProfileImageFromUser } from "@/lib/profileUtils";
-import { getBidsFromCache, getNavTask, storeBidsInCache } from "@/lib/taskNavCache";
+import {
+  getBidsFromCache,
+  getNavTask,
+  storeBidsInCache,
+  peekPrefetchJobWithBids,
+  clearPrefetchJobWithBids,
+} from "@/lib/taskNavCache";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
@@ -673,29 +679,17 @@ export default function TaskDetailPage() {
           } catch {}
         }
 
-        // Primary request – use get-job-with-bids (single round-trip) or fallback to get-job
+        // Primary request – use get-job-with-bids (parallel id variants) or fallback to get-job
         const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
-        const token = localStorage.getItem('token');
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-          console.log("Task loading timeout reached, aborting request");
-          controller.abort();
-        }, 12000); // 12s timeout – better for slow networks
+        const token = localStorage.getItem("token");
+        const tryIds = jobIdTryList(id);
 
-        // Backend may expect "task_139" or "139" – try all formats
-        const tryIds = [
-          id,
-          id.startsWith("task_") ? id.replace(/^task_/, "") : `task_${id}`,
-          id.replace(/^task_/, ""),
-        ].filter((x, i, arr) => arr.indexOf(x) === i);
-
-        // Try get-job-with-bids sequentially (one ID format at a time) — avoids 3 competing requests per load.
         let data: any;
         let job: any;
         let combinedBids: any[] | null = null;
         let lastFetchErr: unknown;
 
-        const fetchJson = async (path: string) => {
+        const fetchJson = async (path: string, signal: AbortSignal) => {
           const r = await fetch(`${API_BASE}${path}`, {
             method: "GET",
             headers: {
@@ -703,22 +697,45 @@ export default function TaskDetailPage() {
               "Content-Type": "application/json",
             },
             credentials: "omit",
-            signal: controller.signal,
+            signal,
           });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           return r.json();
         };
 
-        for (const tryId of tryIds) {
+        const peeked = peekPrefetchJobWithBids(id);
+        if (peeked?.res) {
+          data = peeked.res;
+          job = peeked.res.data.job ?? peeked.res.data;
+          const rawBids = peeked.res.data.bids;
+          combinedBids = Array.isArray(rawBids) ? rawBids : null;
+        }
+
+        if (!job) {
           try {
-            const res = await fetchJson(`/get-job-with-bids/${tryId}/`);
-            if (res?.status_code === 200 && res?.data) {
-              data = res;
-              job = res.data.job ?? res.data;
-              const rawBids = res.data.bids;
-              combinedBids = Array.isArray(rawBids) ? rawBids : null;
-              break;
-            }
+            const won = await Promise.any(
+              tryIds.map((tryId) =>
+                (async () => {
+                  const ctrl = new AbortController();
+                  const tid = setTimeout(() => ctrl.abort(), 12_000);
+                  try {
+                    const res = await fetchJson(`/get-job-with-bids/${tryId}/`, ctrl.signal);
+                    if (res?.status_code === 200 && res?.data) {
+                      const j = res.data.job ?? res.data;
+                      if (!j) throw new Error("no job");
+                      return res;
+                    }
+                    throw new Error("bad response");
+                  } finally {
+                    clearTimeout(tid);
+                  }
+                })()
+              )
+            );
+            data = won;
+            job = won.data.job ?? won.data;
+            const rawBids = won.data.bids;
+            combinedBids = Array.isArray(rawBids) ? rawBids : null;
           } catch (e) {
             lastFetchErr = e;
           }
@@ -726,18 +743,28 @@ export default function TaskDetailPage() {
 
         // Fallback: get-job only (loadBids effect will fetch bids separately)
         if (!job) {
-          clearTimeout(timeoutId);
-          for (const tryId of tryIds) {
-            try {
-              const res = await fetchJson(`/get-job/${tryId}/`);
-              if (res?.status_code === 200) {
-                data = res;
-                job = res.data;
-                break;
-              }
-            } catch (e) {
-              lastFetchErr = e;
-            }
+          try {
+            const won = await Promise.any(
+              tryIds.map((tryId) =>
+                (async () => {
+                  const ctrl = new AbortController();
+                  const tid = setTimeout(() => ctrl.abort(), 12_000);
+                  try {
+                    const res = await fetchJson(`/get-job/${tryId}/`, ctrl.signal);
+                    if (res?.status_code === 200) {
+                      return res;
+                    }
+                    throw new Error("bad response");
+                  } finally {
+                    clearTimeout(tid);
+                  }
+                })()
+              )
+            );
+            data = won;
+            job = won.data;
+          } catch (e) {
+            lastFetchErr = e;
           }
           if (!job) {
             try {
@@ -748,8 +775,6 @@ export default function TaskDetailPage() {
               throw lastFetchErr ?? fallbackErr;
             }
           }
-        } else {
-          clearTimeout(timeoutId);
         }
 
         if (!job || (data?.status_code !== 200 && !job)) {
@@ -1017,6 +1042,9 @@ export default function TaskDetailPage() {
         };
         if (combinedBids != null) cachePayload.bids = combinedBids;
         localStorage.setItem(cacheKey, JSON.stringify(cachePayload));
+        try {
+          clearPrefetchJobWithBids(id);
+        } catch (_) {}
       } catch (error: any) {
         console.error("Error loading task data:", error);
         try {

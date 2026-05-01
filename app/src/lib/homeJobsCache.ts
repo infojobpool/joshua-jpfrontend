@@ -48,6 +48,10 @@ export type HomeTaskCard = {
   location: string;
   category_name: string;
   imageUrl: string | null;
+  /** Optional poster fields for nav-cache prefetch on hover/touch. */
+  posted_by?: string;
+  posted_by_id?: string | number;
+  posted_by_profile_image?: string;
 };
 
 /** True when GET /get-all-jobs/ body indicates success (handles string/number status_code). */
@@ -246,6 +250,21 @@ export function selectOpenRecentTaskCards(jobs: RawJob[], limit: number): HomeTa
         (job.job_category_name as string) || (job.job_category as string) || "General"
       ),
       imageUrl: resolveHomeCardImageUrl(firstJobImageUrl(job)),
+      posted_by: String(
+        (job.posted_by as string) ||
+          (job.posted_by_name as string) ||
+          (job.taskmanager_name as string) ||
+          ""
+      ).trim() || undefined,
+      posted_by_id: (job.user_ref_id ?? job.user_id ?? job.poster_id) as string | number | undefined,
+      posted_by_profile_image: (() => {
+        const raw =
+          (job.posted_by_profile_image as string) ||
+          (job.taskmanager_profile_image as string) ||
+          (job.taskmanager_profile_img as string) ||
+          "";
+        return String(raw).trim() || undefined;
+      })(),
     }))
     .filter((t) => t.id.length > 0);
 }

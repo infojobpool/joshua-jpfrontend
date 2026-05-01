@@ -1,4 +1,5 @@
 import { resolveApiMediaUrl } from "@/lib/profileImage";
+import { jobIdTryList, jobIdsAlign } from "@/lib/jobIdVariants";
 
 /**
  * Store task data before navigation for instant display on task detail page.
@@ -139,5 +140,87 @@ export function storeBidsInCache(taskId: string, bids: any[]) {
   if (typeof window === "undefined" || !taskId) return;
   try {
     sessionStorage.setItem(BIDS_CACHE_PREFIX + taskId, JSON.stringify({ bids: Array.isArray(bids) ? bids : [], timestamp: Date.now() }));
+  } catch (_) {}
+}
+
+const PREFETCH_JOBWB_PREFIX = "jp_prefetch_jwb_";
+const PREFETCH_JOBWB_TTL_MS = 90_000;
+
+/** Fire-and-forget: parallel GET /get-job-with-bids/ for all id shapes; warms session + bids cache for task detail. */
+export function prefetchJobWithBidsForTask(taskId: string) {
+  if (typeof window === "undefined" || !taskId) return;
+  const key = PREFETCH_JOBWB_PREFIX + taskId;
+  try {
+    const existing = sessionStorage.getItem(key);
+    if (existing) {
+      const p = JSON.parse(existing);
+      if (p?.fetchedAt && Date.now() - p.fetchedAt < PREFETCH_JOBWB_TTL_MS) return;
+    }
+  } catch (_) {}
+
+  const token = localStorage.getItem("token");
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
+  const tryIds = jobIdTryList(taskId);
+
+  const fetchOne = async (tryId: string) => {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 12_000);
+    try {
+      const r = await fetch(`${API_BASE}/get-job-with-bids/${tryId}/`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        credentials: "omit",
+        signal: ctrl.signal,
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const json = await r.json();
+      if (json?.status_code === 200 && json?.data) {
+        const j = json.data.job ?? json.data;
+        if (j && jobIdsAlign(taskId, j.job_id)) return json;
+      }
+      throw new Error("bad response");
+    } finally {
+      clearTimeout(tid);
+    }
+  };
+
+  Promise.any(tryIds.map((tid) => fetchOne(tid)))
+    .then((json) => {
+      try {
+        sessionStorage.setItem(key, JSON.stringify({ fetchedAt: Date.now(), res: json }));
+        const rawBids = json.data?.bids;
+        if (Array.isArray(rawBids)) storeBidsInCache(taskId, rawBids);
+      } catch (_) {}
+    })
+    .catch(() => {});
+}
+
+/** Synchronous read of prefetched get-job-with-bids JSON (valid TTL + job id match). Does not remove the entry. */
+export function peekPrefetchJobWithBids(taskId: string): { res: any } | null {
+  if (typeof window === "undefined" || !taskId) return null;
+  try {
+    const raw = sessionStorage.getItem(PREFETCH_JOBWB_PREFIX + taskId);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (!p?.res || typeof p.fetchedAt !== "number" || Date.now() - p.fetchedAt > PREFETCH_JOBWB_TTL_MS) {
+      return null;
+    }
+    const res = p.res;
+    if (res?.status_code !== 200 || !res?.data) return null;
+    const job = res.data.job ?? res.data;
+    if (!job || !jobIdsAlign(taskId, job.job_id)) return null;
+    return { res };
+  } catch (_) {
+    return null;
+  }
+}
+
+export function clearPrefetchJobWithBids(taskId: string) {
+  if (typeof window === "undefined" || !taskId) return;
+  try {
+    sessionStorage.removeItem(PREFETCH_JOBWB_PREFIX + taskId);
   } catch (_) {}
 }

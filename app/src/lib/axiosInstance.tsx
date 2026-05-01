@@ -10,6 +10,19 @@ function isChatInboxLightRead(url: string | undefined): boolean {
   return u.includes('get-messages') || u.includes('my-chats');
 }
 
+/** Send / read-receipt — must not sit behind global throttle or POST dedupe (same URL, different bodies). */
+function isChatMessageWrite(url: string | undefined): boolean {
+  if (!url) return false;
+  const u = url.toLowerCase();
+  return (
+    u.includes('send-message') ||
+    u.includes('create-message') ||
+    u.includes('add-message') ||
+    /\/message\/?(\?|$)/i.test(u) ||
+    u.includes('mark-as-read')
+  );
+}
+
 /** Public marketing / home reads — should not queue behind the global throttle (first paint). */
 function isHomePublicRead(url: string | undefined): boolean {
   if (!url) return false;
@@ -128,6 +141,7 @@ axiosInstance.interceptors.request.use(
     if (!isDev) {
       const skipThrottle =
         isChatInboxLightRead(urlStr) ||
+        isChatMessageWrite(urlStr) ||
         isHomePublicRead(urlStr) ||
         isTaskDetailRead(urlStr) ||
         isProfileListingsRead(urlStr, config.params) ||
@@ -170,8 +184,8 @@ axiosInstance.interceptors.request.use(
       }
     }
 
-    // Request deduplication (skip for chat/inbox reads — polling changes params; broken promise was not a real in-flight dedupe)
-    const skipDedupe = isChatInboxLightRead(urlStr);
+    // Request deduplication (skip chat reads + writes — same path, different bodies; POST dedupe was wrong for sends)
+    const skipDedupe = isChatInboxLightRead(urlStr) || isChatMessageWrite(urlStr);
     if (!skipDedupe) {
       const requestKey = `${config.method?.toUpperCase()}_${config.url}_${JSON.stringify(config.params)}`;
       if (pendingRequests.has(requestKey)) {
