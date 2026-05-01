@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useMemo } from "react"
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from "react"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -70,6 +70,20 @@ interface ChatInfo {
   };
 }
 
+/** Fingerprint for poll dedupe — avoids setMessages + scroll jitter when nothing changed. */
+function messagesListStableKey(list: Message[]): string {
+  if (list.length === 0) return "__empty__";
+  return list
+    .map((m) => {
+      const id = String(m.id ?? m.messagesid ?? "");
+      const desc = String(m.description ?? "");
+      const t = String(getMessageTimeRaw(m) ?? "");
+      const read = m.is_read === true ? "1" : "0";
+      return `${id}\u001f${desc}\u001f${t}\u001f${read}`;
+    })
+    .join("\u001e");
+}
+
 export default function ChatPageClient() {
   const router = useRouter()
   const params = useParams()
@@ -83,6 +97,14 @@ export default function ChatPageClient() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const [otherUserName, setOtherUserName] = useState("")
   const inputRef = useRef<HTMLInputElement | null>(null)
+  /** Last applied message list fingerprint — background polls skip setState when unchanged. */
+  const lastMessagesStableKeyRef = useRef<string>("")
+  /** Full-screen chat shell — sized to visualViewport so composer stays above the mobile keyboard. */
+  const chatShellRef = useRef<HTMLDivElement | null>(null)
+  const visualViewportRafRef = useRef<number>(0)
+  /** Hysteresis: keyboard “open” vs closed so we do not thrash setState on small gap changes. */
+  const keyboardLikelyOpenRef = useRef(false)
+  const [keyboardCompact, setKeyboardCompact] = useState(false)
   /** After initial fetch (with loading spinner), do not snap to bottom — user reads from the top. */
   const suppressNextScrollAfterLoad = useRef(false)
   const fetchMessagesRef = useRef<((showLoading?: boolean) => Promise<void>) | null>(null)
@@ -114,6 +136,8 @@ export default function ChatPageClient() {
       return;
     }
 
+    lastMessagesStableKeyRef.current = "";
+
     // Fix user.id if it's undefined
     if (userId && (!user?.id || user.id === undefined)) {
       const updatedUser = { ...user, id: userId, name: user?.name || "User" };
@@ -131,7 +155,7 @@ export default function ChatPageClient() {
       return
     }
     if (messages.length === 0) return
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
+    messagesEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" })
   }, [messages, loading]);
 
   // Refetch when user returns to tab or window (immediate catch-up)
@@ -161,6 +185,68 @@ export default function ChatPageClient() {
     const id = window.setInterval(tick, 2000);
     return () => window.clearInterval(id);
   }, [userId, chatId, loading]);
+
+  /** Pin chat UI to Visual Viewport (iOS / WebView) so the composer stays above the keyboard. */
+  const chatShellReady = !loading && !!userId;
+  useLayoutEffect(() => {
+    if (!chatShellReady) return;
+    const shell = chatShellRef.current;
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!shell || !vv) return;
+
+    const apply = () => {
+      const el = chatShellRef.current;
+      if (!el) return;
+      const h = vv.height;
+      const top = vv.offsetTop;
+      const left = vv.offsetLeft;
+      const w = vv.width;
+      el.style.position = "fixed";
+      el.style.top = `${top}px`;
+      el.style.left = `${left}px`;
+      el.style.width = `${w}px`;
+      el.style.height = `${h}px`;
+      el.style.maxHeight = `${h}px`;
+      el.style.right = "auto";
+      el.style.bottom = "auto";
+
+      const gap = Math.max(0, window.innerHeight - h - top);
+      let open = keyboardLikelyOpenRef.current;
+      if (!open && gap > 88) open = true;
+      if (open && gap < 28) open = false;
+      if (open !== keyboardLikelyOpenRef.current) {
+        keyboardLikelyOpenRef.current = open;
+        setKeyboardCompact(open);
+      }
+    };
+
+    const schedule = () => {
+      cancelAnimationFrame(visualViewportRafRef.current);
+      visualViewportRafRef.current = requestAnimationFrame(apply);
+    };
+
+    schedule();
+    vv.addEventListener("resize", schedule);
+    vv.addEventListener("scroll", schedule);
+    return () => {
+      cancelAnimationFrame(visualViewportRafRef.current);
+      vv.removeEventListener("resize", schedule);
+      vv.removeEventListener("scroll", schedule);
+      const el = chatShellRef.current;
+      if (el) {
+        el.style.position = "";
+        el.style.top = "";
+        el.style.left = "";
+        el.style.width = "";
+        el.style.height = "";
+        el.style.maxHeight = "";
+        el.style.right = "";
+        el.style.bottom = "";
+      }
+      keyboardLikelyOpenRef.current = false;
+      setKeyboardCompact(false);
+    };
+  }, [chatShellReady, chatId]);
 
   const fetchUserInfo = async (uid: string): Promise<string | null> => {
     try {
@@ -241,9 +327,15 @@ export default function ChatPageClient() {
         const data = body.data as Record<string, unknown>;
         if (Array.isArray(data)) fetchedMessages = data as unknown as Message[];
       }
-      
-      setMessages([...fetchedMessages].sort(compareMessagesByTime));
-      
+
+      const sorted = [...fetchedMessages].sort(compareMessagesByTime);
+      const nextStableKey = messagesListStableKey(sorted);
+      if (!showLoading && nextStableKey === lastMessagesStableKeyRef.current) {
+        return;
+      }
+      lastMessagesStableKeyRef.current = nextStableKey;
+      setMessages(sorted);
+
       // Determine other user info
       if (fetchedMessages.length > 0) {
         const firstMessage = fetchedMessages[0];
@@ -543,7 +635,11 @@ export default function ChatPageClient() {
           is_read: false,
         }
 
-        setMessages((prev) => [...prev, newMessage].sort(compareMessagesByTime))
+        setMessages((prev) => {
+          const next = [...prev, newMessage].sort(compareMessagesByTime);
+          lastMessagesStableKeyRef.current = messagesListStableKey(next);
+          return next;
+        });
         setMessage("")
 
         try {
@@ -569,7 +665,7 @@ export default function ChatPageClient() {
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
+    messagesEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" })
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -631,7 +727,11 @@ export default function ChatPageClient() {
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex h-[100dvh] max-h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-[#f4f7fb] md:z-50">
+    <div
+      ref={chatShellRef}
+      className="fixed left-0 top-0 z-40 flex min-h-0 w-full min-w-0 flex-col overflow-hidden overscroll-none bg-[#f4f7fb] touch-manipulation md:z-50"
+      style={{ height: "100dvh", maxHeight: "100dvh", width: "100%" }}
+    >
       <Toaster position="top-right" />
       
       {/* Chat Header — topic first (listing / task), then participant */}
@@ -725,7 +825,11 @@ export default function ChatPageClient() {
 
       {/* Messages Area */}
       <ScrollArea className="min-h-0 flex-1 bg-gradient-to-b from-slate-100/90 to-[#eef2f7] overscroll-y-contain">
-        <div className="mx-auto max-w-3xl space-y-2.5 px-3 py-3 pb-8 sm:space-y-3 sm:px-4 sm:py-4 sm:pb-10">
+        <div
+          className={`mx-auto max-w-3xl space-y-2.5 px-3 py-3 sm:space-y-3 sm:px-4 sm:py-4 ${
+            keyboardCompact ? "pb-3 sm:pb-4" : "pb-8 sm:pb-10"
+          }`}
+        >
           
           {messages.length === 0 && (
             <div className="text-center py-16 space-y-5">
@@ -792,26 +896,36 @@ export default function ChatPageClient() {
         </div>
       </ScrollArea>
 
-      {/* Composer: extra bottom padding for Android gesture nav + safe area (inset-0 ignores system bars). */}
-      <div className="flex-shrink-0 border-t border-slate-200/80 bg-white/95 pb-[max(1.25rem,calc(12px+env(safe-area-inset-bottom,0px)))] shadow-[0_-4px_24px_rgba(15,23,42,0.06)] backdrop-blur-sm">
-        <div className="mx-auto max-w-3xl px-3 pt-2 sm:px-4">
-          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">Suggestions</p>
-          <div className="-mx-1 mb-2 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {QUICK_REPLY_SUGGESTIONS.map((line) => (
-              <button
-                key={line}
-                type="button"
-                onClick={() => {
-                  setMessage(line)
-                  inputRef.current?.focus({ preventScroll: true })
-                }}
-                className="shrink-0 rounded-full border border-slate-200/90 bg-slate-50 px-3 py-1.5 text-left text-xs font-medium text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50/80 active:scale-[0.98]"
-              >
-                {line}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-end gap-2 pb-2">
+      {/* Composer: safe-area + compact mode when keyboard visible (visualViewport). */}
+      <div
+        className={`flex-shrink-0 border-t border-slate-200/80 bg-white/95 shadow-[0_-4px_24px_rgba(15,23,42,0.06)] backdrop-blur-sm ${
+          keyboardCompact
+            ? "pb-[max(0.375rem,calc(6px+env(safe-area-inset-bottom,0px)))]"
+            : "pb-[max(1.25rem,calc(12px+env(safe-area-inset-bottom,0px)))]"
+        }`}
+      >
+        <div className={`mx-auto max-w-3xl px-3 sm:px-4 ${keyboardCompact ? "pt-1.5" : "pt-2"}`}>
+          {!keyboardCompact && (
+            <>
+              <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">Suggestions</p>
+              <div className="-mx-1 mb-2 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {QUICK_REPLY_SUGGESTIONS.map((line) => (
+                  <button
+                    key={line}
+                    type="button"
+                    onClick={() => {
+                      setMessage(line);
+                      inputRef.current?.focus({ preventScroll: true });
+                    }}
+                    className="shrink-0 rounded-full border border-slate-200/90 bg-slate-50 px-3 py-1.5 text-left text-xs font-medium text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50/80 active:scale-[0.98]"
+                  >
+                    {line}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          <div className={`flex items-end gap-2 ${keyboardCompact ? "pb-1" : "pb-2"}`}>
             <input
               type="text"
               placeholder="Type a message..."
@@ -819,6 +933,9 @@ export default function ChatPageClient() {
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyPress}
               ref={inputRef}
+              inputMode="text"
+              autoComplete="off"
+              autoCorrect="on"
               className="min-h-[48px] flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
               style={{ fontSize: "16px" }}
               disabled={sending}
