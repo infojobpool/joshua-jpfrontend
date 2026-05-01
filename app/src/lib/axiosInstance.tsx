@@ -27,6 +27,13 @@ function isTaskDetailRead(url: string | undefined): boolean {
   return false;
 }
 
+/** Small wallet summary (chained after profile for UPI) — must not sit behind global throttle. */
+function isWalletSummaryRead(url: string | undefined): boolean {
+  if (!url) return false;
+  const u = url.toLowerCase();
+  return u.includes("wallet") && u.includes("user_id");
+}
+
 /** Listings workspace read: GET offerings with user_id should not be throttled by client budget. */
 function isProfileListingsRead(
   url: string | undefined,
@@ -123,7 +130,8 @@ axiosInstance.interceptors.request.use(
         isChatInboxLightRead(urlStr) ||
         isHomePublicRead(urlStr) ||
         isTaskDetailRead(urlStr) ||
-        isProfileListingsRead(urlStr, config.params);
+        isProfileListingsRead(urlStr, config.params) ||
+        isWalletSummaryRead(urlStr);
       const now = Date.now();
       if (now - requestThrottle.windowStart > requestThrottle.windowSize) {
         // Reset window
