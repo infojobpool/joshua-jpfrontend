@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { getPublicOfferingByIdApi } from "@/lib/offerings/api";
 import type { Offering } from "@/lib/offerings/types";
 import { resolveApiMediaUrl } from "@/lib/profileImage";
+import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 import { toViewTransitionKey } from "@/lib/viewTransition";
 
@@ -45,6 +46,7 @@ export default function ListingDetailClient() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [activePhoto, setActivePhoto] = useState(0);
+  const [providerName, setProviderName] = useState("");
   const touchStartX = useRef<number | null>(null);
 
   const load = useCallback(async () => {
@@ -92,6 +94,40 @@ export default function ListingDetailClient() {
     preload(list[(safe + 1) % list.length]);
     preload(list[(safe - 1 + list.length) % list.length]);
   }, [offering, activePhoto]);
+
+  /** Feed/detail payloads can miss provider_display_name; hydrate from profile for cleaner card UI. */
+  useEffect(() => {
+    let cancelled = false;
+    if (!offering?.userId) {
+      setProviderName("");
+      return;
+    }
+    const fallbackName = (offering.providerDisplayName || "").trim();
+    if (fallbackName && fallbackName.toLowerCase() !== "provider") {
+      setProviderName(fallbackName);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await axiosInstance.get(`/profile?user_id=${encodeURIComponent(offering.userId)}`, {
+          timeout: 10_000,
+        });
+        const root = (res?.data ?? {}) as Record<string, unknown>;
+        const payload = (root.data && typeof root.data === "object" ? root.data : root) as Record<string, unknown>;
+        const fetched =
+          String(payload.name ?? payload.user_fullname ?? payload.full_name ?? payload.username ?? "")
+            .trim();
+        if (!cancelled) {
+          setProviderName(fetched || fallbackName || "Provider");
+        }
+      } catch {
+        if (!cancelled) setProviderName(fallbackName || "Provider");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [offering?.userId, offering?.providerDisplayName]);
 
   if (loading) {
     return (
@@ -148,6 +184,7 @@ export default function ListingDetailClient() {
   const profileLink = o.userId ? `/profilepage/${encodeURIComponent(o.userId)}` : "/listings";
   const typeLabel = o.type === "product" ? "Product" : "Service";
   const vtId = toViewTransitionKey(o.id);
+  const displayProviderName = (providerName || o.providerDisplayName || "Provider").trim() || "Provider";
 
   const goPrev = () =>
     setActivePhoto((i) => {
@@ -301,17 +338,17 @@ export default function ListingDetailClient() {
               )}
 
               {!isOwnListing && o.userId ? (
-                <div className="mt-6 flex items-center gap-3 rounded-xl bg-slate-50/90 p-4 ring-1 ring-slate-100">
+                <div className="mt-5 flex items-center gap-2.5 rounded-xl bg-slate-50/90 p-3 ring-1 ring-slate-100">
                   <div
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-100 to-slate-200/90 text-sm font-bold text-slate-700 shadow-inner ring-1 ring-white/80"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-100 to-slate-200/90 text-sm font-bold text-slate-700 shadow-inner ring-1 ring-white/80"
                     aria-hidden
                   >
-                    {(o.providerDisplayName || "Provider").trim().charAt(0)}
+                    {displayProviderName.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Provider</p>
-                    <p className="truncate text-base font-semibold text-slate-900">
-                      {o.providerDisplayName?.trim() || "Provider"}
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Provider</p>
+                    <p className="truncate text-base font-semibold leading-tight text-slate-900">
+                      {displayProviderName}
                     </p>
                     <Link
                       href={profileLink}
@@ -325,8 +362,10 @@ export default function ListingDetailClient() {
 
               {o.description?.trim() ? (
                 <div className="mt-6 rounded-xl border border-slate-100 bg-slate-50/70 p-4 sm:p-5">
-                  <p className="text-sm font-semibold text-slate-900">About this listing</p>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{o.description}</p>
+                  <p className="text-base font-bold tracking-tight text-slate-900">About this listing</p>
+                  <p className="mt-2 whitespace-pre-wrap text-base leading-relaxed text-slate-700">
+                    {o.description}
+                  </p>
                 </div>
               ) : null}
 
