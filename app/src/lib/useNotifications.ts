@@ -123,6 +123,7 @@ export function useNotifications(enabled: boolean) {
         } else {
           firstFetchDoneRef.current = true;
           prevUnreadRef.current = 0;
+          setUnreadCount(0);
           try {
             useStore.getState().setNotifications([]);
           } catch {
@@ -172,7 +173,21 @@ export function useNotifications(enabled: boolean) {
   );
 
   const clearAll = useCallback(() => {
-    setItems([]);
+    setItems((prev) => {
+      try {
+        const existing: string[] = JSON.parse(sessionStorage.getItem(CLEARED_IDS_KEY) || "[]");
+        const ids = prev
+          .map((n) => String(n.id ?? (n as any).notification_id ?? "").trim())
+          .filter(Boolean);
+        const merged = [...new Set([...existing, ...ids])].slice(-500);
+        sessionStorage.setItem(CLEARED_IDS_KEY, JSON.stringify(merged));
+      } catch {
+        /* ignore */
+      }
+      return [];
+    });
+    prevUnreadRef.current = 0;
+    firstFetchDoneRef.current = true;
     setUnreadCount(0);
     try {
       useStore.getState().setNotifications([]);

@@ -1,11 +1,13 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Home, Search, Plus, MessageSquare, LayoutList } from "lucide-react";
 import { isMobileBottomNavHidden } from "@/lib/mobileNavVisibility";
 import { HOME_BROWSE_ALL_TASKS_HREF } from "@/lib/homeSectionNav";
+import axiosInstance from "@/lib/axiosInstance";
+import useStore from "@/lib/Zustand";
 
 type NavLinkItem = {
   href: string;
@@ -18,6 +20,64 @@ type NavLinkItem = {
 export function MobileBottomNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const userId = useStore((s) => s.userId);
+  const isAuthenticated = useStore((s) => s.isAuthenticated);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const unreadRef = useRef(0);
+
+  useEffect(() => {
+    unreadRef.current = unreadChatCount;
+  }, [unreadChatCount]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !userId) {
+      setUnreadChatCount(0);
+      return;
+    }
+
+    let cancelled = false;
+    const readUnread = async () => {
+      try {
+        const res = await axiosInstance.get("/my-chats/", {
+          params: { user_id: String(userId), limit: 50, offset: 0 },
+          timeout: 12_000,
+        });
+        const root = (res?.data ?? {}) as Record<string, unknown>;
+        if (root.status_code != null && Number(root.status_code) !== 200) return;
+        const data = (root.data && typeof root.data === "object" ? root.data : root) as Record<string, unknown>;
+        const rows = Array.isArray(data.chats) ? (data.chats as Record<string, unknown>[]) : [];
+        const next = rows.reduce((sum, c) => {
+          const raw = c.unread_count ?? c.unreadCount ?? 0;
+          const n =
+            typeof raw === "number" && Number.isFinite(raw)
+              ? Math.max(0, Math.floor(raw))
+              : Math.max(0, parseInt(String(raw), 10) || 0);
+          return sum + n;
+        }, 0);
+        if (!cancelled && next !== unreadRef.current) {
+          setUnreadChatCount(next);
+        }
+      } catch {
+        // Non-blocking; keep previous badge
+      }
+    };
+
+    void readUnread();
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") void readUnread();
+    }, 12_000);
+    const onFocus = () => {
+      if (document.visibilityState === "visible") void readUnread();
+    };
+    document.addEventListener("visibilitychange", onFocus);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onFocus);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [isAuthenticated, userId]);
 
   if (isMobileBottomNavHidden(pathname)) {
     return null;
@@ -78,7 +138,17 @@ export function MobileBottomNav() {
                   : "text-gray-600 dark:text-slate-400 hover:text-[#2563eb] dark:hover:text-[#60a5fa] hover:bg-gray-50 dark:hover:bg-slate-800"
               }`}
             >
-              <Icon className="h-5 w-5 shrink-0" />
+              <span className="relative inline-flex">
+                <Icon className="h-5 w-5 shrink-0" />
+                {label === "Chat" && unreadChatCount > 0 ? (
+                  <span
+                    className="absolute -right-2 -top-2 inline-flex min-w-[16px] items-center justify-center rounded-full bg-blue-600 px-1 text-[9px] font-bold leading-4 text-white ring-2 ring-white dark:ring-slate-900"
+                    aria-label={`${unreadChatCount} unread chats`}
+                  >
+                    {unreadChatCount > 99 ? "99+" : unreadChatCount}
+                  </span>
+                ) : null}
+              </span>
               <span className="text-[10px] font-medium truncate">{label}</span>
             </Link>
           );
