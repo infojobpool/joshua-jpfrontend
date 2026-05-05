@@ -38,6 +38,7 @@ const archivo = Archivo({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.jobpool.in"),
   title: "JobPool - Task Marketplace",
   description: "Connect with skilled taskers for home services, repairs, and more. Post tasks or find work opportunities.",
   manifest: "/manifest.json",

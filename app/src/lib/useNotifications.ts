@@ -18,6 +18,7 @@ export interface NotificationItem {
 
 const POLL_INTERVAL_MS = 10000; // 10 seconds - in sync with emails
 const CLEARED_IDS_KEY = "notification_cleared_ids";
+const READ_IDS_KEY = "notification_read_ids";
 const KEEP_LATEST = 10;
 
 function toIsoSafe(raw: unknown): string {
@@ -81,9 +82,14 @@ export function useNotifications(enabled: boolean) {
         if (list.length > 0) {
           setItems((prev) => {
             let clearedIds = new Set<string>();
+            let readIds = new Set<string>();
             try {
               const stored = sessionStorage.getItem(CLEARED_IDS_KEY);
               if (stored) clearedIds = new Set(JSON.parse(stored));
+            } catch {}
+            try {
+              const storedRead = sessionStorage.getItem(READ_IDS_KEY);
+              if (storedRead) readIds = new Set(JSON.parse(storedRead));
             } catch {}
             const byId = new Map<string, NotificationItem>();
             [...list, ...prev]
@@ -96,6 +102,11 @@ export function useNotifications(enabled: boolean) {
                 if (id) byId.set(id, n);
               });
             const merged = Array.from(byId.values())
+              .map((n) => {
+                const id = String(n.id ?? (n as any).notification_id ?? "");
+                if (id && readIds.has(id)) return { ...n, read: true };
+                return n;
+              })
               .sort((a, b) => new Date((b as any).created_at ?? b.createdAt ?? 0).getTime() - new Date((a as any).created_at ?? a.createdAt ?? 0).getTime())
               .slice(0, 50);
             const newUnread = merged.filter((n) => !n.read).length;
@@ -160,6 +171,38 @@ export function useNotifications(enabled: boolean) {
   const markAsRead = useCallback(
     async (notificationId?: number | null) => {
       if (!enabled) return;
+      const targetId =
+        notificationId != null ? String(notificationId).trim() : null;
+      setItems((prev) => {
+        let readIds = new Set<string>();
+        try {
+          const stored = sessionStorage.getItem(READ_IDS_KEY);
+          if (stored) readIds = new Set(JSON.parse(stored));
+        } catch {}
+        const next = prev.map((n) => {
+          const id = String(n.id ?? (n as any).notification_id ?? "").trim();
+          if (!id) return n;
+          if (targetId == null || id === targetId) {
+            readIds.add(id);
+            return { ...n, read: true };
+          }
+          return n;
+        });
+        try {
+          sessionStorage.setItem(READ_IDS_KEY, JSON.stringify([...readIds].slice(-500)));
+        } catch {}
+        const nextUnread = next.filter((n) => !n.read).length;
+        prevUnreadRef.current = nextUnread;
+        setUnreadCount(nextUnread);
+        queueMicrotask(() => {
+          try {
+            useStore.getState().setNotifications(next.map(apiRowToZustandItem));
+          } catch {
+            /* ignore */
+          }
+        });
+        return next;
+      });
       try {
         await axiosInstance.patch("/notifications/mark-read/", {
           notification_id: notificationId ?? null,
@@ -172,29 +215,10 @@ export function useNotifications(enabled: boolean) {
     [enabled, fetchNotifications]
   );
 
-  const clearAll = useCallback(() => {
-    setItems((prev) => {
-      try {
-        const existing: string[] = JSON.parse(sessionStorage.getItem(CLEARED_IDS_KEY) || "[]");
-        const ids = prev
-          .map((n) => String(n.id ?? (n as any).notification_id ?? "").trim())
-          .filter(Boolean);
-        const merged = [...new Set([...existing, ...ids])].slice(-500);
-        sessionStorage.setItem(CLEARED_IDS_KEY, JSON.stringify(merged));
-      } catch {
-        /* ignore */
-      }
-      return [];
-    });
-    prevUnreadRef.current = 0;
-    firstFetchDoneRef.current = true;
-    setUnreadCount(0);
-    try {
-      useStore.getState().setNotifications([]);
-    } catch {
-      /* ignore */
-    }
-  }, []);
+  /** Keep behavior consistent with "Mark all read": do not remove cards, only clear unread state. */
+  const clearAll = useCallback(async () => {
+    await markAsRead(null);
+  }, [markAsRead]);
 
   const clearOldKeepLatest = useCallback(() => {
     setItems((prev) => {

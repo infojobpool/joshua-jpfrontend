@@ -11,6 +11,7 @@ import { resolveApiMediaUrl } from "@/lib/profileImage";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 import { toViewTransitionKey } from "@/lib/viewTransition";
+import { ShareListingButton } from "@/components/ShareListingButton";
 
 const PLACEHOLDER = "/images/placeholder.svg";
 
@@ -312,6 +313,16 @@ export default function ListingDetailClient() {
               >
                 {o.title}
               </h1>
+              <div className="mt-3 flex items-center justify-end">
+                <ShareListingButton
+                  listingId={o.id}
+                  title={o.title || "Listing"}
+                  price={Math.max(0, Math.round(o.startingPriceInr || 0))}
+                  variant="button"
+                  size="sm"
+                  className="h-9"
+                />
+              </div>
 
               <div className="mt-4 border-b border-slate-100 pb-4 md:hidden">
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Starting from</p>

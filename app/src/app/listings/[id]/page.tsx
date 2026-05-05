@@ -13,11 +13,13 @@ function truncateMeta(s: string, max: number): string {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
+  const canonicalPath = `/listings/${encodeURIComponent(id)}`;
   const offering = await getPublicOfferingByIdApi(id);
   if (!offering) {
     return {
       title: "Listing not found | JobPool",
       description: "This listing may be unpublished or removed.",
+      alternates: { canonical: canonicalPath },
     };
   }
 
@@ -34,10 +36,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title,
     description,
+    alternates: { canonical: canonicalPath },
     openGraph: {
+      type: "website",
+      url: canonicalPath,
+      siteName: "JobPool",
       title,
       description,
-      ...(ogImage ? { images: [{ url: ogImage }] } : {}),
+      ...(ogImage
+        ? {
+            images: [
+              {
+                url: ogImage,
+                width: 1200,
+                height: 630,
+                alt: offering.title || "JobPool listing image",
+              },
+            ],
+          }
+        : {}),
     },
     twitter: {
       card: ogImage ? "summary_large_image" : "summary",

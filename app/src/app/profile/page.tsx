@@ -794,25 +794,25 @@ export default function ProfilePage() {
 
         <Tabs value={mainTab} onValueChange={onMainTabChange} className="mt-2 w-full min-w-0">
           <TabsList
-            className="grid h-auto w-full grid-cols-3 gap-1 rounded-xl bg-slate-100/90 p-1 ring-1 ring-slate-200/60"
+            className="grid h-11 w-full grid-cols-3 gap-1 rounded-xl bg-slate-100/90 p-1 ring-1 ring-slate-200/60 sm:h-12"
             aria-label="Profile sections"
           >
             <TabsTrigger
               value="profile"
-              className="rounded-lg py-2.5 text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm sm:text-sm"
+              className="h-9 rounded-lg px-2 text-xs font-semibold text-slate-600 data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-none sm:h-10 sm:text-sm"
             >
               Profile
             </TabsTrigger>
             <TabsTrigger
               value="listings"
-              className="rounded-lg px-1.5 py-2.5 text-[11px] font-semibold leading-tight data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm sm:px-3 sm:text-sm whitespace-normal sm:whitespace-nowrap"
+              className="h-9 rounded-lg px-2 text-[11px] font-semibold leading-tight text-slate-600 data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-none sm:h-10 sm:px-3 sm:text-sm whitespace-nowrap"
             >
               <span className="sm:hidden">Listings</span>
               <span className="hidden sm:inline">Listings &amp; workspace</span>
             </TabsTrigger>
             <TabsTrigger
               value="reviews"
-              className="rounded-lg py-2.5 text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm sm:text-sm"
+              className="h-9 rounded-lg px-2 text-xs font-semibold text-slate-600 data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-none sm:h-10 sm:text-sm"
             >
               Reviews
             </TabsTrigger>
@@ -1337,34 +1337,34 @@ export default function ProfilePage() {
                 className="w-full min-w-0"
               >
                 <TabsList
-                  className="grid h-auto min-h-0 w-full grid-cols-3 gap-1 rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-200/70"
+                  className="grid h-12 min-h-0 w-full grid-cols-3 gap-1 rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-200/70 sm:h-[3.25rem]"
                   aria-label="Listing workspace sections"
                 >
                   <TabsTrigger
                     value="offerings"
-                    className="min-h-[2.75rem] rounded-lg px-1 py-2 text-[10px] font-semibold leading-tight data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm sm:min-h-0 sm:px-2 sm:py-2.5 sm:text-xs"
+                    className="h-10 rounded-lg px-1.5 py-1 text-[10px] font-semibold leading-tight text-slate-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none sm:h-[2.75rem] sm:px-2 sm:text-xs"
                   >
-                    <span className="flex flex-col items-center justify-center gap-0.5 text-center sm:flex-row sm:gap-1.5">
+                    <span className="flex items-center justify-center gap-1 text-center sm:gap-1.5">
                       <Package className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
-                      <span className="max-[360px]:leading-tight">My listings</span>
+                      <span className="max-[360px]:text-[9px] whitespace-nowrap">My listings</span>
                     </span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="portfolio"
-                    className="min-h-[2.75rem] rounded-lg px-1 py-2 text-[10px] font-semibold leading-tight data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm sm:min-h-0 sm:px-2 sm:py-2.5 sm:text-xs"
+                    className="h-10 rounded-lg px-1.5 py-1 text-[10px] font-semibold leading-tight text-slate-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none sm:h-[2.75rem] sm:px-2 sm:text-xs"
                   >
-                    <span className="flex flex-col items-center justify-center gap-0.5 sm:flex-row sm:gap-1.5">
+                    <span className="flex items-center justify-center gap-1 sm:gap-1.5">
                       <Images className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
-                      Portfolio
+                      <span className="max-[360px]:text-[9px] whitespace-nowrap">Portfolio</span>
                     </span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="bookings"
-                    className="min-h-[2.75rem] rounded-lg px-1 py-2 text-[10px] font-semibold leading-tight data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm sm:min-h-0 sm:px-2 sm:py-2.5 sm:text-xs"
+                    className="h-10 rounded-lg px-1.5 py-1 text-[10px] font-semibold leading-tight text-slate-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-none sm:h-[2.75rem] sm:px-2 sm:text-xs"
                   >
-                    <span className="flex flex-col items-center justify-center gap-0.5 sm:flex-row sm:gap-1.5">
+                    <span className="flex items-center justify-center gap-1 sm:gap-1.5">
                       <Inbox className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
-                      Bookings
+                      <span className="max-[360px]:text-[9px] whitespace-nowrap">Bookings</span>
                     </span>
                   </TabsTrigger>
                 </TabsList>
