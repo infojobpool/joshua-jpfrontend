@@ -351,7 +351,29 @@ export async function getPublicOfferingByIdApi(id: string): Promise<Offering | n
     for (let page = 0; page < 12; page++) {
       const { offerings } = await listOfferingFeedApi(pageSize, offset);
       const found = offerings.find((o) => offeringIdsMatch(o.id, clean));
-      if (found) return found;
+      if (found) {
+        const ownerId = String(found.userId || "").trim();
+        if (!ownerId) return found;
+        try {
+          /** Feed rows are slim (often no description). Hydrate from owner listings endpoint when possible. */
+          const byUser = await axiosInstance.get("offerings/", {
+            params: { user_id: ownerId },
+            timeout: 15_000,
+          });
+          const payload = unwrapOfferingEnvelope(byUser) ?? byUser.data;
+          const rows = extractOfferingsPayload(payload);
+          const full = rows
+            .map(mapOfferingFromApi)
+            .filter((x): x is Offering => x !== null)
+            .find((o) => offeringIdsMatch(o.id, clean));
+          if (full && full.status === "published" && !full.adminHidden) {
+            return full;
+          }
+        } catch {
+          /* keep feed fallback */
+        }
+        return found;
+      }
       if (offerings.length < pageSize) break;
       offset += pageSize;
     }
