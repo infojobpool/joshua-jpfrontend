@@ -16,9 +16,15 @@ function isMessagesRoute(pathname: string | null): boolean {
   return p === "/messages" || p.startsWith("/messages/");
 }
 
+/** Scrollable card grid + bottom nav: FAB overlaps thumbnails; hide only on the browse index. */
+function isListingsBrowseIndex(pathname: string | null): boolean {
+  if (!pathname) return false;
+  return normalizePathname(pathname) === "/listings";
+}
+
 export function SupportPill() {
   const pathname = usePathname();
-  if (isMessagesRoute(pathname)) return null;
+  if (isMessagesRoute(pathname) || isListingsBrowseIndex(pathname)) return null;
 
   return (
     <Link

@@ -47,23 +47,27 @@ export default function ListingsBrowsePage() {
   const canLoadMore = rows.length > 0 && rows.length < total;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100/80 via-slate-50 to-white pb-28 md:pb-16">
-      <header className="sticky top-0 z-30 border-b border-slate-200/90 bg-white/95 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-white/85">
-        <div className="mx-auto flex h-12 max-w-4xl items-center justify-between gap-3 px-4 sm:h-14 sm:px-5">
+    <div className="min-h-screen min-w-0 w-full max-w-full overflow-x-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50/90 pb-[calc(env(safe-area-inset-bottom)+6.5rem))] md:pb-16">
+      <header className="sticky top-0 z-30 min-w-0 border-b border-slate-200/70 bg-white/90 shadow-[0_1px_0_rgba(15,23,42,0.04)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/80">
+        <div className="mx-auto flex h-12 max-w-4xl min-w-0 items-center justify-between gap-2 px-4 sm:h-14 sm:gap-3 sm:px-5">
           <Link
             href="/"
-            className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1.5 -ml-1 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100 hover:text-slate-950"
+            className="inline-flex min-w-0 shrink items-center gap-1 rounded-lg px-1.5 py-1.5 -ml-1 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100 hover:text-slate-950"
           >
             <ChevronLeft className="h-4 w-4 shrink-0" aria-hidden />
-            Home
+            <span className="truncate">Home</span>
           </Link>
-          <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Browse listings</span>
+          <span className="shrink-0 truncate text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400 sm:text-[11px]">
+            Browse listings
+          </span>
         </div>
       </header>
 
-      <div className="mx-auto max-w-4xl px-4 pb-10 pt-6 sm:px-5">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Service listings</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-[15px]">
+      <div className="mx-auto max-w-4xl min-w-0 px-4 pb-10 pt-6 sm:px-5">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl sm:font-bold">
+          Service listings
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 [text-wrap:pretty] sm:text-[15px]">
           Explore services from JobPool providers. Tap a card for photos, pricing, and location — then request a booking to agree on timing and details in chat.
         </p>
 
@@ -84,19 +88,19 @@ export default function ListingsBrowsePage() {
           </div>
         ) : (
           <>
-            <ul className="mt-8 grid gap-4 sm:grid-cols-2">
+            <ul className="mt-8 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
               {rows.map((o) => {
                 const img = resolveApiMediaUrl(o.photoUrls?.[0]) || PLACEHOLDER;
                 const price = `₹${Math.round(o.startingPriceInr || 0).toLocaleString("en-IN")}`;
                 const cat = o.category || (o.type === "product" ? "Product" : "Service");
                 return (
-                  <li key={o.id}>
+                  <li key={o.id} className="min-w-0">
                     <TransitionLink
                       href={`/listings/${encodeURIComponent(o.id)}`}
-                      className="group flex overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-100 transition-all hover:-translate-y-0.5 hover:shadow-md hover:ring-blue-100"
+                      className="group flex min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_32px_-8px_rgba(15,23,42,0.08)] ring-1 ring-slate-900/[0.03] transition-[transform,box-shadow] duration-200 hover:-translate-y-px hover:shadow-[0_2px_4px_rgba(15,23,42,0.04),0_16px_40px_-10px_rgba(37,99,235,0.12)] hover:ring-blue-500/10 active:scale-[0.99]"
                     >
                       <div
-                        className="relative h-28 w-28 shrink-0 bg-slate-100 sm:h-32 sm:w-32"
+                        className="relative aspect-square h-[6.75rem] w-[6.75rem] shrink-0 overflow-hidden rounded-l-2xl bg-slate-100 sm:h-[7.5rem] sm:w-[7.5rem]"
                         style={{
                           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                           // @ts-ignore viewTransitionName is supported in modern Chromium.
@@ -106,29 +110,38 @@ export default function ListingsBrowsePage() {
                         <img
                           src={img}
                           alt=""
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          className="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
                           loading="lazy"
                         />
                       </div>
-                      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 p-3 sm:p-4">
-                        <p className="text-[9px] font-bold uppercase tracking-wider text-blue-700">{cat}</p>
-                        <p
-                          className="line-clamp-2 text-sm font-semibold text-slate-900 sm:text-base"
-                          style={{
-                            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                            // @ts-ignore viewTransitionName is supported in modern Chromium.
-                            viewTransitionName: `listing-title-${toViewTransitionKey(o.id)}`,
-                          }}
-                        >
-                          {o.title}
-                        </p>
-                        {o.locationText ? (
-                          <p className="flex items-center gap-1 truncate text-xs text-slate-500">
-                            <MapPin className="h-3 w-3 shrink-0" />
-                            {o.locationText}
+                      <div className="flex min-h-[6.75rem] min-w-0 flex-1 flex-col justify-between gap-1.5 p-3 sm:min-h-[7.5rem] sm:p-4">
+                        <div className="min-w-0 space-y-1">
+                          <p className="line-clamp-1 break-all text-[9px] font-semibold uppercase tracking-[0.12em] text-blue-600/90 sm:text-[10px]">
+                            {cat}
                           </p>
-                        ) : null}
-                        <p className="text-sm font-bold tabular-nums text-blue-800">From {price}</p>
+                          <p
+                            className="line-clamp-2 break-words text-[0.9375rem] font-semibold leading-snug tracking-tight text-slate-900 sm:text-base"
+                            style={{
+                              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                              // @ts-ignore viewTransitionName is supported in modern Chromium.
+                              viewTransitionName: `listing-title-${toViewTransitionKey(o.id)}`,
+                            }}
+                          >
+                            {o.title}
+                          </p>
+                          {o.locationText ? (
+                            <p className="flex min-w-0 items-start gap-1.5 text-xs leading-snug text-slate-500">
+                              <MapPin
+                                className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400"
+                                aria-hidden
+                              />
+                              <span className="line-clamp-2 min-w-0 break-words">{o.locationText}</span>
+                            </p>
+                          ) : null}
+                        </div>
+                        <p className="shrink-0 pt-0.5 text-sm font-semibold tabular-nums tracking-tight text-blue-700">
+                          From {price}
+                        </p>
                       </div>
                     </TransitionLink>
                   </li>

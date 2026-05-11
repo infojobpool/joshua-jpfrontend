@@ -463,7 +463,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
         </div>
         <div
           ref={mobileScrollRef}
-          className="w-full min-w-0 max-w-full overflow-x-scroll overflow-y-hidden overscroll-x-contain touch-pan-y pb-2 [overflow-anchor:none] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          className="w-full min-w-0 max-w-full overflow-x-scroll overflow-y-hidden overscroll-x-contain touch-manipulation pb-2 [overflow-anchor:none] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           style={{ WebkitOverflowScrolling: "touch", scrollBehavior: "auto" }}
           onPointerDown={() => {
             if (resumeMarqueeTimerRef.current) clearTimeout(resumeMarqueeTimerRef.current);
@@ -627,7 +627,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
           <div className="flex justify-center">
             <div
               ref={desktopScrollRef}
-              className="max-w-full overflow-x-auto overscroll-x-contain touch-pan-y scroll-auto pb-6 pl-12 pr-12 md:pl-14 md:pr-14 [overflow-anchor:none] scrollbar-hide"
+              className="max-w-full overflow-x-auto overscroll-x-contain touch-manipulation scroll-auto pb-6 pl-12 pr-12 md:pl-14 md:pr-14 [overflow-anchor:none] scrollbar-hide"
               style={{
                 scrollbarWidth: "none",
                 msOverflowStyle: "none",
