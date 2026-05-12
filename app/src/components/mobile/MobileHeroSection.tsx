@@ -3,16 +3,7 @@
 import React, { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Briefcase,
-  ChevronDown,
-  HelpCircle,
-  Home,
-  LogOut,
-  MessageSquare,
-  User,
-  Wallet,
-} from "lucide-react";
+import { ChevronDown, LogOut, User, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import useStore from "@/lib/Zustand";
 import axiosInstance from "@/lib/axiosInstance";
@@ -194,26 +185,6 @@ export function MobileHeroSection() {
                     </div>
                     <div className="py-1">
                       <Link
-                        href="/"
-                        className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium hover:bg-slate-50"
-                        onClick={() => setProfileOpen(false)}
-                      >
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
-                          <Home className="h-4 w-4" />
-                        </span>
-                        Home
-                      </Link>
-                      <Link
-                        href="/dashboard"
-                        className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium hover:bg-slate-50"
-                        onClick={() => setProfileOpen(false)}
-                      >
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                          <Briefcase className="h-4 w-4" />
-                        </span>
-                        Tasks
-                      </Link>
-                      <Link
                         href="/profile"
                         className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium hover:bg-slate-50"
                         onClick={() => setProfileOpen(false)}
@@ -224,16 +195,6 @@ export function MobileHeroSection() {
                         My profile
                       </Link>
                       <Link
-                        href="/messages"
-                        className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium hover:bg-slate-50"
-                        onClick={() => setProfileOpen(false)}
-                      >
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-                          <MessageSquare className="h-4 w-4" />
-                        </span>
-                        Messages
-                      </Link>
-                      <Link
                         href="/wallet"
                         className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium hover:bg-slate-50"
                         onClick={() => setProfileOpen(false)}
@@ -242,16 +203,6 @@ export function MobileHeroSection() {
                           <Wallet className="h-4 w-4" />
                         </span>
                         Wallet
-                      </Link>
-                      <Link
-                        href="/supportpage"
-                        className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium hover:bg-slate-50"
-                        onClick={() => setProfileOpen(false)}
-                      >
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                          <HelpCircle className="h-4 w-4" />
-                        </span>
-                        Support
                       </Link>
                       <div className="my-1 border-t border-slate-100" />
                       <button

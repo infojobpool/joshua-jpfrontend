@@ -1077,9 +1077,9 @@ export function BrowseTasksPage() {
           <span className="ml-2 text-gray-500">Loading tasks...</span>
         </div>
       ) : (
-        <>
+        <div className="min-w-0 w-full max-w-full overflow-x-hidden">
           <section className="hidden bg-slate-50 py-12 md:block md:py-20">
-            <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
+            <div className="w-full min-w-0 max-w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
               <motion.div
                 className="max-w-3xl mx-auto text-center"
                 initial={{ opacity: 0, y: -20 }}
@@ -1112,7 +1112,7 @@ export function BrowseTasksPage() {
           </section>
 
           {/* Mobile: premium compact chrome — short search, minimal Filter | Sort, inline filters */}
-          <section className="border-b border-slate-200/70 bg-[#F7F8FA] px-4 pb-3 pt-3 md:hidden">
+          <section className="min-w-0 border-b border-slate-200/70 bg-[#F7F8FA] px-4 pb-3 pt-3 md:hidden">
             <h1 className="text-base font-bold tracking-tight text-[#1A1F4C]">
               Browse tasks
             </h1>
@@ -1297,9 +1297,9 @@ export function BrowseTasksPage() {
             </div>
           </section>
 
-          <section className="py-6 md:py-16">
-            <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-              <div className="flex flex-col gap-6 md:flex-row md:gap-8">
+          <section className="min-w-0 py-6 md:py-16">
+            <div className="w-full min-w-0 max-w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
+              <div className="flex min-w-0 flex-col gap-6 md:flex-row md:gap-8">
                 {/* Filters sidebar (desktop) */}
                 <div className="hidden w-full md:block md:w-1/4">
                   <div className="sticky top-20">
@@ -1437,7 +1437,7 @@ export function BrowseTasksPage() {
                 </div>
 
                 {/* Tasks list */}
-                <div className="w-full md:w-3/4">
+                <div className="w-full min-w-0 md:w-3/4">
                   <div className="mb-4 hidden items-center justify-between md:mb-6 md:flex">
                     <div className="text-gray-500">
                       Showing {sortedTasks.length} tasks
@@ -1477,7 +1477,7 @@ export function BrowseTasksPage() {
                   </p>
 
                   <motion.div
-                    className="grid gap-4 md:gap-6"
+                    className="grid min-w-0 gap-4 md:gap-6"
                     variants={containerVariants}
                     initial="hidden"
                     animate="visible"
@@ -1485,6 +1485,7 @@ export function BrowseTasksPage() {
                     {sortedTasks.map((job) => (
                       <motion.div
                         key={job.id}
+                        className="min-w-0"
                         variants={itemVariants}
                         whileHover={{
                           y: -5,
@@ -1496,8 +1497,8 @@ export function BrowseTasksPage() {
                           <CardContent className="p-0">
                             <div className="flex flex-col md:grid md:grid-cols-3 md:gap-6">
                               <div className="p-4 md:col-span-2 md:p-6">
-                                <div className="mb-3 flex items-start justify-between gap-2">
-                                  <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+                                <div className="mb-3 flex min-w-0 items-start justify-between gap-2">
+                                  <Badge className="min-w-0 flex-1 break-words bg-blue-100 text-left text-blue-800 hover:bg-blue-100">
                                     {job.category_name}
                                   </Badge>
                                   <Badge
@@ -1509,8 +1510,8 @@ export function BrowseTasksPage() {
                                       : "Unavailable"}
                                   </Badge>
                                 </div>
-                                <Link href={`/tasks/${job.id}`}>
-                                  <h3 className="mb-2 text-lg font-bold text-slate-900 transition-colors hover:text-blue-600 md:text-xl">
+                                <Link href={`/tasks/${job.id}`} className="min-w-0">
+                                  <h3 className="mb-2 break-words text-lg font-bold text-slate-900 transition-colors hover:text-blue-600 md:text-xl">
                                     {job.title}
                                   </h3>
                                 </Link>
@@ -1653,7 +1654,7 @@ export function BrowseTasksPage() {
               </div>
             </div>
           </section>
-        </>
+        </div>
       )}
     </>
   );

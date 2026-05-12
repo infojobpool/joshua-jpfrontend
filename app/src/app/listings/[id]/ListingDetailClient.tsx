@@ -132,7 +132,7 @@ export default function ListingDetailClient() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col bg-slate-50">
+      <div className="flex min-h-screen min-w-0 w-full max-w-full flex-col overflow-x-hidden bg-slate-50">
         <ListingDetailChrome />
         <div className="flex flex-1 items-center justify-center px-4 py-24">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-slate-600" />
@@ -143,7 +143,7 @@ export default function ListingDetailClient() {
 
   if (notFound || !offering) {
     return (
-      <div className="flex min-h-screen flex-col bg-slate-50">
+      <div className="flex min-h-screen min-w-0 w-full max-w-full flex-col overflow-x-hidden bg-slate-50">
         <ListingDetailChrome />
         <div className="mx-auto max-w-md flex-1 px-4 py-16 text-center">
           <Package className="mx-auto h-12 w-12 text-slate-300" />
@@ -201,16 +201,16 @@ export default function ListingDetailClient() {
     });
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100/80 via-slate-50 to-white pb-28 md:pb-12">
+    <div className="min-h-screen min-w-0 w-full max-w-full overflow-x-hidden bg-gradient-to-b from-slate-100/80 via-slate-50 to-white pb-[calc(env(safe-area-inset-bottom)+6.5rem))] md:pb-12">
       <ListingDetailChrome />
 
-      <article className="mx-auto max-w-6xl px-4 pb-12 pt-4 sm:px-5 sm:pt-5">
+      <article className="mx-auto max-w-6xl min-w-0 px-4 pb-12 pt-4 sm:px-5 sm:pt-5">
         <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8 lg:gap-10">
           {/* Main column */}
           <div className="min-w-0 flex-1 space-y-5">
             <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-md ring-1 ring-slate-100/80">
               <div
-                className="relative aspect-[16/10] w-full bg-slate-100 touch-pan-y"
+                className="relative aspect-[16/10] w-full touch-manipulation bg-slate-100"
                 onTouchStart={(e) => {
                   touchStartX.current = e.changedTouches[0]?.clientX ?? null;
                 }}
@@ -295,8 +295,8 @@ export default function ListingDetailClient() {
             </div>
 
             <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm ring-1 ring-slate-100/60 sm:p-6">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-blue-800 ring-1 ring-blue-100/80">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <span className="inline-flex max-w-full items-center break-words rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-blue-800 ring-1 ring-blue-100/80">
                   {category}
                 </span>
                 <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
@@ -304,7 +304,7 @@ export default function ListingDetailClient() {
                 </span>
               </div>
               <h1
-                className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl"
+                className="mt-3 break-words text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl"
                 style={{
                   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                   // @ts-ignore viewTransitionName is supported in modern Chromium.
@@ -330,9 +330,9 @@ export default function ListingDetailClient() {
               </div>
 
               {o.locationText ? (
-                <p className="mt-4 flex items-center gap-2 text-sm text-slate-700">
-                  <MapPin className="h-4 w-4 shrink-0 text-blue-500/90" aria-hidden />
-                  <span>{o.locationText}</span>
+                <p className="mt-4 flex min-w-0 items-start gap-2 text-sm text-slate-700">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-500/90" aria-hidden />
+                  <span className="min-w-0 break-words">{o.locationText}</span>
                 </p>
               ) : null}
 
@@ -374,7 +374,7 @@ export default function ListingDetailClient() {
               {o.description?.trim() ? (
                 <div className="mt-6 rounded-xl border border-slate-100 bg-slate-50/70 p-4 sm:p-5">
                   <p className="text-base font-bold tracking-tight text-slate-900">About this listing</p>
-                  <p className="mt-2 whitespace-pre-wrap text-base leading-relaxed text-slate-700">
+                  <p className="mt-2 whitespace-pre-wrap break-words text-base leading-relaxed text-slate-700 [overflow-wrap:anywhere]">
                     {o.description}
                   </p>
                 </div>
@@ -409,9 +409,9 @@ export default function ListingDetailClient() {
                 <p className="mt-1.5 text-3xl font-bold tabular-nums tracking-tight text-slate-900">{priceLabel}</p>
 
                 {o.locationText ? (
-                  <p className="mt-4 flex items-start gap-2 text-sm text-slate-700">
+                  <p className="mt-4 flex min-w-0 items-start gap-2 text-sm text-slate-700">
                     <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-500/90" aria-hidden />
-                    <span>{o.locationText}</span>
+                    <span className="min-w-0 break-words">{o.locationText}</span>
                   </p>
                 ) : null}
 
@@ -467,8 +467,8 @@ export default function ListingDetailClient() {
 /** One slim bar: back to feed + home — listing title lives only in the page H1 (avoids triple repetition). */
 function ListingDetailChrome() {
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200/90 bg-white/95 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-white/85">
-      <div className="mx-auto flex h-12 max-w-6xl items-center justify-between gap-3 px-4 sm:h-14 sm:px-5">
+    <header className="sticky top-0 z-30 min-w-0 border-b border-slate-200/90 bg-white/95 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-white/85">
+      <div className="mx-auto flex h-12 max-w-6xl min-w-0 items-center justify-between gap-2 px-4 sm:h-14 sm:gap-3 sm:px-5">
         <Link
           href="/listings"
           className="inline-flex min-w-0 items-center gap-1 rounded-lg px-1.5 py-1.5 -ml-1 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100 hover:text-slate-950"

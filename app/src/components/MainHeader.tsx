@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Plus, MessageSquare, Bell, Briefcase } from "lucide-react";
+import { Menu, X, Plus, MessageSquare, Bell, Briefcase, LogOut } from "lucide-react";
 import useStore from "@/lib/Zustand";
 import { cn } from "@/lib/utils";
 
@@ -242,20 +242,16 @@ const MainHeader: React.FC = () => {
                         Post Task
                       </Button>
                     </Link>
-                    <Link href="/messages" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Button variant="outline" className="w-full border-gray-300 hover:bg-gray-50">
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Messages
-                      </Button>
-                    </Link>
-                    <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Button variant="outline" className="w-full border-gray-300 hover:bg-gray-50">
-                        <Briefcase className="h-4 w-4 mr-2" />
-                        Tasks
-                      </Button>
-                    </Link>
-                    <Button variant="ghost" onClick={handleLogout} className="w-full text-gray-600 hover:text-red-600">
-                      Logout
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleLogout}
+                      className="w-full border-2 border-red-200 bg-red-50/70 py-5 text-base font-semibold text-red-700 shadow-sm hover:border-red-300 hover:bg-red-100 hover:text-red-800"
+                    >
+                      <span className="flex items-center justify-center gap-2">
+                        <LogOut className="h-5 w-5 shrink-0" aria-hidden />
+                        Logout
+                      </span>
                     </Button>
                   </>
                 ) : (

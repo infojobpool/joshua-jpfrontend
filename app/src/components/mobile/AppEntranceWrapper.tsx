@@ -10,6 +10,6 @@ interface AppEntranceWrapperProps {
  */
 export function AppEntranceWrapper({ children }: AppEntranceWrapperProps) {
   return (
-    <div className="mobile-app-open flex min-h-[100dvh] flex-col">{children}</div>
+    <div className="mobile-app-open flex min-h-[100dvh] min-w-0 w-full flex-col">{children}</div>
   );
 }

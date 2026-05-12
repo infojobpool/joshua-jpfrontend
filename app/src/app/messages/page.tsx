@@ -509,9 +509,9 @@ export default function MessagesPage() {
   // Only full-screen loader when no cached chats; otherwise show layout with skeletons
   if (loading && chats.length === 0) {
     return (
-      <div className="flex min-h-screen flex-col">
+      <div className="flex min-h-screen min-w-0 w-full max-w-full flex-col overflow-x-hidden">
         <Toaster position="top-right" />
-        <main className="flex-1 container py-6 md:py-10 px-4 md:px-6">
+        <main className="container min-w-0 flex-1 px-4 py-6 md:px-6 md:py-10">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">Your Messages</h1>
             <div className="space-y-3">
@@ -547,12 +547,12 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50/50 dark:bg-slate-950">
+    <div className="flex min-h-screen min-w-0 w-full max-w-full flex-col overflow-x-hidden bg-gray-50/50 dark:bg-slate-950">
       <Toaster position="top-right" />
-      <main className="flex-1 container py-6 md:py-10 px-4 md:px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
+      <main className="container min-w-0 flex-1 px-4 py-6 md:px-6 md:py-10">
+        <div className="mx-auto max-w-4xl min-w-0">
+          <div className="mb-6 flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-gray-100 md:text-3xl">
                 Messages
               </h1>
@@ -677,7 +677,7 @@ export default function MessagesPage() {
                         }
                       }}
                       className={cn(
-                        "group flex cursor-pointer overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-200",
+                        "group flex min-w-0 w-full max-w-full cursor-pointer overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-200",
                         "border-slate-200/90 hover:border-slate-300 hover:shadow-md active:scale-[0.99]",
                         "dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-slate-600",
                         isListing
@@ -813,7 +813,7 @@ export default function MessagesPage() {
                           </div>
                           <p
                             className={cn(
-                              "mt-1.5 line-clamp-2 text-sm leading-snug text-slate-700 dark:text-slate-300",
+                              "mt-1.5 line-clamp-2 min-w-0 break-words text-sm leading-snug text-slate-700 dark:text-slate-300",
                               hasUnread && "font-medium text-slate-900 dark:text-slate-100",
                             )}
                           >

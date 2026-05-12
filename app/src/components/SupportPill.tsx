@@ -22,9 +22,15 @@ function isListingsBrowseIndex(pathname: string | null): boolean {
   return normalizePathname(pathname) === "/listings";
 }
 
+/** Long notification list + bottom nav + FAB in same corner. */
+function isNotificationsIndex(pathname: string | null): boolean {
+  if (!pathname) return false;
+  return normalizePathname(pathname) === "/notifications";
+}
+
 export function SupportPill() {
   const pathname = usePathname();
-  if (isMessagesRoute(pathname) || isListingsBrowseIndex(pathname)) return null;
+  if (isMessagesRoute(pathname) || isListingsBrowseIndex(pathname) || isNotificationsIndex(pathname)) return null;
 
   return (
     <Link

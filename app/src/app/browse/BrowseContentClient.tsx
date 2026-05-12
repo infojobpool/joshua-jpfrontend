@@ -121,7 +121,9 @@ function TaskCardWithPrefetch({
               <MapPin className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">Location</p>
-                <span className="text-sm font-medium text-slate-900 dark:text-slate-100 block">{task.location}</span>
+                <span className="block break-words text-sm font-medium text-slate-900 dark:text-slate-100">
+                  {task.location}
+                </span>
                 {typeof task.distance_km === "number" && (
                   <span className="text-[10px] text-gray-500">~{task.distance_km.toFixed(1)} km away</span>
                 )}
@@ -511,11 +513,11 @@ function BrowseContent() {
 
 
   return (
-    <div className="min-h-0 md:min-h-screen">
+    <div className="min-h-0 min-w-0 w-full max-w-full overflow-x-hidden md:min-h-screen">
       {/* Simple Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
+        <div className="mx-auto max-w-7xl min-w-0 px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 min-w-0 items-center justify-between gap-2">
             <Link href="/" className="flex items-center gap-2">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">JP</span>
@@ -553,13 +555,13 @@ function BrowseContent() {
         </div>
       </header>
 
-      <main className="container py-6 md:py-10 px-4 md:px-6 max-w-7xl mx-auto">
+      <main className="container mx-auto max-w-7xl min-w-0 px-4 py-6 md:px-6 md:py-10">
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight">Browse Tasks</h1>
           <p className="text-muted-foreground">Find tasks that match your skills and availability</p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-4">
+        <div className="grid min-w-0 gap-6 md:grid-cols-4">
           {/* Sidebar filters: desktop only. On mobile the same controls render once below via "Filters" toggle (avoids duplicate panels). */}
           <div className="hidden md:block md:col-span-1 space-y-6">
             <Card>
@@ -671,10 +673,10 @@ function BrowseContent() {
             </Card>
           </div>
 
-          <div className="md:col-span-3 space-y-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <form onSubmit={handleSearch} className="flex-1 flex gap-2">
-                <div className="relative flex-1">
+          <div className="min-w-0 space-y-6 md:col-span-3">
+            <div className="flex min-w-0 flex-col gap-4 sm:flex-row">
+              <form onSubmit={handleSearch} className="flex min-w-0 flex-1 gap-2">
+                <div className="relative min-w-0 flex-1">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
@@ -792,8 +794,8 @@ function BrowseContent() {
               </Card>
             )}
 
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-muted-foreground">{filteredTasks.length} tasks found</p>
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              <p className="min-w-0 truncate text-sm text-muted-foreground">{filteredTasks.length} tasks found</p>
               {useNativeSelect ? (
                 <select
                   defaultValue="newest"
@@ -857,9 +859,11 @@ function BrowseContent() {
                 <span className="ml-2 text-gray-500">Loading tasks...</span>
               </div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredTasks.map((task, index) => (
-                  <TaskCardWithPrefetch key={task.id} task={task} index={index} prefetchBidsForTask={prefetchBidsForTask} storeTaskForNav={storeTaskForNav} prefetchFirstN={5} />
+                  <div key={task.id} className="min-w-0">
+                    <TaskCardWithPrefetch task={task} index={index} prefetchBidsForTask={prefetchBidsForTask} storeTaskForNav={storeTaskForNav} prefetchFirstN={5} />
+                  </div>
                 ))}
               </div>
             )}

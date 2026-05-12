@@ -397,7 +397,7 @@ export default function WalletPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 via-slate-100/30 to-white">
+    <div className="flex min-h-screen min-w-0 w-full max-w-full flex-col overflow-x-hidden bg-gradient-to-b from-slate-50 via-slate-100/30 to-white">
       <Header
         user={headerUser}
         onSignOut={() => {
@@ -406,7 +406,7 @@ export default function WalletPage() {
         }}
         minimal
       />
-      <main className="flex-1 container mx-auto max-w-2xl py-6 px-4 md:px-6">
+      <main className="container mx-auto min-w-0 max-w-2xl flex-1 px-4 py-6 md:px-6">
         <Link
           href="/dashboard"
           className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-emerald-600 transition-colors mb-6 font-medium"

@@ -201,13 +201,13 @@ export default function NotificationsPage() {
   const hasMoreMenu = sortedNotifications.length > 0;
 
   return (
-    <div className="relative min-h-screen bg-slate-100 pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
+    <div className="relative min-h-screen min-w-0 w-full max-w-full overflow-x-hidden bg-slate-100 pb-[calc(env(safe-area-inset-bottom)+6.5rem))]">
       <div
         className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(59,130,246,0.14),transparent_50%),radial-gradient(ellipse_90%_60%_at_100%_0%,rgba(139,92,246,0.1),transparent_45%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_55%,#f1f5f9_100%)]"
         aria-hidden
       />
 
-      <div className="relative mx-auto max-w-2xl px-4 pt-4 sm:px-5 sm:pt-8">
+      <div className="relative mx-auto max-w-2xl min-w-0 px-4 pt-4 sm:px-5 sm:pt-8">
         <Button
           type="button"
           variant="ghost"
@@ -368,7 +368,7 @@ export default function NotificationsPage() {
                               <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                                 <div className="min-w-0 flex-1">
                                   <div className="flex flex-wrap items-center gap-2">
-                                    <h3 className="text-[0.95rem] font-semibold leading-snug tracking-tight text-slate-900 sm:text-[1.02rem]">
+                                    <h3 className="min-w-0 max-w-full break-words text-[0.95rem] font-semibold leading-snug tracking-tight text-slate-900 sm:text-[1.02rem]">
                                       {n.title || "Notification"}
                                     </h3>
                                     {unread ? (
