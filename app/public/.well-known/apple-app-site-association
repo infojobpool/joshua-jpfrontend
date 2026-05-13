@@ -3,7 +3,10 @@
     "apps": [],
     "details": [
       {
-        "appIDs": ["FMF5389422.in.jobpool.www"],
+        "appIDs": [
+          "FMF5389422.com.jobpool.www",
+          "FMF5389422.in.jobpool.www"
+        ],
         "components": [
           {
             "/": "*",
@@ -14,6 +17,9 @@
     ]
   },
   "webcredentials": {
-    "apps": ["FMF5389422.in.jobpool.www"]
+    "apps": [
+      "FMF5389422.com.jobpool.www",
+      "FMF5389422.in.jobpool.www"
+    ]
   }
 }
