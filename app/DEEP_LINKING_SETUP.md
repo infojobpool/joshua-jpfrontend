@@ -86,6 +86,8 @@ If you add another Play app later, add another JSON object with **its** `package
 
 Serve the same file on **`https://jobpool.in`** and **`https://www.jobpool.in`** if users open either host (recommended).
 
+**Important:** If **`jobpool.in`** returns **307/308 → www** for `/.well-known/assetlinks.json`, Chrome/TWA verification often **fails** and the blue toolbar stays. This repo includes **`app/vercel.json`** so apex only redirects paths **outside** `/.well-known/`. In **Vercel → Domains**, turn **off** any separate “redirect apex to www” that applies to **all** paths, or it can override this and keep breaking verification.
+
 ### 3. Verify
 
 - Deploy and check: https://www.jobpool.in/.well-known/assetlinks.json  
