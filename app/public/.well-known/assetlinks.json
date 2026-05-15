@@ -3,29 +3,9 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.jobpool.www",
+      "package_name": "in.jobpool.www.twa",
       "sha256_cert_fingerprints": [
         "YOUR_PLAY_APP_SIGNING_SHA256"
-      ]
-    }
-  },
-  {
-    "relation": ["delegate_permission/common.handle_all_urls"],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "in.jobpool.www",
-      "sha256_cert_fingerprints": [
-        "YOUR_PLAY_APP_SIGNING_SHA256_LEGACY"
-      ]
-    }
-  },
-  {
-    "relation": ["delegate_permission/common.handle_all_urls"],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "com.jobpool.app",
-      "sha256_cert_fingerprints": [
-        "YOUR_PLAY_APP_SIGNING_SHA256_COM_JOBPOOL_APP"
       ]
     }
   }
