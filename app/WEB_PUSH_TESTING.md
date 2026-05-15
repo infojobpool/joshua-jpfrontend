@@ -13,7 +13,7 @@ The website already has web push configured:
 | Service worker | ✅ Build generates `firebase-messaging-sw.js`; client **registers** it and passes `serviceWorkerRegistration` to `getToken` (needed when **next-pwa** registers `/sw.js`) |
 | Foreground handler | ✅ `InAppNotificationProvider` shows notifications when tab is open |
 
-**Android blue URL bar (TWA):** Not fixable in React. Replace placeholders in **`/.well-known/assetlinks.json`** with your Play **App signing** SHA-256 and correct **`package_name`**; serve on **`jobpool.in`** and **`www.jobpool.in`**. See `DEEP_LINKING_SETUP.md`.
+**Android blue URL bar (TWA):** Not fixable in React. **`assetlinks.json`** must list **`package_name`: `in.jobpool.www.twa`** (your Play Console ID) and a real **Play App signing** SHA-256; serve on **`jobpool.in`** and **`www.jobpool.in`**. See `DEEP_LINKING_SETUP.md`.
 
 ### Required env vars (Vercel + local)
 
