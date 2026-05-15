@@ -86,7 +86,11 @@ If you add another Play app later, add another JSON object with **its** `package
 
 Serve the same file on **`https://jobpool.in`** and **`https://www.jobpool.in`** if users open either host (recommended).
 
-**Important:** If **`jobpool.in`** returns **307/308 → www** for `/.well-known/assetlinks.json`, Chrome/TWA verification often **fails** and the blue toolbar stays. This repo includes **`app/vercel.json`** so apex only redirects paths **outside** `/.well-known/`. In **Vercel → Domains**, turn **off** any separate “redirect apex to www” that applies to **all** paths, or it can override this and keep breaking verification.
+**Important:** If **`jobpool.in`** returns **307/308 → www** for `/.well-known/assetlinks.json`, Chrome/TWA verification often **fails** (blue toolbar).
+
+1. **Vercel → Project → Settings → Domains:** disable the **redirect all apex traffic to www** for `jobpool.in`, so requests reach this Next.js app first. If that redirect stays enabled at the CDN, **`middleware.ts` never runs** and `assetlinks` will keep redirecting.
+
+2. This repo uses **`src/middleware.ts`**: on apex, **`/.well-known/*`** is **rewritten** to `www` internally (**200** on `jobpool.in`); other paths **308** to **`www.jobpool.in`**.
 
 ### 3. Verify
 
