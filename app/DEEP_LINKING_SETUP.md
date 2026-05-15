@@ -59,15 +59,28 @@ Edit `app/public/.well-known/apple-app-site-association` and replace `YOUR_APPLE
 
 ### 1. Get your SHA-256 fingerprint
 
-**Option A – Play Store app**
-- Play Console → Your app → Setup → App integrity
-- Copy the SHA-256 certificate fingerprint for your **upload key**
+For **Trusted Web Activity / Play installs**, Chrome verifies against the certificate Google uses to **sign the APK users download** — that is usually **Play App Signing**, not your upload key.
 
-**Option B – PWA Builder output**
-- If using PWA Builder for the Android package, use the fingerprint from the keystore it uses.
+- Play Console → Your app → **Release → Setup → App signing**
+- Copy **SHA-256 certificate fingerprint** under **App signing key certificate** (colon-separated hex).
+
+If you still ship an older listing with a different application ID, copy that app’s **App signing** fingerprint too.
 
 ### 2. Update assetlinks.json
-Edit `app/public/.well-known/assetlinks.json` and replace `YOUR_ANDROID_SHA256_FINGERPRINT` (colon format):
+
+Edit `app/public/.well-known/assetlinks.json`. It lists **three** application IDs so you can match **iOS AASA** plus common **Capacitor / PWABuilder** package names:
+
+- **`com.jobpool.www`** — live (aligned with App Store primary)  
+- **`in.jobpool.www`** — legacy Android / iOS-style id if you still ship it  
+- **`com.jobpool.app`** — template in this repo; **remove this block** if that ID is not on Play
+
+Replace placeholders with **colon-separated** SHA-256 values from Play (**App signing key**):
+
+- `YOUR_PLAY_APP_SIGNING_SHA256` → fingerprint for the **`com.jobpool.www`** Play app  
+- `YOUR_PLAY_APP_SIGNING_SHA256_LEGACY` → fingerprint for **`in.jobpool.www`** if you still distribute it (often same value if one team key; use each app’s Play Console value if they differ)
+- `YOUR_PLAY_APP_SIGNING_SHA256_COM_JOBPOOL_APP` → fingerprint for **`com.jobpool.app`** if that listing exists; otherwise delete that JSON object
+
+Example shape:
 
 ```json
 "sha256_cert_fingerprints": [
@@ -75,13 +88,12 @@ Edit `app/public/.well-known/assetlinks.json` and replace `YOUR_ANDROID_SHA256_F
 ]
 ```
 
-### 3. Ensure package name
-- For **Capacitor**: `com.jobpool.app` (from `capacitor.config.ts`)  
-- For **PWA Builder**: Use the actual package name from the generated app  
+If your **PWABuilder** package name is something else (e.g. `com.jobpool.app`), **add another object** in the JSON array with that `package_name` and **its** App signing fingerprint — Android matches **exactly** `applicationId`.
 
-If PWA Builder uses a different package, add another `target` entry in `assetlinks.json` for that package.
+Serve the same file on **`https://jobpool.in`** and **`https://www.jobpool.in`** if users open either host (recommended).
 
-### 4. Verify
+### 3. Verify
+
 - Deploy and check: https://www.jobpool.in/.well-known/assetlinks.json  
 - Use: https://developers.google.com/digital-asset-links/tools/generator  
 
