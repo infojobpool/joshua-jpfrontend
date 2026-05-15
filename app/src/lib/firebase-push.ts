@@ -6,6 +6,8 @@
 
 import { getApps, initializeApp } from "firebase/app";
 import { getMessaging, getToken } from "firebase/messaging";
+import { getFirebaseMessagingServiceWorkerRegistration } from "@/lib/firebase-messaging-sw-register";
+import { getPushPlatform } from "@/lib/pushPlatform";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -45,7 +47,11 @@ export async function registerPushToken(jwt: string): Promise<void> {
       return;
     }
 
-    const token = await getToken(messaging, { vapidKey });
+    const swReg = await getFirebaseMessagingServiceWorkerRegistration();
+    const token = await getToken(messaging, {
+      vapidKey,
+      ...(swReg ? { serviceWorkerRegistration: swReg } : {}),
+    });
     if (!token) {
       console.warn("Push: No token");
       return;
@@ -59,7 +65,7 @@ export async function registerPushToken(jwt: string): Promise<void> {
         "Content-Type": "application/json",
         Authorization: `Bearer ${jwt}`,
       },
-      body: JSON.stringify({ fcm_token: token, platform: "web" }),
+      body: JSON.stringify({ fcm_token: token, platform: getPushPlatform() }),
     });
 
     if (!res.ok) throw new Error(await res.text());

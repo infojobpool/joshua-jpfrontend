@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import useStore from "@/lib/Zustand";
 import axiosInstance from "@/lib/axiosInstance";
+import { getFirebaseMessagingServiceWorkerRegistration } from "@/lib/firebase-messaging-sw-register";
+import { getPushPlatform } from "@/lib/pushPlatform";
 
 /**
  * Listens for push notifications and adds them to the in-app notifications list.
@@ -175,13 +177,6 @@ export function InAppNotificationProvider() {
   useEffect(() => {
     if (typeof window === "undefined" || !userId) return;
 
-    const getPlatform = (): "web" | "ios" | "android" => {
-      const ua = navigator.userAgent.toLowerCase();
-      if (/android/.test(ua)) return "android";
-      if (/iphone|ipad|ipod/.test(ua)) return "ios";
-      return "web";
-    };
-
     const registerToken = async (fcmToken: string, retryCount = 0) => {
       if (!fcmToken || fcmToken === "ERROR GET TOKEN") return;
 
@@ -202,7 +197,7 @@ export function InAppNotificationProvider() {
           "register-push/",
           {
             fcm_token: fcmToken,
-            platform: getPlatform(),
+            platform: getPushPlatform(),
           },
           {
             // Explicit auth header to avoid interceptor timing issues
@@ -253,16 +248,25 @@ export function InAppNotificationProvider() {
             appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
           };
           if (!config.apiKey || !config.projectId) return;
+          if (!("Notification" in window)) return;
+          if (Notification.permission === "default") {
+            await Notification.requestPermission().catch(() => {});
+          }
+          if (Notification.permission !== "granted") return;
           const app = getApps().length ? getApp() : initializeApp(config);
           const messaging = getMessaging(app);
-          const token = await getToken(messaging, { vapidKey });
+          const swReg = await getFirebaseMessagingServiceWorkerRegistration();
+          const token = await getToken(messaging, {
+            vapidKey,
+            ...(swReg ? { serviceWorkerRegistration: swReg } : {}),
+          });
           if (!cancelled && token) {
             (window as unknown as { __FCM_TOKEN?: string }).__FCM_TOKEN = token;
             window.dispatchEvent(new CustomEvent("fcm-token-available", { detail: token }));
             registerToken(token);
           }
-        } catch {
-          // User denied permission or getToken failed – skip register-push (no crash).
+        } catch (err) {
+          console.warn("[Push] FCM getToken / register failed:", err);
         }
       })();
       return () => {

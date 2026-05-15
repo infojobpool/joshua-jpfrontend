@@ -8,10 +8,12 @@ The website already has web push configured:
 |------|--------|
 | Firebase installed | ✅ `npm install firebase` |
 | VAPID key | Uses `NEXT_PUBLIC_FIREBASE_VAPID_KEY` |
-| `firebase-push.ts` | Gets FCM token, POSTs to `register-push` with `platform: "web"` |
+| `firebase-push.ts` | Gets FCM token, POSTs to `register-push` with platform from UA (`android` / `ios` / `web`) |
 | Called after login | ✅ `signin/page.tsx` and `MobileAuth.tsx` |
-| Service worker | ✅ `firebase-messaging-sw.js` generated at build |
+| Service worker | ✅ Build generates `firebase-messaging-sw.js`; client **registers** it and passes `serviceWorkerRegistration` to `getToken` (needed when **next-pwa** registers `/sw.js`) |
 | Foreground handler | ✅ `InAppNotificationProvider` shows notifications when tab is open |
+
+**Android blue URL bar (TWA):** Not fixable in React. Replace placeholders in **`/.well-known/assetlinks.json`** with your Play **App signing** SHA-256 and correct **`package_name`**; serve on **`jobpool.in`** and **`www.jobpool.in`**. See `DEEP_LINKING_SETUP.md`.
 
 ### Required env vars (Vercel + local)
 
