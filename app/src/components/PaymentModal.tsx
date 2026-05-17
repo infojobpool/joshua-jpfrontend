@@ -4,11 +4,10 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrustBadges } from "@/components/TrustBadges";
+import { PosterFeeBreakdown } from "@/components/fee/PosterFeeBreakdown";
 import {
   fetchFeePreview,
-  feeLinesForDisplay,
-  feeTotalLine,
-  formatInr,
+  posterPayableAmount,
   type PosterFeeData,
 } from "@/lib/feePreview";
 
@@ -121,73 +120,27 @@ export function PaymentModal({
 
   if (!show) return null;
 
-  const displayLines = feeLinesForDisplay(fees?.lines);
-  const totalLine = feeTotalLine(fees?.lines);
-  const payable =
-    fees?.payable_amount ??
-    (typeof totalLine?.amount === "number" ? totalLine.amount : undefined);
+  const youPay = fees ? posterPayableAmount(fees, bidAmount) : undefined;
   const payDisabled =
-    isSubmitting || !razorpayReady || loadingFees || !fees || !!feeError || bidAmount <= 0;
+    isSubmitting || !razorpayReady || loadingFees || !fees || !!feeError || bidAmount <= 0 || youPay == null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Payment Details</CardTitle>
-          <CardDescription>Review and complete your payment</CardDescription>
+          <CardDescription>You pay the task budget. Fees are deducted from that amount, not added on top.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {feeError ? (
             <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{feeError}</div>
           ) : null}
 
-          {fees?.promo_fees_waived ? (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900">
-              Fees and taxes are waived for this period — you pay the task budget only.
-            </div>
-          ) : null}
-
           <div className="space-y-3 rounded-lg border p-4">
             {loadingFees || !fees ? (
               <p className="text-sm text-muted-foreground">Loading fee breakdown…</p>
             ) : (
-              <>
-                {displayLines.length > 0 ? (
-                  displayLines.map((line, idx) => (
-                    <div key={line.id || `${line.label}-${idx}`} className="flex justify-between gap-2 text-sm">
-                      <span className="text-muted-foreground">{line.label}</span>
-                      <span className="font-medium tabular-nums">{formatInr(Number(line.amount))}</span>
-                    </div>
-                  ))
-                ) : (
-                  <>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Bid amount</span>
-                      <span className="font-medium tabular-nums">{formatInr(Number(fees.bid_amount ?? bidAmount))}</span>
-                    </div>
-                    {(fees.commission_amount != null || fees.platform_fee != null) && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Platform fee</span>
-                        <span className="font-medium tabular-nums">
-                          {formatInr(Number(fees.commission_amount ?? fees.platform_fee ?? 0))}
-                        </span>
-                      </div>
-                    )}
-                    {fees.gst_amount != null && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Taxes (GST)</span>
-                        <span className="font-medium tabular-nums">{formatInr(Number(fees.gst_amount))}</span>
-                      </div>
-                    )}
-                  </>
-                )}
-                {payable != null && (
-                  <div className="mt-3 flex justify-between border-t pt-3 text-base font-semibold">
-                    <span>Total</span>
-                    <span className="text-green-600 tabular-nums">{formatInr(Number(payable))}</span>
-                  </div>
-                )}
-              </>
+              <PosterFeeBreakdown data={fees} bidFallback={bidAmount} />
             )}
           </div>
 

@@ -304,11 +304,12 @@ import { Avatar, AvatarFallback } from "./ui/avatar";
 import axiosInstance from "../lib/axiosInstance";
 import {
   buildPaymentDescriptionFromPosterPreview,
-  feeLinesForDisplay,
   fetchFeePreview,
   formatInr,
+  posterPayableAmount,
   type PosterFeeData,
 } from "@/lib/feePreview";
+import { PosterFeeBreakdown } from "@/components/fee/PosterFeeBreakdown";
 import { jobIdVariants } from "../lib/jobIdVariants";
 import { toast } from "sonner";
 import useStore from "@/lib/Zustand";
@@ -703,7 +704,7 @@ export function OffersSection({
             }
             const gstAmount = Number(posterFees.gst_amount ?? 0);
             const commissionAmount = Number(posterFees.commission_amount ?? posterFees.platform_fee ?? 0);
-            const payableAmount = Number(posterFees.payable_amount ?? 0);
+            const payableAmount = posterPayableAmount(posterFees, offer.amount) ?? 0;
             if (!payableAmount || payableAmount <= 0) {
               toast.error("Invalid fee preview from server.");
               setPaymentLinkLoading(false);
@@ -1012,7 +1013,7 @@ export function OffersSection({
           <DialogHeader>
             <DialogTitle>Accept offer & pay</DialogTitle>
             <DialogDescription>
-              Review what you&apos;ll pay (including taxes and platform fee). You can still cancel here without accepting the bid.
+              You pay the task budget only. Platform fee and GST are deducted from that amount, not added on top. You can still cancel here without accepting the bid.
             </DialogDescription>
           </DialogHeader>
           {acceptFeeOffer ? (
@@ -1028,50 +1029,10 @@ export function OffersSection({
                 <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800">{acceptFeePreviewError}</p>
               ) : acceptFeePreviewLoading || !acceptFeePreview ? (
                 <p className="text-muted-foreground">Loading payment breakdown…</p>
-              ) : acceptFeePreview.promo_fees_waived ? (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-900">
-                  <p className="font-semibold">Promo active</p>
-                  <p className="mt-1">Fees and taxes are waived — you pay the task budget only.</p>
-                </div>
               ) : (
-                <div className="space-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Your payment</p>
-                  {feeLinesForDisplay(acceptFeePreview.lines).map((line, idx) => (
-                    <div key={line.id || `${line.label}-${idx}`} className="flex justify-between gap-2">
-                      <span className="text-slate-600">{line.label}</span>
-                      <span className="font-medium tabular-nums">{formatInr(Number(line.amount))}</span>
-                    </div>
-                  ))}
-                  {(!acceptFeePreview.lines || acceptFeePreview.lines.length === 0) && (
-                    <>
-                      <div className="flex justify-between gap-2">
-                        <span className="text-slate-600">Task budget</span>
-                        <span className="tabular-nums font-medium">
-                          {formatInr(Number(acceptFeePreview.bid_amount ?? acceptFeeOffer.amount))}
-                        </span>
-                      </div>
-                      {(acceptFeePreview.commission_amount != null || acceptFeePreview.platform_fee != null) && (
-                        <div className="flex justify-between gap-2 text-slate-600">
-                          <span>Platform fee</span>
-                          <span className="tabular-nums">
-                            {formatInr(Number(acceptFeePreview.commission_amount ?? acceptFeePreview.platform_fee ?? 0))}
-                          </span>
-                        </div>
-                      )}
-                      {acceptFeePreview.gst_amount != null && (
-                        <div className="flex justify-between gap-2 text-slate-600">
-                          <span>Taxes (GST)</span>
-                          <span className="tabular-nums">{formatInr(Number(acceptFeePreview.gst_amount))}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
-                  {acceptFeePreview.payable_amount != null && (
-                    <div className="flex justify-between border-t border-slate-100 pt-2 text-base font-semibold text-slate-900">
-                      <span>Total to pay</span>
-                      <span className="tabular-nums text-blue-700">{formatInr(Number(acceptFeePreview.payable_amount))}</span>
-                    </div>
-                  )}
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Your payment</p>
+                  <PosterFeeBreakdown data={acceptFeePreview} bidFallback={acceptFeeOffer.amount} compact />
                 </div>
               )}
             </div>

@@ -22,10 +22,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import axiosInstance from "../../lib/axiosInstance";
 import {
   fetchFeePreview,
-  feeLinesForDisplay,
-  formatInr,
   type PosterFeeData,
 } from "@/lib/feePreview";
+import { PosterFeeBreakdown } from "@/components/fee/PosterFeeBreakdown";
 import useStore from "../../lib/Zustand";
 import { handleAxiosError } from "../../lib/handleAxiosError";
 import LocationDetector from "../../components/LocationDetector";
@@ -1098,48 +1097,8 @@ export default function PostTaskPage() {
                               <p className="text-red-600">{posterFeePreviewError}</p>
                             ) : posterFeePreviewLoading || !posterFeePreview ? (
                               <p className="text-slate-500">Loading estimate…</p>
-                            ) : posterFeePreview.promo_fees_waived ? (
-                              <p className="text-emerald-800">
-                                Fees and taxes are waived — you&apos;ll pay the task budget only (
-                                {formatInr(Number(posterFeePreview.bid_amount ?? budgetAmount))}).
-                              </p>
                             ) : (
-                              <>
-                                {feeLinesForDisplay(posterFeePreview.lines).map((line, idx) => (
-                                  <div key={line.id || `${line.label}-${idx}`} className="flex justify-between gap-2">
-                                    <span>{line.label}</span>
-                                    <span className="tabular-nums">{formatInr(Number(line.amount))}</span>
-                                  </div>
-                                ))}
-                                {(!posterFeePreview.lines || posterFeePreview.lines.length === 0) && (
-                                  <>
-                                    <div className="flex justify-between gap-2">
-                                      <span>Task budget</span>
-                                      <span className="tabular-nums">{formatInr(Number(posterFeePreview.bid_amount ?? budgetAmount))}</span>
-                                    </div>
-                                    {(posterFeePreview.commission_amount != null || posterFeePreview.platform_fee != null) && (
-                                      <div className="flex justify-between gap-2 text-slate-500">
-                                        <span>Platform fee</span>
-                                        <span className="tabular-nums">
-                                          {formatInr(Number(posterFeePreview.commission_amount ?? posterFeePreview.platform_fee ?? 0))}
-                                        </span>
-                                      </div>
-                                    )}
-                                    {posterFeePreview.gst_amount != null && (
-                                      <div className="flex justify-between gap-2 text-slate-500">
-                                        <span>Taxes (GST)</span>
-                                        <span className="tabular-nums">{formatInr(Number(posterFeePreview.gst_amount))}</span>
-                                      </div>
-                                    )}
-                                  </>
-                                )}
-                                {posterFeePreview.payable_amount != null && (
-                                  <div className="mt-1 flex justify-between gap-2 border-t border-slate-100 pt-1 font-semibold text-slate-900">
-                                    <span>Total</span>
-                                    <span className="tabular-nums">{formatInr(Number(posterFeePreview.payable_amount))}</span>
-                                  </div>
-                                )}
-                              </>
+                              <PosterFeeBreakdown data={posterFeePreview} bidFallback={budgetAmount} compact />
                             )}
                           </div>
                         ) : null}

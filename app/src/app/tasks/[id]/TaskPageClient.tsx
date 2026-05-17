@@ -9,12 +9,8 @@ import { TaskInfo } from "@/components/TaskInfo";
 import { ExpandableTaskLocationSection } from "@/components/TaskLocationMap";
 import { Toaster } from "@/components/ui/sonner";
 import axiosInstance from "@/lib/axiosInstance";
-import {
-  fetchFeePreview,
-  feeLinesForDisplay,
-  formatInr,
-  type TaskerFeeData,
-} from "@/lib/feePreview";
+import { fetchFeePreview, formatInr, type TaskerFeeData } from "@/lib/feePreview";
+import { TaskerFeeBreakdown } from "@/components/fee/TaskerFeeBreakdown";
 import { jobIdVariants, jobIdTryList } from "@/lib/jobIdVariants";
 import { resolveApiMediaUrl, resolveProfileImageUrl } from "@/lib/profileImage";
 import { hasRealProfilePhotoUrl } from "@/lib/payoutProfileCompletion";
@@ -2374,7 +2370,7 @@ export default function TaskDetailPage() {
           <DialogHeader>
             <DialogTitle>Confirm Your Bid</DialogTitle>
             <DialogDescription>
-              Please review your bid details before submitting.
+              Platform fee is deducted from the bid. You receive the estimated net shown below (no GST on tasker earnings).
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -2386,65 +2382,8 @@ export default function TaskDetailPage() {
               <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{taskerFeeError}</p>
             ) : taskerFeeLoading || !taskerFeePreview ? (
               <p className="text-sm text-muted-foreground">Loading fee estimate…</p>
-            ) : taskerFeePreview.promo_fees_waived ? (
-              <div className="space-y-2">
-                {feeLinesForDisplay(taskerFeePreview.lines).length > 0 ? (
-                  <div className="space-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
-                    {feeLinesForDisplay(taskerFeePreview.lines).map((line, idx) => (
-                      <div key={line.id || `${line.label}-${idx}`} className="flex justify-between gap-2">
-                        <span className="text-slate-600">{line.label}</span>
-                        <span className="font-medium tabular-nums text-slate-900">{formatInr(Number(line.amount))}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-                <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900">
-                  Promo active: platform fees are waived — you receive the full bid amount shown above.
-                </p>
-                <div className="flex items-center justify-between rounded-lg border border-emerald-100 bg-emerald-50/60 px-3 py-2 text-sm font-semibold text-emerald-950">
-                  <span>Estimated payout</span>
-                  <span className="tabular-nums text-emerald-800">
-                    {formatInr(
-                      Number(
-                        taskerFeePreview.estimated_net ??
-                          taskerFeePreview.payable_amount ??
-                          bidAmountNumber,
-                      ),
-                    )}
-                  </span>
-                </div>
-              </div>
             ) : (
-              <div className="space-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
-                {feeLinesForDisplay(taskerFeePreview.lines).map((line, idx) => (
-                  <div key={line.id || `${line.label}-${idx}`} className="flex justify-between gap-2">
-                    <span className="text-slate-600">{line.label}</span>
-                    <span className="font-medium tabular-nums text-slate-900">{formatInr(Number(line.amount))}</span>
-                  </div>
-                ))}
-                {(!taskerFeePreview.lines || taskerFeePreview.lines.length === 0) && (
-                  <>
-                    {taskerFeePreview.reference_taxes != null && (
-                      <div className="flex justify-between gap-2 text-slate-600">
-                        <span>Reference taxes / deductions</span>
-                        <span className="tabular-nums">{formatInr(Number(taskerFeePreview.reference_taxes))}</span>
-                      </div>
-                    )}
-                  </>
-                )}
-                <div className="flex items-center justify-between border-t border-green-100 bg-green-50/80 px-2 py-2 text-base font-bold">
-                  <span className="text-gray-800">You receive (est.)</span>
-                  <span className="tabular-nums text-green-600">
-                    {formatInr(
-                      Number(
-                        taskerFeePreview.estimated_net ??
-                          taskerFeePreview.payable_amount ??
-                          bidAmountNumber,
-                      ),
-                    )}
-                  </span>
-                </div>
-              </div>
+              <TaskerFeeBreakdown data={taskerFeePreview} bidFallback={bidAmountNumber} />
             )}
           </div>
           <DialogFooter>

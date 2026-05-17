@@ -2,6 +2,10 @@ import axiosInstance from "@/lib/axiosInstance";
 
 export type FeePreviewRole = "poster" | "tasker";
 
+/** Poster checkout: fees are deducted from the task budget, not added on top. */
+export const POSTER_INCLUSIVE_FEE_NOTE =
+  "You pay the task budget only. Platform fee and GST are deducted from that amount, not added on top.";
+
 /** Line item in the fee breakdown (`kind` may include `"total"` for a summary row). */
 export interface FeeLine {
   id?: string;
@@ -18,18 +22,21 @@ export interface PosterFeeData {
   commission_amount?: number;
   gst_amount?: number;
   payable_amount?: number;
+  /** Approx. tasker payout after deductions from the task budget. */
+  tasker_net_amount?: number;
   promo_fees_waived?: boolean;
   promo_waiver_amount?: number;
   lines?: FeeLine[];
-  /** When role is poster, backend may include a nested tasker net estimate. */
+  /** Legacy nested preview — prefer `tasker_net_amount`. */
   tasker_net_preview?: TaskerFeeData;
   [key: string]: unknown;
 }
 
-/** Tasker-side estimate (what you receive after deductions). */
+/** Tasker-side estimate (what you receive after deductions). No GST on tasker. */
 export interface TaskerFeeData {
   bid_amount?: number;
   platform_fee?: number;
+  /** Legacy — do not show on tasker UI. */
   reference_taxes?: number;
   commission_amount?: number;
   gst_amount?: number;
@@ -80,8 +87,35 @@ export function feeLinesForDisplay(lines: FeeLine[] | undefined): FeeLine[] {
   return lines.filter((l) => (l.kind || "").toLowerCase() !== "total");
 }
 
+/** Tasker UI: hide GST / tax rows (tasker has platform fee only). */
+export function taskerFeeLinesForDisplay(lines: FeeLine[] | undefined): FeeLine[] {
+  return feeLinesForDisplay(lines).filter((l) => !/\bgst\b|tax/i.test(l.label));
+}
+
 export function feeTotalLine(lines: FeeLine[] | undefined): FeeLine | undefined {
   return lines?.find((l) => (l.kind || "").toLowerCase() === "total");
+}
+
+export function posterPayableAmount(d: PosterFeeData, bidFallback: number): number | undefined {
+  const fromApi = d.payable_amount ?? feeTotalLine(d.lines)?.amount;
+  if (fromApi != null && Number.isFinite(Number(fromApi))) return Number(fromApi);
+  const bid = d.bid_amount ?? bidFallback;
+  return bid > 0 ? bid : undefined;
+}
+
+export function posterTaskerNetAmount(d: PosterFeeData): number | undefined {
+  if (d.tasker_net_amount != null && Number.isFinite(Number(d.tasker_net_amount))) {
+    return Number(d.tasker_net_amount);
+  }
+  const nested = d.tasker_net_preview;
+  if (nested?.estimated_net != null) return Number(nested.estimated_net);
+  return undefined;
+}
+
+export function taskerEstimatedNet(d: TaskerFeeData, bidFallback: number): number {
+  return Number(
+    d.estimated_net ?? d.payable_amount ?? d.bid_amount ?? bidFallback,
+  );
 }
 
 /** Build payment_description text from preview lines (poster). */
@@ -89,20 +123,24 @@ export function buildPaymentDescriptionFromPosterPreview(
   taskTitle: string,
   d: PosterFeeData,
 ): string {
-  const parts = [`Payment for: ${taskTitle}`, "", "Cost breakdown:"];
+  const parts = [`Payment for: ${taskTitle}`, "", POSTER_INCLUSIVE_FEE_NOTE, "", "Cost breakdown:"];
   const lines = d.lines?.length
     ? d.lines
     : [
-        { label: "Bid amount", amount: d.bid_amount ?? 0 },
+        { label: "Task budget", amount: d.bid_amount ?? 0 },
         ...(d.commission_amount != null
-          ? [{ label: "Platform / commission", amount: d.commission_amount }]
+          ? [{ label: "Platform fee (from budget)", amount: d.commission_amount }]
           : []),
-        ...(d.gst_amount != null ? [{ label: "Taxes (GST)", amount: d.gst_amount }] : []),
+        ...(d.gst_amount != null ? [{ label: "GST (from budget)", amount: d.gst_amount }] : []),
       ];
   for (const row of lines) {
     parts.push(`• ${row.label}: ${formatInr(Number(row.amount))}`);
   }
-  const total = d.payable_amount ?? feeTotalLine(d.lines)?.amount;
-  if (total != null) parts.push(`• Total: ${formatInr(Number(total))}`);
+  const taskerNet = posterTaskerNetAmount(d);
+  if (taskerNet != null) {
+    parts.push(`• Tasker receives (approx.): ${formatInr(taskerNet)}`);
+  }
+  const youPay = posterPayableAmount(d, Number(d.bid_amount ?? 0));
+  if (youPay != null) parts.push(`• You pay: ${formatInr(youPay)}`);
   return parts.join("\n");
 }

@@ -13,6 +13,7 @@ import axiosInstance from "../../lib/axiosInstance";
 import {
   buildPaymentDescriptionFromPosterPreview,
   fetchFeePreview,
+  posterPayableAmount,
   type PosterFeeData,
 } from "@/lib/feePreview";
 
@@ -199,7 +200,7 @@ export default function PaymentPage() {
 
     const gstAmount = Number(posterFees.gst_amount ?? 0);
     const commissionAmount = Number(posterFees.commission_amount ?? posterFees.platform_fee ?? 0);
-    const payableAmount = Number(posterFees.payable_amount ?? 0);
+    const payableAmount = posterPayableAmount(posterFees, bidAmount) ?? 0;
     if (!payableAmount || payableAmount <= 0) {
       toast.error("Invalid payment total from server. Refresh and try again.");
       setIsSubmitting(false);
