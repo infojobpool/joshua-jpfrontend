@@ -16,7 +16,11 @@ import { resolveApiMediaUrl, resolveProfileImageUrl } from "@/lib/profileImage";
 import { hasRealProfilePhotoUrl } from "@/lib/payoutProfileCompletion";
 import { readPosterProfileCache, writePosterProfileCache } from "@/lib/posterProfileCache";
 import { pickRecentPosterReviews } from "@/lib/posterReviewsFromProfile";
-import { isProfileComplete, getProfileImageFromUser } from "@/lib/profileUtils";
+import {
+  extractProfileImageFromApiResponse,
+  getProfileImageFromUser,
+  isProfileComplete,
+} from "@/lib/profileUtils";
 import {
   getBidsFromCache,
   getNavTask,
@@ -59,6 +63,7 @@ export default function TaskDetailPage() {
   const fromBid = searchParams.get('fromBid') === 'true';
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfileFetchDone, setUserProfileFetchDone] = useState(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [task, setTask] = useState<Task | null>(null);
@@ -130,6 +135,7 @@ export default function TaskDetailPage() {
     paymentToastShownRef.current = false;
     bidsFromCombinedRef.current = false;
     prefetchedBidsRef.current = null;
+    setUserProfileFetchDone(false);
   }, [id]);
 
   // Track task view for GA4 funnel
@@ -400,15 +406,35 @@ export default function TaskDetailPage() {
           }
           
           const data = response.data;
+          const payload = data?.data ?? data;
+          const rawImg = extractProfileImageFromApiResponse(response.data);
+          const avatarUrl = rawImg ? resolveProfileImageUrl(rawImg) ?? rawImg : "";
           const profile: UserProfile = {
-            profile_id: data.profile_id || "",
-            name: data.name || "",
-            email: data.email || "",
-            phone: data.phone_number || "",
-            avatar: data.profile_img || "/images/placeholder.svg",
-            joinDate: data.tstamp ? new Date(data.tstamp).toLocaleDateString() : "",
+            profile_id: payload?.profile_id || data.profile_id || "",
+            name: payload?.name || data.name || "",
+            email: payload?.email || data.email || "",
+            phone: payload?.phone_number || data.phone_number || "",
+            avatar: avatarUrl,
+            joinDate: payload?.tstamp || data.tstamp
+              ? new Date(String(payload?.tstamp ?? data.tstamp)).toLocaleDateString()
+              : "",
           };
           setUserProfile(profile);
+
+          if (rawImg) {
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+              try {
+                const parsedUser = JSON.parse(storedUser);
+                parsedUser.profile_image = rawImg;
+                parsedUser.profile_img = rawImg;
+                parsedUser.avatar = avatarUrl || rawImg;
+                localStorage.setItem("user", JSON.stringify(parsedUser));
+              } catch {
+                /* ignore */
+              }
+            }
+          }
           
           // Check verification status from API response - try multiple possible locations
           // Check all possible nested structures
@@ -533,6 +559,8 @@ export default function TaskDetailPage() {
               setVerificationChecked(true);
             }
           }
+        } finally {
+          setUserProfileFetchDone(true);
         }
       };
 
@@ -559,6 +587,7 @@ export default function TaskDetailPage() {
             setVerificationChecked(false);
           }
         }
+        setUserProfileFetchDone(true);
       }
 
       // Sync user's bids to localStorage
@@ -1396,12 +1425,24 @@ export default function TaskDetailPage() {
       return;
     }
 
+    if (!userProfileFetchDone) {
+      toast.error("Please wait a moment while we load your profile…");
+      return;
+    }
+
     // Soft profile nudge: only when we still have no real photo after checking both
     // localStorage (profile_* / avatar) and the latest GET /profile result (userProfile).
     const parsedUser = storedUser ? JSON.parse(storedUser) : null;
     const lsImg = getProfileImageFromUser(parsedUser);
-    const apiImg =
-      userProfile?.avatar && hasRealProfilePhotoUrl(userProfile.avatar) ? userProfile.avatar : null;
+    const apiImg = getProfileImageFromUser(
+      userProfile
+        ? {
+            avatar: userProfile.avatar,
+            profile_img: userProfile.avatar,
+            profile_image: userProfile.avatar,
+          }
+        : null,
+    );
     const hasRealPhoto = isProfileComplete(lsImg) || isProfileComplete(apiImg);
     if (parsedUser && !hasRealPhoto) {
       setShowProfileNudgeForBid(true);

@@ -18,6 +18,33 @@ export function isProfileComplete(
   return true;
 }
 
+/** Parse GET /profile response — same field fallbacks as profile page & poster hydration. */
+export function extractProfileImageFromApiResponse(raw: unknown): string | null {
+  if (!raw || typeof raw !== "object") return null;
+  const data = raw as Record<string, unknown>;
+  const payload =
+    data.data && typeof data.data === "object" && !Array.isArray(data.data)
+      ? (data.data as Record<string, unknown>)
+      : data;
+  const pick = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  const user = payload.user && typeof payload.user === "object" ? (payload.user as Record<string, unknown>) : null;
+  const candidates = [
+    pick(payload.profile_img),
+    pick(payload.profile_image),
+    pick(payload.profile_photo),
+    pick(payload.photo_url),
+    pick(payload.avatar),
+    user ? pick(user.profile_img) : null,
+    user ? pick(user.profile_image) : null,
+    pick(data.profile_img),
+    pick(data.profile_image),
+  ];
+  for (const c of candidates) {
+    if (c && isProfileComplete(c)) return c;
+  }
+  return null;
+}
+
 /** Get user's profile image from store/localStorage user object (login often stores `avatar` only). */
 export function getProfileImageFromUser(user: {
   profile_image?: string | null;
