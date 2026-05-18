@@ -133,6 +133,8 @@ export default function PostTaskPage() {
   });
   const [images, setImages] = useState<ImageData[]>([]);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  /** Synchronous guard — React state updates are async, so double-tap can fire two POSTs before isSubmitting flips. */
+  const postInFlightRef = useRef(false);
   const [currentStep, setCurrentStep] = useState(1);
   /** Avoid accidental post when the same tap lands on "Post task" after Continue swaps the footer (mobile / flex-col-reverse). */
   const [postActionUnlocked, setPostActionUnlocked] = useState(false);
@@ -516,7 +518,7 @@ export default function PostTaskPage() {
   }, [formData.category, customCategoryName, categories]);
 
   const handleFinalPost = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || postInFlightRef.current) return;
     if (!validateStep(1)) {
       setCurrentStep(1);
       return;
@@ -576,6 +578,11 @@ export default function PostTaskPage() {
   };
 
   const confirmPostSubmission = async () => {
+    if (postInFlightRef.current) return;
+    postInFlightRef.current = true;
+    setIsSubmitting(true);
+
+    try {
     // Double-check verification status before submission (fetch fresh from API)
     try {
       let effectiveUserId = userId;
@@ -635,8 +642,6 @@ export default function PostTaskPage() {
       return;
     }
 
-    setIsSubmitting(true);
-
     const formDataToSubmit = new FormData();
     formDataToSubmit.append("user_id", userId || "");
     formDataToSubmit.append("title", formData.title);
@@ -659,7 +664,6 @@ export default function PostTaskPage() {
       formDataToSubmit.append("images", image.file);
     });
 
-    try {
       const response = await axiosInstance.post(
         "/post-a-job/",
         formDataToSubmit,
@@ -678,16 +682,16 @@ export default function PostTaskPage() {
         }
         toast.success("Your task has been posted!");
         router.push("/dashboard");
-      } else if (response.data.status_code === 403) {
+        return;
+      }
+      if (response.data.status_code === 403) {
         toast.error(response.data.message || "Please complete verification to post a job");
         if (response.data.data?.verification_status !== undefined) {
           console.log("Verification status:", response.data.data.verification_status);
         }
-      } else {
-        toast.error(
-          response.data.message || "Failed to post task. Please try again."
-        );
+        return;
       }
+      toast.error(response.data.message || "Failed to post task. Please try again.");
     } catch (error: any) {
       if (error.response && error.response.data) {
         const errorData = error.response.data;
@@ -700,6 +704,7 @@ export default function PostTaskPage() {
         handleAxiosError(error);
       }
     } finally {
+      postInFlightRef.current = false;
       setIsSubmitting(false);
     }
   };

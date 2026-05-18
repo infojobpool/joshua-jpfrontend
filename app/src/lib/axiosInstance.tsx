@@ -10,6 +10,12 @@ function isChatInboxLightRead(url: string | undefined): boolean {
   return u.includes('get-messages') || u.includes('my-chats');
 }
 
+/** Task create — multipart POST; never dedupe (same URL, different bodies; double-submit guard is in post-task UI). */
+function isJobPostWrite(url: string | undefined): boolean {
+  if (!url) return false;
+  return url.toLowerCase().includes('post-a-job');
+}
+
 /** Send / read-receipt — must not sit behind global throttle or POST dedupe (same URL, different bodies). */
 function isChatMessageWrite(url: string | undefined): boolean {
   if (!url) return false;
@@ -185,7 +191,8 @@ axiosInstance.interceptors.request.use(
     }
 
     // Request deduplication (skip chat reads + writes — same path, different bodies; POST dedupe was wrong for sends)
-    const skipDedupe = isChatInboxLightRead(urlStr) || isChatMessageWrite(urlStr);
+    const skipDedupe =
+      isChatInboxLightRead(urlStr) || isChatMessageWrite(urlStr) || isJobPostWrite(urlStr);
     if (!skipDedupe) {
       const requestKey = `${config.method?.toUpperCase()}_${config.url}_${JSON.stringify(config.params)}`;
       if (pendingRequests.has(requestKey)) {
