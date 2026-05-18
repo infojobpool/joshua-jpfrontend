@@ -57,6 +57,11 @@ const sidebarNavItems = [
     icon: Users,
   },
   {
+    title: "Reviews",
+    href: "/reviews",
+    icon: Star,
+  },
+  {
     title: "Verification reminders",
     href: "/verification-reminders",
     icon: Bell,

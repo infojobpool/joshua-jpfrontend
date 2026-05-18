@@ -43,6 +43,11 @@ const sidebarNavItems = [
     icon: Users,
   },
   {
+    title: "Reviews",
+    href: "/reviews",
+    icon: Star,
+  },
+  {
     title: "Payouts",
     href: "/payouts",
     icon: CreditCard,
