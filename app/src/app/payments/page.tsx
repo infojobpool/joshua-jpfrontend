@@ -16,6 +16,7 @@ import {
   posterPayableAmount,
   type PosterFeeData,
 } from "@/lib/feePreview";
+import { getRazorpayCheckoutBranding } from "@/lib/razorpayBranding";
 
 // Mock task data (replace with actual task data, e.g., via API or props)
 const mockTask: Task = {
@@ -208,6 +209,7 @@ export default function PaymentPage() {
     }
     const taskTitle = paymentData?.taskTitle || mockTask.title;
 
+    const checkoutBranding = getRazorpayCheckoutBranding();
     const orderPayload = {
       postId: taskId,
       bid_amount: Number((posterFees.bid_amount ?? bidAmount).toFixed(2)),
@@ -218,6 +220,8 @@ export default function PaymentPage() {
       taskmanager_id: taskPosterId,
       task_title: taskTitle,
       payment_description: buildPaymentDescriptionFromPosterPreview(taskTitle || `Task ${taskId}`, posterFees),
+      checkout_name: checkoutBranding.name,
+      checkout_image: checkoutBranding.image,
     };
 
     // PWA or mobile: use payment link. Modal shows blank on PWA; mobile UA ensures consistency.
@@ -279,7 +283,9 @@ export default function PaymentPage() {
         amount: Math.round(Number(orderDetails.payable_amount) * 100), // paise
         currency: orderDetails.currency || "INR",
         order_id: orderDetails.order_id,
-        name: "JobPool",
+        name: checkoutBranding.name,
+        image: checkoutBranding.image,
+        theme: checkoutBranding.theme,
         description: `Payment for task`,
         handler: async (res: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
           try {

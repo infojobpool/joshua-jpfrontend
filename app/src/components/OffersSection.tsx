@@ -310,6 +310,7 @@ import {
   type PosterFeeData,
 } from "@/lib/feePreview";
 import { PosterFeeBreakdown } from "@/components/fee/PosterFeeBreakdown";
+import { getRazorpayCheckoutBranding } from "@/lib/razorpayBranding";
 import { jobIdVariants } from "../lib/jobIdVariants";
 import { toast } from "sonner";
 import useStore from "@/lib/Zustand";
@@ -711,6 +712,7 @@ export function OffersSection({
               return;
             }
             const paymentDescription = buildPaymentDescriptionFromPosterPreview(task.title, posterFees);
+            const checkoutBranding = getRazorpayCheckoutBranding();
             const paymentUrlRes = await axiosInstance.post("/create-payment-link/", {
               postId: task.id,
               bid_amount: Number((posterFees.bid_amount ?? offer.amount).toFixed(2)),
@@ -721,6 +723,8 @@ export function OffersSection({
               taskmanager_id: task.poster.id,
               task_title: task.title,
               payment_description: paymentDescription,
+              checkout_name: checkoutBranding.name,
+              checkout_image: checkoutBranding.image,
             });
             const res = paymentUrlRes.data;
             const d = res?.data;
