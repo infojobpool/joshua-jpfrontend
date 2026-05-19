@@ -75,6 +75,8 @@ export type DashboardTaskSummaryCardProps = {
   /** When set, replaces the default status + trailing footer row. */
   footer?: ReactNode;
   statusLabel?: string;
+  /** Shown before status (e.g. “Offer submitted” badge); wraps with status on narrow screens. */
+  statusPrefix?: ReactNode;
   statusTone?: DashboardTaskSummaryStatusTone;
   statusClassName?: string;
   footerTrailing?: ReactNode;
@@ -101,6 +103,7 @@ export function DashboardTaskSummaryCard({
   extra,
   footer,
   statusLabel,
+  statusPrefix,
   statusTone = "neutral",
   statusClassName,
   footerTrailing,
@@ -111,7 +114,7 @@ export function DashboardTaskSummaryCard({
 }: DashboardTaskSummaryCardProps) {
   const compact = density === "compact";
   const pad = compact ? (isMobile ? "px-2.5 py-2.5" : "px-3 py-3") : isMobile ? "p-4" : "p-6";
-  const defaultFooter = statusLabel || footerTrailing;
+  const defaultFooter = statusLabel || statusPrefix || footerTrailing;
   const stackedPriceShare = Boolean(compact && share);
 
   const pricePill = (
@@ -147,8 +150,13 @@ export function DashboardTaskSummaryCard({
           compact && isMobile ? "pt-1.5" : compact ? "pt-2" : "gap-3 pt-3",
         )}
       >
-        {statusLabel ? (
-          <span className={cn("min-w-0", statusClassName ?? defaultStatusClass(statusTone))}>{statusLabel}</span>
+        {statusLabel || statusPrefix ? (
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+            {statusPrefix}
+            {statusLabel ? (
+              <span className={cn("shrink-0", statusClassName ?? defaultStatusClass(statusTone))}>{statusLabel}</span>
+            ) : null}
+          </div>
         ) : footerTrailing ? (
           <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
             Posted by
@@ -160,7 +168,7 @@ export function DashboardTaskSummaryCard({
           <div
             className={cn(
               "flex min-w-0 items-center justify-end gap-2",
-              statusLabel ? "max-w-[58%] shrink-0 sm:max-w-[55%]" : "flex-1",
+              statusLabel || statusPrefix ? "max-w-[58%] shrink-0 sm:max-w-[55%]" : "flex-1",
             )}
           >
             {footerTrailing}

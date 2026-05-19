@@ -5320,11 +5320,9 @@ export default function Dashboard() {
                           }
                           metaRows={metaRows}
                           extra={
-                            <div className="space-y-1">
-                              <TaskDueSummaryRow dueDate={task.dueDate} dueDateFlexible={task.dueDateFlexible} />
-                              {hasUserBid ? <TaskOfferSubmittedBadge /> : null}
-                            </div>
+                            <TaskDueSummaryRow dueDate={task.dueDate} dueDateFlexible={task.dueDateFlexible} />
                           }
+                          statusPrefix={hasUserBid ? <TaskOfferSubmittedBadge /> : undefined}
                           statusLabel={statusLabel}
                           statusTone={statusTone}
                           footerTrailing={
