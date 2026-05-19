@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { PortfolioSlide } from "@/lib/portfolio/types";
 import { fetchPortfolioApi, putMyPortfolioApi, uploadPortfolioImageApi } from "@/lib/portfolio/api";
-import { newSlideId, PORTFOLIO_MAX_IMAGE_BYTES, PORTFOLIO_MAX_SLIDES } from "@/lib/portfolio/storage";
+import { newSlideId, PORTFOLIO_MAX_SLIDES } from "@/lib/portfolio/storage";
+import { compressImageFile } from "@/lib/compressImageFile";
+import { formatUploadMaxKb } from "@/lib/imageUploadLimits";
 import { notifyPortfolioUpdated } from "@/lib/portfolio/events";
 import { toast } from "sonner";
 
@@ -104,6 +106,7 @@ export function PortfolioEditorPanel({ userId }: Props) {
       return;
     }
     setUploadingPhotos(true);
+    let resizedCount = 0;
     try {
       const newSlides: PortfolioSlide[] = [];
       for (const file of Array.from(files)) {
@@ -112,12 +115,10 @@ export function PortfolioEditorPanel({ userId }: Props) {
           toast.error(`${file.name} is not an image.`);
           continue;
         }
-        if (file.size > PORTFOLIO_MAX_IMAGE_BYTES) {
-          toast.error(`${file.name} is too large (max ${Math.round(PORTFOLIO_MAX_IMAGE_BYTES / 1024)} KB).`);
-          continue;
-        }
         try {
-          const url = await uploadPortfolioImageApi(file);
+          const { file: ready, wasCompressed } = await compressImageFile(file);
+          if (wasCompressed) resizedCount += 1;
+          const url = await uploadPortfolioImageApi(ready);
           newSlides.push({
             id: newSlideId(),
             url,
@@ -131,7 +132,14 @@ export function PortfolioEditorPanel({ userId }: Props) {
       if (newSlides.length === 0) return;
       const next = [...slides, ...newSlides];
       const ok = await pushToServer(next);
-      if (ok) toast.success("Portfolio saved");
+      if (ok) {
+        toast.success("Portfolio saved");
+        if (resizedCount > 0) {
+          toast.message(
+            `Resized ${resizedCount} photo${resizedCount === 1 ? "" : "s"} to fit the ${formatUploadMaxKb()} KB upload limit.`,
+          );
+        }
+      }
     } finally {
       setUploadingPhotos(false);
     }

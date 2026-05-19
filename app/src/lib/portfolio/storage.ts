@@ -41,5 +41,7 @@ export function newSlideId(): string {
   return `pf_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
+import { UPLOAD_IMAGE_MAX_BYTES } from "@/lib/imageUploadLimits";
+
 export const PORTFOLIO_MAX_SLIDES = 16;
-export const PORTFOLIO_MAX_IMAGE_BYTES = 650 * 1024;
+export const PORTFOLIO_MAX_IMAGE_BYTES = UPLOAD_IMAGE_MAX_BYTES;

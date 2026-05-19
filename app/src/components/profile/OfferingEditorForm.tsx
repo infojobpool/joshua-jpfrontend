@@ -28,13 +28,14 @@ import {
   uploadOfferingImageApi,
 } from "@/lib/offerings/api";
 import { readOfferingSubscriptionMock } from "@/lib/offerings/storage";
+import { compressImageFile } from "@/lib/compressImageFile";
+import { formatUploadMaxKb } from "@/lib/imageUploadLimits";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ImagePlus, X } from "lucide-react";
 
 const MAX_OFFERING_PHOTOS = 6;
-const MAX_PHOTO_BYTES = 650 * 1024;
 
 function isUnsyncedDraftId(id: string): boolean {
   return id.startsWith("of_");
@@ -292,6 +293,7 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
     }
     setUploadingPhotos(true);
     const nextUrls = [...current];
+    let resizedCount = 0;
     try {
       for (const file of Array.from(files)) {
         if (nextUrls.length >= MAX_OFFERING_PHOTOS) break;
@@ -299,12 +301,10 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
           toast.error(`${file.name} is not an image.`);
           continue;
         }
-        if (file.size > MAX_PHOTO_BYTES) {
-          toast.error(`${file.name} is too large (max ${Math.round(MAX_PHOTO_BYTES / 1024)} KB).`);
-          continue;
-        }
         try {
-          const url = await uploadOfferingImageApi(file);
+          const { file: ready, wasCompressed } = await compressImageFile(file);
+          if (wasCompressed) resizedCount += 1;
+          const url = await uploadOfferingImageApi(ready);
           nextUrls.push(url);
         } catch (e) {
           toast.error(apiErrorMessage(e) || `Upload failed for ${file.name}`);
@@ -312,7 +312,13 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
       }
       if (nextUrls.length > current.length) {
         update({ photoUrls: nextUrls });
-        toast.success(`Added ${nextUrls.length - current.length} photo(s)`);
+        const added = nextUrls.length - current.length;
+        toast.success(`Added ${added} photo(s)`);
+        if (resizedCount > 0) {
+          toast.message(
+            `Resized ${resizedCount} photo${resizedCount === 1 ? "" : "s"} to fit the ${formatUploadMaxKb()} KB upload limit.`,
+          );
+        }
       }
     } finally {
       setUploadingPhotos(false);
@@ -413,8 +419,8 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
         <div>
           <Label className="text-base">Listing photos</Label>
           <p className="text-xs text-slate-500 mt-1">
-            Upload photos from your device — each file is uploaded and a link is saved with your listing. You can also
-            paste a hosted image URL.
+            Upload from your phone or computer — large photos are resized automatically (max {formatUploadMaxKb()} KB
+            each). You can also paste a hosted image URL.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
