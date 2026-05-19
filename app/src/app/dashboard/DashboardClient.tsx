@@ -59,6 +59,7 @@ import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { SearchEmptyIllustration, BriefcaseEmptyIllustration } from "@/components/empty-state-illustrations";
 import { ShareTaskButton } from "@/components/ShareTaskButton";
+import { TaskOfferCtaButton, TaskOfferSubmittedBadge } from "@/components/TaskOfferCtaButton";
 import {
   DashboardTaskSummaryCard,
   type DashboardTaskCardAccent,
@@ -5276,7 +5277,9 @@ export default function Dashboard() {
                     className={`grid items-stretch gap-2.5 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}
                   >
                     {sortedAvailableTasks.map((task) => {
-                      const hasUserBid = requestedTasks.some(bid => bid.task_id === task.id);
+                      const hasUserBid = requestedTasks.some(
+                        (bid) => String(bid.task_id) === String(task.id),
+                      );
                       const statusLabel =
                         task.status === "open" ? "Open" : task.status === "in_progress" ? "In progress" : "Completed";
                       const statusTone: DashboardTaskSummaryStatusTone =
@@ -5316,7 +5319,12 @@ export default function Dashboard() {
                             <DashboardCardThumbnails images={task.images} className="mt-1 sm:mt-1.5" />
                           }
                           metaRows={metaRows}
-                          extra={<TaskDueSummaryRow dueDate={task.dueDate} dueDateFlexible={task.dueDateFlexible} />}
+                          extra={
+                            <div className="space-y-1">
+                              <TaskDueSummaryRow dueDate={task.dueDate} dueDateFlexible={task.dueDateFlexible} />
+                              {hasUserBid ? <TaskOfferSubmittedBadge /> : null}
+                            </div>
+                          }
                           statusLabel={statusLabel}
                           statusTone={statusTone}
                           footerTrailing={
@@ -5334,10 +5342,16 @@ export default function Dashboard() {
                             ) : null
                           }
                           actions={
-                            <Link href={`/tasks/${task.id}`} className="block w-full" onClick={() => { try { storeTaskForNav(task); } catch {} }}>
-                              <Button className="w-full rounded-xl bg-blue-600 py-1.5 text-sm font-semibold text-white hover:bg-blue-700 sm:py-2">
-                                {hasUserBid ? "View Offer" : "Make an Offer"}
-                              </Button>
+                            <Link
+                              href={`/tasks/${task.id}`}
+                              className="block w-full"
+                              onClick={() => {
+                                try {
+                                  storeTaskForNav(task);
+                                } catch {}
+                              }}
+                            >
+                              <TaskOfferCtaButton hasOffer={hasUserBid} />
                             </Link>
                           }
                         />
