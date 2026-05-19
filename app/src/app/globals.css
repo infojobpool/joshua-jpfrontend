@@ -235,6 +235,13 @@ html {
   .animate-loader-dot-bob {
     animation: none !important;
   }
+  .dashboard-card-stagger > * {
+    animation: none !important;
+    transition: none !important;
+  }
+  .dashboard-card-stagger > *:hover {
+    transform: none !important;
+  }
 }
 
 /* Dashboard animations - moved from styled-jsx to fix React 310 */

@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export function DashboardSkeleton({ isMobile = false }: { isMobile?: boolean }) {
   const TaskCardSkeleton = () => (
-    <Card className="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/50 rounded-xl overflow-hidden">
+    <Card className="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/50 rounded-2xl overflow-hidden">
       <div className={isMobile ? "p-4" : "p-5"}>
         <div className="flex justify-between items-start mb-3">
           <div className="h-5 w-3/4 bg-slate-200 dark:bg-slate-600 rounded animate-pulse" />

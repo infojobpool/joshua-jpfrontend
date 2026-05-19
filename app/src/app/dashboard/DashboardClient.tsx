@@ -4577,16 +4577,18 @@ export default function Dashboard() {
               </div>
             </div>
             {postedTasks.length === 0 ? (
-                  <Card className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-md rounded-2xl">
-                <CardContent className="flex flex-col items-center justify-center py-10">
-                  <p className="text-muted-foreground mb-4">
-                    You haven't posted any tasks yet
-                  </p>
-                  <Link href="/post-task">
-                    <Button className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white shadow-md">Post Your First Task</Button>
-                  </Link>
-                </CardContent>
-              </Card>
+              <div className="min-h-[400px] flex items-center justify-center">
+                <EmptyState
+                  icon={ClipboardList}
+                  title="No tasks posted yet"
+                  description="Post a task to find help from local taskers on JobPool."
+                  illustration={<BriefcaseEmptyIllustration />}
+                  action={{
+                    label: "Post your first task",
+                    onClick: () => router.push("/post-task"),
+                  }}
+                />
+              </div>
             ) : (
               <div
                 className={`grid items-stretch gap-2.5 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}
@@ -5281,7 +5283,13 @@ export default function Dashboard() {
                         (bid) => String(bid.task_id) === String(task.id),
                       );
                       const statusLabel =
-                        task.status === "open" ? "Open" : task.status === "in_progress" ? "In progress" : "Completed";
+                        hasUserBid && task.status === "open"
+                          ? undefined
+                          : task.status === "open"
+                            ? "Open"
+                            : task.status === "in_progress"
+                              ? "In progress"
+                              : "Completed";
                       const statusTone: DashboardTaskSummaryStatusTone =
                         task.status === "open"
                           ? "open"
@@ -5386,7 +5394,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div
-                className={`grid items-stretch gap-3 dashboard-card-stagger md:gap-4 ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}
+                className={`grid items-stretch gap-2.5 dashboard-card-stagger ${isMobile ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"}`}
               >
                 {sortedAssignedTasks.map((task) => {
                   const isCancelled = task.cancel_status || task.cancelled || task.status === "canceled" || task.status === "cancelled";
@@ -5808,15 +5816,12 @@ export default function Dashboard() {
                         >
                           <Button
                             variant="outline"
-                            className={cn(
-                              "w-full transform rounded-lg border-2 border-gray-300 font-semibold text-gray-700 shadow-md transition-all duration-200 hover:scale-[1.02] hover:border-gray-400 hover:text-gray-800 hover:shadow-lg dark:border-slate-600 dark:text-slate-200",
-                              isMobile ? "py-1.5 text-sm" : "px-4 py-3",
-                            )}
+                            className="w-full rounded-xl border-slate-200/90 bg-white py-1.5 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-900/5 hover:border-slate-300 hover:bg-slate-50/90 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:ring-slate-600/30 sm:py-2"
                           >
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">👁️</span>
-                              <span>View Details</span>
-                            </div>
+                            <span className="flex items-center justify-center gap-2">
+                              <Eye className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden />
+                              View details
+                            </span>
                           </Button>
                         </Link>
                       }
@@ -5831,7 +5836,7 @@ export default function Dashboard() {
           {activeTab === "my-bids" && (
           <div className="space-y-6 mt-6 animate-fade-in-up min-h-[500px]">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />My Bids</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2"><span className="w-1 h-5 rounded-full bg-[#2563eb]" />My offers</h2>
               {requestedTasks.length > 0 && (
                 <select value={myBidsSortBy} onChange={e=>setMyBidsSortBy(e.target.value)} className="w-[160px] sm:w-[180px] rounded-md border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-gray-700 dark:text-slate-200">
                   <option value="newest">Newest first</option>
