@@ -1,960 +1,12 @@
-// "use client"
-
-// import { useState } from "react"
-// import { motion } from "framer-motion"
-// import Image from "next/image"
-// import Link from "next/link"
-// import { Input } from "../../../components/ui/input"
-// import { Button } from "../../../components/ui/button"
-// import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
-// import {
-//   Truck,
-//   Home,
-//   Briefcase,
-//   PaintBucket,
-//   Wrench,
-//   ShoppingBag,
-//   Laptop,
-//   Leaf,
-//   Car,
-//   Utensils,
-//   Shirt,
-//   Dog,
-//   Camera,
-//   Music,
-//   Dumbbell,
-//   Pencil,
-//   Search,
-// } from "lucide-react"
-
-// export function CategoriesPage() {
-//   const [searchQuery, setSearchQuery] = useState("")
-
-//   const allCategories = [
-//     {
-//       icon: <Truck className="h-8 w-8" />,
-//       name: "Moving & Delivery",
-//       tasks: 1245,
-//       description: "Get help with moving, furniture delivery, and courier services",
-//       popular: ["Furniture delivery", "House moving", "Courier services", "IKEA pickup"],
-//     },
-//     {
-//       icon: <Home className="h-8 w-8" />,
-//       name: "Home Cleaning",
-//       tasks: 987,
-//       description: "Professional cleaning services for your home or office",
-//       popular: ["Regular cleaning", "Deep cleaning", "End of lease", "Window cleaning"],
-//     },
-//     {
-//       icon: <Briefcase className="h-8 w-8" />,
-//       name: "Business Services",
-//       tasks: 654,
-//       description: "Professional services for your business needs",
-//       popular: ["Data entry", "Virtual assistant", "Bookkeeping", "Market research"],
-//     },
-//     {
-//       icon: <PaintBucket className="h-8 w-8" />,
-//       name: "Home Improvement",
-//       tasks: 876,
-//       description: "Upgrade and renovate your living space",
-//       popular: ["Painting", "Flooring", "Bathroom renovation", "Kitchen remodeling"],
-//     },
-//     {
-//       icon: <Wrench className="h-8 w-8" />,
-//       name: "Handyman",
-//       tasks: 765,
-//       description: "General repairs and maintenance for your home",
-//       popular: ["Furniture assembly", "Repairs", "Mounting", "Installation"],
-//     },
-//     {
-//       icon: <ShoppingBag className="h-8 w-8" />,
-//       name: "Shopping",
-//       tasks: 432,
-//       description: "Get help with shopping and pickup services",
-//       popular: ["Grocery shopping", "Gift shopping", "Personal shopping", "Pickup services"],
-//     },
-//     {
-//       icon: <Laptop className="h-8 w-8" />,
-//       name: "Tech Services",
-//       tasks: 543,
-//       description: "Technical support and IT services",
-//       popular: ["Computer repair", "IT support", "Website development", "Tech setup"],
-//     },
-//     {
-//       icon: <Leaf className="h-8 w-8" />,
-//       name: "Gardening",
-//       tasks: 321,
-//       description: "Maintain and beautify your outdoor spaces",
-//       popular: ["Lawn mowing", "Garden maintenance", "Landscaping", "Tree trimming"],
-//     },
-//     {
-//       icon: <Car className="h-8 w-8" />,
-//       name: "Automotive",
-//       tasks: 289,
-//       description: "Services for your vehicle needs",
-//       popular: ["Car wash", "Vehicle detailing", "Tire change", "Battery replacement"],
-//     },
-//     {
-//       icon: <Utensils className="h-8 w-8" />,
-//       name: "Food & Catering",
-//       tasks: 412,
-//       description: "Food preparation and catering services",
-//       popular: ["Meal prep", "Event catering", "Cooking lessons", "Personal chef"],
-//     },
-//     {
-//       icon: <Shirt className="h-8 w-8" />,
-//       name: "Clothing & Alterations",
-//       tasks: 198,
-//       description: "Clothing repairs and custom alterations",
-//       popular: ["Tailoring", "Alterations", "Clothing repair", "Custom design"],
-//     },
-//     {
-//       icon: <Dog className="h-8 w-8" />,
-//       name: "Pet Care",
-//       tasks: 356,
-//       description: "Services for your furry friends",
-//       popular: ["Dog walking", "Pet sitting", "Grooming", "Training"],
-//     },
-//     {
-//       icon: <Camera className="h-8 w-8" />,
-//       name: "Photography",
-//       tasks: 245,
-//       description: "Professional photography services",
-//       popular: ["Event photography", "Portrait sessions", "Product photography", "Real estate"],
-//     },
-//     {
-//       icon: <Music className="h-8 w-8" />,
-//       name: "Music & Audio",
-//       tasks: 178,
-//       description: "Music and audio production services",
-//       popular: ["Music lessons", "Audio editing", "Voice over", "DJ services"],
-//     },
-//     {
-//       icon: <Dumbbell className="h-8 w-8" />,
-//       name: "Fitness",
-//       tasks: 267,
-//       description: "Personal training and fitness services",
-//       popular: ["Personal training", "Yoga instruction", "Fitness classes", "Nutrition advice"],
-//     },
-//     {
-//       icon: <Pencil className="h-8 w-8" />,
-//       name: "Education & Tutoring",
-//       tasks: 312,
-//       description: "Educational support and tutoring",
-//       popular: ["Academic tutoring", "Language lessons", "Test preparation", "Music lessons"],
-//     },
-//   ]
-
-//   const filteredCategories = allCategories.filter(
-//     (category) =>
-//       category.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-//       category.description.toLowerCase().includes(searchQuery.toLowerCase()),
-//   )
-
-//   const containerVariants = {
-//     hidden: { opacity: 0 },
-//     visible: {
-//       opacity: 1,
-//       transition: {
-//         staggerChildren: 0.1,
-//         delayChildren: 0.3,
-//       },
-//     },
-//   }
-
-//   const itemVariants = {
-//     hidden: { y: 20, opacity: 0 },
-//     visible: {
-//       y: 0,
-//       opacity: 1,
-//       transition: { type: "spring", stiffness: 100, damping: 10 },
-//     },
-//   }
-
-//   return (
-//     <>
-//       <section className="bg-slate-50 py-12 md:py-20">
-//         <div className="container px-4 md:px-6">
-//           <motion.div
-//             className="max-w-3xl mx-auto text-center"
-//             initial={{ opacity: 0, y: -20 }}
-//             animate={{ opacity: 1, y: 0 }}
-//             transition={{ duration: 0.5 }}
-//           >
-//             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">Categories</h1>
-//             <p className="mt-4 text-xl text-gray-500">Browse all task categories and find the help you need</p>
-//             <div className="mt-8 flex items-center max-w-md mx-auto">
-//               <Input
-//                 type="text"
-//                 placeholder="Search categories..."
-//                 className="flex-1"
-//                 value={searchQuery}
-//                 onChange={(e) => setSearchQuery(e.target.value)}
-//               />
-//               <Button className="ml-2 bg-blue-600 hover:bg-blue-700">
-//                 <Search className="h-4 w-4" />
-//               </Button>
-//             </div>
-//           </motion.div>
-//         </div>
-//       </section>
-
-//       <section className="py-16">
-//         <div className="container px-4 md:px-6">
-//           <Tabs defaultValue="all" className="w-full">
-//             <TabsList className="mb-8 flex flex-wrap justify-center gap-2">
-//               <TabsTrigger value="all">All Categories</TabsTrigger>
-//               <TabsTrigger value="popular">Most Popular</TabsTrigger>
-//               <TabsTrigger value="home">Home & Property</TabsTrigger>
-//               <TabsTrigger value="business">Business</TabsTrigger>
-//               <TabsTrigger value="personal">Personal</TabsTrigger>
-//             </TabsList>
-
-//             <TabsContent value="all" className="mt-0">
-//               <motion.div
-//                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-//                 variants={containerVariants}
-//                 initial="hidden"
-//                 animate="visible"
-//               >
-//                 {filteredCategories.map((category, index) => (
-//                   <motion.div
-//                     key={index}
-//                     variants={itemVariants}
-//                     whileHover={{
-//                       scale: 1.03,
-//                       boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-//                     }}
-//                     className="bg-white rounded-xl p-6 shadow-md transition-all duration-200"
-//                   >
-//                     <Link href={`/categories/${category.name.toLowerCase().replace(/\s+/g, "-")}`}>
-//                       <div className="flex flex-col h-full">
-//                         <div className="p-3 bg-blue-50 rounded-full mb-4 w-fit">{category.icon}</div>
-//                         <h3 className="font-bold text-xl mb-2">{category.name}</h3>
-//                         <p className="text-gray-500 mb-4 flex-grow">{category.description}</p>
-//                         <div className="mt-auto">
-//                           <div className="text-sm text-blue-600 font-medium mb-2">Popular tasks:</div>
-//                           <ul className="text-sm text-gray-500">
-//                             {category.popular.slice(0, 2).map((task, i) => (
-//                               <li key={i} className="mb-1">
-//                                 • {task}
-//                               </li>
-//                             ))}
-//                           </ul>
-//                           <div className="mt-4 text-sm font-medium text-gray-500">{category.tasks} active tasks</div>
-//                         </div>
-//                       </div>
-//                     </Link>
-//                   </motion.div>
-//                 ))}
-//               </motion.div>
-//             </TabsContent>
-
-//             <TabsContent value="popular">
-//               <motion.div
-//                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-//                 variants={containerVariants}
-//                 initial="hidden"
-//                 animate="visible"
-//               >
-//                 {filteredCategories
-//                   .sort((a, b) => b.tasks - a.tasks)
-//                   .slice(0, 8)
-//                   .map((category, index) => (
-//                     <motion.div
-//                       key={index}
-//                       variants={itemVariants}
-//                       whileHover={{
-//                         scale: 1.03,
-//                         boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-//                       }}
-//                       className="bg-white rounded-xl p-6 shadow-md transition-all duration-200"
-//                     >
-//                       <Link href={`/categories/${category.name.toLowerCase().replace(/\s+/g, "-")}`}>
-//                         <div className="flex flex-col h-full">
-//                           <div className="p-3 bg-blue-50 rounded-full mb-4 w-fit">{category.icon}</div>
-//                           <h3 className="font-bold text-xl mb-2">{category.name}</h3>
-//                           <p className="text-gray-500 mb-4 flex-grow">{category.description}</p>
-//                           <div className="mt-auto">
-//                             <div className="text-sm text-blue-600 font-medium mb-2">Popular tasks:</div>
-//                             <ul className="text-sm text-gray-500">
-//                               {category.popular.slice(0, 2).map((task, i) => (
-//                                 <li key={i} className="mb-1">
-//                                   • {task}
-//                                 </li>
-//                               ))}
-//                             </ul>
-//                             <div className="mt-4 text-sm font-medium text-gray-500">{category.tasks} active tasks</div>
-//                           </div>
-//                         </div>
-//                       </Link>
-//                     </motion.div>
-//                   ))}
-//               </motion.div>
-//             </TabsContent>
-
-//             {/* Other tab contents would follow the same pattern */}
-//             <TabsContent value="home">
-//               <motion.div
-//                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-//                 variants={containerVariants}
-//                 initial="hidden"
-//                 animate="visible"
-//               >
-//                 {filteredCategories
-//                   .filter((cat) => ["Home Cleaning", "Home Improvement", "Handyman", "Gardening"].includes(cat.name))
-//                   .map((category, index) => (
-//                     <motion.div
-//                       key={index}
-//                       variants={itemVariants}
-//                       whileHover={{
-//                         scale: 1.03,
-//                         boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-//                       }}
-//                       className="bg-white rounded-xl p-6 shadow-md transition-all duration-200"
-//                     >
-//                       <Link href={`/categories/${category.name.toLowerCase().replace(/\s+/g, "-")}`}>
-//                         <div className="flex flex-col h-full">
-//                           <div className="p-3 bg-blue-50 rounded-full mb-4 w-fit">{category.icon}</div>
-//                           <h3 className="font-bold text-xl mb-2">{category.name}</h3>
-//                           <p className="text-gray-500 mb-4 flex-grow">{category.description}</p>
-//                           <div className="mt-auto">
-//                             <div className="text-sm text-blue-600 font-medium mb-2">Popular tasks:</div>
-//                             <ul className="text-sm text-gray-500">
-//                               {category.popular.slice(0, 2).map((task, i) => (
-//                                 <li key={i} className="mb-1">
-//                                   • {task}
-//                                 </li>
-//                               ))}
-//                             </ul>
-//                             <div className="mt-4 text-sm font-medium text-gray-500">{category.tasks} active tasks</div>
-//                           </div>
-//                         </div>
-//                       </Link>
-//                     </motion.div>
-//                   ))}
-//               </motion.div>
-//             </TabsContent>
-
-//             {/* Business tab */}
-//             <TabsContent value="business">
-//               <motion.div
-//                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-//                 variants={containerVariants}
-//                 initial="hidden"
-//                 animate="visible"
-//               >
-//                 {filteredCategories
-//                   .filter((cat) =>
-//                     ["Business Services", "Tech Services", "Photography", "Music & Audio"].includes(cat.name),
-//                   )
-//                   .map((category, index) => (
-//                     <motion.div
-//                       key={index}
-//                       variants={itemVariants}
-//                       whileHover={{
-//                         scale: 1.03,
-//                         boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-//                       }}
-//                       className="bg-white rounded-xl p-6 shadow-md transition-all duration-200"
-//                     >
-//                       <Link href={`/categories/${category.name.toLowerCase().replace(/\s+/g, "-")}`}>
-//                         <div className="flex flex-col h-full">
-//                           <div className="p-3 bg-blue-50 rounded-full mb-4 w-fit">{category.icon}</div>
-//                           <h3 className="font-bold text-xl mb-2">{category.name}</h3>
-//                           <p className="text-gray-500 mb-4 flex-grow">{category.description}</p>
-//                           <div className="mt-auto">
-//                             <div className="text-sm text-blue-600 font-medium mb-2">Popular tasks:</div>
-//                             <ul className="text-sm text-gray-500">
-//                               {category.popular.slice(0, 2).map((task, i) => (
-//                                 <li key={i} className="mb-1">
-//                                   • {task}
-//                                 </li>
-//                               ))}
-//                             </ul>
-//                             <div className="mt-4 text-sm font-medium text-gray-500">{category.tasks} active tasks</div>
-//                           </div>
-//                         </div>
-//                       </Link>
-//                     </motion.div>
-//                   ))}
-//               </motion.div>
-//             </TabsContent>
-
-//             {/* Personal tab */}
-//             <TabsContent value="personal">
-//               <motion.div
-//                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-//                 variants={containerVariants}
-//                 initial="hidden"
-//                 animate="visible"
-//               >
-//                 {filteredCategories
-//                   .filter((cat) => ["Pet Care", "Fitness", "Education & Tutoring", "Shopping"].includes(cat.name))
-//                   .map((category, index) => (
-//                     <motion.div
-//                       key={index}
-//                       variants={itemVariants}
-//                       whileHover={{
-//                         scale: 1.03,
-//                         boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-//                       }}
-//                       className="bg-white rounded-xl p-6 shadow-md transition-all duration-200"
-//                     >
-//                       <Link href={`/categories/${category.name.toLowerCase().replace(/\s+/g, "-")}`}>
-//                         <div className="flex flex-col h-full">
-//                           <div className="p-3 bg-blue-50 rounded-full mb-4 w-fit">{category.icon}</div>
-//                           <h3 className="font-bold text-xl mb-2">{category.name}</h3>
-//                           <p className="text-gray-500 mb-4 flex-grow">{category.description}</p>
-//                           <div className="mt-auto">
-//                             <div className="text-sm text-blue-600 font-medium mb-2">Popular tasks:</div>
-//                             <ul className="text-sm text-gray-500">
-//                               {category.popular.slice(0, 2).map((task, i) => (
-//                                 <li key={i} className="mb-1">
-//                                   • {task}
-//                                 </li>
-//                               ))}
-//                             </ul>
-//                             <div className="mt-4 text-sm font-medium text-gray-500">{category.tasks} active tasks</div>
-//                           </div>
-//                         </div>
-//                       </Link>
-//                     </motion.div>
-//                   ))}
-//               </motion.div>
-//             </TabsContent>
-//           </Tabs>
-//         </div>
-//       </section>
-
-//       <section className="py-16 bg-slate-50">
-//         <div className="container px-4 md:px-6">
-//           <div className="grid md:grid-cols-2 gap-12 items-center">
-//             <motion.div
-//               initial={{ opacity: 0, x: -50 }}
-//               whileInView={{ opacity: 1, x: 0 }}
-//               transition={{ duration: 0.5 }}
-//               viewport={{ once: true }}
-//             >
-//               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">Ready to get started?</h2>
-//               <p className="text-xl text-gray-500 mb-8">
-//                 Post a task now and find the perfect person for the job, or become a Tasker and start earning.
-//               </p>
-//               <div className="flex flex-col sm:flex-row gap-4">
-//                 <Link href="/post-task">
-//                   <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg w-full sm:w-auto">
-//                     Post a Task
-//                   </Button>
-//                 </Link>
-//                 <Link href="/become-tasker">
-//                   <Button
-//                     variant="outline"
-//                     className="border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-6 text-lg w-full sm:w-auto"
-//                   >
-//                     Become a Tasker
-//                   </Button>
-//                 </Link>
-//               </div>
-//             </motion.div>
-//             <motion.div
-//               initial={{ opacity: 0, x: 50 }}
-//               whileInView={{ opacity: 1, x: 0 }}
-//               transition={{ duration: 0.5 }}
-//               viewport={{ once: true }}
-//               className="relative h-[400px]"
-//             >
-//               <Image
-//                 src="images/images/placeholder.svg?height=400&width=600"
-//                 fill
-//                 alt="TaskMaster categories"
-//                 className="object-cover rounded-xl"
-//               />
-//             </motion.div>
-//           </div>
-//         </div>
-//       </section>
-//     </>
-//   )
-// }
-
-
-
-// "use client";
-
-// import { useEffect, useState } from "react";
-// import { motion } from "framer-motion";
-// import Image from "next/image";
-// import Link from "next/link";
-// import { Input } from "../../../components/ui/input";
-// import { Button } from "../../../components/ui/button";
-// import {
-//   Tabs,
-//   TabsContent,
-//   TabsList,
-//   TabsTrigger,
-// } from "../../../components/ui/tabs";
-// import {
-//   Truck,
-//   Home,
-//   Briefcase,
-//   PaintBucket,
-//   Wrench,
-//   ShoppingBag,
-//   Laptop,
-//   Leaf,
-//   Car,
-//   Utensils,
-//   Shirt,
-//   Dog,
-//   Camera,
-//   Music,
-//   Dumbbell,
-//   Pencil,
-//   Search,
-//   SquareCheckBig,
-// } from "lucide-react";
-// import axiosInstance from "@/lib/axiosInstance";
-// import { toast } from "sonner";
-
-// interface Category {
-//   category_id: string;
-//   category_name: string;
-//   status: boolean;
-//   created_at: string;
-//   icon?: React.ReactNode;
-//   tasks?: number;
-// }
-
-// export function CategoriesPage() {
-//   const [searchQuery, setSearchQuery] = useState("");
-//   const [categories, setCategories] = useState<Category[]>([]);
-//   const [isLoading, setIsLoading] = useState(false);
-
-//   // Map category names to icons
-//   const categoryIcons: { [key: string]: React.ReactNode } = {
-//     "Moving & Delivery": <Truck className="h-8 w-8" />,
-//     "Home Cleaning": <Home className="h-8 w-8" />,
-//     "Business Services": <Briefcase className="h-8 w-8" />,
-//     "Home Improvement": <PaintBucket className="h-8 w-8" />,
-//     Handyman: <Wrench className="h-8 w-8" />,
-//     Shopping: <ShoppingBag className="h-8 w-8" />,
-//     "Tech Services": <Laptop className="h-8 w-8" />,
-//     Gardening: <Leaf className="h-8 w-8" />,
-//     Automotive: <Car className="h-8 w-8" />,
-//     "Food & Catering": <Utensils className="h-8 w-8" />,
-//     "Clothing & Alterations": <Shirt className="h-8 w-8" />,
-//     "Pet Care": <Dog className="h-8 w-8" />,
-//     Photography: <Camera className="h-8 w-8" />,
-//     "Music & Audio": <Music className="h-8 w-8" />,
-//     Fitness: <Dumbbell className="h-8 w-8" />,
-//     "Education & Tutoring": <Pencil className="h-8 w-8" />,
-//   };
-
-//   const fetchCategories = async () => {
-//     try {
-//       setIsLoading(true);
-//       const response = await axiosInstance.get("get-all-categories/");
-//       if (response.data.status_code === 200) {
-//         // Map icons to fetched categories
-//         const enrichedCategories = response.data.data.map((category: Category) => ({
-//           ...category,
-//           icon: categoryIcons[category.category_name] || <SquareCheckBig  className="h-8 w-8" />, // Fallback icon
-//           tasks: category.tasks || 0, // Fallback to 0 if tasks is undefined
-//         }));
-//         setCategories(enrichedCategories);
-//       } else {
-//         toast.error(response.data.message || "Failed to fetch categories");
-//       }
-//     } catch (error) {
-//       toast.error(
-//         error instanceof Error
-//           ? error.message
-//           : "An error occurred while fetching categories"
-//       );
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-
-//   useEffect(() => {
-//     fetchCategories();
-//   }, []);
-
-//   const filteredCategories = categories.filter((category) =>
-//     category.category_name.toLowerCase().includes(searchQuery.toLowerCase())
-//   );
-
-//   const containerVariants = {
-//     hidden: { opacity: 0 },
-//     visible: {
-//       opacity: 1,
-//       transition: {
-//         staggerChildren: 0.1,
-//         delayChildren: 0.3,
-//       },
-//     },
-//   };
-
-//   const itemVariants = {
-//     hidden: { y: 20, opacity: 0 },
-//     visible: {
-//       y: 0,
-//       opacity: 1,
-//       transition: { type: "spring", stiffness: 100, damping: 10 },
-//     },
-//   };
-
-//   return (
-//     <>
-//       <section className="bg-slate-50 py-12 md:py-20">
-//         <div className="container px-4 md:px-6">
-//           <motion.div
-//             className="max-w-3xl mx-auto text-center"
-//             initial={{ opacity: 0, y: -20 }}
-//             animate={{ opacity: 1, y: 0 }}
-//             transition={{ duration: 0.5 }}
-//           >
-//             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-//               Categories
-//             </h1>
-//             <p className="mt-4 text-xl text-gray-500">
-//               Browse all task categories and find the help you need
-//             </p>
-//             <div className="mt-8 flex items-center max-w-md mx-auto">
-//               <Input
-//                 type="text"
-//                 placeholder="Search categories..."
-//                 className="flex-1"
-//                 value={searchQuery}
-//                 onChange={(e) => setSearchQuery(e.target.value)}
-//               />
-//               <Button className="ml-2 bg-blue-600 hover:bg-blue-700">
-//                 <Search className="h-4 w-4" />
-//               </Button>
-//             </div>
-//           </motion.div>
-//         </div>
-//       </section>
-
-//       <section className="py-16">
-//         <div className="container px-4 md:px-6">
-//           <Tabs defaultValue="all" className="w-full">
-//             <TabsList className="mb-8 flex flex-wrap justify-center gap-2">
-//               <TabsTrigger value="all">All Categories</TabsTrigger>
-//               <TabsTrigger value="popular">Most Popular</TabsTrigger>
-//               <TabsTrigger value="home">Home & Property</TabsTrigger>
-//               <TabsTrigger value="business">Business</TabsTrigger>
-//               <TabsTrigger value="personal">Personal</TabsTrigger>
-//             </TabsList>
-
-//             <TabsContent value="all" className="mt-0">
-//               <motion.div
-//                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-//                 variants={containerVariants}
-//                 initial="hidden"
-//                 animate="visible"
-//               >
-//                 {filteredCategories.map((category, index) => (
-//                   <motion.div
-//                     key={index}
-//                     variants={itemVariants}
-//                     whileHover={{
-//                       scale: 1.03,
-//                       boxShadow:
-//                         "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-//                     }}
-//                     className="bg-white rounded-xl p-6 shadow-md transition-all duration-200"
-//                   >
-//                     <Link
-//                       href={`/categories/${category.category_name
-//                         .toLowerCase()
-//                         .replace(/\s+/g, "-")}`}
-//                     >
-//                       <div className="flex flex-col h-full">
-//                         <div className="p-3 bg-blue-50 rounded-full mb-4 w-fit">
-//                           {category.icon}
-//                         </div>
-//                         <h3 className="font-bold text-xl mb-2">
-//                           {category.category_name}
-//                         </h3>
-//                         <div className="mt-auto">
-//                           <div className="mt-4 text-sm font-medium text-gray-500">
-//                             {category.tasks || 0} active tasks
-//                           </div>
-//                         </div>
-//                       </div>
-//                     </Link>
-//                   </motion.div>
-//                 ))}
-//               </motion.div>
-//             </TabsContent>
-
-//             <TabsContent value="popular">
-//               <motion.div
-//                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-//                 variants={containerVariants}
-//                 initial="hidden"
-//                 animate="visible"
-//               >
-//                 {filteredCategories
-//                   .sort((a, b) => (b.tasks || 0) - (a.tasks || 0))
-//                   .slice(0, 8)
-//                   .map((category, index) => (
-//                     <motion.div
-//                       key={index}
-//                       variants={itemVariants}
-//                       whileHover={{
-//                         scale: 1.03,
-//                         boxShadow:
-//                           "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-//                       }}
-//                       className="bg-white rounded-xl p-6 shadow-md transition-all duration-200"
-//                     >
-//                       <Link
-//                         href={`/categories/${category.category_name
-//                           .toLowerCase()
-//                           .replace(/\s+/g, "-")}`}
-//                       >
-//                         <div className="flex flex-col h-full">
-//                           <div className="p-3 bg-blue-50 rounded-full mb-4 w-fit">
-//                             {category.icon}
-//                           </div>
-//                           <h3 className="font-bold text-xl mb-2">
-//                             {category.category_name}
-//                           </h3>
-//                           <div className="mt-auto">
-//                             <div className="mt-4 text-sm font-medium text-gray-500">
-//                               {category.tasks || 0} active tasks
-//                             </div>
-//                           </div>
-//                         </div>
-//                       </Link>
-//                     </motion.div>
-//                   ))}
-//               </motion.div>
-//             </TabsContent>
-
-//             <TabsContent value="home">
-//               <motion.div
-//                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-//                 variants={containerVariants}
-//                 initial="hidden"
-//                 animate="visible"
-//               >
-//                 {filteredCategories
-//                   .filter((cat) =>
-//                     [
-//                       "Home Cleaning",
-//                       "Home Improvement",
-//                       "Handyman",
-//                       "Gardening",
-//                     ].includes(cat.category_name)
-//                   )
-//                   .map((category, index) => (
-//                     <motion.div
-//                       key={index}
-//                       variants={itemVariants}
-//                       whileHover={{
-//                         scale: 1.03,
-//                         boxShadow:
-//                           "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-//                       }}
-//                       className="bg-white rounded-xl p-6 shadow-md transition-all duration-200"
-//                     >
-//                       <Link
-//                         href={`/categories/${category.category_name
-//                           .toLowerCase()
-//                           .replace(/\s+/g, "-")}`}
-//                       >
-//                         <div className="flex flex-col h-full">
-//                           <div className="p-3 bg-blue-50 rounded-full mb-4 w-fit">
-//                             {category.icon}
-//                           </div>
-//                           <h3 className="font-bold text-xl mb-2">
-//                             {category.category_name}
-//                           </h3>
-//                           <div className="mt-auto">
-//                             <div className="mt-4 text-sm font-medium text-gray-500">
-//                               {category.tasks || 0} active tasks
-//                             </div>
-//                           </div>
-//                         </div>
-//                       </Link>
-//                     </motion.div>
-//                   ))}
-//               </motion.div>
-//             </TabsContent>
-
-//             <TabsContent value="business">
-//               <motion.div
-//                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-//                 variants={containerVariants}
-//                 initial="hidden"
-//                 animate="visible"
-//               >
-//                 {filteredCategories
-//                   .filter((cat) =>
-//                     [
-//                       "Business Services",
-//                       "Tech Services",
-//                       "Photography",
-//                       "Music & Audio",
-//                     ].includes(cat.category_name)
-//                   )
-//                   .map((category, index) => (
-//                     <motion.div
-//                       key={index}
-//                       variants={itemVariants}
-//                       whileHover={{
-//                         scale: 1.03,
-//                         boxShadow:
-//                           "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-//                       }}
-//                       className="bg-white rounded-xl p-6 shadow-md transition-all duration-200"
-//                     >
-//                       <Link
-//                         href={`/categories/${category.category_name
-//                           .toLowerCase()
-//                           .replace(/\s+/g, "-")}`}
-//                       >
-//                         <div className="flex flex-col h-full">
-//                           <div className="p-3 bg-blue-50 rounded-full mb-4 w-fit">
-//                             {category.icon}
-//                           </div>
-//                           <h3 className="font-bold text-xl mb-2">
-//                             {category.category_name}
-//                           </h3>
-//                           <div className="mt-auto">
-//                             <div className="mt-4 text-sm font-medium text-gray-500">
-//                               {category.tasks || 0} active tasks
-//                             </div>
-//                           </div>
-//                         </div>
-//                       </Link>
-//                     </motion.div>
-//                   ))}
-//               </motion.div>
-//             </TabsContent>
-
-//             <TabsContent value="personal">
-//               <motion.div
-//                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-//                 variants={containerVariants}
-//                 initial="hidden"
-//                 animate="visible"
-//               >
-//                 {filteredCategories
-//                   .filter((cat) =>
-//                     [
-//                       "Pet Care",
-//                       "Fitness",
-//                       "Education & Tutoring",
-//                       "Shopping",
-//                     ].includes(cat.category_name)
-//                   )
-//                   .map((category, index) => (
-//                     <motion.div
-//                       key={index}
-//                       variants={itemVariants}
-//                       whileHover={{
-//                         scale: 1.03,
-//                         boxShadow:
-//                           "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-//                       }}
-//                       className="bg-white rounded-xl p-6 shadow-md transition-all duration-200"
-//                     >
-//                       <Link
-//                         href={`/categories/${category.category_name
-//                           .toLowerCase()
-//                           .replace(/\s+/g, "-")}`}
-//                       >
-//                         <div className="flex flex-col h-full">
-//                           <div className="p-3 bg-blue-50 rounded-full mb-4 w-fit">
-//                             {category.icon}
-//                           </div>
-//                           <h3 className="font-bold text-xl mb-2">
-//                             {category.category_name}
-//                           </h3>
-//                           <div className="mt-auto">
-//                             <div className="mt-4 text-sm font-medium text-gray-500">
-//                               {category.tasks || 0} active tasks
-//                             </div>
-//                           </div>
-//                         </div>
-//                       </Link>
-//                     </motion.div>
-//                   ))}
-//               </motion.div>
-//             </TabsContent>
-//           </Tabs>
-//         </div>
-//       </section>
-
-//       <section className="py-16 bg-slate-50">
-//         <div className="container px-4 md:px-6">
-//           <div className="grid md:grid-cols-2 gap-12 items-center">
-//             <motion.div
-//               initial={{ opacity: 0, x: -50 }}
-//               whileInView={{ opacity: 1, x: 0 }}
-//               transition={{ duration: 0.5 }}
-//               viewport={{ once: true }}
-//             >
-//               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">
-//                 Ready to get started?
-//               </h2>
-//               <p className="text-xl text-gray-500 mb-8">
-//                 Post a task now and find the perfect person for the job, or
-//                 become a Tasker and start earning.
-//               </p>
-//               <div className="flex flex-col sm:flex-row gap-4">
-//                 <Link href="/post-task">
-//                   <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg w-full sm:w-auto">
-//                     Post a Task
-//                   </Button>
-//                 </Link>
-//                 <Link href="/become-tasker">
-//                   <Button
-//                     variant="outline"
-//                     className="border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-6 text-lg w-full sm:w-auto"
-//                   >
-//                     Become a Tasker
-//                   </Button>
-//                 </Link>
-//               </div>
-//             </motion.div>
-//             <motion.div
-//               initial={{ opacity: 0, x: 50 }}
-//               whileInView={{ opacity: 1, x: 0 }}
-//               transition={{ duration: 0.5 }}
-//               viewport={{ once: true }}
-//               className="relative h-[400px]"
-//             >
-//               <Image
-//                 src="images/placeholder.svg?height=400&width=600"
-//                 fill
-//                 alt="TaskMaster categories"
-//                 className="object-cover rounded-xl"
-//               />
-//             </motion.div>
-//           </div>
-//         </div>
-//       </section>
-//     </>
-//   );
-// }
-
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { Input } from "../../../components/ui/input";
 import { Button } from "../../../components/ui/button";
-import { SquareCheckBig, Search, X, ArrowUpDown, RotateCw } from "lucide-react";
-import axiosInstance from "@/lib/axiosInstance";
-import { categoryDescriptionForDisplay, categoryDescriptionFromApi } from "@/lib/categoryDisplay";
-import { toast } from "sonner";
+import { Badge } from "../../../components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -962,251 +14,234 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../components/ui/select";
+import { ArrowRight, Loader2, RefreshCw, Search } from "lucide-react";
+import axiosInstance from "@/lib/axiosInstance";
+import { categoryIcon, categoryPalette } from "@/lib/categoryPresentation";
+import { toast } from "sonner";
 
 interface Category {
   category_id: string;
   category_name: string;
-  category_description?: string | null;
-  status: boolean;
-  created_at: string;
-  icon?: React.ReactNode;
+  status?: boolean;
+  created_at?: string;
+  job_count?: number;
 }
 
-type SortOption = "default" | "a-z" | "z-a";
+type SortKey = "default" | "az" | "za" | "tasks";
 
 export function CategoriesPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>("default");
+  const [sortBy, setSortBy] = useState<SortKey>("default");
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await axiosInstance.get("get-all-categories/");
       if (response.data.status_code === 200) {
-        const enrichedCategories = response.data.data.map((category: Category & Record<string, unknown>) => ({
-          ...category,
-          category_description:
-            categoryDescriptionFromApi(category) ??
-            (typeof category.category_description === "string" ? category.category_description : null),
-          icon: <SquareCheckBig className="h-8 w-8" />,
-        }));
-        setCategories(enrichedCategories);
+        setCategories(response.data.data ?? []);
       } else {
         toast.error(response.data.message || "Failed to fetch categories");
       }
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "An error occurred while fetching categories"
+        error instanceof Error ? error.message : "An error occurred while fetching categories"
       );
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchCategories();
-  }, []);
+  }, [fetchCategories]);
 
-  const filteredBySearch = categories.filter((category) => {
-    const q = searchQuery.toLowerCase();
-    const desc = category.category_description?.toLowerCase() ?? "";
-    return category.category_name.toLowerCase().includes(q) || desc.includes(q);
-  });
-
-  const filteredCategories = [...filteredBySearch].sort((a, b) => {
-    if (sortBy === "a-z") return a.category_name.localeCompare(b.category_name);
-    if (sortBy === "z-a") return b.category_name.localeCompare(a.category_name);
-    return 0;
-  });
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.3,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: { type: "spring", stiffness: 100, damping: 10 },
-    },
-  };
+  const filteredCategories = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    let list = categories.filter((c) =>
+      !q ? true : c.category_name.toLowerCase().includes(q)
+    );
+    switch (sortBy) {
+      case "az":
+        list = [...list].sort((a, b) => a.category_name.localeCompare(b.category_name));
+        break;
+      case "za":
+        list = [...list].sort((a, b) => b.category_name.localeCompare(a.category_name));
+        break;
+      case "tasks":
+        list = [...list].sort(
+          (a, b) => (b.job_count ?? 0) - (a.job_count ?? 0)
+        );
+        break;
+      default:
+        break;
+    }
+    return list;
+  }, [categories, searchQuery, sortBy]);
 
   return (
     <>
-      <section className="bg-slate-50 py-12 md:py-20">
-        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-          <motion.div
-            className="max-w-3xl mx-auto text-center"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-              Categories
+      <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50 py-12 md:py-16">
+        <motion.div
+          className="absolute -top-24 right-0 h-72 w-72 rounded-full bg-blue-100/40 blur-3xl"
+          aria-hidden
+        />
+        <div className="relative w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
+          <div className="mx-auto max-w-4xl text-center">
+            <Badge variant="secondary" className="mb-4 border border-blue-100 bg-blue-50 text-blue-700">
+              Task & service categories
+            </Badge>
+            <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+              Browse categories
             </h1>
-            <p className="mt-4 text-xl text-gray-500">
-              All categories added by admin — search and sort below
+            <p className="mt-3 text-lg text-slate-600">
+              Pick a category to post a task or find help — same list for tasks and listings.
             </p>
-            <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-2xl mx-auto">
-              <div className="relative flex items-center flex-1">
-                <Search className="h-4 w-4 text-gray-400 absolute left-3 pointer-events-none" />
-                <Input
-                  type="text"
-                  placeholder="Search categories..."
-                  className="pl-10 flex-1"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                {searchQuery && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0 ml-1"
-                    onClick={() => setSearchQuery("")}
-                    aria-label="Clear search"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <ArrowUpDown className="h-4 w-4 mr-2 text-gray-500" />
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="default">Default order</SelectItem>
-                  <SelectItem value="a-z">A → Z</SelectItem>
-                  <SelectItem value="z-a">Z → A</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                variant="outline"
-                className="shrink-0"
-                onClick={() => fetchCategories()}
-                disabled={isLoading}
-              >
-                <RotateCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-                Refresh
-              </Button>
-            </div>
-            {searchQuery && (
-              <p className="mt-3 text-sm text-gray-500">
-                Showing {filteredCategories.length} of {categories.length} categories
-              </p>
-            )}
-          </motion.div>
+          </div>
         </div>
       </section>
 
-      <section className="py-10 md:py-16">
-        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 max-w-2xl mx-auto">
-          {isLoading ? (
-            <div className="flex justify-center py-12">
-              <div className="h-10 w-10 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-            </div>
-          ) : (
-            <motion.div
-              className="flex flex-col gap-2 rounded-2xl overflow-hidden bg-white shadow-sm border border-gray-100"
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-            >
-              {filteredCategories.map((category, index) => (
-                <motion.div
-                  key={category.category_id || index}
-                  variants={itemVariants}
-                  className="flex items-center gap-4 p-4 sm:p-5 bg-white border-b border-gray-100 last:border-b-0"
-                >
-                  <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-                    {category.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 text-base sm:text-lg truncate">
-                      {category.category_name}
-                    </h3>
-                    <p className="mt-0.5 text-sm text-gray-500 line-clamp-2 leading-snug">
-                      {category.category_description?.trim() ||
-                        categoryDescriptionForDisplay(
-                          category as Category & Record<string, unknown>,
-                          category.category_name,
-                        )}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-              {filteredCategories.length === 0 && !isLoading && (
-                <div className="p-8 text-center text-gray-500">
-                  {categories.length === 0
-                    ? "No categories have been added yet."
-                    : "No categories match your search."}
-                </div>
-              )}
-            </motion.div>
-          )}
-        </div>
-      </section>
-
-      <section className="py-16 bg-slate-50">
+      <section className="pb-20 pt-2">
         <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
-            >
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-8 flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-slate-500 sm:max-w-xs">
+                {categories.length} categories · search and sort below
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="relative flex-1 sm:min-w-[240px]">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search categories..."
+                    className="pl-9"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
+                  <SelectTrigger className="w-full sm:w-[160px]">
+                    <SelectValue placeholder="Sort" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Default order</SelectItem>
+                    <SelectItem value="az">A → Z</SelectItem>
+                    <SelectItem value="za">Z → A</SelectItem>
+                    <SelectItem value="tasks">Most tasks</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={fetchCategories}
+                  disabled={isLoading}
+                  className="shrink-0"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  <span className="ml-2">Refresh</span>
+                </Button>
+              </div>
+            </div>
+
+            {isLoading && categories.length === 0 ? (
+              <div className="flex justify-center py-20">
+                <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+              </div>
+            ) : filteredCategories.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-16 text-center">
+                <p className="text-lg font-medium text-slate-700">No categories found</p>
+                <p className="mt-1 text-sm text-slate-500">Try a different search term</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredCategories.map((category, index) => {
+                  const Icon = categoryIcon(category.category_name);
+                  const palette = categoryPalette(category.category_id);
+                  const count = category.job_count ?? 0;
+                  return (
+                    <motion.div
+                      key={category.category_id}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: Math.min(index * 0.03, 0.3) }}
+                    >
+                      <Link
+                        href={`/browse-tasks?category=${encodeURIComponent(category.category_id)}`}
+                        className={`group flex h-full flex-col rounded-2xl border bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${palette.border}`}
+                      >
+                        <div className="flex items-start gap-4">
+                          <div
+                            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ring-4 ${palette.bg} ${palette.ring}`}
+                          >
+                            <Icon className={`h-7 w-7 ${palette.text}`} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h3 className="text-lg font-semibold text-slate-900 group-hover:text-blue-700">
+                              {category.category_name}
+                            </h3>
+                            <p className="mt-1 line-clamp-2 text-sm text-slate-500">
+                              Post a task or browse open jobs in this category.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
+                          <Badge variant="secondary" className="font-normal">
+                            {count} open task{count === 1 ? "" : "s"}
+                          </Badge>
+                          <span className="inline-flex items-center text-sm font-medium text-blue-600">
+                            Browse
+                            <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                          </span>
+                        </div>
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t bg-slate-50 py-16">
+        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
+          <div className="mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-2">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
                 Ready to get started?
               </h2>
-              <p className="text-xl text-gray-500 mb-8">
-                Post a task now and find the perfect person for the job, or
-                become a Tasker and start earning.
+              <p className="mt-4 text-lg text-slate-600">
+                Post a task or offer a service in the category that fits you best.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link href="/post-task">
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg w-full sm:w-auto">
-                    Post a Task
+                  <Button className="w-full bg-blue-600 px-8 py-6 text-lg hover:bg-blue-700 sm:w-auto">
+                    Post a task
                   </Button>
                 </Link>
                 <Link href="/signup">
                   <Button
                     variant="outline"
-                    className="border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-6 text-lg w-full sm:w-auto"
+                    className="w-full border-blue-600 px-8 py-6 text-lg text-blue-600 hover:bg-blue-50 sm:w-auto"
                   >
-                    Become a Tasker
+                    Become a tasker
                   </Button>
                 </Link>
               </div>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
-              className="relative h-[400px]"
-            >
+            </div>
+            <div className="relative h-[320px] md:h-[400px]">
               <Image
-                src="images/placeholder.svg?height=400&width=600"
+                src="/images/placeholder.svg"
                 fill
-                alt="TaskMaster categories"
-                className="object-cover rounded-xl"
+                alt="JobPool categories"
+                className="rounded-2xl object-cover"
               />
-            </motion.div>
+            </div>
           </div>
         </div>
       </section>

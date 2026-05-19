@@ -678,6 +678,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Input } from "../../../components/ui/input";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent } from "../../../components/ui/card";
@@ -745,6 +746,9 @@ interface Category {
 }
 
 export function BrowseTasksPage() {
+  const searchParams = useSearchParams();
+  const categoryFromUrl = searchParams.get("category")?.trim() || "";
+
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState([0, 50000]);
@@ -887,6 +891,15 @@ export function BrowseTasksPage() {
     fetchJobs();
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    if (categoryFromUrl) {
+      setSelectedCategories([categoryFromUrl]);
+      setDraftSelectedCategories([categoryFromUrl]);
+      setShowFilters(true);
+      setMobileFilterExpanded(true);
+    }
+  }, [categoryFromUrl]);
 
   const handleCategoryChange = (categoryId: string) => {
     setSelectedCategories((prev) =>
