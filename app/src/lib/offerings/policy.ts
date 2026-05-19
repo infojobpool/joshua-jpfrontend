@@ -1,3 +1,4 @@
+import { CUSTOM_CATEGORY_VALUE } from "@/lib/taskCategories";
 import type { Offering } from "./types";
 
 /** Free tier: published + paused listings (drafts do not consume a slot). */
@@ -45,15 +46,28 @@ export function scanProhibitedContent(text: string): string | null {
 }
 
 export function validateForPublish(
-  o: Pick<Offering, "title" | "description" | "category" | "locationText" | "startingPriceInr" | "attestationAccepted">
+  o: Pick<
+    Offering,
+    | "title"
+    | "description"
+    | "categoryId"
+    | "customCategoryName"
+    | "categoryName"
+    | "locationText"
+    | "startingPriceInr"
+    | "attestationAccepted"
+  >,
 ): string | null {
   if (!o.title.trim() || o.title.trim().length < 3) return "Title must be at least 3 characters.";
-  if (!o.category.trim()) return "Add a category.";
+  if (!o.categoryId.trim()) return "Select a category.";
+  if (o.categoryId === CUSTOM_CATEGORY_VALUE && !(o.customCategoryName?.trim())) {
+    return "Please type your category name, or select one from the list.";
+  }
   if (!o.description.trim() || o.description.trim().length < 10) return "Description must be at least 10 characters.";
   if (!o.locationText.trim()) return "Add a location or service area (text).";
   if (o.startingPriceInr < 0 || Number.isNaN(o.startingPriceInr)) return "Starting price must be zero or more.";
   if (!o.attestationAccepted) return "Confirm the authenticity checkbox to publish.";
-  const blob = `${o.title}\n${o.description}\n${o.category}`;
+  const blob = `${o.title}\n${o.description}\n${o.categoryName ?? ""}\n${o.customCategoryName ?? ""}\n${o.categoryId}`;
   const hit = scanProhibitedContent(blob);
   if (hit) return "This listing may violate our rules. Remove prohibited content and try again.";
   return null;

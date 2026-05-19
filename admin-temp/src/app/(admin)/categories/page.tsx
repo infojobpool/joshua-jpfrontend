@@ -26,6 +26,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { categoryDescriptionFromApi } from "@/lib/categoryDisplay";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import axiosInstance from "@/lib/axiosInstance";
@@ -34,6 +36,7 @@ import { useCanAdminWrite } from "@/lib/adminAuth";
 interface Category {
   category_id: string;
   category_name: string;
+  category_description?: string | null;
   status: boolean;
   created_at: string;
 }
@@ -41,8 +44,12 @@ interface Category {
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [newCategory, setNewCategory] = useState({ name: "" });
-  const [editCategory, setEditCategory] = useState<null | { category_id: string; category_name: string }>(null);
+  const [newCategory, setNewCategory] = useState({ name: "", description: "" });
+  const [editCategory, setEditCategory] = useState<null | {
+    category_id: string;
+    category_name: string;
+    category_description: string;
+  }>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<null | string>(null);
@@ -63,7 +70,12 @@ export default function CategoriesPage() {
       setIsLoading(true);
       const response = await axiosInstance.get("get-all-categories/");
       if (response.data.status_code === 200) {
-        setCategories(response.data.data);
+        setCategories(
+          response.data.data.map((row: Category & Record<string, unknown>) => ({
+            ...row,
+            category_description: categoryDescriptionFromApi(row),
+          })),
+        );
       } else {
         toast.error(response.data.message || "Failed to fetch categories");
       }
@@ -79,10 +91,13 @@ export default function CategoriesPage() {
     fetchCategories();
   }, []);
 
-  const filteredCategories = categories.filter(
-    (category) =>
-      category.category_name.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const filteredCategories = categories.filter((category) => {
+    const q = searchTerm.toLowerCase();
+    return (
+      category.category_name.toLowerCase().includes(q) ||
+      (category.category_description ?? "").toLowerCase().includes(q)
+    );
+  });
 
   const handleAddCategory = async () => {
     if (!canWrite) {
@@ -98,11 +113,14 @@ export default function CategoriesPage() {
       setIsLoading(true);
       const response = await axiosInstance.post("create-category/", {
         category_name: newCategory.name,
+        ...(newCategory.description.trim()
+          ? { category_description: newCategory.description.trim() }
+          : {}),
       });
   
       if (response.data.status_code === 201) {
         toast.success("Category created successfully");
-        setNewCategory({ name: "" });
+        setNewCategory({ name: "", description: "" });
         setIsAddDialogOpen(false);
         fetchCategories();
       } else {
@@ -130,6 +148,7 @@ export default function CategoriesPage() {
       setIsLoading(true);
       const response = await axiosInstance.put(`update-category/${editCategory.category_id}/`, {
         category_name: editCategory.category_name,
+        category_description: editCategory.category_description.trim() || null,
       });
   
       if (response.data.status_code === 200) {
@@ -207,6 +226,19 @@ export default function CategoriesPage() {
                   disabled={isLoading}
                 />
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="description">Short description (optional)</Label>
+                <Textarea
+                  id="description"
+                  value={newCategory.description}
+                  onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
+                  placeholder="e.g., Plumbing repairs, installs, and maintenance"
+                  rows={2}
+                  maxLength={160}
+                  disabled={isLoading}
+                />
+                <p className="text-xs text-muted-foreground">Shown on the public Categories page (max 160 characters).</p>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isLoading}>
@@ -239,6 +271,7 @@ export default function CategoriesPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
+              <TableHead className="max-w-md">Description</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Created At</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -247,13 +280,13 @@ export default function CategoriesPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : filteredCategories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                   No categories found
                 </TableCell>
               </TableRow>
@@ -261,6 +294,13 @@ export default function CategoriesPage() {
               filteredCategories.map((category) => (
                 <TableRow key={category.category_id}>
                   <TableCell className="font-medium">{category.category_name}</TableCell>
+                  <TableCell className="max-w-md text-sm text-muted-foreground">
+                    {category.category_description?.trim() ? (
+                      <span className="line-clamp-2">{category.category_description}</span>
+                    ) : (
+                      <span className="italic text-muted-foreground/70">—</span>
+                    )}
+                  </TableCell>
                   <TableCell>{category.status ? "Inactive" : "Active"}</TableCell>
                   <TableCell>{formatDate(category.created_at)}</TableCell>
                   <TableCell className="text-right">
@@ -280,6 +320,7 @@ export default function CategoriesPage() {
                               setEditCategory({
                                 category_id: category.category_id,
                                 category_name: category.category_name,
+                                category_description: category.category_description ?? "",
                               });
                               setIsEditDialogOpen(true);
                             }}
@@ -305,6 +346,20 @@ export default function CategoriesPage() {
                                   onChange={(e) =>
                                     setEditCategory({ ...editCategory, category_name: e.target.value })
                                   }
+                                  disabled={isLoading}
+                                />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label htmlFor="edit-description">Short description (optional)</Label>
+                                <Textarea
+                                  id="edit-description"
+                                  value={editCategory.category_description}
+                                  onChange={(e) =>
+                                    setEditCategory({ ...editCategory, category_description: e.target.value })
+                                  }
+                                  placeholder="e.g., Plumbing repairs, installs, and maintenance"
+                                  rows={2}
+                                  maxLength={160}
                                   disabled={isLoading}
                                 />
                               </div>

@@ -953,6 +953,7 @@ import { Input } from "../../../components/ui/input";
 import { Button } from "../../../components/ui/button";
 import { SquareCheckBig, Search, X, ArrowUpDown, RotateCw } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
+import { categoryDescriptionForDisplay, categoryDescriptionFromApi } from "@/lib/categoryDisplay";
 import { toast } from "sonner";
 import {
   Select,
@@ -965,6 +966,7 @@ import {
 interface Category {
   category_id: string;
   category_name: string;
+  category_description?: string | null;
   status: boolean;
   created_at: string;
   icon?: React.ReactNode;
@@ -983,8 +985,11 @@ export function CategoriesPage() {
       setIsLoading(true);
       const response = await axiosInstance.get("get-all-categories/");
       if (response.data.status_code === 200) {
-        const enrichedCategories = response.data.data.map((category: Category) => ({
+        const enrichedCategories = response.data.data.map((category: Category & Record<string, unknown>) => ({
           ...category,
+          category_description:
+            categoryDescriptionFromApi(category) ??
+            (typeof category.category_description === "string" ? category.category_description : null),
           icon: <SquareCheckBig className="h-8 w-8" />,
         }));
         setCategories(enrichedCategories);
@@ -1006,9 +1011,11 @@ export function CategoriesPage() {
     fetchCategories();
   }, []);
 
-  const filteredBySearch = categories.filter((category) =>
-    category.category_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredBySearch = categories.filter((category) => {
+    const q = searchQuery.toLowerCase();
+    const desc = category.category_description?.toLowerCase() ?? "";
+    return category.category_name.toLowerCase().includes(q) || desc.includes(q);
+  });
 
   const filteredCategories = [...filteredBySearch].sort((a, b) => {
     if (sortBy === "a-z") return a.category_name.localeCompare(b.category_name);
@@ -1132,6 +1139,13 @@ export function CategoriesPage() {
                     <h3 className="font-semibold text-gray-900 text-base sm:text-lg truncate">
                       {category.category_name}
                     </h3>
+                    <p className="mt-0.5 text-sm text-gray-500 line-clamp-2 leading-snug">
+                      {category.category_description?.trim() ||
+                        categoryDescriptionForDisplay(
+                          category as Category & Record<string, unknown>,
+                          category.category_name,
+                        )}
+                    </p>
                   </div>
                 </motion.div>
               ))}

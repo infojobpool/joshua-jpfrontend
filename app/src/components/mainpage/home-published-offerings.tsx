@@ -5,6 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { motion } from "framer-motion";
 import { MapPin, Package } from "lucide-react";
 import type { Offering } from "@/lib/offerings/types";
+import { offeringCategoryLabel } from "@/lib/offerings/types";
 import { Button } from "@/components/ui/button";
 import {
   getHomeOfferingsCached,
@@ -67,7 +68,7 @@ function PremiumOfferingCard({
   widthClass: string;
   scrollSnap?: boolean;
 }) {
-  const category = o.category || (o.type === "product" ? "Product" : "Service");
+  const category = offeringCategoryLabel(o) || (o.type === "product" ? "Product" : "Service");
   const { prefix, amount } = formatFromPriceParts(o.startingPriceInr);
   const archivo = { fontFamily: "var(--font-archivo), var(--font-geist-sans), system-ui, sans-serif" } as const;
 

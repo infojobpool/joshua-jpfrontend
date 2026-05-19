@@ -10,8 +10,12 @@ export interface Offering {
   providerDisplayName?: string;
   type: OfferingType;
   title: string;
-  /** Tasker-defined category label (separate from job categories). */
-  category: string;
+  /** Task category id from get-categories-list (e.g. category_12) — sent as `category` on API. */
+  categoryId: string;
+  /** Display label from feed (`category_name`). */
+  categoryName?: string;
+  /** When user picks “type your own” (same as post task). */
+  customCategoryName?: string | null;
   description: string;
   /** Plain text service/product area */
   locationText: string;
@@ -31,3 +35,15 @@ export interface Offering {
 export type OfferingInput = Omit<Offering, "id" | "createdAt" | "updatedAt"> & {
   id?: string;
 };
+
+/** Label for cards and detail (prefer API category_name). */
+export function offeringCategoryLabel(
+  o: Pick<Offering, "categoryName" | "customCategoryName" | "categoryId" | "type">,
+): string {
+  const name = o.categoryName?.trim();
+  if (name) return name;
+  const custom = o.customCategoryName?.trim();
+  if (custom) return custom;
+  if (o.categoryId?.trim()) return "";
+  return o.type === "product" ? "Product" : "Service";
+}

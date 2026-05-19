@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { MapPin, MessageSquare, Package, CalendarCheck } from "lucide-react";
 import type { Offering } from "@/lib/offerings/types";
+import { offeringCategoryLabel } from "@/lib/offerings/types";
 import { listOfferingsApi } from "@/lib/offerings/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -159,7 +160,10 @@ function PublicOfferingCard({
           </span>
         </div>
         <p className="mt-2 font-semibold text-slate-900 line-clamp-2 leading-snug">{o.title || "Offering"}</p>
-        {o.category ? <p className="mt-1 text-xs text-slate-500">{o.category}</p> : null}
+        {(() => {
+          const cat = offeringCategoryLabel(o);
+          return cat ? <p className="mt-1 text-xs text-slate-500">{cat}</p> : null;
+        })()}
         {o.locationText ? (
           <p className="mt-2 flex items-center gap-1 text-xs text-slate-500">
             <MapPin className="h-3.5 w-3.5 shrink-0 text-blue-600/80" />

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Offering } from "@/lib/offerings/types";
+import { offeringCategoryLabel } from "@/lib/offerings/types";
 import { countSlotsUsed, getMaxOfferingSlots } from "@/lib/offerings/policy";
 import { deleteOfferingApi, listOfferingsApi } from "@/lib/offerings/api";
 import { readOfferingSubscriptionMock } from "@/lib/offerings/storage";
@@ -181,7 +182,10 @@ export function ProfileOfferingsPanel({ userId }: Props) {
                     <p className="mt-1.5 font-semibold text-slate-900 text-base leading-snug line-clamp-2">
                       {o.title || "Untitled draft"}
                     </p>
-                    {o.category ? <p className="text-xs text-slate-500 mt-0.5">{o.category}</p> : null}
+                    {(() => {
+                      const cat = offeringCategoryLabel(o);
+                      return cat ? <p className="text-xs text-slate-500 mt-0.5">{cat}</p> : null;
+                    })()}
                     <p className="text-sm text-emerald-700 font-bold mt-1.5 tabular-nums tracking-tight">
                       Starting from ₹{Math.round(o.startingPriceInr).toLocaleString("en-IN")}
                     </p>

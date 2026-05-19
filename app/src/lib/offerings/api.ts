@@ -1,5 +1,6 @@
 import axiosInstance from "@/lib/axiosInstance";
 import { parseMediaUploadResponse } from "@/lib/parseMediaUploadResponse";
+import { looksLikeTaskCategoryId } from "@/lib/taskCategories";
 import type { Offering, OfferingStatus, OfferingType } from "./types";
 
 function pick(obj: Record<string, unknown>, ...keys: string[]): unknown {
@@ -91,13 +92,30 @@ export function mapOfferingFromApi(raw: unknown): Offering | null {
   const providerDisplayName =
     typeof displayNameRaw === "string" && displayNameRaw.trim() ? displayNameRaw.trim() : undefined;
 
+  const rawCategory = String(pick(r, "category") ?? "").trim();
+  const categoryIdFromApi = String(pick(r, "category_id", "categoryId") ?? "").trim();
+  const categoryId =
+    categoryIdFromApi || (looksLikeTaskCategoryId(rawCategory) ? rawCategory : "");
+  const categoryNameRaw = pick(r, "category_name", "categoryName");
+  const categoryName =
+    typeof categoryNameRaw === "string" && categoryNameRaw.trim()
+      ? categoryNameRaw.trim()
+      : !looksLikeTaskCategoryId(rawCategory) && rawCategory
+        ? rawCategory
+        : undefined;
+  const customRaw = pick(r, "custom_category_name", "customCategoryName");
+  const customCategoryName =
+    typeof customRaw === "string" && customRaw.trim() ? customRaw.trim() : null;
+
   return {
     id,
     userId,
     ...(providerDisplayName ? { providerDisplayName } : {}),
     type,
     title: String(pick(r, "title") ?? ""),
-    category: String(pick(r, "category") ?? ""),
+    categoryId,
+    ...(categoryName ? { categoryName } : {}),
+    ...(customCategoryName ? { customCategoryName } : {}),
     description: String(
       pick(
         r,
@@ -143,7 +161,11 @@ export function offeringToApiBody(o: Partial<Offering>): Record<string, unknown>
   const body: Record<string, unknown> = {};
   if (o.type != null) body.type = o.type;
   if (o.title != null) body.title = o.title;
-  if (o.category != null) body.category = o.category;
+  const catId = o.categoryId?.trim();
+  if (catId) body.category = catId;
+  if (o.customCategoryName !== undefined) {
+    body.custom_category_name = o.customCategoryName?.trim() || null;
+  }
   if (o.description != null) body.description = o.description;
   if (o.locationText != null) body.location_text = o.locationText;
   if (o.startingPriceInr != null) body.starting_price_inr = o.startingPriceInr;

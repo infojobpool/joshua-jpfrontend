@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { TaskCategoryPicker } from "@/components/TaskCategoryPicker";
+import {
+  CUSTOM_CATEGORY_VALUE,
+  fetchTaskCategoriesList,
+  resolveCategoryForOfferingApi,
+  type TaskCategory,
+} from "@/lib/taskCategories";
 import type { Offering, OfferingType } from "@/lib/offerings/types";
 import {
   validateForPublish,
@@ -74,7 +81,22 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
   const saveLockRef = useRef(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [imageUrlDraft, setImageUrlDraft] = useState("");
+  const [taskCategories, setTaskCategories] = useState<TaskCategory[]>([]);
   const maxSlots = getMaxOfferingSlots(readOfferingSubscriptionMock());
+
+  useEffect(() => {
+    void fetchTaskCategoriesList().then(setTaskCategories);
+  }, []);
+
+  useEffect(() => {
+    if (!taskCategories.length || o.categoryId.trim()) return;
+    const label = o.categoryName?.trim();
+    if (!label) return;
+    const match = taskCategories.find((c) => c.name.toLowerCase() === label.toLowerCase());
+    if (match) {
+      setO((prev) => ({ ...prev, categoryId: match.id, customCategoryName: null }));
+    }
+  }, [taskCategories, o.categoryId, o.categoryName]);
 
   const update = useCallback((patch: Partial<Offering>) => {
     setO((prev) => ({ ...prev, ...patch, updatedAt: Date.now() }));
@@ -87,6 +109,22 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
   };
 
   const hasInvalidPhotoUrls = (): boolean => (o.photoUrls ?? []).some(isDataUrl);
+
+  const offeringForApi = (source: Offering): Offering => {
+    if (!source.categoryId.trim()) {
+      return source;
+    }
+    const { category, custom_category_name } = resolveCategoryForOfferingApi(
+      source.categoryId,
+      source.customCategoryName ?? "",
+      taskCategories,
+    );
+    return {
+      ...source,
+      categoryId: category,
+      customCategoryName: custom_category_name,
+    };
+  };
 
   const addImageFromUrl = () => {
     const raw = imageUrlDraft.trim();
@@ -118,7 +156,9 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
       const err = validateForPublish({
         title: o.title,
         description: o.description,
-        category: o.category,
+        categoryId: o.categoryId,
+        customCategoryName: o.customCategoryName,
+        categoryName: o.categoryName,
         locationText: o.locationText,
         startingPriceInr: o.startingPriceInr,
         attestationAccepted: o.attestationAccepted,
@@ -137,12 +177,12 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
     saveLockRef.current = true;
     setSaving(true);
     try {
-      const payload: Offering = {
+      const payload: Offering = offeringForApi({
         ...o,
         userId,
         status: o.status === "draft" ? "draft" : o.status,
         updatedAt: Date.now(),
-      };
+      });
       let next: Offering;
       if (isUnsyncedDraftId(o.id)) {
         next = await createOfferingApi(payload);
@@ -166,7 +206,9 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
     const err = validateForPublish({
       title: o.title,
       description: o.description,
-      category: o.category,
+      categoryId: o.categoryId,
+      customCategoryName: o.customCategoryName,
+      categoryName: o.categoryName,
       locationText: o.locationText,
       startingPriceInr: o.startingPriceInr,
       attestationAccepted: o.attestationAccepted,
@@ -184,7 +226,12 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
     saveLockRef.current = true;
     setSaving(true);
     try {
-      const payload: Offering = { ...o, userId, status: "published", updatedAt: Date.now() };
+      const payload: Offering = offeringForApi({
+        ...o,
+        userId,
+        status: "published",
+        updatedAt: Date.now(),
+      });
       let next: Offering;
       if (isUnsyncedDraftId(o.id)) {
         next = await createOfferingApi(payload);
@@ -333,18 +380,20 @@ export function OfferingEditorForm({ userId, initial, isNew }: Props) {
         />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="off-cat">Category (you define)</Label>
-        <Input
-          id="off-cat"
-          value={o.category}
-          onChange={(e) => update({ category: e.target.value })}
-          placeholder="e.g. Cleaning, Tutoring, Handmade goods"
-          className="rounded-xl"
-          disabled={saving}
-          style={PROFILE_FIELD_TEXT}
-        />
-      </div>
+      <TaskCategoryPicker
+        label="Category"
+        categoryId={o.categoryId}
+        customCategoryName={o.customCategoryName ?? ""}
+        onCategoryIdChange={(id) =>
+          update({
+            categoryId: id,
+            customCategoryName: id === CUSTOM_CATEGORY_VALUE ? o.customCategoryName ?? "" : null,
+          })
+        }
+        onCustomCategoryNameChange={(name) => update({ customCategoryName: name })}
+        disabled={saving}
+        selectClassName="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-emerald-600/25 focus:border-emerald-500"
+      />
 
       <div className="space-y-2">
         <Label htmlFor="off-desc">Description</Label>

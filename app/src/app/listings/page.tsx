@@ -6,6 +6,7 @@ import { ChevronLeft, MapPin, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { listOfferingFeedApi } from "@/lib/offerings/api";
 import type { Offering } from "@/lib/offerings/types";
+import { offeringCategoryLabel } from "@/lib/offerings/types";
 import { resolveApiMediaUrl } from "@/lib/profileImage";
 import { TransitionLink } from "@/components/TransitionLink";
 import { toViewTransitionKey } from "@/lib/viewTransition";
@@ -92,7 +93,7 @@ export default function ListingsBrowsePage() {
               {rows.map((o) => {
                 const img = resolveApiMediaUrl(o.photoUrls?.[0]) || PLACEHOLDER;
                 const price = `₹${Math.round(o.startingPriceInr || 0).toLocaleString("en-IN")}`;
-                const cat = o.category || (o.type === "product" ? "Product" : "Service");
+                const cat = offeringCategoryLabel(o) || (o.type === "product" ? "Product" : "Service");
                 return (
                   <li key={o.id} className="min-w-0">
                     <TransitionLink

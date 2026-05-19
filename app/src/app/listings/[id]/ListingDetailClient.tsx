@@ -7,6 +7,7 @@ import { Check, ChevronLeft, ChevronRight, MapPin, Package } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { getPublicOfferingByIdApi } from "@/lib/offerings/api";
 import type { Offering } from "@/lib/offerings/types";
+import { offeringCategoryLabel } from "@/lib/offerings/types";
 import { resolveApiMediaUrl } from "@/lib/profileImage";
 import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
@@ -175,7 +176,7 @@ export default function ListingDetailClient() {
 
   const o = offering;
   const isOwnListing = Boolean(userId && String(userId) === String(o.userId));
-  const category = o.category?.trim() || (o.type === "product" ? "Product" : "Service");
+  const category = offeringCategoryLabel(o) || (o.type === "product" ? "Product" : "Service");
   const photos = (o.photoUrls || []).map((u) => resolveApiMediaUrl(u)).filter(Boolean);
   const gallery = photos.length ? photos : [PLACEHOLDER];
   const safeIndex = Math.min(Math.max(0, activePhoto), gallery.length - 1);
