@@ -38,6 +38,7 @@ import {
   ClipboardList,
   Home,
   LayoutList,
+  Plus,
   Wallet,
   RotateCcw,
   SlidersHorizontal,
@@ -3979,12 +3980,12 @@ export default function Dashboard() {
               Messages
             </Link>
             <Link
-              href="/listings"
+              href="/profile/offerings/new"
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-colors font-medium text-sm"
-              title="Browse service listings"
+              title="Create a service listing"
             >
-              <LayoutList className="h-4 w-4" />
-              Listings
+              <Plus className="h-4 w-4" />
+              Create listing
             </Link>
             {/* Enhanced Notifications with proper clickable functionality */}
             <div className="relative">
