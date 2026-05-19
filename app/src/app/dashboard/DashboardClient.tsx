@@ -4814,12 +4814,12 @@ export default function Dashboard() {
                               }}
                               onMouseEnter={() => {
                                 try {
-                                  prefetchBidsForTask(String(task.id));
+                                  prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
                                 } catch {}
                               }}
                               onTouchStart={() => {
                                 try {
-                                  prefetchBidsForTask(String(task.id));
+                                  prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
                                 } catch {}
                               }}
                             >
@@ -4863,12 +4863,12 @@ export default function Dashboard() {
                             }}
                             onMouseEnter={() => {
                               try {
-                                prefetchBidsForTask(String(task.id));
+                                prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
                               } catch {}
                             }}
                             onTouchStart={() => {
                               try {
-                                prefetchBidsForTask(String(task.id));
+                                prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
                               } catch {}
                             }}
                           >
@@ -5356,6 +5356,16 @@ export default function Dashboard() {
                                   storeTaskForNav(task);
                                 } catch {}
                               }}
+                              onMouseEnter={() => {
+                                try {
+                                  prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
+                                } catch {}
+                              }}
+                              onTouchStart={() => {
+                                try {
+                                  prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
+                                } catch {}
+                              }}
                             >
                               <TaskOfferCtaButton hasOffer={hasUserBid} />
                             </Link>
@@ -5600,12 +5610,12 @@ export default function Dashboard() {
                               }}
                               onMouseEnter={() => {
                                 try {
-                                  prefetchBidsForTask(String(task.id));
+                                  prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
                                 } catch {}
                               }}
                               onTouchStart={() => {
                                 try {
-                                  prefetchBidsForTask(String(task.id));
+                                  prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
                                 } catch {}
                               }}
                             >
@@ -5637,12 +5647,12 @@ export default function Dashboard() {
                               }}
                               onMouseEnter={() => {
                                 try {
-                                  prefetchBidsForTask(String(task.id));
+                                  prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
                                 } catch {}
                               }}
                               onTouchStart={() => {
                                 try {
-                                  prefetchBidsForTask(String(task.id));
+                                  prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
                                 } catch {}
                               }}
                             >
@@ -5805,12 +5815,12 @@ export default function Dashboard() {
                           }}
                           onMouseEnter={() => {
                             try {
-                              prefetchBidsForTask(String(task.id));
+                              prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
                             } catch {}
                           }}
                           onTouchStart={() => {
                             try {
-                              prefetchBidsForTask(String(task.id));
+                              prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
                             } catch {}
                           }}
                         >

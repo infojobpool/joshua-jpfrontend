@@ -73,8 +73,10 @@ export function writePosterProfileCache(
       savedAt: Date.now(),
     };
     const hasExplicitReviewList = partial.recentPosterReviews !== undefined;
+    const hasExplicitReviewCount = partial.taskmasterReviewCount !== undefined;
     const hasUsefulData =
       hasExplicitReviewList ||
+      hasExplicitReviewCount ||
       hasRealProfilePhotoUrl(entry.avatar) ||
       (entry.taskmasterReviewCount != null && entry.taskmasterReviewCount > 0) ||
       (entry.rating != null && entry.rating > 0) ||

@@ -252,6 +252,8 @@ interface TaskInfoProps {
   onTaskUpdated?: () => void;
   /** Rendered directly under the description (e.g. offers section). */
   afterDescription?: ReactNode;
+  /** Poster avatar/ratings still loading from /profile (show skeleton, not “no reviews”). */
+  posterProfileLoading?: boolean;
 }
 
 function isRealTaskImage(img: Image | undefined): boolean {
@@ -289,6 +291,7 @@ export function TaskInfo({
   paymentCheckDone,
   onTaskUpdated,
   afterDescription,
+  posterProfileLoading = false,
 }: TaskInfoProps) {
   const router = useRouter();
   const canPosterEdit = isTaskPoster && task.status === "open";
@@ -322,6 +325,10 @@ export function TaskInfo({
     hasRealProfilePhotoUrl(posterAvatarRaw) &&
     hasRealProfilePhotoUrl(posterPhotoUrl) &&
     !posterImgFailed;
+  const posterStatsPending =
+    posterProfileLoading &&
+    task.poster?.taskmasterReviewCount == null &&
+    !(task.poster?.rating != null && Number(task.poster.rating) > 0);
 
   // Use parent's payment state when available - don't show pending until API check completes (avoids flicker)
   const isPaymentPending =
@@ -680,6 +687,8 @@ export function TaskInfo({
                       className="h-full w-full object-cover"
                       onError={() => setPosterImgFailed(true)}
                     />
+                  ) : posterProfileLoading ? (
+                    <span className="block h-full w-full animate-pulse bg-slate-200 dark:bg-slate-600" aria-hidden />
                   ) : (
                     <span className="text-sm font-semibold text-slate-600">{task.poster?.name?.charAt(0) || "?"}</span>
                   )}
@@ -693,6 +702,8 @@ export function TaskInfo({
                       className="h-full w-full object-cover"
                       onError={() => setPosterImgFailed(true)}
                     />
+                  ) : posterProfileLoading ? (
+                    <span className="block h-full w-full animate-pulse bg-slate-200 dark:bg-slate-600" aria-hidden />
                   ) : (
                     <span className="text-sm font-semibold text-slate-600">{task.poster?.name?.charAt(0) || "?"}</span>
                   )}
@@ -720,6 +731,14 @@ export function TaskInfo({
                     const hasVerified =
                       tc != null && tc > 0 && ta != null && !Number.isNaN(Number(ta));
                     const legacy = task.poster?.rating != null && Number(task.poster.rating) > 0;
+                    if (posterStatsPending) {
+                      return (
+                        <div className="mt-2 space-y-1.5" aria-hidden>
+                          <div className="h-3.5 w-28 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+                          <div className="h-3 w-40 animate-pulse rounded bg-slate-100 dark:bg-slate-700" />
+                        </div>
+                      );
+                    }
                     if (hasVerified) {
                       const n = Number(ta);
                       return (

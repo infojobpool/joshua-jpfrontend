@@ -1,5 +1,11 @@
 import { resolveApiMediaUrl } from "@/lib/profileImage";
 import { jobIdTryList, jobIdsAlign } from "@/lib/jobIdVariants";
+import {
+  applyPosterEnrichment,
+  enrichmentFromCacheEntry,
+  prefetchPosterProfile,
+} from "@/lib/posterProfileEnrichment";
+import { readPosterProfileCache } from "@/lib/posterProfileCache";
 
 /**
  * Store task data before navigation for instant display on task detail page.
@@ -48,18 +54,24 @@ export function storeTaskForNav(task: NavTaskInput) {
               alt: (img as any).alt || `Image ${i + 1}`,
             }))
           : [],
-        poster: {
-          id: String(task.posted_by_id ?? ""),
-          name: task.posted_by || "Unknown",
-          avatar: (() => {
-            const raw = task.posted_by_profile_image;
-            if (!raw || !String(raw).trim()) return "/images/placeholder.svg";
-            return resolveApiMediaUrl(raw);
-          })(),
-          rating: null,
-          taskCount: null,
-          joinedDate: null,
-        },
+        poster: (() => {
+          const posterId = String(task.posted_by_id ?? "").trim();
+          let poster = {
+            id: posterId,
+            name: task.posted_by || "Unknown",
+            avatar: (() => {
+              const raw = task.posted_by_profile_image;
+              if (!raw || !String(raw).trim()) return "/images/placeholder.svg";
+              return resolveApiMediaUrl(raw);
+            })(),
+            rating: null as number | null,
+            taskCount: null as number | null,
+            joinedDate: null as string | null,
+          };
+          const hit = posterId ? readPosterProfileCache(posterId) : null;
+          if (hit) poster = applyPosterEnrichment(poster, enrichmentFromCacheEntry(hit));
+          return poster;
+        })(),
         offers: [],
         assignedTasker: undefined,
       },
@@ -88,9 +100,10 @@ export function getNavTask(taskId: string): { task: any } | null {
   }
 }
 
-/** Prefetch bids for a task (fire-and-forget). Call on hover or when card is visible. */
-export function prefetchBidsForTask(taskId: string) {
+/** Prefetch bids + poster profile for task detail (fire-and-forget). Call on hover or when card is visible. */
+export function prefetchBidsForTask(taskId: string, posterUserId?: string | null) {
   if (typeof window === "undefined" || !taskId) return;
+  if (posterUserId) prefetchPosterProfile(posterUserId);
   const key = BIDS_CACHE_PREFIX + taskId;
   try {
     const existing = sessionStorage.getItem(key);

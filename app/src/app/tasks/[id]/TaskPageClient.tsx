@@ -14,8 +14,14 @@ import { TaskerFeeBreakdown } from "@/components/fee/TaskerFeeBreakdown";
 import { jobIdVariants, jobIdTryList } from "@/lib/jobIdVariants";
 import { resolveApiMediaUrl, resolveProfileImageUrl } from "@/lib/profileImage";
 import { hasRealProfilePhotoUrl } from "@/lib/payoutProfileCompletion";
-import { readPosterProfileCache, writePosterProfileCache } from "@/lib/posterProfileCache";
-import { pickRecentPosterReviews } from "@/lib/posterReviewsFromProfile";
+import { readPosterProfileCache } from "@/lib/posterProfileCache";
+import {
+  applyPosterEnrichment,
+  enrichmentFromCacheEntry,
+  fetchPosterProfileEnrichment,
+  posterNeedsEnrichment,
+  prefetchPosterProfile,
+} from "@/lib/posterProfileEnrichment";
 import {
   extractProfileImageFromApiResponse,
   getProfileImageFromUser,
@@ -24,6 +30,7 @@ import {
 import {
   getBidsFromCache,
   getNavTask,
+  prefetchBidsForTask,
   storeBidsInCache,
   peekPrefetchJobWithBids,
   clearPrefetchJobWithBids,
@@ -31,7 +38,7 @@ import {
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
-import { FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Task, User, Bid, Offer, ApiBidResponse, ApiJobResponse } from "../../types";
 import { Button } from "@/components/ui/button";
@@ -67,6 +74,7 @@ export default function TaskDetailPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [task, setTask] = useState<Task | null>(null);
+  const [posterProfileLoading, setPosterProfileLoading] = useState(false);
   const [bids, setBids] = useState<Bid[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [offerAmount, setOfferAmount] = useState<string>("");
@@ -204,104 +212,63 @@ export default function TaskDetailPage() {
   const [completeReviewAsTaskmaster, setCompleteReviewAsTaskmaster] = useState(false);
   const taskerId = offers.length > 0 ? offers[0].tasker.id : (task?.assignedTasker?.id ? String(task.assignedTasker.id) : null);
 
-  // Hydrate poster avatar + stats from session cache before paint (repeat visits)
+  const enrichPosterOnTask = useCallback((base: Task): Task => {
+    const posterId = String(base.poster?.id ?? "").trim();
+    if (!posterId) return base;
+    const hit = readPosterProfileCache(posterId);
+    if (!hit) return base;
+    return { ...base, poster: applyPosterEnrichment(base.poster, enrichmentFromCacheEntry(hit)) };
+  }, []);
+
+  const runPosterProfileEnrichment = useCallback(
+    (posterId: string, taskIdForMatch: string) => {
+      const pid = String(posterId).trim();
+      if (!pid) return;
+      setPosterProfileLoading(true);
+      void fetchPosterProfileEnrichment(pid).then((patch) => {
+        setPosterProfileLoading(false);
+        if (!patch) return;
+        setTask((prev) => {
+          if (!prev || String(prev.id) !== String(taskIdForMatch) || String(prev.poster?.id) !== pid) return prev;
+          return { ...prev, poster: applyPosterEnrichment(prev.poster, patch) };
+        });
+      });
+    },
+    [],
+  );
+
+  // Hydrate poster from session cache before paint (repeat visits / hover prefetch)
   useLayoutEffect(() => {
     if (!task?.id || !task?.poster?.id) return;
     const posterId = String(task.poster.id);
     const hit = readPosterProfileCache(posterId);
     if (!hit) return;
     setTask((prev) => {
-      if (!prev || String(prev.id) !== String(task.id) || String(prev.poster.id) !== posterId) return prev;
-      const poster = { ...prev.poster };
-      let changed = false;
-      if (!hasRealProfilePhotoUrl(poster.avatar) && hasRealProfilePhotoUrl(hit.avatar)) {
-        poster.avatar = hit.avatar;
-        changed = true;
+      if (!prev || String(prev.id) !== String(task.id) || String(prev.poster?.id) !== posterId) return prev;
+      const nextPoster = applyPosterEnrichment(prev.poster, enrichmentFromCacheEntry(hit));
+      if (
+        prev.poster.avatar === nextPoster.avatar &&
+        prev.poster.taskmasterReviewCount === nextPoster.taskmasterReviewCount &&
+        prev.poster.recentPosterReviews === nextPoster.recentPosterReviews
+      ) {
+        return prev;
       }
-      if (poster.taskmasterReviewCount == null && hit.taskmasterReviewCount != null) {
-        poster.taskmasterReviewCount = hit.taskmasterReviewCount;
-        poster.taskmasterAverageRating = hit.taskmasterAverageRating ?? null;
-        changed = true;
-      }
-      if ((poster.rating == null || poster.rating === 0) && hit.rating != null && hit.rating > 0) {
-        poster.rating = hit.rating;
-        changed = true;
-      }
-      if (!Array.isArray(poster.recentPosterReviews) && Array.isArray(hit.recentPosterReviews)) {
-        poster.recentPosterReviews = hit.recentPosterReviews;
-        changed = true;
-      }
-      if (!changed) return prev;
-      return { ...prev, poster };
+      return { ...prev, poster: nextPoster };
     });
+    if (!posterNeedsEnrichment(applyPosterEnrichment(task.poster, enrichmentFromCacheEntry(hit)))) {
+      setPosterProfileLoading(false);
+    }
   }, [task?.id, task?.poster?.id]);
 
-  // Fetch poster profile for avatar, rating, taskmaster stats, and recent review quotes
+  // Fetch poster profile when still missing avatar / review stats
   useEffect(() => {
-    if (!task?.poster?.id) return;
-    const needsAvatar = !hasRealProfilePhotoUrl(task.poster.avatar);
-    const needsTaskmasterStats = task.poster.taskmasterReviewCount == null;
-    const needsRecentReviews = !Array.isArray(task.poster.recentPosterReviews);
-    if (!needsAvatar && !needsTaskmasterStats && !needsRecentReviews) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await axiosInstance.get(`/profile?user_id=${task.poster.id}`);
-        const d = res.data;
-        const payload = d?.data ?? d;
-        const rawImg =
-          payload?.profile_img ??
-          payload?.profile_image ??
-          payload?.profile_photo ??
-          payload?.photo_url ??
-          payload?.avatar ??
-          (payload as { user?: { profile_img?: string } })?.user?.profile_img ??
-          (payload as { user?: { profile_image?: string } })?.user?.profile_image ??
-          d?.profile_img ??
-          d?.profile_image;
-        const img = resolveProfileImageUrl(typeof rawImg === "string" ? rawImg : undefined);
-        const rating = payload?.rating ?? payload?.average_rating ?? payload?.review_rating ?? d?.rating ?? d?.average_rating ?? d?.review_rating;
-        // Compute taskmaster review stats (reviews received when posting tasks)
-        let taskmasterAverage: number | null = null;
-        let taskmasterCount = 0;
-        const reviews = payload?.reviews ?? d?.reviews ?? [];
-        const recentSnippets = pickRecentPosterReviews(reviews);
-        if (Array.isArray(reviews)) {
-          const taskmasterReviews = reviews.filter(
-            (r: any) => (r?.role ?? "").toLowerCase() === "taskmaster" || (r?.role ?? "").toLowerCase() === "poster"
-          );
-          taskmasterCount = taskmasterReviews.length;
-          if (taskmasterCount > 0) {
-            const sum = taskmasterReviews.reduce((s: number, r: any) => s + (Number(r?.rating) || 0), 0);
-            taskmasterAverage = sum / taskmasterCount;
-          }
-        }
-        if (cancelled) return;
-        setTask((prev) => {
-          if (!prev || prev.id !== task.id) return prev;
-          return {
-            ...prev,
-            poster: {
-              ...prev.poster,
-              avatar: img || prev.poster.avatar,
-              rating: rating ?? prev.poster.rating,
-              taskmasterAverageRating: taskmasterCount > 0 ? taskmasterAverage : (prev.poster.taskmasterAverageRating ?? null),
-              taskmasterReviewCount: taskmasterCount,
-              recentPosterReviews: recentSnippets,
-            },
-          };
-        });
-        writePosterProfileCache(String(task.poster.id), {
-          avatar: img ?? undefined,
-          rating: rating ?? undefined,
-          taskmasterAverageRating: taskmasterCount > 0 ? taskmasterAverage : null,
-          taskmasterReviewCount: taskmasterCount,
-          recentPosterReviews: recentSnippets,
-        });
-      } catch (_) {}
-    })();
-    return () => { cancelled = true; };
-  }, [task?.id, task?.poster?.id, task?.poster?.avatar]);
+    if (!task?.poster?.id || !task?.id) return;
+    if (!posterNeedsEnrichment(task.poster)) {
+      setPosterProfileLoading(false);
+      return;
+    }
+    runPosterProfileEnrichment(String(task.poster.id), String(task.id));
+  }, [task?.id, task?.poster?.id, runPosterProfileEnrichment]);
 
   // Check for existing review in localStorage when task loads
   useEffect(() => {
@@ -627,8 +594,17 @@ export default function TaskDetailPage() {
         // Instant display: use nav cache (from dashboard/browse click) or localStorage
         const navTask = getNavTask(id);
         if (navTask?.task) {
-          setTask(navTask.task);
+          const hydratedNav = enrichPosterOnTask(navTask.task);
+          setTask(hydratedNav);
           setLoading(false);
+          const earlyPosterId = String(hydratedNav.poster?.id ?? "").trim();
+          if (earlyPosterId) {
+            prefetchBidsForTask(id, earlyPosterId);
+            prefetchPosterProfile(earlyPosterId);
+            if (posterNeedsEnrichment(hydratedNav.poster)) {
+              runPosterProfileEnrichment(earlyPosterId, id);
+            }
+          }
           // Fetch full data in background (will replace with fresh task + bids)
         } else {
           setLoading(true);
@@ -1014,8 +990,15 @@ export default function TaskDetailPage() {
               }
             : undefined,
         };
-        setTask(mappedTask);
-        console.log("Mapped Task:", mappedTask);
+        const mappedWithPoster = enrichPosterOnTask(mappedTask);
+        setTask(mappedWithPoster);
+        const posterIdAfterMap = String(mappedWithPoster.poster?.id ?? "").trim();
+        if (posterIdAfterMap && posterNeedsEnrichment(mappedWithPoster.poster)) {
+          runPosterProfileEnrichment(posterIdAfterMap, String(mappedWithPoster.id));
+        } else {
+          setPosterProfileLoading(false);
+        }
+        console.log("Mapped Task:", mappedWithPoster);
 
         // Use bids from get-job-with-bids when available
         if (combinedBids != null) {
@@ -1120,7 +1103,7 @@ export default function TaskDetailPage() {
     };
 
     loadTaskData();
-  }, [id, taskRefreshKey]);
+  }, [id, taskRefreshKey, enrichPosterOnTask, runPosterProfileEnrichment]);
 
   // Load bids/offers – skipped if already loaded from get-job-with-bids; runs for retry or after fallback to get-job
   useEffect(() => {
@@ -2148,6 +2131,7 @@ export default function TaskDetailPage() {
           <div className="lg:col-span-2 space-y-4">
             <TaskInfo
               task={fromBid ? { ...task, status: "requested" } : task}
+              posterProfileLoading={posterProfileLoading}
               openImageGallery={openImageGallery}
               handleMessageUser={handleMessageUser}
               isTaskPoster={isTaskPoster}
