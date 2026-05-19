@@ -37,6 +37,7 @@ import {
   MessageSquare,
   ClipboardList,
   Home,
+  LayoutList,
   Wallet,
   RotateCcw,
   SlidersHorizontal,
@@ -3977,6 +3978,14 @@ export default function Dashboard() {
               <MessageSquare className="h-4 w-4" />
               Messages
             </Link>
+            <Link
+              href="/listings"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-colors font-medium text-sm"
+              title="Browse service listings"
+            >
+              <LayoutList className="h-4 w-4" />
+              Listings
+            </Link>
             {/* Enhanced Notifications with proper clickable functionality */}
             <div className="relative">
               <NotificationBar />
@@ -4051,6 +4060,16 @@ export default function Dashboard() {
                         <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       </div>
                       <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">My Profile</span>
+                    </Link>
+                    <Link
+                      href="/profile?tab=listings"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150"
+                    >
+                      <div className="p-2 rounded-xl bg-violet-50 dark:bg-violet-900/20">
+                        <LayoutList className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                      </div>
+                      <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">My listings</span>
                     </Link>
                     <Link href="/messages" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
                       <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-900/20">
@@ -4153,6 +4172,16 @@ export default function Dashboard() {
                         <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       </div>
                       <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">My Profile</span>
+                    </Link>
+                    <Link
+                      href="/profile?tab=listings"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150"
+                    >
+                      <div className="p-2 rounded-xl bg-violet-50 dark:bg-violet-900/20">
+                        <LayoutList className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                      </div>
+                      <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">My listings</span>
                     </Link>
                     <Link href="/messages" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
                       <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-900/20">
