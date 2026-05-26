@@ -13,6 +13,7 @@ import axiosInstance from "@/lib/axiosInstance";
 import useStore from "@/lib/Zustand";
 import { toViewTransitionKey } from "@/lib/viewTransition";
 import { ShareListingButton } from "@/components/ShareListingButton";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 
 const PLACEHOLDER = "/images/placeholder.svg";
 
@@ -48,6 +49,7 @@ export default function ListingDetailClient() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [activePhoto, setActivePhoto] = useState(0);
+  const [photoLightboxOpen, setPhotoLightboxOpen] = useState(false);
   const [providerName, setProviderName] = useState("");
   const touchStartX = useRef<number | null>(null);
 
@@ -201,6 +203,12 @@ export default function ListingDetailClient() {
       return i >= n - 1 ? 0 : i + 1;
     });
 
+  const openPhotoLightbox = (index: number) => {
+    if (photos.length === 0) return;
+    setActivePhoto(Math.min(Math.max(0, index), photos.length - 1));
+    setPhotoLightboxOpen(true);
+  };
+
   return (
     <div className="min-h-screen min-w-0 w-full max-w-full overflow-x-hidden bg-gradient-to-b from-slate-100/80 via-slate-50 to-white pb-[calc(env(safe-area-inset-bottom)+6.5rem))] md:pb-12">
       <ListingDetailChrome />
@@ -228,19 +236,26 @@ export default function ListingDetailClient() {
                   else goPrev();
                 }}
               >
-                <img
-                  key={hero}
-                  src={hero}
-                  alt={o.title || "Listing photo"}
-                  className="h-full w-full object-cover"
-                  loading="eager"
-                  decoding="async"
-                  style={{
-                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                    // @ts-ignore viewTransitionName is supported in modern Chromium.
-                    viewTransitionName: `listing-image-${vtId}`,
-                  }}
-                />
+                <button
+                  type="button"
+                  onClick={() => openPhotoLightbox(safeIndex)}
+                  className="block h-full w-full cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  aria-label="View full-size photo"
+                >
+                  <img
+                    key={hero}
+                    src={hero}
+                    alt={o.title || "Listing photo"}
+                    className="h-full w-full object-cover"
+                    loading="eager"
+                    decoding="async"
+                    style={{
+                      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                      // @ts-ignore viewTransitionName is supported in modern Chromium.
+                      viewTransitionName: `listing-image-${vtId}`,
+                    }}
+                  />
+                </button>
                 {showCarousel ? (
                   <>
                     <button
@@ -283,7 +298,7 @@ export default function ListingDetailClient() {
                     <button
                       key={`${src}-${i}`}
                       type="button"
-                      onClick={() => setActivePhoto(i)}
+                      onClick={() => openPhotoLightbox(i)}
                       className={`relative shrink-0 overflow-hidden rounded-lg ring-2 ring-offset-2 ring-offset-white transition-shadow ${
                         i === safeIndex ? "ring-slate-900" : "ring-transparent hover:ring-slate-300"
                       }`}
@@ -461,6 +476,14 @@ export default function ListingDetailClient() {
           </aside>
         </div>
       </article>
+      <PhotoLightbox
+        open={photoLightboxOpen}
+        onOpenChange={setPhotoLightboxOpen}
+        images={photos.length ? photos : [PLACEHOLDER]}
+        index={safeIndex}
+        onIndexChange={setActivePhoto}
+        alt={o.title || "Listing photo"}
+      />
     </div>
   );
 }

@@ -539,6 +539,7 @@ export default function Dashboard() {
   const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
   const [completedTasks, setCompletedTasks] = useState<Task[]>([]); // Tasker Completed
   const [completedTasksLoading, setCompletedTasksLoading] = useState<boolean>(false);
+  const [availableTasksLoading, setAvailableTasksLoading] = useState(true);
   const [bids, setBids] = useState<Bid[]>([]);
   const [requestedTasks, setRequestedTasks] = useState<BidRequest[]>([]);
   // Local filter for My Tasks summary chips
@@ -1672,6 +1673,7 @@ export default function Dashboard() {
     });
 
     const fetchAllTasks = async () => {
+      setAvailableTasksLoading(true);
       const hydrateAvailableFromLocalCache = () => {
         try {
           const cachedTasks = localStorage.getItem("availableTasks");
@@ -1858,6 +1860,7 @@ export default function Dashboard() {
         // Quiet down the UI: log the issue but avoid spamming the user with toasts
       } finally {
         fullAvailableFetchSettled = true;
+        setAvailableTasksLoading(false);
         console.log("🔍 fetchAllTasks completed");
         // avoid global loader flicker
       }
@@ -5291,17 +5294,30 @@ export default function Dashboard() {
                   ) : null}
                 </div>
 
-                {sortedAvailableTasks.length === 0 ? (
+                {availableTasksLoading && sortedAvailableTasks.length === 0 ? (
+                  <div className="min-h-[400px] flex flex-col items-center justify-center gap-3 text-slate-500 dark:text-slate-400">
+                    <Loader2 className="h-9 w-9 animate-spin text-[#2563eb]" aria-hidden />
+                    <p className="text-sm font-medium">Loading available tasks…</p>
+                  </div>
+                ) : sortedAvailableTasks.length === 0 ? (
                   <div className="min-h-[400px] flex items-center justify-center">
                 <EmptyState
                   icon={Search}
                   title="No tasks found"
-                  description="No tasks match your current filters. Try adjusting them."
+                  description={
+                    availableFiltersActive
+                      ? "No tasks match your current filters. Try adjusting them."
+                      : "No open tasks right now. Check back soon or post one yourself."
+                  }
                   illustration={<SearchEmptyIllustration />}
-                  action={{
-                    label: "Clear filters",
-                    onClick: clearAvailableFilters,
-                  }}
+                  action={
+                    availableFiltersActive
+                      ? {
+                          label: "Clear filters",
+                          onClick: clearAvailableFilters,
+                        }
+                      : undefined
+                  }
                 />
                   </div>
                 ) : (
