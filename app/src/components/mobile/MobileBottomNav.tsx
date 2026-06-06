@@ -15,6 +15,7 @@ type NavLinkItem = {
   label: string;
   /** When set, active only on /profile with this ?tab= value */
   activeProfileTab?: string;
+  tourId?: string;
 };
 
 export function MobileBottomNav() {
@@ -86,6 +87,7 @@ export function MobileBottomNav() {
   const postTaskButton = (
     <Link
       href="/post-task"
+      data-tour="tour-nav-post"
       className="flex-shrink-0 -mt-5 flex items-center justify-center w-[3.25rem] h-[3.25rem] rounded-full bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] text-white shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 active:scale-95 transition-all duration-200 ease-out touch-manipulation border-[3px] border-white dark:border-slate-900"
       aria-label="Post a task"
     >
@@ -94,15 +96,16 @@ export function MobileBottomNav() {
   );
 
   const navItems: (NavLinkItem | { type: "post" })[] = [
-    { href: "/", icon: Home, label: "Home" },
-    { href: HOME_BROWSE_ALL_TASKS_HREF, icon: Search, label: "Tasks" },
+    { href: "/", icon: Home, label: "Home", tourId: "tour-nav-home" },
+    { href: HOME_BROWSE_ALL_TASKS_HREF, icon: Search, label: "Tasks", tourId: "tour-nav-tasks" },
     { type: "post" },
-    { href: "/messages", icon: MessageSquare, label: "Chat" },
+    { href: "/messages", icon: MessageSquare, label: "Chat", tourId: "tour-nav-chat" },
     {
       href: "/profile?tab=listings",
       icon: LayoutList,
       label: "Listings",
       activeProfileTab: "listings",
+      tourId: "tour-nav-listings",
     },
   ];
 
@@ -123,7 +126,7 @@ export function MobileBottomNav() {
             </div>
           );
           }
-          const { href, icon: Icon, label, activeProfileTab } = item;
+          const { href, icon: Icon, label, activeProfileTab, tourId } = item;
           const pathOnly = href.split("?")[0];
           const isActive = activeProfileTab
             ? pathname.startsWith("/profile") && searchParams.get("tab") === activeProfileTab
@@ -132,6 +135,7 @@ export function MobileBottomNav() {
             <Link
               key={href}
               href={href}
+              data-tour={tourId}
               className={`${navLinkClass} ${
                 isActive
                   ? "text-[#2563eb] dark:text-[#60a5fa] bg-[#eff6ff] dark:bg-slate-700"

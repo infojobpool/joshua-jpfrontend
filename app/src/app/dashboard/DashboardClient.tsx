@@ -3981,6 +3981,8 @@ export default function Dashboard() {
             {/* Premium Profile Dropdown */}
             <div className="relative">
               <button
+                type="button"
+                data-tour="tour-dashboard-profile"
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className="flex items-center gap-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-800 dark:text-slate-200 px-5 py-3 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md dark:hover:bg-slate-700/80"
               >

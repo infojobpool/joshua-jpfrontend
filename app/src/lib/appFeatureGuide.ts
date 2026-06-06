@@ -2,14 +2,15 @@
 
 export const APP_GUIDE_STORAGE_KEY = "jp_app_feature_guide_v1_done";
 
-export type GuideNavKey = "home" | "tasks" | "post" | "chat" | "listings";
+export type TourPlacement = "above" | "below" | "center";
 
 export type AppGuideStep = {
   id: string;
   title: string;
   body: string;
-  /** Which bottom-tab to highlight in the preview (mobile). */
-  highlightNav?: GuideNavKey;
+  /** `data-tour` on a real UI element; first match wins. */
+  tourTargets?: string[];
+  placement?: TourPlacement;
   /** Extra line for desktop layout (header / dashboard actions). */
   desktopTip?: string;
 };
@@ -19,14 +20,16 @@ export const APP_GUIDE_STEPS: AppGuideStep[] = [
     id: "welcome",
     title: "Welcome to JobPool",
     body:
-      "This quick tour shows where to find tasks, post jobs, list your skills, chat, and manage your profile & wallet.",
+      "We'll point to each part of the app so you know where to post tasks, browse jobs, chat, and manage listings.",
+    placement: "center",
   },
   {
     id: "home",
     title: "Home",
     body:
       "Discover featured tasks and service listings. Great for browsing before you dive into your dashboard.",
-    highlightNav: "home",
+    tourTargets: ["tour-nav-home"],
+    placement: "above",
     desktopTip: "Tap the JobPool logo or Home in the menu to return here.",
   },
   {
@@ -34,7 +37,8 @@ export const APP_GUIDE_STEPS: AppGuideStep[] = [
     title: "Tasks (Dashboard)",
     body:
       "Your task hub: browse available jobs, see tasks you posted, track bids, and manage work in progress.",
-    highlightNav: "tasks",
+    tourTargets: ["tour-nav-tasks"],
+    placement: "above",
     desktopTip: "Open Dashboard from the header or go to /dashboard.",
   },
   {
@@ -42,7 +46,8 @@ export const APP_GUIDE_STEPS: AppGuideStep[] = [
     title: "Post a task",
     body:
       "Need something done? Tap the blue + button to post a task with title, budget, location, and photos.",
-    highlightNav: "post",
+    tourTargets: ["tour-nav-post"],
+    placement: "above",
     desktopTip: "Use Post a Task on the dashboard or the + button in the bottom bar.",
   },
   {
@@ -50,7 +55,8 @@ export const APP_GUIDE_STEPS: AppGuideStep[] = [
     title: "Chat",
     body:
       "All conversations with posters and taskers live here — coordinate details, timing, and delivery.",
-    highlightNav: "chat",
+    tourTargets: ["tour-nav-chat"],
+    placement: "above",
     desktopTip: "Messages in the header or Chat in the bottom bar.",
   },
   {
@@ -58,14 +64,17 @@ export const APP_GUIDE_STEPS: AppGuideStep[] = [
     title: "Listings",
     body:
       "Offer services like tutoring, repairs, or design. Add photos, pricing, and categories so customers can find you.",
-    highlightNav: "listings",
+    tourTargets: ["tour-nav-listings"],
+    placement: "above",
     desktopTip: "Listings tab opens My listings on your profile — or Create listing on desktop dashboard.",
   },
   {
     id: "profile",
     title: "Profile & wallet",
     body:
-      "Open your profile menu (top right on dashboard) to edit details, verify PAN & Aadhaar, check Wallet & ₹100 bonus, and manage listings.",
+      "Edit your details, verify PAN & Aadhaar, check Wallet & ₹100 bonus, and manage listings from your profile.",
+    tourTargets: ["tour-dashboard-profile", "tour-nav-listings"],
+    placement: "above",
     desktopTip: "Profile avatar → My Profile, Wallet, and My listings.",
   },
   {
@@ -73,6 +82,7 @@ export const APP_GUIDE_STEPS: AppGuideStep[] = [
     title: "You're all set",
     body:
       "Explore tasks, post when you need help, or publish listings to earn. Replay this tour anytime from your profile menu or Settings.",
+    placement: "center",
   },
 ];
 
