@@ -47,9 +47,9 @@ import Header from "@/components/Header";
 import { TrustBadges } from "@/components/TrustBadges";
 import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint";
 import {
-  getMissingPayoutEligibilityItems,
+  computeMissingFromProfile,
   getPayoutCompletionStats,
-  hasRealProfilePhotoUrl,
+  mapMissingRequirementsToItems,
 } from "@/lib/payoutProfileCompletion";
 import { toast } from "sonner";
 import { ProfileOfferingsPanel } from "@/components/profile/ProfileOfferingsPanel";
@@ -219,20 +219,21 @@ export default function ProfilePage() {
       Number(user?.verification_status ?? 0),
     );
     const verificationLevel = Number.isNaN(v) ? 0 : v;
-    const hasAddress = profileuser.addresses.some((a) => (a.address || "").trim().length > 0);
-    const missing = getMissingPayoutEligibilityItems({
-      verificationLevel,
-      hasProfilePhoto: hasRealProfilePhotoUrl(profileuser.avatar),
-      hasAddressOnProfile: hasAddress,
-      upiVpa: profileuser.upi_vpa?.trim() || undefined,
-    });
+    const missing = mapMissingRequirementsToItems(
+      computeMissingFromProfile({
+        verificationLevel,
+        fullName: profileuser.name,
+        phoneNumber: profileuser.phone,
+        upiVpa: profileuser.upi_vpa?.trim() || undefined,
+      })
+    );
     return getPayoutCompletionStats(missing.length);
   }, [
     storeUser?.verification_status,
     user?.verification_status,
-    profileuser.avatar,
+    profileuser.name,
+    profileuser.phone,
     profileuser.upi_vpa,
-    profileuser.addresses,
   ]);
   const fetchProfileRef = useRef(false);
   const fetchSuccessRef = useRef(false);

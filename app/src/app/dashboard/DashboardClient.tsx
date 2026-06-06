@@ -72,9 +72,7 @@ import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { TrustBadges } from "@/components/TrustBadges";
 import { analytics } from "@/lib/analytics";
 import {
-  getMissingPayoutEligibilityItems,
-  getPayoutCompletionStats,
-  hasRealProfilePhotoUrl,
+  getPayoutEligibilityStats,
 } from "@/lib/payoutProfileCompletion";
 import { PayoutProfileProgress } from "@/components/PayoutProfileProgress";
 import {
@@ -933,36 +931,8 @@ export default function Dashboard() {
         ]);
         const payload = profRes.data?.data ?? profRes.data;
         const wd = walRes.data?.data ?? walRes.data;
-        const raw = payload?.verification_status ?? payload?.verificationStatus;
-        let v = Number(user?.verification_status ?? 0);
-        if (raw !== null && raw !== undefined) {
-          const n = typeof raw === "string" ? parseInt(raw, 10) : Number(raw);
-          if (!isNaN(n)) v = Math.max(v, n);
-        }
-        const img = payload?.profile_img ?? payload?.profile_image ?? "";
-        const hasPhoto = hasRealProfilePhotoUrl(img || (user as { profile_image?: string })?.profile_image);
-        const addresses = Array.isArray(payload?.addresses) ? payload.addresses : [];
-        const hasAddressFromList = addresses.some((a: unknown) => {
-          if (!a) return false;
-          if (typeof a === "string") return a.trim().length > 0;
-          if (typeof a === "object" && a !== null) {
-            const addr = (a as { address?: unknown }).address;
-            return typeof addr === "string" && addr.trim().length > 0;
-          }
-          return false;
-        });
-        const fallbackAddress = payload?.address;
-        const hasFallbackAddress =
-          typeof fallbackAddress === "string" && fallbackAddress.trim().length > 0;
-        const hasAddress = hasAddressFromList || hasFallbackAddress;
-        const upiVpa = String(wd?.upi_vpa ?? wd?.upi ?? "").trim();
-        const missing = getMissingPayoutEligibilityItems({
-          verificationLevel: v,
-          hasProfilePhoto: hasPhoto,
-          hasAddressOnProfile: hasAddress,
-          upiVpa: upiVpa || undefined,
-        });
-        setPayoutSetupStats(getPayoutCompletionStats(missing.length));
+        const stats = getPayoutEligibilityStats(wd, payload);
+        setPayoutSetupStats(stats);
       } catch {
         setPayoutSetupStats(null);
       }
@@ -4017,7 +3987,7 @@ export default function Dashboard() {
                 </div>
                 <div className="flex items-center gap-1.5 min-w-0">
                 <span className="text-lg truncate max-w-[140px]">{safeUser.name || "User"}</span>
-                  {user?.verification_status >= 3 && <VerifiedBadge size="md" />}
+                  {user?.verification_status >= 2 && <VerifiedBadge size="md" />}
                 </div>
                 <ChevronDown className={`h-5 w-5 transition-transform duration-300 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -4042,7 +4012,7 @@ export default function Dashboard() {
                           <p className="font-semibold text-slate-900 dark:text-slate-100 text-base truncate" title={safeUser.name || "User"}>
                             {safeUser.name || "User"}
                           </p>
-                          {user?.verification_status >= 3 && <VerifiedBadge size="md" />}
+                          {user?.verification_status >= 2 && <VerifiedBadge size="md" />}
                         </div>
                         {safeUser.email && (
                           <p className="text-sm text-slate-500 dark:text-slate-400 truncate mt-0.5" title={safeUser.email}>
@@ -4156,7 +4126,7 @@ export default function Dashboard() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-nowrap">
                           <p className="font-semibold text-slate-900 dark:text-slate-100 text-base truncate" title={safeUser.name || "User"}>{safeUser.name || "User"}</p>
-                          {user?.verification_status >= 3 && <VerifiedBadge size="sm" />}
+                          {user?.verification_status >= 2 && <VerifiedBadge size="sm" />}
                         </div>
                         {safeUser.email && (
                           <p className="text-sm text-slate-500 dark:text-slate-400 truncate mt-0.5" title={safeUser.email}>{safeUser.email}</p>
@@ -4248,7 +4218,7 @@ export default function Dashboard() {
         </div>
 
         {/* Trust badges for unverified users */}
-        {user && (user.verification_status == null || Number(user.verification_status) < 3) && (
+        {user && (user.verification_status == null || Number(user.verification_status) < 2) && (
           <div className="mb-4">
             <TrustBadges
               heading="Your details are safe"

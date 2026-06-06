@@ -281,9 +281,7 @@ import useStore from "../../lib/Zustand"
 import { CheckCircle } from "lucide-react"
 import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint"
 import {
-  getMissingPayoutEligibilityItems,
-  getPayoutCompletionStats,
-  hasRealProfilePhotoUrl,
+  getPayoutEligibilityStats,
   type PayoutEligibilityItem,
 } from "@/lib/payoutProfileCompletion"
 
@@ -317,37 +315,8 @@ export default function VerificationFlow() {
       const data = response.data;
       const payload = data?.data ?? data;
       const wd = walletRes.data?.data ?? walletRes.data;
-      const rawV = payload?.verification_status ?? payload?.verificationStatus;
-      let v = 0;
-      if (rawV !== null && rawV !== undefined) {
-        const n = typeof rawV === "string" ? parseInt(rawV, 10) : Number(rawV);
-        if (!isNaN(n)) v = n;
-      }
-      const img = payload?.profile_img ?? payload?.profile_image ?? "";
-      const hasPhoto = hasRealProfilePhotoUrl(img);
-      const addresses = Array.isArray(payload?.addresses) ? payload.addresses : [];
-      const hasAddressFromList = addresses.some((a: unknown) => {
-        if (!a) return false;
-        if (typeof a === "string") return a.trim().length > 0;
-        if (typeof a === "object" && a !== null) {
-          const addr = (a as { address?: unknown }).address;
-          return typeof addr === "string" && addr.trim().length > 0;
-        }
-        return false;
-      });
-      const fallbackAddress = payload?.address;
-      const hasFallbackAddress =
-        typeof fallbackAddress === "string" && fallbackAddress.trim().length > 0;
-      const hasAddress = hasAddressFromList || hasFallbackAddress;
-      const upiVpa = String(wd?.upi_vpa ?? wd?.upi ?? "").trim();
-      const missing = getMissingPayoutEligibilityItems({
-        verificationLevel: v,
-        hasProfilePhoto: hasPhoto,
-        hasAddressOnProfile: hasAddress,
-        upiVpa: upiVpa || undefined,
-      });
-      const stats = getPayoutCompletionStats(missing.length);
-      setPayoutPreview({ ...stats, missing });
+      const stats = getPayoutEligibilityStats(wd, payload);
+      setPayoutPreview(stats);
     } catch {
       setPayoutPreview(null);
     }

@@ -427,8 +427,8 @@ export default function VerificationComplete({
                   PAN and Aadhaar verification on Jobpool is complete.
                 </p>
                 <p className="mt-1 text-gray-600">
-                  Withdrawals and your ₹100 welcome bonus still depend on the payout checklist below (for example bank
-                  details and profile info). Tap each item to finish.
+                  Withdrawals and your ₹100 welcome bonus still depend on the checklist below — add your full name,
+                  mobile on profile, and UPI on Wallet. Tap each item to finish.
                 </p>
               </>
             )}

@@ -78,9 +78,12 @@ export default function VerificationIntro({ onStart }: VerificationIntroProps) {
         <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-gray-600">
           <li>PAN Card</li>
           <li>Aadhar Card or access to your registered mobile for OTP</li>
-          <li>Bank account details</li>
-          <li>Optional: Cancelled cheque for bank verification</li>
+          <li>Full name and mobile number on your profile</li>
+          <li>UPI ID on Wallet (for ₹100 bonus and withdrawals)</li>
         </ul>
+        <p className="mt-3 text-xs text-gray-500">
+          Complete PAN and Aadhaar, add your name, mobile, and UPI to get ₹100 in your wallet when eligible.
+        </p>
       </div>
 
       <div className="flex justify-center">

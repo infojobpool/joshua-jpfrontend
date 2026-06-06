@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,11 +37,7 @@ import axiosInstance from "@/lib/axiosInstance";
 import Header from "@/components/Header";
 import { toast } from "sonner";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
-import {
-  getMissingPayoutEligibilityItems,
-  getPayoutCompletionStats,
-  hasRealProfilePhotoUrl,
-} from "@/lib/payoutProfileCompletion";
+import { getPayoutEligibilityStats } from "@/lib/payoutProfileCompletion";
 import { PayoutProfileProgress } from "@/components/PayoutProfileProgress";
 
 interface Transaction {
@@ -122,6 +118,8 @@ interface WalletData {
   currency: string;
   transactions: Transaction[];
   upi_vpa?: string;
+  is_withdraw_eligible?: boolean;
+  missing_requirements?: string[];
 }
 
 export default function WalletPage() {
@@ -141,77 +139,27 @@ export default function WalletPage() {
   const [withdrawDialogUpi, setWithdrawDialogUpi] = useState("");
   const [upiEditing, setUpiEditing] = useState(false);
   const [upiInline, setUpiInline] = useState("");
-  const [eligibilityVs, setEligibilityVs] = useState<number | null>(null);
-  const [profileImgHint, setProfileImgHint] = useState("");
-  const [hasAddressOnProfile, setHasAddressOnProfile] = useState<boolean>(true);
   const [withdrawSuccessOpen, setWithdrawSuccessOpen] = useState(false);
   const [withdrawSuccessAmount, setWithdrawSuccessAmount] = useState(0);
 
-  const fetchProfileEligibility = useCallback(async () => {
-    if (!userId) return;
-    try {
-      const res = await axiosInstance.get(`/profile?user_id=${userId}`);
-      const payload = res.data?.data ?? res.data;
-      const raw = payload?.verification_status ?? payload?.verificationStatus;
-      if (raw !== null && raw !== undefined) {
-        const num = typeof raw === "string" ? parseInt(raw, 10) : Number(raw);
-        if (!isNaN(num)) {
-          setEligibilityVs(num);
-          try {
-            const local = localStorage.getItem("user");
-            if (local) {
-              const parsed = JSON.parse(local);
-              parsed.verification_status = num;
-              localStorage.setItem("user", JSON.stringify(parsed));
-              useStore.setState({ user: { ...parsed, verification_status: num } });
-            }
-          } catch {
-            /* ignore */
-          }
-        }
-      }
-      const img = payload?.profile_img ?? payload?.profile_image ?? "";
-      setProfileImgHint(typeof img === "string" ? img : "");
-
-      const addresses = Array.isArray(payload?.addresses) ? payload.addresses : [];
-      const hasAddressFromList = addresses.some((a) => {
-        if (!a) return false;
-        if (typeof a === "string") return a.trim().length > 0;
-        if (typeof a === "object") {
-          const addr = (a as { address?: unknown }).address;
-          return typeof addr === "string" && addr.trim().length > 0;
-        }
-        return false;
-      });
-      const fallbackAddress = payload?.address;
-      const hasFallbackAddress =
-        typeof fallbackAddress === "string" && fallbackAddress.trim().length > 0;
-      setHasAddressOnProfile(hasAddressFromList || hasFallbackAddress);
-    } catch {
-      /* optional */
+  const payoutEligibility = useMemo(() => {
+    if (!wallet) {
+      return { missing: [], isEligible: false, percent: 0, completed: 0, total: 6, remaining: 6 };
     }
-  }, [userId]);
+    return getPayoutEligibilityStats(wallet);
+  }, [wallet]);
 
-  const verificationLevel = Math.max(
-    Number(user?.verification_status ?? 0),
-    eligibilityVs ?? 0
-  );
-  const hasProfilePhoto = hasRealProfilePhotoUrl(profileImgHint || user?.profile_image);
+  const missingEligibility = payoutEligibility.missing;
+  const isWithdrawEligible =
+    wallet?.is_withdraw_eligible === true || payoutEligibility.isEligible;
+  const payoutStats = payoutEligibility;
 
-  const missingEligibility = useMemo(() => {
-    if (!wallet) return [];
-    return getMissingPayoutEligibilityItems({
-      verificationLevel,
-      hasProfilePhoto,
-      hasAddressOnProfile,
-      upiVpa: wallet.upi_vpa,
-    });
-  }, [wallet, verificationLevel, hasProfilePhoto, hasAddressOnProfile]);
-  const isWithdrawEligible = missingEligibility.length === 0;
-  const payoutStats = useMemo(
-    () => getPayoutCompletionStats(missingEligibility.length),
-    [missingEligibility.length]
-  );
+  const signupBonusCredited = useMemo(() => {
+    if (!wallet || wallet.balance < 100) return false;
+    return wallet.transactions.some((tx) =>
+      String(tx.reference ?? "").toLowerCase().includes("signup_bonus")
+    );
+  }, [wallet]);
 
   const maskUpi = (upi: string) => {
     if (!upi || upi.length < 5) return upi;
@@ -242,6 +190,10 @@ export default function WalletPage() {
         currency: data.currency ?? "INR",
         transactions: Array.isArray(data.transactions) ? data.transactions : [],
         upi_vpa: upiVpa,
+        is_withdraw_eligible: data.is_withdraw_eligible,
+        missing_requirements: Array.isArray(data.missing_requirements)
+          ? data.missing_requirements
+          : undefined,
       });
     } catch (err: any) {
       console.error("Wallet fetch error:", err);
@@ -261,8 +213,7 @@ export default function WalletPage() {
   useEffect(() => {
     if (!authReady || !userId) return;
     fetchWallet();
-    void fetchProfileEligibility();
-  }, [authReady, userId, fetchProfileEligibility]);
+  }, [authReady, userId]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -352,7 +303,6 @@ export default function WalletPage() {
       toast.success("Withdrawal submitted — amount debited from your wallet.");
       setWithdrawSuccessOpen(true);
       void fetchWallet();
-      void fetchProfileEligibility();
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -439,6 +389,17 @@ export default function WalletPage() {
               </CardHeader>
             </Card>
 
+            {signupBonusCredited && (
+              <Card className="border border-emerald-200/80 shadow-md rounded-2xl bg-gradient-to-br from-emerald-50/95 to-teal-50/40 ring-1 ring-emerald-100">
+                <CardContent className="py-4">
+                  <p className="text-sm font-semibold text-emerald-900">₹100 welcome bonus credited</p>
+                  <p className="text-xs text-emerald-800/90 mt-1">
+                    Your wallet balance includes the signup bonus. Withdraw when eligible using your UPI ID.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             <PayoutProfileProgress
               variant="wallet"
               percent={payoutStats.percent}
@@ -455,8 +416,8 @@ export default function WalletPage() {
                     Next steps
                   </CardTitle>
                   <CardDescription className="text-amber-900/80">
-                    Bank, profile, and UPI as needed for withdrawals and your welcome bonus where eligible. Tap an item
-                    to continue.
+                    Complete PAN and Aadhaar, add your name, mobile on profile, and UPI for withdrawals and your ₹100
+                    welcome bonus. Tap an item to continue.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-0">

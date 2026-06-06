@@ -21,7 +21,7 @@ export function RemainingPayoutStepsList({
       <div className="border-b border-amber-200/60 px-4 py-3">
         <p className="text-sm font-semibold text-amber-950">Still to do</p>
         <p className="text-xs text-amber-900/80 mt-1 leading-relaxed">
-          Finish payout setup: bank details, profile items, and UPI where needed. This unlocks withdrawals and your ₹100
+          Complete PAN and Aadhaar, add your name, mobile on profile, and UPI to unlock withdrawals and your ₹100
           welcome bonus where eligible. Tap an item to continue.
         </p>
       </div>

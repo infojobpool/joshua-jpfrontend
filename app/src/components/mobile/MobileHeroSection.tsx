@@ -173,7 +173,7 @@ export function MobileHeroSection() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
                             <p className="truncate text-sm font-semibold text-slate-900">{displayName}</p>
-                            {user.verification_status != null && Number(user.verification_status) >= 3 ? (
+                            {user.verification_status != null && Number(user.verification_status) >= 2 ? (
                               <VerifiedBadge size="sm" />
                             ) : null}
                           </div>

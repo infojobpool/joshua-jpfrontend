@@ -31,9 +31,7 @@ import LocationDetector from "../../components/LocationDetector";
 import Header from "@/components/Header";
 import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint";
 import {
-  getMissingPayoutEligibilityItems,
-  getPayoutCompletionStats,
-  hasRealProfilePhotoUrl,
+  getPayoutEligibilityStats,
 } from "@/lib/payoutProfileCompletion";
 
 interface User {
@@ -195,42 +193,10 @@ export default function PostTaskPage() {
         const payload = data?.data ?? data;
         const wd = walletRes.data?.data ?? walletRes.data;
 
-        // ₹100 bonus progress — same rules as Wallet (avoid static 70% placeholder)
+        // ₹100 bonus progress — same rules as Wallet (API missing_requirements when available)
         try {
-          const rawV =
-            payload?.verification_status ??
-            payload?.verificationStatus ??
-            data?.verification_status ??
-            data?.verificationStatus ??
-            null;
-          let vLevel = 0;
-          if (rawV !== null && rawV !== undefined) {
-            const n = typeof rawV === "string" ? parseInt(rawV, 10) : Number(rawV);
-            if (!isNaN(n)) vLevel = n;
-          }
-          const img = payload?.profile_img ?? payload?.profile_image ?? "";
-          const hasPhoto = hasRealProfilePhotoUrl(img);
-          const addresses = Array.isArray(payload?.addresses) ? payload.addresses : [];
-          const hasAddressFromList = addresses.some((a: unknown) => {
-            if (!a) return false;
-            if (typeof a === "string") return a.trim().length > 0;
-            if (typeof a === "object" && a !== null) {
-              const addr = (a as { address?: unknown }).address;
-              return typeof addr === "string" && addr.trim().length > 0;
-            }
-            return false;
-          });
-          const fallbackAddress = payload?.address;
-          const hasFallbackAddress =
-            typeof fallbackAddress === "string" && fallbackAddress.trim().length > 0;
-          const upiVpa = String(wd?.upi_vpa ?? wd?.upi ?? "").trim();
-          const missing = getMissingPayoutEligibilityItems({
-            verificationLevel: vLevel,
-            hasProfilePhoto: hasPhoto,
-            hasAddressOnProfile: hasAddressFromList || hasFallbackAddress,
-            upiVpa: upiVpa || undefined,
-          });
-          setPayoutBonusPreview(getPayoutCompletionStats(missing.length));
+          const stats = getPayoutEligibilityStats(wd, payload);
+          setPayoutBonusPreview(stats);
         } catch {
           setPayoutBonusPreview(null);
         }

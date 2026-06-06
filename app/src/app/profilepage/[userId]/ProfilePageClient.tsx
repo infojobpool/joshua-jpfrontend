@@ -39,7 +39,7 @@ interface UserProfile {
   phone: string;
   addresses: Address[];
   avatar: string;
-  /** 0–3 per API: 3 = PAN + Aadhaar + bank complete */
+  /** 0–3 per API: 2 = PAN + Aadhaar; 3 = optional bank */
   verification_status: number;
 }
 
@@ -81,7 +81,7 @@ export default function ProfilePageClient() {
   const viewerIsOwner =
     Boolean(loggedInUserId) && String(loggedInUserId) === profileIdStr;
 
-  const isFullyVerified = profileUser.verification_status >= 3;
+  const isFullyVerified = profileUser.verification_status >= 2;
 
   const avatarSrc = profileUser.avatar
     ? resolveProfileImageUrl(profileUser.avatar) || profileUser.avatar
@@ -202,7 +202,7 @@ export default function ProfilePageClient() {
                 {isFullyVerified ? (
                   <span
                     className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-800 shadow-sm"
-                    title="PAN, Aadhaar, and bank verified on JobPool"
+                    title="PAN and Aadhaar verified on JobPool"
                   >
                     <BadgeCheck className="h-3.5 w-3.5 text-blue-600 shrink-0" aria-hidden />
                     Verified
