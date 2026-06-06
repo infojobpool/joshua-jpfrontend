@@ -40,6 +40,7 @@ import {
   LayoutList,
   Plus,
   Wallet,
+  Sparkles,
   RotateCcw,
   SlidersHorizontal,
   CalendarDays,
@@ -75,6 +76,8 @@ import {
   getPayoutEligibilityStats,
 } from "@/lib/payoutProfileCompletion";
 import { PayoutProfileProgress } from "@/components/PayoutProfileProgress";
+import { hasCompletedAppGuide } from "@/lib/appFeatureGuide";
+import { useAppFeatureGuideStore } from "@/lib/appFeatureGuideStore";
 import {
   Sheet,
   SheetContent,
@@ -527,6 +530,16 @@ export default function Dashboard() {
   useEffect(() => {
     if (authHydrated && isAuthenticated) analytics.viewDashboard();
   }, [authHydrated, isAuthenticated]);
+
+  // First-time app feature tour (replay from profile menu or Settings)
+  useEffect(() => {
+    if (!authHydrated || !isAuthenticated || !effectiveUserId) return;
+    if (hasCompletedAppGuide()) return;
+    const t = window.setTimeout(() => {
+      useAppFeatureGuideStore.getState().openGuide();
+    }, 1400);
+    return () => window.clearTimeout(t);
+  }, [authHydrated, isAuthenticated, effectiveUserId]);
   const mobile = mounted && isMobile;
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
   const [loading, setLoading] = useState(true);
@@ -4057,6 +4070,19 @@ export default function Dashboard() {
                       </div>
                       <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Wallet</span>
                     </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileDropdownOpen(false);
+                        useAppFeatureGuideStore.getState().openGuide();
+                      }}
+                      className="flex w-[calc(100%-1rem)] items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150 text-left"
+                    >
+                      <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/20">
+                        <Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                      </div>
+                      <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">App tour</span>
+                    </button>
                     <Link href="/supportpage" className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
                       <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800">
                         <HelpCircle className="h-4 w-4 text-slate-600 dark:text-slate-400" />

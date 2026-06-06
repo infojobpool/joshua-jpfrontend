@@ -19,8 +19,10 @@ import {
   ArrowLeft,
   HardDrive,
   Server,
-  UserX
+  UserX,
+  Sparkles,
 } from "lucide-react";
+import { useAppFeatureGuideStore } from "@/lib/appFeatureGuideStore";
 import { toast } from "sonner";
 import axiosInstance from "@/lib/axiosInstance";
 import {
@@ -291,6 +293,27 @@ export default function SettingsPage() {
             <p className="text-gray-600 mt-2">Manage cache, storage, and performance</p>
           </div>
         </div>
+
+        <Card className="mb-6 border-blue-100 bg-gradient-to-br from-blue-50/80 to-white dark:from-slate-800/80 dark:to-slate-900 dark:border-slate-700">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Sparkles className="h-5 w-5 text-blue-600" />
+              App tour
+            </CardTitle>
+            <CardDescription>
+              Learn where to post tasks, browse jobs, manage listings, chat, and use your profile & wallet.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              type="button"
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => useAppFeatureGuideStore.getState().openGuide()}
+            >
+              Start guided tour
+            </Button>
+          </CardContent>
+        </Card>
 
         {process.env.NODE_ENV === "development" && (
           <Card className="mb-6 border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800">
