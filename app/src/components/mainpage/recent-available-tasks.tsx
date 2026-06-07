@@ -12,6 +12,7 @@ import {
   selectOpenRecentTaskCards,
   type HomeTaskCard,
 } from "@/lib/homeJobsCache";
+import { buildCategoryNameMap, getTaskCategoriesCached } from "@/lib/taskCategories";
 import {
   prefetchBidsForTask,
   prefetchJobWithBidsForTask,
@@ -164,8 +165,12 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     let cancelled = false;
     (async () => {
       try {
-        const jobs = await getAllJobsForHomeCached();
-        const rows = selectOpenRecentTaskCards(jobs, DESKTOP_MAX);
+        const [jobs, categories] = await Promise.all([
+          getAllJobsForHomeCached(),
+          getTaskCategoriesCached().catch(() => []),
+        ]);
+        const nameById = buildCategoryNameMap(categories);
+        const rows = selectOpenRecentTaskCards(jobs, DESKTOP_MAX, nameById);
         if (!cancelled) {
           setFetchFailed(false);
           setTasks((prev) => {

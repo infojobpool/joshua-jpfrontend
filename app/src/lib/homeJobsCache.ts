@@ -1,6 +1,10 @@
 import axiosInstance from "@/lib/axiosInstance";
 import { isJobCompletedFlag, isJobDeletedOrCancelled } from "@/lib/jobStatusNormalize";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
+import {
+  getCachedCategoryNameMapSync,
+  resolveJobCategoryDisplayName,
+} from "@/lib/taskCategories";
 
 /** Fresh window: serve from memory without hitting the network. */
 const TTL_MS = 120_000;
@@ -118,7 +122,7 @@ function coerceRecentRowToRawJob(row: RawJob): RawJob {
     job_description: String(row.job_description ?? row.description ?? ""),
     job_budget: Number(row.job_budget ?? row.budget ?? 0) || 0,
     job_location: String(row.job_location ?? row.location ?? row.location_text ?? ""),
-    job_category_name: String(row.job_category_name ?? row.job_category ?? row.category ?? "General"),
+    job_category_name: resolveJobCategoryDisplayName(row as Record<string, unknown>),
     status: row.status ?? false,
   };
 }
@@ -235,7 +239,11 @@ export function isOpenListingJob(job: RawJob): boolean {
 /**
  * Open jobs only, newest first, capped. Empty ids dropped.
  */
-export function selectOpenRecentTaskCards(jobs: RawJob[], limit: number): HomeTaskCard[] {
+export function selectOpenRecentTaskCards(
+  jobs: RawJob[],
+  limit: number,
+  nameById?: Record<string, string>
+): HomeTaskCard[] {
   return jobs
     .filter(isOpenListingJob)
     .sort((a, b) => parsePostedAtMs(b) - parsePostedAtMs(a))
@@ -246,9 +254,7 @@ export function selectOpenRecentTaskCards(jobs: RawJob[], limit: number): HomeTa
       description: String(job.job_description ?? ""),
       budget: Number(job.job_budget) || 0,
       location: String(job.job_location ?? ""),
-      category_name: String(
-        (job.job_category_name as string) || (job.job_category as string) || "General"
-      ),
+      category_name: resolveJobCategoryDisplayName(job as Record<string, unknown>, nameById),
       imageUrl: resolveHomeCardImageUrl(firstJobImageUrl(job)),
       posted_by: String(
         (job.posted_by as string) ||
@@ -288,7 +294,7 @@ export function readPersistedHomeSnapshot(limit: number): {
       return { tasks: [], fromCache: false };
     }
     if (Date.now() - p.fetchedAt > DISK_MAX_AGE_MS) return { tasks: [], fromCache: false };
-    const cards = selectOpenRecentTaskCards(p.jobs, limit);
+    const cards = selectOpenRecentTaskCards(p.jobs, limit, getCachedCategoryNameMapSync());
     return { tasks: cards, fromCache: true };
   } catch {
     return { tasks: [], fromCache: false };

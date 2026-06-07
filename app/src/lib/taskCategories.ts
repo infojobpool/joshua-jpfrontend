@@ -61,7 +61,79 @@ export async function fetchTaskCategoriesList(): Promise<TaskCategory[]> {
 export function looksLikeTaskCategoryId(value: string | undefined | null): boolean {
   const t = String(value ?? "").trim();
   if (!t) return false;
-  return /^category_/i.test(t) || /^\d+$/.test(t);
+  if (/^category_/i.test(t)) return true;
+  if (/^\d+$/.test(t)) return true;
+  if (t === CUSTOM_CATEGORY_VALUE) return true;
+  return false;
+}
+
+let categoriesCache: TaskCategory[] | null = null;
+let categoriesInflight: Promise<TaskCategory[]> | null = null;
+
+/** In-memory cache for resolving category ids → labels on task cards. */
+export async function getTaskCategoriesCached(): Promise<TaskCategory[]> {
+  if (categoriesCache?.length) return categoriesCache;
+  if (categoriesInflight) return categoriesInflight;
+  categoriesInflight = fetchTaskCategoriesList()
+    .then((list) => {
+      categoriesCache = list;
+      return list;
+    })
+    .finally(() => {
+      categoriesInflight = null;
+    });
+  return categoriesInflight;
+}
+
+export function getCachedCategoryNameMapSync(): Record<string, string> | undefined {
+  if (!categoriesCache?.length) return undefined;
+  return buildCategoryNameMap(categoriesCache);
+}
+
+export function buildCategoryNameMap(categories: TaskCategory[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const c of categories) {
+    const id = c.id.trim();
+    const name = c.name.trim();
+    if (!id || !name) continue;
+    map[id] = name;
+    const bare = id.replace(/^category_/i, "");
+    if (bare !== id) map[bare] = name;
+  }
+  return map;
+}
+
+/** Human-readable category for task/job rows (never show raw category_8 ids). */
+export function resolveJobCategoryDisplayName(
+  job: Record<string, unknown>,
+  nameById?: Record<string, string>
+): string {
+  const custom = String(job.custom_category_name ?? job.customCategoryName ?? "").trim();
+  if (custom) return custom;
+
+  for (const key of [
+    "job_category_name",
+    "category_name",
+    "jobCategoryName",
+    "categoryName",
+  ]) {
+    const v = String(job[key] ?? "").trim();
+    if (v && !looksLikeTaskCategoryId(v)) return v;
+  }
+
+  const id = String(
+    job.job_category ?? job.category ?? job.jobCategory ?? job.category_id ?? ""
+  ).trim();
+
+  if (id && nameById) {
+    const resolved =
+      nameById[id] ??
+      nameById[id.replace(/^category_/i, "")] ??
+      nameById[`category_${id.replace(/^category_/i, "")}`];
+    if (resolved) return resolved;
+  }
+
+  return "General";
 }
 
 export function resolveCategoryForOfferingApi(
