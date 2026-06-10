@@ -82,7 +82,7 @@ export function PromoPopup({
   const transitionClass = reduceMotionRef.current ? "" : "transition-transform duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)]";
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4">
       <div
         className="absolute inset-0 bg-black/55 backdrop-blur-[6px]"
         onClick={handleClose}
@@ -90,7 +90,7 @@ export function PromoPopup({
       />
       <div
         className={cn(
-          "relative w-full max-w-[95vw] sm:max-w-xl md:max-w-3xl overflow-hidden rounded-3xl",
+          "relative w-full max-w-[min(96vw,400px)] sm:max-w-[min(94vw,440px)] overflow-hidden rounded-2xl sm:rounded-3xl",
           "shadow-[0_32px_64px_-16px_rgba(0,0,0,0.55)] ring-1 ring-white/10"
         )}
         role="dialog"
@@ -114,16 +114,13 @@ export function PromoPopup({
             {slides.map((slide) => (
               <div
                 key={slide.src}
-                className={cn(
-                  "w-full shrink-0 flex justify-center items-center min-h-0",
-                  slide.panelClass
-                )}
+                className={cn("w-full shrink-0 min-h-0", slide.panelClass)}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={slide.src}
                   alt={slide.alt}
-                  className="block w-full h-auto max-h-[min(85vh,720px)] object-contain select-none"
+                  className="block w-full h-auto max-h-[min(88vh,760px)] object-cover object-center select-none"
                   draggable={false}
                 />
               </div>
