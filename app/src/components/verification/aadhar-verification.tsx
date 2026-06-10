@@ -266,28 +266,53 @@ function extractAadhaarRefId(payload: unknown): string | null {
   return null;
 }
 
+function validationItemMessage(item: unknown): string | null {
+  if (typeof item === "string" && item.trim()) return item.trim();
+  if (!item || typeof item !== "object") return null;
+  const row = item as { msg?: string; message?: string };
+  const msg = row.msg || row.message;
+  return typeof msg === "string" && msg.trim() ? msg.trim() : null;
+}
+
 function formatApiErrorPayload(payload: unknown, fallback: string): string {
   if (payload == null) return fallback;
   if (typeof payload === "string") return payload.trim() || fallback;
+  if (Array.isArray(payload)) {
+    for (const item of payload) {
+      const msg = validationItemMessage(item);
+      if (msg) return msg;
+    }
+    return fallback;
+  }
   if (typeof payload !== "object") return fallback;
 
   const root = payload as Record<string, unknown>;
+
   const message = root.message;
   if (typeof message === "string" && message.trim()) return message.trim();
+  if (Array.isArray(message)) {
+    for (const item of message) {
+      const msg = validationItemMessage(item);
+      if (msg) return msg;
+    }
+  } else if (message && typeof message === "object") {
+    const msg = validationItemMessage(message);
+    if (msg) return msg;
+  }
 
   const detail = root.detail;
   if (typeof detail === "string" && detail.trim()) return detail.trim();
-  if (Array.isArray(detail) && detail.length > 0) {
-    const first = detail[0];
-    if (typeof first === "string" && first.trim()) return first.trim();
-    if (first && typeof first === "object") {
-      const item = first as { msg?: string; message?: string };
-      const msg = item.msg || item.message;
-      if (typeof msg === "string" && msg.trim()) return msg.trim();
+  if (Array.isArray(detail)) {
+    for (const item of detail) {
+      const msg = validationItemMessage(item);
+      if (msg) return msg;
     }
+  } else if (detail && typeof detail === "object") {
+    const msg = validationItemMessage(detail);
+    if (msg) return msg;
   }
 
-  if (root.data && typeof root.data === "object") {
+  if (root.data != null) {
     const nested = formatApiErrorPayload(root.data, "");
     if (nested) return nested;
   }
@@ -362,16 +387,16 @@ export default function AadharVerification({
       console.log("🆔 [Aadhar] Sending OTP", { userId: effectiveUserId, sanitizedAadhaar });
 
       let response;
-      // Backend expects aadhaar_number as a query param (JSON body returns 422).
+      // Match PAN flow: user_id + aadhaar_number as query params (JSON body returns 422).
+      const sendOtpUrl = `/verify-aadhaar/?user_id=${encodeURIComponent(effectiveUserId)}&aadhaar_number=${encodeURIComponent(sanitizedAadhaar)}`;
       try {
-        response = await axiosInstance.post(
-          `/verify-aadhaar/?aadhaar_number=${encodeURIComponent(sanitizedAadhaar)}`
-        );
+        response = await axiosInstance.post(sendOtpUrl);
       } catch (postError: any) {
         const status = postError.response?.status;
         if (status === 404 || status === 405) {
           console.log("🆔 [Aadhar] Query POST failed, trying JSON body");
           response = await axiosInstance.post(`/verify-aadhaar/`, {
+            user_id: effectiveUserId,
             aadhaar_number: sanitizedAadhaar,
           });
         } else {
@@ -460,12 +485,13 @@ export default function AadharVerification({
       setIsVerifying(false);
 
       // Check multiple success conditions - API might return success in different formats
+      const responseMessage = formatApiErrorPayload(data, "").toLowerCase();
       const isSuccess = 
         (data.status_code === 200 && data.data?.valid === true) ||
         (data.status_code === 200 && data.data?.valid === "true") ||
         (data.status_code === 200 && data.valid === true) ||
-        (data.status_code === 200 && data.message?.toLowerCase().includes("success")) ||
-        (data.status_code === 200 && data.message?.toLowerCase().includes("verified")) ||
+        (data.status_code === 200 && responseMessage.includes("success")) ||
+        (data.status_code === 200 && responseMessage.includes("verified")) ||
         (response.status === 200 && data.status_code === 200);
 
       if (isSuccess) {
@@ -603,7 +629,7 @@ export default function AadharVerification({
               <>
                 {error && (
                   <p className="text-xs text-red-500" role="alert">
-                    {error}
+                    {formatApiErrorPayload(error, "Unable to send OTP. Please try again.")}
                   </p>
                 )}
                 {isVerifying && (
@@ -647,7 +673,9 @@ export default function AadharVerification({
 
                   {error && (
                     <div className="space-y-2">
-                      <p className="text-xs text-red-500">{error}</p>
+                      <p className="text-xs text-red-500">
+                        {formatApiErrorPayload(error, "Verification failed. Please try again.")}
+                      </p>
                       {isSessionExpired && (
                         <Button
                           type="button"
