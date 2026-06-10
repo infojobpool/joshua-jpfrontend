@@ -228,6 +228,55 @@ interface AadharVerificationProps {
   onComplete: () => void;
 }
 
+function resolveEffectiveUserId(storeUserId: string | null): string | null {
+  if (storeUserId) return storeUserId;
+  try {
+    const local = localStorage.getItem("user");
+    if (!local) return null;
+    const parsed = JSON.parse(local);
+    return String(parsed?.id || parsed?.userId || parsed?.user_id || "").trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+function extractAadhaarRefId(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const root = payload as Record<string, unknown>;
+  const data = root.data;
+  const nested =
+    data && typeof data === "object" && !Array.isArray(data)
+      ? (data as Record<string, unknown>)
+      : null;
+
+  const candidates = [
+    nested?.ref_id,
+    nested?.refId,
+    nested?.reference_id,
+    root.ref_id,
+    root.refId,
+    typeof data === "string" || typeof data === "number" ? data : null,
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate == null) continue;
+    const value = String(candidate).trim();
+    if (value) return value;
+  }
+  return null;
+}
+
+function isOtpSendSuccessful(payload: unknown, httpStatus: number): boolean {
+  if (!payload || typeof payload !== "object") return httpStatus >= 200 && httpStatus < 300;
+  const root = payload as Record<string, unknown>;
+  if (root.status_code === 200) return true;
+  const message = String(root.message ?? root.detail ?? "").toLowerCase();
+  return (
+    (httpStatus >= 200 && httpStatus < 300) &&
+    (message.includes("otp") || message.includes("success") || message.includes("sent"))
+  );
+}
+
 export default function AadharVerification({
   onComplete,
 }: AadharVerificationProps) {
@@ -255,9 +304,10 @@ export default function AadharVerification({
   const handleSendOtp = async () => {
     setError("");
     setIsVerifying(true);
-    setIsSessionExpired(false); // Reset session expired flag when requesting new OTP
+    setIsSessionExpired(false);
 
-    if (!userId) {
+    const effectiveUserId = resolveEffectiveUserId(userId);
+    if (!effectiveUserId) {
       setIsVerifying(false);
       setError("User ID not found. Please log in and try again.");
       return;
@@ -265,21 +315,19 @@ export default function AadharVerification({
 
     try {
       const sanitizedAadhaar = aadharNumber.replace(/-/g, "");
-      console.log("🆔 [Aadhar] Sending OTP", { userId, sanitizedAadhaar });
+      console.log("🆔 [Aadhar] Sending OTP", { userId: effectiveUserId, sanitizedAadhaar });
 
       let response;
-      // Try POST with query params
       try {
-        response = await axiosInstance.post(
-          `/verify-aadhaar/?aadhaar_number=${sanitizedAadhaar}`
-        );
+        response = await axiosInstance.post(`/verify-aadhaar/`, {
+          aadhaar_number: sanitizedAadhaar,
+          user_id: effectiveUserId,
+        });
       } catch (postError: any) {
-        // If POST fails with 404/405, try POST with JSON body
         if (postError.response?.status === 404 || postError.response?.status === 405) {
-          console.log("🆔 [Aadhar] POST with query failed, trying POST with JSON body");
+          console.log("🆔 [Aadhar] POST body failed, trying query params");
           response = await axiosInstance.post(
-            `/verify-aadhaar/`,
-            { aadhaar_number: sanitizedAadhaar }
+            `/verify-aadhaar/?aadhaar_number=${sanitizedAadhaar}&user_id=${effectiveUserId}`
           );
         } else {
           throw postError;
@@ -291,14 +339,21 @@ export default function AadharVerification({
 
       setIsVerifying(false);
 
-      if (data.status_code === 200 && data.data?.ref_id) {
+      const refIdValue = extractAadhaarRefId(data);
+      if (isOtpSendSuccessful(data, response.status) && refIdValue) {
         setOtpSent(true);
-        setRefId(data.data.ref_id);
-        // setAadharNumber(sanitizedAadhaar)
+        setRefId(refIdValue);
+        setOtp("");
+      } else if (isOtpSendSuccessful(data, response.status) && !refIdValue) {
+        setError(
+          "OTP may have been sent, but the session reference was missing. Please tap Send OTP again."
+        );
       } else {
         setError(
-          data.message ||
-            data.detail ||
+          (typeof data === "object" && data
+            ? (data as { message?: string; detail?: string }).message ||
+              (data as { detail?: string }).detail
+            : null) ||
             "Unable to send OTP. Please check your Aadhar number and try again."
         );
       }
@@ -313,7 +368,9 @@ export default function AadharVerification({
       setError(
         err.response?.data?.message ||
           err.response?.data?.detail ||
-          err.message ||
+          (err.message === "Too many requests - please slow down"
+            ? "Too many requests. Please wait a few seconds and try again."
+            : err.message) ||
           "Failed to connect to the server. Please try again later."
       );
     }
@@ -323,7 +380,8 @@ export default function AadharVerification({
     setError("");
     setIsVerifying(true);
 
-    if (!userId) {
+    const effectiveUserId = resolveEffectiveUserId(userId);
+    if (!effectiveUserId) {
       setIsVerifying(false);
       setError("User ID not found. Please log in and try again.");
       return;
@@ -331,26 +389,27 @@ export default function AadharVerification({
 
     try {
       const sanitizedAadhaar = aadharNumber.replace(/-/g, "");
-      console.log("🆔 [Aadhar] Verifying OTP", { userId, refId, otp, sanitizedAadhaar });
+      console.log("🆔 [Aadhar] Verifying OTP", {
+        userId: effectiveUserId,
+        refId,
+        otp,
+        sanitizedAadhaar,
+      });
 
       let response;
       // Try POST with query params
       try {
-        response = await axiosInstance.post(
-          `/verify-aadhaar/otp/?user_id=${userId}&ref_id=${refId}&otp=${otp}&aadhaar_number=${sanitizedAadhaar}`
-        );
+        response = await axiosInstance.post(`/verify-aadhaar/otp/`, {
+          user_id: effectiveUserId,
+          ref_id: refId,
+          otp,
+          aadhaar_number: sanitizedAadhaar,
+        });
       } catch (postError: any) {
-        // If POST fails with 404/405, try POST with JSON body
         if (postError.response?.status === 404 || postError.response?.status === 405) {
-          console.log("🆔 [Aadhar] OTP POST with query failed, trying POST with JSON body");
+          console.log("🆔 [Aadhar] OTP POST body failed, trying query params");
           response = await axiosInstance.post(
-            `/verify-aadhaar/otp/`,
-            {
-              user_id: userId,
-              ref_id: refId,
-              otp: otp,
-              aadhaar_number: sanitizedAadhaar,
-            }
+            `/verify-aadhaar/otp/?user_id=${effectiveUserId}&ref_id=${refId}&otp=${otp}&aadhaar_number=${sanitizedAadhaar}`
           );
         } else {
           throw postError;
@@ -505,17 +564,29 @@ export default function AadharVerification({
             </div>
 
             {!otpSent || isSessionExpired ? (
-              <Button
-                className="w-full"
-                onClick={handleSendOtp}
-                disabled={
-                  !aadharNumber ||
-                  !isAadharNumberValid(aadharNumber.replace(/-/g, "")) ||
-                  isVerifying
-                }
-              >
-                {isVerifying ? "Sending OTP..." : isSessionExpired ? "Request New OTP" : "Send OTP"}
-              </Button>
+              <>
+                {error && (
+                  <p className="text-xs text-red-500" role="alert">
+                    {error}
+                  </p>
+                )}
+                {isVerifying && (
+                  <p className="text-xs text-muted-foreground">
+                    Sending OTP to your Aadhaar-linked mobile. This can take up to 30 seconds.
+                  </p>
+                )}
+                <Button
+                  className="w-full"
+                  onClick={handleSendOtp}
+                  disabled={
+                    !aadharNumber ||
+                    !isAadharNumberValid(aadharNumber.replace(/-/g, "")) ||
+                    isVerifying
+                  }
+                >
+                  {isVerifying ? "Sending OTP..." : isSessionExpired ? "Request New OTP" : "Send OTP"}
+                </Button>
+              </>
             ) : (
               <>
                 <div className="space-y-2">

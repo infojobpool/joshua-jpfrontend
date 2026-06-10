@@ -53,6 +53,13 @@ function isWalletSummaryRead(url: string | undefined): boolean {
   return u.includes("wallet") && u.includes("user_id");
 }
 
+/** PAN/Aadhaar verification — slow provider calls; must not queue behind global throttle. */
+function isVerificationWrite(url: string | undefined): boolean {
+  if (!url) return false;
+  const u = url.toLowerCase();
+  return u.includes("verify-aadhaar") || u.includes("verify-pan");
+}
+
 /** Listings workspace read: GET offerings with user_id should not be throttled by client budget. */
 function isProfileListingsRead(
   url: string | undefined,
@@ -151,7 +158,8 @@ axiosInstance.interceptors.request.use(
         isHomePublicRead(urlStr) ||
         isTaskDetailRead(urlStr) ||
         isProfileListingsRead(urlStr, config.params) ||
-        isWalletSummaryRead(urlStr);
+        isWalletSummaryRead(urlStr) ||
+        isVerificationWrite(urlStr);
       const now = Date.now();
       if (now - requestThrottle.windowStart > requestThrottle.windowSize) {
         // Reset window
@@ -192,7 +200,10 @@ axiosInstance.interceptors.request.use(
 
     // Request deduplication (skip chat reads + writes — same path, different bodies; POST dedupe was wrong for sends)
     const skipDedupe =
-      isChatInboxLightRead(urlStr) || isChatMessageWrite(urlStr) || isJobPostWrite(urlStr);
+      isChatInboxLightRead(urlStr) ||
+      isChatMessageWrite(urlStr) ||
+      isJobPostWrite(urlStr) ||
+      isVerificationWrite(urlStr);
     if (!skipDedupe) {
       const requestKey = `${config.method?.toUpperCase()}_${config.url}_${JSON.stringify(config.params)}`;
       if (pendingRequests.has(requestKey)) {
