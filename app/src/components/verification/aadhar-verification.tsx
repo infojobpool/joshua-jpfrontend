@@ -266,13 +266,57 @@ function extractAadhaarRefId(payload: unknown): string | null {
   return null;
 }
 
+function formatApiErrorPayload(payload: unknown, fallback: string): string {
+  if (payload == null) return fallback;
+  if (typeof payload === "string") return payload.trim() || fallback;
+  if (typeof payload !== "object") return fallback;
+
+  const root = payload as Record<string, unknown>;
+  const message = root.message;
+  if (typeof message === "string" && message.trim()) return message.trim();
+
+  const detail = root.detail;
+  if (typeof detail === "string" && detail.trim()) return detail.trim();
+  if (Array.isArray(detail) && detail.length > 0) {
+    const first = detail[0];
+    if (typeof first === "string" && first.trim()) return first.trim();
+    if (first && typeof first === "object") {
+      const item = first as { msg?: string; message?: string };
+      const msg = item.msg || item.message;
+      if (typeof msg === "string" && msg.trim()) return msg.trim();
+    }
+  }
+
+  if (root.data && typeof root.data === "object") {
+    const nested = formatApiErrorPayload(root.data, "");
+    if (nested) return nested;
+  }
+
+  return fallback;
+}
+
+function formatAxiosError(err: unknown, fallback: string): string {
+  const anyErr = err as { message?: string; response?: { data?: unknown } };
+  if (anyErr.message === "Too many requests - please slow down") {
+    return "Too many requests. Please wait a few seconds and try again.";
+  }
+  if (anyErr.response?.data) {
+    return formatApiErrorPayload(anyErr.response.data, fallback);
+  }
+  if (typeof anyErr.message === "string" && anyErr.message.trim()) {
+    return anyErr.message;
+  }
+  return fallback;
+}
+
 function isOtpSendSuccessful(payload: unknown, httpStatus: number): boolean {
   if (!payload || typeof payload !== "object") return httpStatus >= 200 && httpStatus < 300;
   const root = payload as Record<string, unknown>;
   if (root.status_code === 200) return true;
-  const message = String(root.message ?? root.detail ?? "").toLowerCase();
+  const message = formatApiErrorPayload(payload, "").toLowerCase();
   return (
-    (httpStatus >= 200 && httpStatus < 300) &&
+    httpStatus >= 200 &&
+    httpStatus < 300 &&
     (message.includes("otp") || message.includes("success") || message.includes("sent"))
   );
 }
@@ -318,17 +362,18 @@ export default function AadharVerification({
       console.log("🆔 [Aadhar] Sending OTP", { userId: effectiveUserId, sanitizedAadhaar });
 
       let response;
+      // Backend expects aadhaar_number as a query param (JSON body returns 422).
       try {
-        response = await axiosInstance.post(`/verify-aadhaar/`, {
-          aadhaar_number: sanitizedAadhaar,
-          user_id: effectiveUserId,
-        });
+        response = await axiosInstance.post(
+          `/verify-aadhaar/?aadhaar_number=${encodeURIComponent(sanitizedAadhaar)}`
+        );
       } catch (postError: any) {
-        if (postError.response?.status === 404 || postError.response?.status === 405) {
-          console.log("🆔 [Aadhar] POST body failed, trying query params");
-          response = await axiosInstance.post(
-            `/verify-aadhaar/?aadhaar_number=${sanitizedAadhaar}&user_id=${effectiveUserId}`
-          );
+        const status = postError.response?.status;
+        if (status === 404 || status === 405) {
+          console.log("🆔 [Aadhar] Query POST failed, trying JSON body");
+          response = await axiosInstance.post(`/verify-aadhaar/`, {
+            aadhaar_number: sanitizedAadhaar,
+          });
         } else {
           throw postError;
         }
@@ -350,11 +395,10 @@ export default function AadharVerification({
         );
       } else {
         setError(
-          (typeof data === "object" && data
-            ? (data as { message?: string; detail?: string }).message ||
-              (data as { detail?: string }).detail
-            : null) ||
+          formatApiErrorPayload(
+            data,
             "Unable to send OTP. Please check your Aadhar number and try again."
+          )
         );
       }
     } catch (err: any) {
@@ -366,12 +410,7 @@ export default function AadharVerification({
       });
       setIsVerifying(false);
       setError(
-        err.response?.data?.message ||
-          err.response?.data?.detail ||
-          (err.message === "Too many requests - please slow down"
-            ? "Too many requests. Please wait a few seconds and try again."
-            : err.message) ||
-          "Failed to connect to the server. Please try again later."
+        formatAxiosError(err, "Failed to connect to the server. Please try again later.")
       );
     }
   };
@@ -397,20 +436,19 @@ export default function AadharVerification({
       });
 
       let response;
-      // Try POST with query params
+      const otpQuery = `/verify-aadhaar/otp/?user_id=${encodeURIComponent(effectiveUserId)}&ref_id=${encodeURIComponent(refId)}&otp=${encodeURIComponent(otp)}&aadhaar_number=${encodeURIComponent(sanitizedAadhaar)}`;
       try {
-        response = await axiosInstance.post(`/verify-aadhaar/otp/`, {
-          user_id: effectiveUserId,
-          ref_id: refId,
-          otp,
-          aadhaar_number: sanitizedAadhaar,
-        });
+        response = await axiosInstance.post(otpQuery);
       } catch (postError: any) {
-        if (postError.response?.status === 404 || postError.response?.status === 405) {
-          console.log("🆔 [Aadhar] OTP POST body failed, trying query params");
-          response = await axiosInstance.post(
-            `/verify-aadhaar/otp/?user_id=${effectiveUserId}&ref_id=${refId}&otp=${otp}&aadhaar_number=${sanitizedAadhaar}`
-          );
+        const status = postError.response?.status;
+        if (status === 404 || status === 405) {
+          console.log("🆔 [Aadhar] OTP query POST failed, trying JSON body");
+          response = await axiosInstance.post(`/verify-aadhaar/otp/`, {
+            user_id: effectiveUserId,
+            ref_id: refId,
+            otp,
+            aadhaar_number: sanitizedAadhaar,
+          });
         } else {
           throw postError;
         }
@@ -453,7 +491,7 @@ export default function AadharVerification({
         }, 1500); // 1.5 second delay to show success message
       } else {
         console.warn("⚠️ Verification response doesn't indicate success:", data);
-        setError(data.message || data.detail || "Invalid OTP. Please try again.");
+        setError(formatApiErrorPayload(data, "Invalid OTP. Please try again."));
       }
     } catch (err: any) {
       console.error("❌ [Aadhar] OTP verify error:", {
@@ -466,7 +504,7 @@ export default function AadharVerification({
       
       // Check for session expired error from Cashfree API
       const errorData = err.response?.data;
-      const errorMessage = errorData?.message || errorData?.detail || err.message || "";
+      const errorMessage = formatAxiosError(err, "");
       const errorDetails = errorData?.data?.details || errorData?.data?.error || "";
       
       // Check if error contains "Session expired" or "session expired" or "verification_failed"
@@ -489,11 +527,9 @@ export default function AadharVerification({
         setRefId("");
         console.log("🔄 OTP session expired - resetting state for new OTP request");
       } else {
-        // Other errors
         setIsSessionExpired(false);
         setError(
-          errorMessage ||
-          "Invalid OTP or verification failed. Please try again."
+          errorMessage || "Invalid OTP or verification failed. Please try again."
         );
       }
     }
