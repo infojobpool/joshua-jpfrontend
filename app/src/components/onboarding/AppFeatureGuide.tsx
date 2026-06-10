@@ -10,6 +10,7 @@ import {
   type TourPlacement,
 } from "@/lib/appFeatureGuide";
 import { useAppFeatureGuideStore } from "@/lib/appFeatureGuideStore";
+import { findVisibleTourTarget } from "@/lib/appTourTargets";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,15 +18,6 @@ const PAD = 8;
 const TOOLTIP_W = 300;
 
 type TargetRect = { top: number; left: number; width: number; height: number };
-
-function findTourElement(targets: string[] | undefined): Element | null {
-  if (!targets?.length) return null;
-  for (const id of targets) {
-    const el = document.querySelector(`[data-tour="${id}"]`);
-    if (el) return el;
-  }
-  return null;
-}
 
 function useTourTarget(tourTargets: string[] | undefined, active: boolean, stepIndex: number) {
   const [rect, setRect] = useState<TargetRect | null>(null);
@@ -39,23 +31,14 @@ function useTourTarget(tourTargets: string[] | undefined, active: boolean, stepI
       setMatchedId(null);
       return;
     }
-    let el: Element | null = null;
-    let id: string | null = null;
-    for (const targetId of tourTargets) {
-      const hit = document.querySelector(`[data-tour="${targetId}"]`);
-      if (hit) {
-        el = hit;
-        id = targetId;
-        break;
-      }
-    }
-    if (!el || !id) {
+    const hit = findVisibleTourTarget(tourTargets);
+    if (!hit) {
       setRect(null);
       setFound(false);
       setMatchedId(null);
       return;
     }
-    const r = el.getBoundingClientRect();
+    const r = hit.el.getBoundingClientRect();
     setRect({
       top: r.top,
       left: r.left,
@@ -63,7 +46,7 @@ function useTourTarget(tourTargets: string[] | undefined, active: boolean, stepI
       height: r.height,
     });
     setFound(true);
-    setMatchedId(id);
+    setMatchedId(hit.id);
   }, [tourTargets]);
 
   useLayoutEffect(() => {
@@ -77,9 +60,9 @@ function useTourTarget(tourTargets: string[] | undefined, active: boolean, stepI
     if (!active || !tourTargets?.length) return;
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
-    const el = findTourElement(tourTargets);
-    const ro = el ? new ResizeObserver(measure) : null;
-    if (el && ro) ro.observe(el);
+    const hit = findVisibleTourTarget(tourTargets);
+    const ro = hit ? new ResizeObserver(measure) : null;
+    if (hit && ro) ro.observe(hit.el);
     return () => {
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
@@ -172,7 +155,7 @@ function TourTooltipCard({
         "pointer-events-auto w-[min(300px,calc(100vw-32px))] rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xl dark:border-slate-600 dark:bg-slate-900",
         centered && "relative"
       )}
-      style={centered ? undefined : { position: "fixed", zIndex: 210, width: TOOLTIP_W, ...pos }}
+      style={centered ? undefined : { position: "fixed", zIndex: 9999, width: TOOLTIP_W, ...pos }}
       role="dialog"
       aria-labelledby="app-tour-title"
     >
@@ -228,7 +211,7 @@ function TourTooltipCard({
 
   if (centered) {
     return (
-      <div className="pointer-events-auto fixed inset-0 z-[210] flex items-center justify-center p-4">
+      <div className="pointer-events-auto fixed inset-0 z-[9999] flex items-center justify-center p-4">
         {card}
       </div>
     );
@@ -249,9 +232,7 @@ export function AppFeatureGuide() {
   const wantsTarget = Boolean(step?.tourTargets?.length);
   const { rect, found, matchedId } = useTourTarget(step?.tourTargets, open, index);
   const placement: TourPlacement =
-    matchedId === "tour-dashboard-profile"
-      ? "below"
-      : step?.placement ?? "above";
+    matchedId?.startsWith("tour-nav-") ? "above" : step?.placement ?? "below";
   const centered = !wantsTarget || !found || placement === "center";
 
   useEffect(() => setMounted(true), []);
@@ -287,7 +268,7 @@ export function AppFeatureGuide() {
   if (!open || !mounted || !step) return null;
 
   const content = (
-    <div className="fixed inset-0 z-[200]" aria-modal="true">
+    <div className="fixed inset-0 z-[9998]" aria-modal="true">
       {centered ? (
         <div className="fixed inset-0 bg-black/70 pointer-events-auto" aria-hidden />
       ) : rect ? (

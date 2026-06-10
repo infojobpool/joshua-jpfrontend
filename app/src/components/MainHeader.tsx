@@ -84,6 +84,7 @@ const MainHeader: React.FC = () => {
           {/* Logo — mobile: full JOB POOL lockup PNG; desktop: wide mark */}
           <Link
             href="/"
+            data-tour="tour-header-home"
             className="flex min-w-0 flex-1 items-center gap-2 group flex-shrink-0 md:flex-initial"
           >
             <img
@@ -127,7 +128,7 @@ const MainHeader: React.FC = () => {
           <div className="hidden shrink-0 md:flex items-center gap-2 lg:gap-2.5">
             {isAuthenticated ? (
               <>
-                <Link href="/post-task">
+                <Link href="/post-task" data-tour="tour-header-post-task">
                   <Button size="sm" className="bg-blue-600 px-4 hover:bg-blue-700 text-white shadow-sm">
                     <Plus className="h-4 w-4" />
                     <span className="hidden lg:inline">Post Task</span>
@@ -135,12 +136,12 @@ const MainHeader: React.FC = () => {
                   </Button>
                 </Link>
                 <div className="ml-1 flex items-center gap-1 border-l border-slate-200/90 pl-2 lg:ml-2 lg:pl-3">
-                  <Link href="/messages" title="Messages" aria-label="Messages">
+                  <Link href="/messages" data-tour="tour-header-messages" title="Messages" aria-label="Messages">
                     <Button type="button" variant="outline" size="icon" className="rounded-lg border-slate-200 text-slate-700 shadow-none hover:bg-slate-50">
                       <MessageSquare className="h-4 w-4" />
                     </Button>
                   </Link>
-                  <Link href="/dashboard" title="Tasks" aria-label="Tasks">
+                  <Link href="/dashboard" data-tour="tour-header-tasks" title="Tasks" aria-label="Tasks">
                     <Button type="button" variant="outline" size="icon" className="rounded-lg border-slate-200 text-slate-700 shadow-none hover:bg-slate-50">
                       <Briefcase className="h-4 w-4" />
                     </Button>

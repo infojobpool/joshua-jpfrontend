@@ -78,6 +78,7 @@ import {
 import { PayoutProfileProgress } from "@/components/PayoutProfileProgress";
 import { hasCompletedAppGuide } from "@/lib/appFeatureGuide";
 import { useAppFeatureGuideStore } from "@/lib/appFeatureGuideStore";
+import { APP_TOUR_RESUME_KEY } from "@/lib/appTourTargets";
 import {
   Sheet,
   SheetContent,
@@ -534,10 +535,18 @@ export default function Dashboard() {
   // First-time app feature tour (replay from profile menu or Settings)
   useEffect(() => {
     if (!authHydrated || !isAuthenticated || !effectiveUserId) return;
-    if (hasCompletedAppGuide()) return;
+    let resume = false;
+    try {
+      resume = sessionStorage.getItem(APP_TOUR_RESUME_KEY) === "1";
+      if (resume) sessionStorage.removeItem(APP_TOUR_RESUME_KEY);
+    } catch {
+      /* ignore */
+    }
+    if (!resume && hasCompletedAppGuide()) return;
+    const delay = resume ? 500 : 1400;
     const t = window.setTimeout(() => {
       useAppFeatureGuideStore.getState().openGuide();
-    }, 1400);
+    }, delay);
     return () => window.clearTimeout(t);
   }, [authHydrated, isAuthenticated, effectiveUserId]);
   const mobile = mounted && isMobile;
@@ -3953,6 +3962,7 @@ export default function Dashboard() {
           <div className="hidden md:flex items-center gap-4 animate-slide-in-right">
             <Link
               href="/"
+              data-tour="tour-desktop-home"
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-colors font-medium text-sm"
             >
               <Home className="h-4 w-4" />
@@ -3960,6 +3970,7 @@ export default function Dashboard() {
             </Link>
             <Link
               href="/messages"
+              data-tour="tour-desktop-messages"
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-colors font-medium text-sm"
             >
               <MessageSquare className="h-4 w-4" />
@@ -3967,6 +3978,7 @@ export default function Dashboard() {
             </Link>
             <Link
               href="/profile/offerings/new"
+              data-tour="tour-desktop-create-listing"
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-colors font-medium text-sm"
               title="Create a service listing"
             >
@@ -4237,7 +4249,7 @@ export default function Dashboard() {
                 </span>
               )}
             </button>
-            <Link href="/post-task" passHref className="ml-auto">
+            <Link href="/post-task" passHref className="ml-auto" data-tour="tour-desktop-post-task">
               <Button className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-medium px-6 py-3 rounded-xl shadow-md transition-all duration-200">
                 Post a Task
               </Button>
@@ -4501,7 +4513,12 @@ export default function Dashboard() {
                     <Briefcase className="hidden h-4 w-4 shrink-0 md:inline" />
                     <span>My Tasks</span>
                   </button>
-                  <button type="button" onClick={() => selectDashboardTaskTab("available")} className={tabCls("available")}>
+                  <button
+                    type="button"
+                    data-tour="tour-desktop-tasks"
+                    onClick={() => selectDashboardTaskTab("available")}
+                    className={tabCls("available")}
+                  >
                     <Search className="hidden h-4 w-4 shrink-0 md:inline" />
                     <span>Available</span>
                   </button>
