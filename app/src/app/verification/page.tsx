@@ -462,56 +462,63 @@ export default function VerificationFlow() {
 
   const handleComplete = async (step: "pan" | "aadhar") => {
     console.log(`✅ Verification step completed: ${step}`);
-    setVerificationStatus((prev) => ({
-      ...prev,
-      [step]: { completed: true, skipped: false },
-    }))
 
-    // For Aadhaar, move to completion step immediately (no waiting)
-    if (step === "aadhar") {
-      console.log("✅ Aadhaar verified - moving to completion step");
-      // Refresh verification status from API first
+    let effectiveUserId = userId as string | undefined;
+    if (!effectiveUserId) {
       try {
-        let effectiveUserId = userId as any;
-        if (!effectiveUserId) {
-          const local = localStorage.getItem("user");
-          if (local) {
-            const parsed = JSON.parse(local);
-            effectiveUserId = parsed?.id || parsed?.userId || parsed?.user_id;
-          }
+        const local = localStorage.getItem("user");
+        if (local) {
+          const parsed = JSON.parse(local);
+          effectiveUserId = parsed?.id || parsed?.userId || parsed?.user_id;
         }
-        if (effectiveUserId) {
-          const cacheBuster = `?user_id=${effectiveUserId}&_t=${Date.now()}`;
-          const response = await axiosInstance.get(`/profile${cacheBuster}`);
-          const data = response.data;
-          const apiVerificationStatus = data.verification_status ?? data.verificationStatus ?? data?.data?.verification_status ?? null;
-          const statusNum = apiVerificationStatus != null ? Number(apiVerificationStatus) : null;
-          if (statusNum !== null && !isNaN(statusNum)) {
-            setVerificationStatus({
-              pan: { completed: statusNum >= 1, skipped: false },
-              aadhar: { completed: statusNum >= 2, skipped: false },
-            });
-            // Sync to localStorage so Profile page shows correct status
-            try {
-              const local = localStorage.getItem("user");
-              if (local) {
-                const parsed = JSON.parse(local);
-                parsed.verification_status = statusNum;
-                localStorage.setItem("user", JSON.stringify(parsed));
-                useStore.setState({ user: { ...parsed, verification_status: statusNum } });
-              }
-            } catch {}
-          }
-        }
-      } catch (error) {
-        console.error("Failed to refresh verification status:", error);
-      }
+      } catch {}
+    }
 
-      // Move to completion step immediately
+    let statusNum: number | null = null;
+    try {
+      if (effectiveUserId) {
+        const cacheBuster = `?user_id=${effectiveUserId}&_t=${Date.now()}`;
+        const response = await axiosInstance.get(`/profile${cacheBuster}`);
+        const data = response.data;
+        const payload = data?.data ?? data;
+        const apiVerificationStatus =
+          payload?.verification_status ??
+          payload?.verificationStatus ??
+          data.verification_status ??
+          data.verificationStatus ??
+          null;
+        statusNum = apiVerificationStatus != null ? Number(apiVerificationStatus) : null;
+        if (statusNum !== null && !isNaN(statusNum)) {
+          setVerificationStatus({
+            pan: { completed: statusNum >= 1, skipped: false },
+            aadhar: { completed: statusNum >= 2, skipped: false },
+          });
+          try {
+            const local = localStorage.getItem("user");
+            if (local) {
+              const parsed = JSON.parse(local);
+              parsed.verification_status = statusNum;
+              localStorage.setItem("user", JSON.stringify(parsed));
+              useStore.setState({ user: { ...parsed, verification_status: statusNum } });
+            }
+          } catch {}
+        }
+        await loadPayoutPreview(String(effectiveUserId));
+      }
+    } catch (error) {
+      console.error("Failed to refresh verification status:", error);
+    }
+
+    // For Aadhaar, move to completion step after API confirms (no waiting)
+    if (step === "aadhar") {
+      console.log("✅ Aadhaar step finished — checking API status before completion screen");
       setTimeout(() => {
-        console.log("✅ Moving to completion step (step 3)");
-        setCurrentStep(3);
-      }, 1000); // Short 1 second delay to show success message
+        if (statusNum !== null && statusNum >= 2) {
+          setCurrentStep(3);
+        } else {
+          setCurrentStep(2);
+        }
+      }, 1000);
     } else {
       // For PAN, show waiting timer
       setIsWaiting(true)

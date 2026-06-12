@@ -344,12 +344,15 @@ export default function VerificationComplete({
     }
   }, []);
 
-  const allCompleted =
-    verificationStatus.pan.completed && verificationStatus.aadhar.completed
+  const panStillRequired = missingPayoutItems.some((item) => item.id === "pan")
+  const aadhaarStillRequired = missingPayoutItems.some((item) => item.id === "aadhaar")
+  const panVerified = verificationStatus.pan.completed && !panStillRequired
+  const aadhaarVerified = verificationStatus.aadhar.completed && !aadhaarStillRequired
+
+  const allCompleted = panVerified && aadhaarVerified
 
   const someCompleted =
-    (verificationStatus.pan.completed || verificationStatus.aadhar.completed) &&
-    !allCompleted
+    (panVerified || aadhaarVerified) && !allCompleted
 
   const allSkipped =
     verificationStatus.pan.skipped && verificationStatus.aadhar.skipped
@@ -440,29 +443,33 @@ export default function VerificationComplete({
                 Identity checks complete
               </p>
             )}
-            <div className="rounded-lg border bg-white p-4 shadow-sm">
-              <div className="flex items-start space-x-3">
-                <div className="rounded-full bg-green-100 p-1">
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <h4 className="font-medium">PAN Card Verification</h4>
-                  <p className="text-sm text-gray-600">Your PAN details have been verified</p>
+            {panVerified && (
+              <div className="rounded-lg border bg-white p-4 shadow-sm">
+                <div className="flex items-start space-x-3">
+                  <div className="rounded-full bg-green-100 p-1">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium">PAN Card Verification</h4>
+                    <p className="text-sm text-gray-600">Your PAN details have been verified</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            <div className="rounded-lg border bg-white p-4 shadow-sm">
-              <div className="flex items-start space-x-3">
-                <div className="rounded-full bg-green-100 p-1">
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <h4 className="font-medium">Aadhar Verification</h4>
-                  <p className="text-sm text-gray-600">Your Aadhar details have been verified</p>
+            {aadhaarVerified && (
+              <div className="rounded-lg border bg-white p-4 shadow-sm">
+                <div className="flex items-start space-x-3">
+                  <div className="rounded-full bg-green-100 p-1">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium">Aadhar Verification</h4>
+                    <p className="text-sm text-gray-600">Your Aadhar details have been verified</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </motion.div>
 
           {missingPayoutItems.length > 0 && (
