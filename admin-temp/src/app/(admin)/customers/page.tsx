@@ -286,11 +286,19 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Search, Eye, EyeOff, CreditCard, Phone, Download, Calendar } from "lucide-react";
+import Link from "next/link";
+import { Search, Eye, EyeOff, CreditCard, Phone, Download, Calendar, ExternalLink } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import { toast } from "sonner";
 import { ProfileReminderCell } from "@/components/admin/ProfileReminderCell";
 import { Badge } from "@/components/ui/badge";
+import {
+  fetchAdminWithdrawals,
+  indexWithdrawalsByUserId,
+  pickLatestWithdrawal,
+  withdrawalStatusLabel,
+  type AdminWithdrawal,
+} from "@/lib/walletWithdrawalsApi";
 
 interface BankInfo {
   bank_account_number: string;
@@ -329,6 +337,9 @@ interface Customer {
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [withdrawalsByUserId, setWithdrawalsByUserId] = useState<Map<string, AdminWithdrawal[]>>(
+    new Map()
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [visibleBankDetails, setVisibleBankDetails] = useState<Set<string>>(new Set());
@@ -337,12 +348,18 @@ export default function CustomersPage() {
   const fetchCustomers = async () => {
     try {
       setIsLoading(true);
-      const response = await axiosInstance.get("all-user-details/");
-      const raw = response.data?.data ?? response.data;
+      setError("");
+      const [customersRes, withdrawals] = await Promise.all([
+        axiosInstance.get("all-user-details/"),
+        fetchAdminWithdrawals().catch(() => [] as AdminWithdrawal[]),
+      ]);
+      const raw = customersRes.data?.data ?? customersRes.data;
       const list = Array.isArray(raw) ? raw : [];
       setCustomers(list);
+      setWithdrawalsByUserId(indexWithdrawalsByUserId(withdrawals));
     } catch {
       toast.error("An error occurred while fetching customers");
+      setError("Failed to load customers");
     } finally {
       setIsLoading(false);
     }
@@ -468,6 +485,33 @@ export default function CustomersPage() {
     Object.prototype.hasOwnProperty.call(c, "signup_bonus_amount") ||
     Object.prototype.hasOwnProperty.call(c, "signup_bonus_awaiting_admin_payout");
 
+  const renderWithdrawalLink = (customer: Customer, showIfMissing: boolean) => {
+    const latest = pickLatestWithdrawal(withdrawalsByUserId.get(customer.user_id) ?? []);
+    if (latest) {
+      const status = withdrawalStatusLabel(latest.status);
+      return (
+        <Link
+          href={`/wallet-withdrawals?user_id=${encodeURIComponent(customer.user_id)}`}
+          className="inline-flex items-center gap-1 text-xs font-medium text-violet-800 hover:text-violet-950 hover:underline"
+          title="Open this user's row on Wallet Withdrawals"
+        >
+          View withdrawal
+          <span className="font-normal text-violet-700/90">({status})</span>
+          <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+        </Link>
+      );
+    }
+    if (!showIfMissing) return null;
+    return (
+      <span
+        className="text-[10px] leading-snug text-amber-900/85"
+        title="No UPI withdrawal request exists yet. The user must tap Withdraw in the app wallet."
+      >
+        No withdrawal in queue — user must withdraw from Wallet in the app.
+      </span>
+    );
+  };
+
   const renderSignupBonus = (customer: Customer) => {
     if (!hasSignupBonusApi(customer)) {
       return (
@@ -493,6 +537,7 @@ export default function CustomersPage() {
             Credited
           </Badge>
           <span className="text-xs text-gray-500 tabular-nums">{label}</span>
+          {renderWithdrawalLink(customer, true)}
         </div>
       );
     }
@@ -518,12 +563,15 @@ export default function CustomersPage() {
 
     if (customer.signup_bonus_eligible === true) {
       return (
-        <Badge
-          className="border border-sky-200 bg-sky-100 font-medium text-sky-950 hover:bg-sky-100"
-          title={`Eligible for ${label}. User may withdraw from wallet; Credited shows only after admin marks that withdrawal paid.`}
-        >
-          Ready · {label}
-        </Badge>
+        <div className="flex flex-col gap-1">
+          <Badge
+            className="border border-sky-200 bg-sky-100 font-medium text-sky-950 hover:bg-sky-100"
+            title={`Eligible for ${label}. User may withdraw from wallet; Credited shows only after admin marks that withdrawal paid.`}
+          >
+            Ready · {label}
+          </Badge>
+          {renderWithdrawalLink(customer, true)}
+        </div>
       );
     }
 
@@ -544,6 +592,7 @@ export default function CustomersPage() {
             Awaiting payout
           </Badge>
           <span className="text-xs text-gray-500 tabular-nums">{label}</span>
+          {renderWithdrawalLink(customer, true)}
         </div>
       );
     }

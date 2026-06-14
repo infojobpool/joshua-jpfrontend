@@ -182,7 +182,13 @@ export default function WalletWithdrawalsPage() {
   const [paidSubmitting, setPaidSubmitting] = useState(false);
   /** null = ok or not loaded; 'auth' = 401 / invalid token; 'other' = other error */
   const [loadError, setLoadError] = useState<null | "auth" | "other">(null);
+  const [focusUserId, setFocusUserId] = useState("");
   const canWrite = useCanAdminWrite();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setFocusUserId(params.get("user_id")?.trim() ?? "");
+  }, []);
 
   const fetchWithdrawals = async () => {
     try {
@@ -241,14 +247,15 @@ export default function WalletWithdrawalsPage() {
     String(w.transaction_id ?? w.id ?? "").trim();
 
   const filteredWithdrawals = useMemo(() => {
-    if (statusFilter === "all") return withdrawals;
-    return withdrawals.filter(
-      (w) => {
-        const s = normalizeStatus(w.status);
-        return s === statusFilter;
-      }
-    );
-  }, [withdrawals, statusFilter]);
+    let list =
+      statusFilter === "all"
+        ? withdrawals
+        : withdrawals.filter((w) => normalizeStatus(w.status) === statusFilter);
+    if (focusUserId) {
+      list = list.filter((w) => String(w.user_id ?? "").trim() === focusUserId);
+    }
+    return list;
+  }, [withdrawals, statusFilter, focusUserId]);
 
   const counts = useMemo(() => {
     const c = { all: withdrawals.length, pending: 0, in_process: 0, completed: 0, failed: 0 };
@@ -538,6 +545,16 @@ export default function WalletWithdrawalsPage() {
           All UPI withdrawal requests with user and payout details. Add <strong>short notes</strong> per
           row and save (stored server-side).
         </p>
+        {focusUserId ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-950">
+            <span>
+              Showing withdrawals for user <code className="rounded bg-white/80 px-1">{focusUserId}</code>
+            </span>
+            <Link href="/wallet-withdrawals" className="font-medium text-violet-800 hover:underline">
+              Show all users
+            </Link>
+          </div>
+        ) : null}
       </div>
 
       {isLoading ? (
