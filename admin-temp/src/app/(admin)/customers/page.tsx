@@ -582,14 +582,27 @@ export default function CustomersPage() {
         missing.length === 0);
 
     if (awaitingPayout) {
+      const latestWithdrawal = pickLatestWithdrawal(
+        withdrawalsByUserId.get(customer.user_id) ?? []
+      );
+      const hasWithdrawalQueue = Boolean(latestWithdrawal);
+      const badgeLabel = hasWithdrawalQueue ? "Payout pending" : "Bonus in wallet";
+      const badgeTitle = hasWithdrawalQueue
+        ? "User submitted a UPI withdrawal. Open Wallet Withdrawals and mark it paid when done."
+        : "Signup bonus is in the user's in-app wallet. They have not requested a UPI withdrawal yet.";
+
       return (
         <div className="flex max-w-[220px] flex-col gap-1">
           <Badge
             variant="outline"
-            className="border-violet-200 bg-violet-50 font-medium text-violet-950 hover:bg-violet-50"
-            title="Wallet bonus may be credited; waiting for admin to mark the matching UPI withdrawal completed. Backend: empty missing[], eligible false, or signup_bonus_awaiting_admin_payout."
+            className={
+              hasWithdrawalQueue
+                ? "border-violet-200 bg-violet-50 font-medium text-violet-950 hover:bg-violet-50"
+                : "border-amber-200 bg-amber-50 font-medium text-amber-950 hover:bg-amber-50"
+            }
+            title={badgeTitle}
           >
-            Awaiting payout
+            {badgeLabel}
           </Badge>
           <span className="text-xs text-gray-500 tabular-nums">{label}</span>
           {renderWithdrawalLink(customer, true)}
@@ -741,7 +754,7 @@ export default function CustomersPage() {
                 </th>
                 <th
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]"
-                  title="Credited = admin completed matching UPI withdrawal. Ready = eligible to withdraw. Awaiting payout = wallet stage done, UPI not marked paid yet. Missing = requirements from API."
+                  title="Credited = admin paid UPI withdrawal. Ready = user can withdraw. Bonus in wallet = credited, no withdraw request yet. Payout pending = withdraw submitted, admin to mark paid. Missing = checklist items from API."
                 >
                   Signup bonus
                 </th>
