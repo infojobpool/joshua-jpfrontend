@@ -299,6 +299,14 @@ import {
   withdrawalStatusLabel,
   type AdminWithdrawal,
 } from "@/lib/walletWithdrawalsApi";
+import {
+  filterCustomers,
+  downloadCustomersCsv,
+  VERIFICATION_FILTER_LABELS,
+  SIGNUP_BONUS_FILTER_LABELS,
+  type VerificationFilter,
+  type SignupBonusFilter,
+} from "@/lib/customerFilters";
 
 interface BankInfo {
   bank_account_number: string;
@@ -341,6 +349,8 @@ export default function CustomersPage() {
     new Map()
   );
   const [searchTerm, setSearchTerm] = useState("");
+  const [verificationFilter, setVerificationFilter] = useState<VerificationFilter>("all");
+  const [signupBonusFilter, setSignupBonusFilter] = useState<SignupBonusFilter>("all");
   const [isLoading, setIsLoading] = useState(false);
   const [visibleBankDetails, setVisibleBankDetails] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string>("");
@@ -369,21 +379,27 @@ export default function CustomersPage() {
     fetchCustomers();
   }, []);
 
-  const filteredCustomers = useMemo(() => {
-    const filtered = customers.filter(
-      (customer) =>
-        customer.user_fullname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.user_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (customer.phone_number && customer.phone_number.includes(searchTerm))
-    );
-    const joinedAt = (c: Customer) =>
-      (c as any).created_at ?? (c as any).joined_at ?? (c as any).date_joined ?? "";
-    return [...filtered].sort((a, b) => {
-      const ta = joinedAt(a) ? new Date(joinedAt(a)).getTime() : 0;
-      const tb = joinedAt(b) ? new Date(joinedAt(b)).getTime() : 0;
-      return tb - ta; // newest first
-    });
-  }, [customers, searchTerm]);
+  const filteredCustomers = useMemo(
+    () =>
+      filterCustomers(customers, {
+        searchTerm,
+        verificationFilter,
+        signupBonusFilter,
+        withdrawalsByUserId,
+      }),
+    [customers, searchTerm, verificationFilter, signupBonusFilter, withdrawalsByUserId]
+  );
+
+  const hasActiveFilters =
+    verificationFilter !== "all" ||
+    signupBonusFilter !== "all" ||
+    searchTerm.trim().length > 0;
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setVerificationFilter("all");
+    setSignupBonusFilter("all");
+  };
 
   const formatJoinedDate = (c: Customer) => {
     const iso = (c as any).created_at ?? (c as any).joined_at ?? (c as any).date_joined;
@@ -433,7 +449,7 @@ export default function CustomersPage() {
       
       // Get current date for filename
       const currentDate = new Date().toISOString().split('T')[0];
-      link.setAttribute('download', `customers_${currentDate}.xlsx`);
+      link.setAttribute('download', `customers_all_${currentDate}.xlsx`);
       
       // Append to html link element page
       document.body.appendChild(link);
@@ -445,11 +461,26 @@ export default function CustomersPage() {
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
       
-      toast.success("Excel file downloaded successfully");
+      toast.success("Excel file downloaded (all customers)");
     } catch (error) {
       toast.error("Failed to download Excel file");
       console.error("Download error:", error);
     }
+  };
+
+  const downloadFilteredCsv = () => {
+    if (filteredCustomers.length === 0) {
+      toast.error("No customers match the current filters");
+      return;
+    }
+    const suffix = [
+      verificationFilter !== "all" ? verificationFilter : null,
+      signupBonusFilter !== "all" ? signupBonusFilter : null,
+    ]
+      .filter(Boolean)
+      .join("_") || "filtered";
+    downloadCustomersCsv(filteredCustomers, withdrawalsByUserId, suffix);
+    toast.success(`Exported ${filteredCustomers.length} customer(s) as CSV`);
   };
 
   const getVerificationStatus = (status: number) => {
@@ -694,9 +725,9 @@ export default function CustomersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Customers Management</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap justify-end">
           <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-lg">
-            Total: {filteredCustomers.length} customers
+            Showing {filteredCustomers.length} of {customers.length}
           </div>
           {newThisWeek > 0 && (
             <div className="text-sm text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg font-medium">
@@ -704,28 +735,80 @@ export default function CustomersPage() {
             </div>
           )}
           <button
+            type="button"
+            onClick={downloadFilteredCsv}
+            disabled={isLoading || filteredCustomers.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="h-4 w-4" />
+            Export filtered CSV
+          </button>
+          <button
+            type="button"
             onClick={downloadExcel}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
           >
             <Download className="h-4 w-4" />
-            Download Excel
+            Download all Excel
           </button>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <input
-            type="search"
-            placeholder="Search by name, email or phone number..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+      {/* Search + filters */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[220px] max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="search"
+              placeholder="Search by name, email or phone number..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              disabled={isLoading}
+            />
+          </div>
+          <select
+            value={verificationFilter}
+            onChange={(e) => setVerificationFilter(e.target.value as VerificationFilter)}
             disabled={isLoading}
-          />
+            className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            aria-label="Filter by verification"
+          >
+            {(Object.keys(VERIFICATION_FILTER_LABELS) as VerificationFilter[]).map((key) => (
+              <option key={key} value={key}>
+                {VERIFICATION_FILTER_LABELS[key]}
+              </option>
+            ))}
+          </select>
+          <select
+            value={signupBonusFilter}
+            onChange={(e) => setSignupBonusFilter(e.target.value as SignupBonusFilter)}
+            disabled={isLoading}
+            className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            aria-label="Filter by signup bonus"
+          >
+            {(Object.keys(SIGNUP_BONUS_FILTER_LABELS) as SignupBonusFilter[]).map((key) => (
+              <option key={key} value={key}>
+                {SIGNUP_BONUS_FILTER_LABELS[key]}
+              </option>
+            ))}
+          </select>
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="h-10 px-3 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Clear filters
+            </button>
+          ) : null}
         </div>
+        {hasActiveFilters ? (
+          <p className="text-xs text-gray-500">
+            Filters active — export uses the {filteredCustomers.length} row(s) shown below.
+          </p>
+        ) : null}
       </div>
 
       {/* Table */}
@@ -793,7 +876,11 @@ export default function CustomersPage() {
               ) : filteredCustomers.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
-                    {searchTerm ? "No customers found matching your search" : "No customers found"}
+                    {hasActiveFilters
+                      ? "No customers match the current filters"
+                      : searchTerm
+                        ? "No customers found matching your search"
+                        : "No customers found"}
                   </td>
                 </tr>
               ) : (
