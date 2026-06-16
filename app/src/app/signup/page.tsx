@@ -280,8 +280,11 @@ export default function SignUpPage() {
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
-                <p className="text-xs text-gray-500">
-                  Must be at least 8 characters with uppercase, lowercase, numbers, and special characters
+                <p className="text-xs leading-relaxed text-slate-600">
+                  <span className="inline-block rounded-md bg-amber-50 px-1.5 py-0.5 font-semibold text-amber-900 ring-1 ring-amber-200/80">
+                    Must be at least 8 characters
+                  </span>{" "}
+                  with uppercase, lowercase, numbers, and special characters
                 </p>
               </div>
 

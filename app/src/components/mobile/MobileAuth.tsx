@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 import { SignInVerificationOuterTip } from "@/components/auth/SignInEmailVerificationGuide";
 import { messageSuggestsEmailVerification } from "@/lib/emailVerificationLogin";
 import {
@@ -31,6 +32,7 @@ export function MobileSignIn() {
     password: ""
   });
   const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -288,16 +290,26 @@ export function MobileSignIn() {
                 <label className="text-[13px] font-medium text-slate-700">
                   Password <span className="text-red-500">*</span>
                 </label>
-                <input
-                  name="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  style={{ color: '#000000', WebkitTextFillColor: '#000000', caretColor: '#000000', fontWeight: 600 }}
-                  className="h-10 w-full rounded-xl border border-slate-200 px-3.5 text-[15px] text-slate-900 placeholder:text-slate-400 transition-all focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25"
-                />
+                <div className="relative">
+                  <input
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                    style={{ color: '#000000', WebkitTextFillColor: '#000000', caretColor: '#000000', fontWeight: 600 }}
+                    className="h-10 w-full rounded-xl border border-slate-200 px-3.5 pr-11 text-[15px] text-slate-900 placeholder:text-slate-400 transition-all focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-start justify-between gap-3 pt-0.5">
@@ -405,6 +417,8 @@ export function MobileSignIn() {
 
 export function MobileSignUp() {
   const { isMobile } = useIsMobile();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -467,23 +481,61 @@ export function MobileSignUp() {
               required
             />
 
-            <MobileInput
-              label="Password"
-              type="password"
-              placeholder="Create a strong password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-            />
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-700">
+                Password <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Create a strong password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  className="mobile-input h-12 w-full rounded-md border border-gray-300 px-3 pr-11 text-base text-gray-900 placeholder-gray-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+              <p className="text-xs leading-relaxed text-slate-600">
+                <span className="inline-block rounded-md bg-amber-50 px-1.5 py-0.5 font-semibold text-amber-900 ring-1 ring-amber-200/80">
+                  Must be at least 8 characters
+                </span>{" "}
+                with uppercase, lowercase, numbers, and special characters
+              </p>
+            </div>
 
-            <MobileInput
-              label="Confirm Password"
-              type="password"
-              placeholder="Confirm your password"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              required
-            />
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-700">
+                Confirm Password <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  name="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirm your password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                  className="mobile-input h-12 w-full rounded-md border border-gray-300 px-3 pr-11 text-base text-gray-900 placeholder-gray-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600"
+                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
 
             <div className="flex items-start">
               <input type="checkbox" className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500" required />
