@@ -56,6 +56,11 @@ import { toast } from "sonner";
 import axiosInstance from "@/lib/axiosInstance";
 import { ConfirmDialog } from "@/components/ConfirmDialog"; // Import ConfirmDialog
 import { useCanAdminWrite } from "@/lib/adminAuth";
+import {
+  getAdminTaskStatus,
+  isInProgressAdminStatus,
+  type AdminTaskStatus,
+} from "@/lib/adminTaskStatus";
 
 interface User {
   id: string;
@@ -104,7 +109,7 @@ interface Task {
   description: string;
   category: string;
   customCategoryName?: string | null;
-  status: "Open" | "Assigned" | "In Progress" | "Completed" | "Cancelled" | "Taskmaster confirmed" | "Tasker confirmed";
+  status: AdminTaskStatus;
   location: string;
   dueDate: string;
   dueDateFlexible?: boolean;
@@ -174,19 +179,6 @@ export default function TasksPage() {
     return `${day}/${month}/${year}`;
   };
 
-  // Function to determine task status based on job data
-  // Uses tasker_completed, taskmaster_completed, job_completion_status, cancel_status from backend
-  const getTaskStatus = (job: Job): Task["status"] => {
-    if (job.job_completion_status === 1) return "Completed";
-    if (job.cancel_status === true) return "Cancelled";
-    const taskerDone = Boolean(job.tasker_completed);
-    const taskmasterDone = Boolean(job.taskmaster_completed);
-    if (taskmasterDone && !taskerDone) return "Taskmaster confirmed";
-    if (taskerDone && !taskmasterDone) return "Tasker confirmed";
-    if (job.tasker_id) return "Assigned";
-    return "Open";
-  };
-
   // Fetch tasks from API
   const fetchTasks = async () => {
     try {
@@ -200,7 +192,7 @@ export default function TasksPage() {
           description: job.job_description,
           category: job.job_category_name,
           customCategoryName: job.custom_category_name || null,
-          status: getTaskStatus(job),
+          status: getAdminTaskStatus(job),
           location: job.job_location,
           dueDate: job.job_due_date,
           dueDateFlexible: job.due_date_flexible === true,
@@ -292,7 +284,7 @@ export default function TasksPage() {
               description: job.job_description,
               category: job.job_category_name || job.job_category,
               customCategoryName: job.custom_category_name || null,
-              status: getTaskStatus(job),
+              status: getAdminTaskStatus(job),
               location: job.job_location,
               dueDate: job.job_due_date,
               dueDateFlexible: job.due_date_flexible === true,
@@ -411,9 +403,7 @@ export default function TasksPage() {
   // Calculate statistics
   const openTasks = tasks.filter((t) => t.status === "Open").length;
   const cancelledTasks = tasks.filter((t) => t.status === "Cancelled").length;
-  const inProgressTasks = tasks.filter((t) =>
-    ["In Progress", "Taskmaster confirmed", "Tasker confirmed"].includes(t.status)
-  ).length;
+  const inProgressTasks = tasks.filter((t) => isInProgressAdminStatus(t.status)).length;
   const completedTasks = tasks.filter((t) => t.status === "Completed").length;
   const totalBudget = tasks.reduce((sum, t) => sum + t.budget, 0);
 
@@ -679,7 +669,7 @@ export default function TasksPage() {
               description: job.job_description,
               category: job.job_category_name || job.job_category || editTask.category,
               customCategoryName: job.custom_category_name ?? editTask.customCategoryName ?? null,
-              status: getTaskStatus(job),
+              status: getAdminTaskStatus(job),
               location: job.job_location,
               dueDate: job.job_due_date || editTask.dueDate,
               dueDateFlexible: job.due_date_flexible ?? editTask.dueDateFlexible,

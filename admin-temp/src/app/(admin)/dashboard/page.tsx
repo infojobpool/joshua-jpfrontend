@@ -19,6 +19,11 @@ import axiosInstance from "@/lib/axiosInstance";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  countAdminTaskStatuses,
+  getAdminTaskStatus,
+  type AdminTaskStatus,
+} from "@/lib/adminTaskStatus";
 
 interface TaskStatus {
   id: number;
@@ -56,6 +61,11 @@ interface Job {
   job_due_date: string;
   job_images: { urls: string[] };
   status: boolean;
+  tasker_id?: string;
+  job_completion_status?: number;
+  cancel_status?: boolean;
+  tasker_completed?: boolean;
+  taskmaster_completed?: boolean;
   created_at?: string;
   timestamp?: string;
   job_tstamp?: string;
@@ -113,7 +123,7 @@ interface RecentTask {
   category: string;
   taskmaster: string;
   tasker: string;
-  status: string;
+  status: AdminTaskStatus;
   amount: string;
 }
 
@@ -295,7 +305,8 @@ export default function AdminDashboard() {
   // Calculate statistics with memoization for better performance
   const statistics = useMemo(() => {
     const totalRevenue = jobs.reduce((sum, job) => sum + (job.job_budget || 0), 0);
-    const activeTasks = jobs.filter((job) => !job.status).length; // status: false = Open/Active
+    const taskCounts = countAdminTaskStatuses(jobs);
+    const activeTasks = taskCounts.open;
     const totalUsers = users.length;
     // Real data from get-all-task-orders: status -1 = Pending
     const pendingOrders = taskOrders.filter((o) => o.status === -1);
@@ -399,7 +410,7 @@ export default function AdminDashboard() {
                 <div className="text-2xl font-bold tabular-nums tracking-tight text-slate-900 dark:text-slate-50">
                   {activeTasks}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Jobs not marked cancelled in admin feed</p>
+                <p className="text-xs text-muted-foreground mt-1">Posted jobs with no tasker assigned yet</p>
               </>
             )}
           </CardContent>
@@ -468,7 +479,7 @@ export default function AdminDashboard() {
               <CardHeader>
                 <CardTitle className="font-semibold">Task status</CardTitle>
                 <CardDescription className="text-muted-foreground">
-                  Open vs cancelled from the admin job list. Other states are not split here yet.
+                  Same status rules as Tasks Management (open, assigned, in progress, completed, cancelled).
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -599,29 +610,25 @@ function ActivityList({ users, jobs, isLoading }: { users: User[]; jobs: Job[]; 
 
 function TaskStatusList({ jobs, isLoading }: { jobs: Job[]; isLoading: boolean }) {
   const statuses: TaskStatus[] = useMemo(() => {
-    const openCount = jobs.filter((job) => !job.status).length;
-    const cancelledCount = jobs.filter((job) => job.status).length;
+    const counts = countAdminTaskStatuses(jobs);
+    const buckets: { name: string; count: number; color: string }[] = [
+      { name: "Open", count: counts.open, color: "text-amber-600 dark:text-amber-400" },
+      { name: "Assigned", count: counts.assigned, color: "text-blue-600 dark:text-blue-400" },
+      { name: "In progress", count: counts.inProgress, color: "text-violet-600 dark:text-violet-400" },
+      { name: "Completed", count: counts.completed, color: "text-emerald-600 dark:text-emerald-400" },
+      { name: "Cancelled", count: counts.cancelled, color: "text-slate-500 dark:text-slate-400" },
+    ].filter((b) => b.count > 0);
     const total = jobs.length;
     const pct = (n: number) => (total > 0 ? (n / total) * 100 : 0);
 
-    return [
-      {
-        id: 1,
-        name: "Open",
-        count: openCount,
-        percentage: pct(openCount),
-        icon: AlertCircle,
-        color: "text-amber-600 dark:text-amber-400",
-      },
-      {
-        id: 2,
-        name: "Cancelled",
-        count: cancelledCount,
-        percentage: pct(cancelledCount),
-        icon: AlertCircle,
-        color: "text-slate-500 dark:text-slate-400",
-      },
-    ];
+    return buckets.map((b, i) => ({
+      id: i + 1,
+      name: b.name,
+      count: b.count,
+      percentage: pct(b.count),
+      icon: AlertCircle,
+      color: b.color,
+    }));
   }, [jobs]);
 
   return (
@@ -644,7 +651,15 @@ function TaskStatusList({ jobs, isLoading }: { jobs: Job[]; isLoading: boolean }
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                 <div
                   className={`h-full rounded-full ${
-                    status.id === 1 ? "bg-amber-500" : "bg-slate-400 dark:bg-slate-500"
+                    status.name === "Open"
+                      ? "bg-amber-500"
+                      : status.name === "Assigned"
+                        ? "bg-blue-500"
+                        : status.name === "In progress"
+                          ? "bg-violet-500"
+                          : status.name === "Completed"
+                            ? "bg-emerald-500"
+                            : "bg-slate-400 dark:bg-slate-500"
                   }`}
                   style={{ width: `${Math.min(100, status.percentage)}%` }}
                 />
@@ -672,8 +687,8 @@ function RecentTasksList({ jobs, isLoading }: { jobs: Job[]; isLoading: boolean 
       title: job.job_title || "Untitled",
       category: job.job_category_name || "General",
       taskmaster: job.posted_by || "Unknown",
-      tasker: "Unassigned", // No tasker data in API
-      status: job.status ? "Cancelled" : "Open",
+      tasker: job.tasker_id ? "Assigned" : "Unassigned",
+      status: getAdminTaskStatus(job),
       amount: `₹${(job.job_budget || 0).toLocaleString()}`,
     }));
   }, [jobs]);
