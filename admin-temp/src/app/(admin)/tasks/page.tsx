@@ -12,6 +12,9 @@ import {
   Pencil,
   Trash2,
   ImagePlus,
+  Briefcase,
+  Ban,
+  IndianRupee,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -135,6 +138,26 @@ interface Task {
 }
 
 const MAX_TASK_IMAGES_ADMIN = 10;
+
+function renderTaskCategoryBadge(task: Task) {
+  if (task.customCategoryName) {
+    return (
+      <Badge
+        variant="outline"
+        className="max-w-full truncate border-blue-300 bg-blue-50 text-xs font-medium text-blue-700 gap-1"
+        title="User suggested category"
+      >
+        <Pencil className="h-3 w-3 shrink-0" />
+        <span className="truncate">{task.customCategoryName}</span>
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="max-w-full truncate border-gray-200 text-xs text-gray-700">
+      {task.category}
+    </Badge>
+  );
+}
 
 function jobImageUrlsFromJob(job: Job | Record<string, unknown>): string[] {
   const ji = (job as Job).job_images as { urls?: string[] } | string[] | undefined;
@@ -759,58 +782,44 @@ export default function TasksPage() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex min-w-0 w-full max-w-full flex-col gap-5">
       <Toaster />
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Tasks Management</h1>
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight text-slate-900">Tasks Management</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Browse and manage jobs from the admin feed
+        </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Open Tasks</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{openTasks}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cancelled</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{cancelledTasks}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{inProgressTasks}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{completedTasks}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Budget</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ₹{totalBudget.toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {[
+          { label: "Open", value: openTasks, accent: "bg-amber-500", icon: Briefcase },
+          { label: "Cancelled", value: cancelledTasks, accent: "bg-red-500", icon: Ban },
+          { label: "In progress", value: inProgressTasks, accent: "bg-violet-500", icon: Clock },
+          { label: "Completed", value: completedTasks, accent: "bg-emerald-500", icon: CheckCircle },
+          {
+            label: "Total budget",
+            value: `₹${totalBudget.toLocaleString()}`,
+            accent: "bg-blue-500",
+            icon: IndianRupee,
+          },
+        ].map((stat) => (
+          <Card key={stat.label} className="overflow-hidden rounded-xl border-slate-200/80 shadow-sm">
+            <div className={`h-1 ${stat.accent}`} />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3">
+              <CardTitle className="text-xs font-medium text-muted-foreground">{stat.label}</CardTitle>
+              <stat.icon className="h-3.5 w-3.5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="pb-3">
+              <div className="text-xl font-bold tabular-nums tracking-tight">{stat.value}</div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <div className="flex flex-col md:flex-row items-center gap-4">
+      <Card className="rounded-xl border-slate-200/80 shadow-sm">
+        <CardContent className="pt-4 pb-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -822,13 +831,13 @@ export default function TasksPage() {
             disabled={isLoading}
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
           <Select
             value={categoryFilter}
             onValueChange={setCategoryFilter}
             disabled={isLoading}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full min-w-[140px] sm:w-[160px]">
               <SelectValue placeholder="Filter by category" />
             </SelectTrigger>
             <SelectContent>
@@ -845,7 +854,7 @@ export default function TasksPage() {
             onValueChange={setStatusFilter}
             disabled={isLoading}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full min-w-[140px] sm:w-[160px]">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
@@ -867,7 +876,7 @@ export default function TasksPage() {
             }
             disabled={isLoading}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full min-w-[140px] sm:w-[160px]">
               <SelectValue placeholder="Filter by date" />
             </SelectTrigger>
             <SelectContent>
@@ -877,10 +886,10 @@ export default function TasksPage() {
             </SelectContent>
           </Select>
           {dateFilter === "custom" && (
-            <div className="flex items-center gap-2">
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
               <Input
                 type="date"
-                className="w-[150px]"
+                className="w-full min-w-[130px] sm:w-[140px]"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
                 disabled={isLoading}
@@ -888,7 +897,7 @@ export default function TasksPage() {
               <span className="text-xs text-muted-foreground">to</span>
               <Input
                 type="date"
-                className="w-[150px]"
+                className="w-full min-w-[130px] sm:w-[140px]"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
                 disabled={isLoading}
@@ -897,28 +906,36 @@ export default function TasksPage() {
           )}
         </div>
       </div>
+        </CardContent>
+      </Card>
 
-      <div className="rounded-md border">
-        <Table>
+      <Card className="min-w-0 overflow-hidden rounded-xl border-slate-200/80 shadow-sm">
+        <CardHeader className="border-b bg-slate-50/80 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="text-base font-semibold">All tasks</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {isLoading ? "Loading…" : `${filteredTasks.length} task${filteredTasks.length === 1 ? "" : "s"}`}
+            </p>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+        <Table className="table-fixed w-full min-w-[560px]">
           <TableHeader>
-            <TableRow>
-              <TableHead>Task</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="hidden md:table-cell">Taskmaster</TableHead>
-              <TableHead className="hidden md:table-cell">Tasker</TableHead>
-              <TableHead className="hidden md:table-cell">Posted</TableHead>
-              <TableHead className="hidden md:table-cell">Due Date</TableHead>
-              <TableHead className="hidden md:table-cell">Offers</TableHead>
-              <TableHead>Budget</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+            <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+              <TableHead className="whitespace-normal pl-4">Task</TableHead>
+              <TableHead className="w-[108px]">Status</TableHead>
+              <TableHead className="hidden w-[148px] lg:table-cell">People</TableHead>
+              <TableHead className="hidden w-[108px] xl:table-cell">Dates</TableHead>
+              <TableHead className="hidden w-[64px] xl:table-cell text-center">Offers</TableHead>
+              <TableHead className="w-[84px]">Budget</TableHead>
+              <TableHead className="w-[52px] pr-4 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
                 <TableCell
-                  colSpan={9}
+                  colSpan={7}
                   className="text-center py-8 text-muted-foreground"
                 >
                   Loading...
@@ -927,7 +944,7 @@ export default function TasksPage() {
             ) : filteredTasks.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={9}
+                  colSpan={7}
                   className="text-center py-8 text-muted-foreground"
                 >
                   No tasks found
@@ -935,37 +952,32 @@ export default function TasksPage() {
               </TableRow>
             ) : (
               sortedTasks.map((task) => (
-                <TableRow key={task.id}>
-                  <TableCell>
-                    <div className="font-medium">{task.title}</div>
-                    <div className="text-sm text-muted-foreground line-clamp-1 md:hidden">
-                      {task.taskmaster.name} • {task.dueDate}
+                <TableRow key={task.id} className="align-top">
+                  <TableCell className="min-w-0 whitespace-normal py-3 pl-4">
+                    <div className="space-y-1.5">
+                      <p className="text-sm font-medium leading-snug line-clamp-2" title={task.title}>
+                        {task.title}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        {renderTaskCategoryBadge(task)}
+                        <span className="text-xs text-muted-foreground lg:hidden">
+                          {task.taskmaster.name}
+                          {task.tasker ? ` · ${task.tasker.name}` : " · Unassigned"}
+                        </span>
+                        <span className="text-xs text-muted-foreground xl:hidden">
+                          · {task.offers} offer{task.offers === 1 ? "" : "s"}
+                        </span>
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    {task.customCategoryName ? (
-                      <Badge
-                        variant="outline"
-                        className="border-blue-300 bg-blue-50 text-blue-700 font-medium gap-1"
-                        title="User suggested category"
-                      >
-                        <Pencil className="h-3 w-3" />
-                        {task.customCategoryName}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="border-gray-200 text-gray-700">
-                        {task.category}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
+                  <TableCell className="whitespace-normal py-3">
                     <div className="flex flex-col gap-1">
                     <Badge
                       variant={getStatusBadgeVariant(task.status)}
-                      className="flex items-center w-fit"
+                      className="flex w-fit max-w-full items-center whitespace-normal text-xs"
                     >
                       {getStatusIcon(task.status)}
-                      {task.status}
+                      <span className="truncate">{task.status}</span>
                     </Badge>
                       {task.status === "Cancelled" && task.refundStatus && (
                         <Badge
@@ -991,56 +1003,35 @@ export default function TasksPage() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarFallback>
-                          {task.taskmaster.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm">{task.taskmaster.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {task.tasker ? (
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
-                          <AvatarFallback>
-                            {task.tasker.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm">{task.tasker.name}</span>
+                  <TableCell className="hidden whitespace-normal py-3 lg:table-cell">
+                    <div className="space-y-1 text-xs">
+                      <div className="min-w-0">
+                        <span className="text-muted-foreground">Poster </span>
+                        <span className="font-medium">{task.taskmaster.name}</span>
                       </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">
-                        Unassigned
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <span className="text-sm text-muted-foreground">{formatDate(task.createdAt)}</span>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span>{task.dueDateFlexible || !task.dueDate ? "Flexible" : formatDate(task.dueDate)}</span>
+                      <div className="min-w-0">
+                        <span className="text-muted-foreground">Tasker </span>
+                        <span className={task.tasker ? "font-medium" : "text-muted-foreground"}>
+                          {task.tasker?.name ?? "Unassigned"}
+                        </span>
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <Badge variant="outline">{task.offers}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium">₹{task.budget}</span>
+                  <TableCell className="hidden whitespace-normal py-3 text-xs text-muted-foreground xl:table-cell">
+                    <div>Posted {formatDate(task.createdAt)}</div>
+                    <div className="mt-0.5">
+                      Due {task.dueDateFlexible || !task.dueDate ? "Flexible" : formatDate(task.dueDate)}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="hidden py-3 text-center xl:table-cell">
+                    <Badge variant="outline" className="text-xs tabular-nums">
+                      {task.offers}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="py-3 text-sm font-medium tabular-nums whitespace-nowrap">
+                    ₹{task.budget.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="py-3 pr-4 text-right">
                     <Dialog
                       open={isDetailsDialogOpen && selectedTask?.id === task.id}
                       onOpenChange={(open) => {
@@ -1862,7 +1853,8 @@ export default function TasksPage() {
             )}
           </TableBody>
         </Table>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
