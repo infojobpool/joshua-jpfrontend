@@ -7,6 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import axiosInstance from "@/lib/axiosInstance";
@@ -15,29 +22,43 @@ import { AdminReadOnlyBanner } from "@/components/AdminReadOnlyBanner";
 import { formatAxiosApiError } from "@/lib/apiError";
 import { parseMediaUploadResponse } from "@/lib/parseMediaUploadResponse";
 import {
-  emptySiteSeo,
-  parseAdminSiteSeoResponse,
-  siteSeoToPayload,
-  type AdminSiteSeo,
-} from "@/lib/adminSiteSeo";
+  mergePageSeoRows,
+  pageSeoToPayload,
+  parseAdminPageSeoDetailResponse,
+  parseAdminPageSeoListResponse,
+} from "@/lib/adminPageSeo";
+import {
+  emptyPageSeoForm,
+  normalizeSeoPath,
+  PUBLIC_STATIC_SEO_PAGES,
+  type AdminPageSeoForm,
+} from "@/lib/publicStaticPages";
 
-export default function SiteSeoPage() {
+export default function PageSeoAdminPage() {
   const canWrite = useCanAdminWrite();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [form, setForm] = useState<AdminSiteSeo>(() => emptySiteSeo());
+  const [pages, setPages] = useState<AdminPageSeoForm[]>([]);
+  const [selectedPath, setSelectedPath] = useState("/browse");
+  const [form, setForm] = useState<AdminPageSeoForm>(() => emptyPageSeoForm("/browse"));
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axiosInstance.get("admin/site-seo/");
-      const parsed = parseAdminSiteSeoResponse(res.data);
-      setForm(parsed ?? emptySiteSeo());
+      const res = await axiosInstance.get("admin/page-seo/");
+      const fromApi = parseAdminPageSeoListResponse(res.data);
+      const merged = mergePageSeoRows(PUBLIC_STATIC_SEO_PAGES, fromApi);
+      setPages(merged);
+      setForm((prev) => {
+        const current = merged.find((p) => normalizeSeoPath(p.path) === normalizeSeoPath(prev.path));
+        return current ?? merged.find((p) => p.path === "/browse") ?? emptyPageSeoForm("/browse");
+      });
     } catch (e: unknown) {
-      toast.error(formatAxiosApiError(e) || "Failed to load site SEO.");
-      setForm(emptySiteSeo());
+      toast.error(formatAxiosApiError(e) || "Failed to load page SEO.");
+      const merged = mergePageSeoRows(PUBLIC_STATIC_SEO_PAGES, []);
+      setPages(merged);
     } finally {
       setLoading(false);
     }
@@ -47,7 +68,33 @@ export default function SiteSeoPage() {
     void load();
   }, [load]);
 
-  const patch = (partial: Partial<AdminSiteSeo>) => setForm((prev) => ({ ...prev, ...partial }));
+  const selectPage = async (path: string) => {
+    const normalized = normalizeSeoPath(path);
+    setSelectedPath(normalized);
+    const cached = pages.find((p) => normalizeSeoPath(p.path) === normalized);
+    if (cached) {
+      setForm(cached);
+      return;
+    }
+    setForm(emptyPageSeoForm(normalized));
+    try {
+      const res = await axiosInstance.get("admin/page-seo/", {
+        params: { path: normalized },
+      });
+      const row = parseAdminPageSeoDetailResponse(res.data);
+      if (row) {
+        setForm(row);
+        setPages((prev) => {
+          const next = prev.filter((p) => normalizeSeoPath(p.path) !== normalized);
+          return [...next, row].sort((a, b) => a.label.localeCompare(b.label));
+        });
+      }
+    } catch {
+      /* use empty defaults */
+    }
+  };
+
+  const patch = (partial: Partial<AdminPageSeoForm>) => setForm((prev) => ({ ...prev, ...partial }));
 
   const uploadOg = async (file: File | null) => {
     if (!file || !canWrite) return;
@@ -69,15 +116,24 @@ export default function SiteSeoPage() {
 
   const save = async () => {
     if (!canWrite) return;
+    if (!form.meta_title.trim()) {
+      toast.error("Meta title is required.");
+      return;
+    }
     setSaving(true);
     try {
-      const res = await axiosInstance.put("admin/site-seo/", siteSeoToPayload(form));
+      const res = await axiosInstance.put("admin/page-seo/", pageSeoToPayload(form));
       if (res.data?.status_code != null && res.data.status_code !== 200) {
         throw new Error(res.data?.message || "Save failed");
       }
-      toast.success("Site SEO saved.");
-      const parsed = parseAdminSiteSeoResponse(res.data);
-      if (parsed) setForm(parsed);
+      toast.success(`Saved SEO for ${form.label}`);
+      const saved = parseAdminPageSeoDetailResponse(res.data) ?? form;
+      setForm(saved);
+      setPages((prev) => {
+        const normalized = normalizeSeoPath(saved.path);
+        const next = prev.filter((p) => normalizeSeoPath(p.path) !== normalized);
+        return [...next, saved].sort((a, b) => a.label.localeCompare(b.label));
+      });
     } catch (e: unknown) {
       toast.error(formatAxiosApiError(e) || "Save failed.");
     } finally {
@@ -93,9 +149,9 @@ export default function SiteSeoPage() {
       <Toaster />
       <AdminReadOnlyBanner />
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Site SEO</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Page SEO</h1>
         <p className="text-sm text-muted-foreground">
-          Global defaults for the homepage and social previews. GET/PUT /admin/site-seo/
+          Edit search and social metadata for each public marketing page. GET/PUT /admin/page-seo/
         </p>
       </div>
 
@@ -104,39 +160,57 @@ export default function SiteSeoPage() {
       ) : (
         <div className="space-y-4 rounded-xl border bg-card p-4 md:p-6">
           <div className="space-y-2">
+            <Label>Page</Label>
+            <Select value={normalizeSeoPath(selectedPath)} onValueChange={(v) => void selectPage(v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose a page" />
+              </SelectTrigger>
+              <SelectContent>
+                {pages.map((p) => (
+                  <SelectItem key={p.path} value={normalizeSeoPath(p.path)}>
+                    {p.label} ({p.path})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <Label htmlFor="site-meta-title">Meta title</Label>
+              <Label htmlFor="page-meta-title">Meta title</Label>
               <span className={`text-xs tabular-nums ${titleLen > 60 ? "text-amber-600" : "text-muted-foreground"}`}>
                 {titleLen}/60
               </span>
             </div>
             <Input
-              id="site-meta-title"
+              id="page-meta-title"
               value={form.meta_title}
               onChange={(e) => patch({ meta_title: e.target.value })}
               disabled={!canWrite}
             />
           </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <Label htmlFor="site-meta-desc">Meta description</Label>
+              <Label htmlFor="page-meta-desc">Meta description</Label>
               <span className={`text-xs tabular-nums ${descLen > 160 ? "text-amber-600" : "text-muted-foreground"}`}>
                 {descLen}/160
               </span>
             </div>
             <Textarea
-              id="site-meta-desc"
+              id="page-meta-desc"
               rows={4}
               value={form.meta_description}
               onChange={(e) => patch({ meta_description: e.target.value })}
               disabled={!canWrite}
             />
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="site-og">Default OG image URL</Label>
+            <Label htmlFor="page-og">OG image URL</Label>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Input
-                id="site-og"
+                id="page-og"
                 value={form.og_image_url}
                 onChange={(e) => patch({ og_image_url: e.target.value })}
                 disabled={!canWrite}
@@ -162,30 +236,32 @@ export default function SiteSeoPage() {
               </Button>
             </div>
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="site-canonical">Canonical path</Label>
+            <Label htmlFor="page-canonical">Canonical path</Label>
             <Input
-              id="site-canonical"
+              id="page-canonical"
               value={form.canonical_path}
               onChange={(e) => patch({ canonical_path: e.target.value })}
               disabled={!canWrite}
-              placeholder="/"
             />
           </div>
+
           <div className="flex items-center gap-2">
             <Checkbox
-              id="site-noindex"
+              id="page-noindex"
               checked={form.noindex}
               onCheckedChange={(v) => patch({ noindex: v === true })}
               disabled={!canWrite}
             />
-            <Label htmlFor="site-noindex" className="text-sm font-normal">
-              Hide homepage from search engines (noindex)
+            <Label htmlFor="page-noindex" className="text-sm font-normal">
+              Hide this page from search engines (noindex)
             </Label>
           </div>
+
           {canWrite ? (
             <Button type="button" onClick={() => void save()} disabled={saving}>
-              {saving ? "Saving…" : "Save site SEO"}
+              {saving ? "Saving…" : `Save ${form.label}`}
             </Button>
           ) : null}
         </div>

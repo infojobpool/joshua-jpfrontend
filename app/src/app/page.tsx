@@ -1,5 +1,4 @@
 // Enhanced Landing Page - Beautiful gradients, task examples, and modern UI
-import type { Metadata } from "next";
 import { HeroSection } from '../components/mainpage/hero-section'
 import { MobileHeroSection } from '../components/mobile/MobileHeroSection'
 import { MobileWelcomeBonus } from '../components/mobile/MobileWelcomeBonus'
@@ -12,30 +11,13 @@ import { HowItWorks } from '../components/mainpage/how-it-works'
 import { Features } from '../components/mainpage/features'
 import { Testimonials } from '../components/mainpage/testimonials'
 import { TrustBadgesSection } from '../components/mainpage/TrustBadgesSection'
-import { buildPublicMetadata } from "@/lib/seo/metadata";
-import { fetchSiteSeo } from "@/lib/seo/siteSeo";
+import { staticPageMetadata } from "@/lib/seo/staticPageMetadata";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const site = await fetchSiteSeo();
-  if (!site) {
-    return buildPublicMetadata({
-      title: "JobPool - Task Marketplace",
-      description:
-        "Connect with skilled taskers for home services, repairs, and more. Post tasks or find work opportunities.",
-      path: "/",
-    });
-  }
-
-  return buildPublicMetadata({
-    title: site.meta_title ?? "JobPool - Task Marketplace",
-    description:
-      site.meta_description ??
-      "Connect with skilled taskers for home services, repairs, and more. Post tasks or find work opportunities.",
-    path: site.canonical_path ?? "/",
-    ogImage: site.og_image_url ?? undefined,
-    noindex: site.noindex ?? false,
-  });
-}
+export const generateMetadata = staticPageMetadata("/", {
+  title: "JobPool — Get everyday tasks done",
+  description:
+    "Post tasks and hire verified taskers across India. Home services, repairs, delivery, and skilled help on JobPool.",
+});
 
 export default function Home() {
   return (

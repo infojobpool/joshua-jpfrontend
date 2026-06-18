@@ -1,6 +1,6 @@
 import { createStaticPageLayoutMetadata } from "@/lib/seo/staticPageLayout";
 
-export const generateMetadata = createStaticPageLayoutMetadata("/browse");
+export const generateMetadata = createStaticPageLayoutMetadata("/privacy-policy");
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return children;

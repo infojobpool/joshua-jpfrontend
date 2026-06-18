@@ -42,8 +42,8 @@ const sidebarNavItems = [
     icon: Newspaper,
   },
   {
-    title: "Site SEO",
-    href: "/site-seo",
+    title: "Page SEO",
+    href: "/page-seo",
     icon: Search,
   },
   {
