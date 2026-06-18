@@ -1,9 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { fetchPublicBlogPostBySlugServer, fetchPublicBlogPostSummariesServer } from "@/lib/publicBlog";
 import { BlogMarkdown } from "@/components/blog/BlogMarkdown";
 import { resolveApiMediaUrl } from "@/lib/profileImage";
+import { sitePath, toAbsoluteMediaUrl, truncateMetaDescription } from "@/lib/seo/site";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -12,6 +14,59 @@ type PageProps = {
 export const dynamicParams = true;
 /** Avoid stale hero/body after edits — public blog fetch uses cache: "no-store" too. */
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const canonicalPath = sitePath(`/blog/${encodeURIComponent(slug)}`);
+  const post = await fetchPublicBlogPostBySlugServer(slug);
+
+  if (!post) {
+    return {
+      title: "Article not found | JobPool",
+      description: "This article may have been removed or is no longer published.",
+      alternates: { canonical: canonicalPath },
+      robots: { index: false, follow: false },
+    };
+  }
+
+  const title = `${post.title} | JobPool Blog`;
+  const description = post.excerpt?.trim()
+    ? truncateMetaDescription(post.excerpt)
+    : truncateMetaDescription(`Read "${post.title}" on the JobPool blog.`);
+
+  const ogImage = post.hero_image_url
+    ? toAbsoluteMediaUrl(resolveApiMediaUrl(post.hero_image_url))
+    : undefined;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: canonicalPath },
+    openGraph: {
+      type: "article",
+      url: canonicalPath,
+      siteName: "JobPool",
+      title: post.title,
+      description,
+      ...(ogImage
+        ? {
+            images: [
+              {
+                url: ogImage,
+                alt: post.title,
+              },
+            ],
+          }
+        : {}),
+    },
+    twitter: {
+      card: ogImage ? "summary_large_image" : "summary",
+      title: post.title,
+      description,
+      ...(ogImage ? { images: [ogImage] } : {}),
+    },
+  };
+}
 
 export async function generateStaticParams() {
   try {
@@ -55,7 +110,7 @@ export default async function BlogArticlePage({ params }: PageProps) {
             <img
               key={hero}
               src={hero}
-              alt=""
+              alt={post.title}
               className="block h-auto w-full max-w-full object-contain align-middle max-h-[min(88vh,720px)]"
               sizes="(max-width: 768px) 100vw, 48rem"
             />

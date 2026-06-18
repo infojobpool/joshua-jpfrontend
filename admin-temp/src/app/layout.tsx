@@ -14,7 +14,12 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Job Pool Admin",
-  description: "Admin area for jobpool",
+  description: "Admin area for JobPool",
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: { index: false, follow: false },
+  },
 };
 
 export default function RootLayout({
