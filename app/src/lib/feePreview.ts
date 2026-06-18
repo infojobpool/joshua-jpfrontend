@@ -32,11 +32,11 @@ export interface PosterFeeData {
   [key: string]: unknown;
 }
 
-/** Tasker-side estimate (what you receive after deductions). No GST on tasker. */
+/** Tasker-side estimate: platform fee + GST on fee deducted from the bid. */
 export interface TaskerFeeData {
   bid_amount?: number;
   platform_fee?: number;
-  /** Legacy — do not show on tasker UI. */
+  /** GST on platform fee (mirrors `gst_amount` when both are returned). */
   reference_taxes?: number;
   commission_amount?: number;
   gst_amount?: number;
@@ -87,9 +87,16 @@ export function feeLinesForDisplay(lines: FeeLine[] | undefined): FeeLine[] {
   return lines.filter((l) => (l.kind || "").toLowerCase() !== "total");
 }
 
-/** Tasker UI: hide GST / tax rows (tasker has platform fee only). */
+/** Tasker UI: API deduction lines only (net/total row is shown in the footer). */
 export function taskerFeeLinesForDisplay(lines: FeeLine[] | undefined): FeeLine[] {
-  return feeLinesForDisplay(lines).filter((l) => !/\bgst\b|tax/i.test(l.label));
+  return feeLinesForDisplay(lines).filter((l) => {
+    const id = (l.id || "").toLowerCase();
+    const kind = (l.kind || "").toLowerCase();
+    if (kind === "total") return false;
+    if (id === "net") return false;
+    if (/estimated you receive|you receive/i.test(l.label)) return false;
+    return true;
+  });
 }
 
 export function feeTotalLine(lines: FeeLine[] | undefined): FeeLine | undefined {
@@ -128,10 +135,12 @@ export function buildPaymentDescriptionFromPosterPreview(
     ? d.lines
     : [
         { label: "Task budget", amount: d.bid_amount ?? 0 },
-        ...(d.commission_amount != null
-          ? [{ label: "Platform fee (from budget)", amount: d.commission_amount }]
+        ...(d.commission_amount != null || d.platform_fee != null
+          ? [{ label: "Platform fee (from budget)", amount: Number(d.commission_amount ?? d.platform_fee ?? 0) }]
           : []),
-        ...(d.gst_amount != null ? [{ label: "GST (from budget)", amount: d.gst_amount }] : []),
+        ...(d.gst_amount != null || d.taxes != null
+          ? [{ label: "GST on platform fee", amount: Number(d.gst_amount ?? d.taxes ?? 0) }]
+          : []),
       ];
   for (const row of lines) {
     parts.push(`• ${row.label}: ${formatInr(Number(row.amount))}`);

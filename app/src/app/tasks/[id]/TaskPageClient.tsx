@@ -2395,7 +2395,7 @@ export default function TaskDetailPage() {
           <DialogHeader>
             <DialogTitle>Confirm Your Bid</DialogTitle>
             <DialogDescription>
-              Platform fee is deducted from the bid. You receive the estimated net shown below (no GST on tasker earnings).
+              Platform fee and GST on that fee are deducted from your bid. You receive the estimated net shown below.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

@@ -61,10 +61,10 @@ export function PosterFeeBreakdown({ data, bidFallback, compact = false }: Poste
               <span className="tabular-nums">{formatInr(Number(data.commission_amount ?? data.platform_fee ?? 0))}</span>
             </div>
           )}
-          {data.gst_amount != null && (
+          {(data.gst_amount != null || data.taxes != null) && (
             <div className={`flex justify-between gap-2 text-sm ${deductionClass}`}>
-              <span>GST (from budget)</span>
-              <span className="tabular-nums">{formatInr(Number(data.gst_amount))}</span>
+              <span>GST on platform fee</span>
+              <span className="tabular-nums">{formatInr(Number(data.gst_amount ?? data.taxes ?? 0))}</span>
             </div>
           )}
           {taskerNet != null && (

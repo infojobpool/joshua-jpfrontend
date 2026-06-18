@@ -50,12 +50,22 @@ export function TaskerFeeBreakdown({ data, bidFallback }: TaskerFeeBreakdownProp
           </div>
         ))
       ) : (
-        data.platform_fee != null && (
-          <div className="flex justify-between gap-2 text-slate-600">
-            <span>Platform fee</span>
-            <span className="tabular-nums">{formatInr(Number(data.platform_fee))}</span>
-          </div>
-        )
+        <>
+          {data.platform_fee != null && (
+            <div className="flex justify-between gap-2 text-slate-600">
+              <span>Platform fee</span>
+              <span className="tabular-nums">{formatInr(Number(data.platform_fee))}</span>
+            </div>
+          )}
+          {(data.gst_amount != null || data.reference_taxes != null) && (
+            <div className="flex justify-between gap-2 text-slate-600">
+              <span>GST on platform fee</span>
+              <span className="tabular-nums">
+                {formatInr(Number(data.gst_amount ?? data.reference_taxes ?? 0))}
+              </span>
+            </div>
+          )}
+        </>
       )}
       <div className="flex items-center justify-between border-t border-green-100 bg-green-50/80 px-2 py-2 text-base font-bold">
         <span className="text-gray-800">You receive (est.)</span>
