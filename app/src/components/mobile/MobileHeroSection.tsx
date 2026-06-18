@@ -1,6 +1,7 @@
 "use client";
 
 import React, { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, LogOut, User, Wallet } from "lucide-react";
@@ -17,7 +18,8 @@ export function MobileHeroSection() {
   const router = useRouter();
   const [taskTitle, setTaskTitle] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
-  const heroBarRef = useRef<HTMLDivElement>(null);
+  const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | null>(null);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
   const checkAuth = useStore((s) => s.checkAuth);
   const logout = useStore((s) => s.logout);
   const isAuthenticated = useStore((s) => s.isAuthenticated);
@@ -52,16 +54,60 @@ export function MobileHeroSection() {
   }, [userId, updateUserProfileImage]);
 
   useEffect(() => {
+    if (!profileOpen) {
+      setMenuAnchor(null);
+      return;
+    }
+    const updateAnchor = () => {
+      const btn = profileButtonRef.current;
+      if (!btn) return;
+      const rect = btn.getBoundingClientRect();
+      setMenuAnchor({
+        top: rect.bottom + 8,
+        right: Math.max(8, window.innerWidth - rect.right),
+      });
+    };
+    updateAnchor();
+    window.addEventListener("resize", updateAnchor);
+    window.addEventListener("scroll", updateAnchor, true);
+    return () => {
+      window.removeEventListener("resize", updateAnchor);
+      window.removeEventListener("scroll", updateAnchor, true);
+    };
+  }, [profileOpen]);
+
+  useEffect(() => {
+    const closeProfile = () => setProfileOpen(false);
+    window.addEventListener("jobpool:mobile-nav-open", closeProfile);
+    return () => window.removeEventListener("jobpool:mobile-nav-open", closeProfile);
+  }, []);
+
+  useEffect(() => {
     if (!profileOpen) return;
-    const onDown = (e: MouseEvent) => {
-      const el = heroBarRef.current;
-      if (el && !el.contains(e.target as Node)) {
-        setProfileOpen(false);
-      }
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (profileButtonRef.current?.contains(target)) return;
+      const panel = document.getElementById("mobile-hero-profile-menu");
+      if (panel?.contains(target)) return;
+      setProfileOpen(false);
     };
     document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+    };
   }, [profileOpen]);
+
+  const toggleProfile = useCallback(() => {
+    setProfileOpen((open) => {
+      const next = !open;
+      if (next) {
+        window.dispatchEvent(new CustomEvent("jobpool:profile-open"));
+      }
+      return next;
+    });
+  }, []);
 
   const handleSignOut = useCallback(() => {
     logout();
@@ -103,6 +149,90 @@ export function MobileHeroSection() {
     : "";
   const displayName = user?.name || "User";
 
+  const profileMenuPanel =
+    profileOpen && menuAnchor && typeof document !== "undefined"
+      ? createPortal(
+          <>
+            <button
+              type="button"
+              className="fixed inset-0 z-[200] cursor-default bg-black/25 md:hidden"
+              aria-label="Close account menu"
+              onClick={() => setProfileOpen(false)}
+            />
+            <div
+              id="mobile-hero-profile-menu"
+              className="fixed z-[201] w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200/90 bg-white text-slate-900 shadow-2xl ring-1 ring-black/5 md:hidden"
+              style={{ top: menuAnchor.top, right: menuAnchor.right }}
+              role="menu"
+            >
+              <div className="border-b border-slate-100 bg-gradient-to-br from-slate-50 to-white px-4 py-3">
+                <div className="flex items-center gap-3">
+                  {profileImg ? (
+                    <img
+                      src={profileImg}
+                      alt={displayName}
+                      className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-white shadow"
+                    />
+                  ) : (
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-lg font-semibold text-white shadow">
+                      {displayName.charAt(0) || "U"}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-sm font-semibold text-slate-900">{displayName}</p>
+                      {user?.verification_status != null && Number(user.verification_status) >= 2 ? (
+                        <VerifiedBadge size="sm" />
+                      ) : null}
+                    </div>
+                    {user?.email ? (
+                      <p className="mt-0.5 truncate text-xs text-slate-500">{user.email}</p>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+              <div className="py-1">
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium hover:bg-slate-50"
+                  onClick={() => setProfileOpen(false)}
+                  role="menuitem"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
+                    <User className="h-4 w-4" />
+                  </span>
+                  My profile
+                </Link>
+                <Link
+                  href="/wallet"
+                  className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium hover:bg-slate-50"
+                  onClick={() => setProfileOpen(false)}
+                  role="menuitem"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                    <Wallet className="h-4 w-4" />
+                  </span>
+                  Wallet
+                </Link>
+                <div className="my-1 border-t border-slate-100" />
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm font-medium text-red-600 hover:bg-red-50"
+                  role="menuitem"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50">
+                    <LogOut className="h-4 w-4" />
+                  </span>
+                  Sign out
+                </button>
+              </div>
+            </div>
+          </>,
+          document.body,
+        )
+      : null;
+
   return (
     <section className="md:hidden w-full bg-white -mt-px">
       {/* Do not use overflow-y-hidden here: the account menu is absolutely positioned and would be clipped, forcing odd scroll behavior on mobile. */}
@@ -124,17 +254,16 @@ export function MobileHeroSection() {
         >
           {isAuthenticated && user ? (
             <>
-              <div
-                ref={heroBarRef}
-                className="absolute right-3 top-1 z-20 flex items-center justify-end sm:right-4 sm:top-1.5"
-              >
+              <div className="absolute right-3 top-1 z-20 flex items-center justify-end sm:right-4 sm:top-1.5">
                 <div className="relative">
                   <button
+                    ref={profileButtonRef}
                     type="button"
-                    onClick={() => setProfileOpen((o) => !o)}
+                    onClick={toggleProfile}
                     className={cn(heroHeaderProfilePill, "touch-manipulation")}
                     aria-label="Account menu"
                     aria-expanded={profileOpen}
+                    aria-haspopup="menu"
                   >
                     <div className="relative shrink-0">
                       {profileImg ? (
@@ -155,71 +284,9 @@ export function MobileHeroSection() {
                       aria-hidden
                     />
                   </button>
-                  {profileOpen ? (
-                  <div className="absolute right-0 z-[60] mt-2 w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200/90 bg-white text-slate-900 shadow-2xl ring-1 ring-black/5">
-                    <div className="border-b border-slate-100 bg-gradient-to-br from-slate-50 to-white px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        {profileImg ? (
-                          <img
-                            src={profileImg}
-                            alt={displayName}
-                            className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-white shadow"
-                          />
-                        ) : (
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-lg font-semibold text-white shadow">
-                            {displayName.charAt(0) || "U"}
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <p className="truncate text-sm font-semibold text-slate-900">{displayName}</p>
-                            {user.verification_status != null && Number(user.verification_status) >= 2 ? (
-                              <VerifiedBadge size="sm" />
-                            ) : null}
-                          </div>
-                          {user.email ? (
-                            <p className="mt-0.5 truncate text-xs text-slate-500">{user.email}</p>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="py-1">
-                      <Link
-                        href="/profile"
-                        className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium hover:bg-slate-50"
-                        onClick={() => setProfileOpen(false)}
-                      >
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
-                          <User className="h-4 w-4" />
-                        </span>
-                        My profile
-                      </Link>
-                      <Link
-                        href="/wallet"
-                        className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium hover:bg-slate-50"
-                        onClick={() => setProfileOpen(false)}
-                      >
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                          <Wallet className="h-4 w-4" />
-                        </span>
-                        Wallet
-                      </Link>
-                      <div className="my-1 border-t border-slate-100" />
-                      <button
-                        type="button"
-                        onClick={handleSignOut}
-                        className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm font-medium text-red-600 hover:bg-red-50"
-                      >
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50">
-                          <LogOut className="h-4 w-4" />
-                        </span>
-                        Sign out
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
+                </div>
               </div>
-              </div>
+              {profileMenuPanel}
               <div className="pointer-events-none h-12 w-full shrink-0" aria-hidden />
             </>
           ) : null}

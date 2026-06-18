@@ -27,8 +27,20 @@ const MainHeader: React.FC = () => {
   }, [checkAuth]);
 
   const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
+    setIsMobileMenuOpen((open) => {
+      const next = !open;
+      if (next) {
+        window.dispatchEvent(new CustomEvent("jobpool:mobile-nav-open"));
+      }
+      return next;
+    });
   };
+
+  useEffect(() => {
+    const closeNav = () => setIsMobileMenuOpen(false);
+    window.addEventListener("jobpool:profile-open", closeNav);
+    return () => window.removeEventListener("jobpool:profile-open", closeNav);
+  }, []);
 
   const handleLogout = () => {
     logout();
