@@ -17,7 +17,13 @@ import { AdminReadOnlyBanner } from "@/components/AdminReadOnlyBanner";
 import { parseMediaUploadResponse } from "@/lib/parseMediaUploadResponse";
 import { formatAxiosApiError } from "@/lib/apiError";
 import { BlogMarkdownBodyField } from "@/components/blog/BlogMarkdownBodyField";
+import { BlogSeoFields } from "@/components/blog/BlogSeoFields";
 import { slugifyTitle } from "@/lib/slugifyTitle";
+import {
+  blogSeoToPayload,
+  defaultBlogSeo,
+  type BlogSeoFormState,
+} from "@/lib/adminBlogSeo";
 
 export default function AdminNewBlogPostPage() {
   const router = useRouter();
@@ -31,11 +37,21 @@ export default function AdminNewBlogPostPage() {
   const [slug, setSlug] = useState("");
   const [sortOrder, setSortOrder] = useState(10);
   const [autoSlug, setAutoSlug] = useState(true);
+  const [seo, setSeo] = useState<BlogSeoFormState>(() => defaultBlogSeo("post"));
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (autoSlug) setSlug(slugifyTitle(title));
   }, [title, autoSlug]);
+
+  useEffect(() => {
+    const nextSlug = (autoSlug ? slugifyTitle(title) : slug).trim() || "post";
+    setSeo((prev) => ({
+      ...prev,
+      meta_title: prev.meta_title || title.trim(),
+      canonical_path: `/blog/${nextSlug}`,
+    }));
+  }, [title, slug, autoSlug]);
 
   const uploadHero = async (file: File | null) => {
     if (!file || !canWrite) return;
@@ -91,6 +107,11 @@ export default function AdminNewBlogPostPage() {
       };
       const effectiveSlug = (autoSlug ? slugifyTitle(title) : slug.trim()) || slugifyTitle(title);
       payload.slug = effectiveSlug;
+      payload.seo = blogSeoToPayload({
+        ...seo,
+        meta_title: seo.meta_title.trim() || title.trim(),
+        canonical_path: seo.canonical_path.trim() || `/blog/${effectiveSlug}`,
+      });
       const res = await axiosInstance.post("admin/blog-posts/", payload);
       if (res.data?.status_code != null && res.data.status_code !== 200) {
         throw new Error(res.data?.message || "Create failed");
@@ -201,6 +222,24 @@ export default function AdminNewBlogPostPage() {
             </Button>
           </div>
         </div>
+        <BlogSeoFields
+          value={seo}
+          onChange={setSeo}
+          disabled={!canWrite}
+          uploading={uploading}
+          onUploadOgImage={
+            canWrite
+              ? async (file) => {
+                  const fd = new FormData();
+                  fd.append("file", file);
+                  const res = await axiosInstance.post("admin/blog-posts/upload-image/", fd, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                  });
+                  return parseMediaUploadResponse(res);
+                }
+              : undefined
+          }
+        />
         <div className="flex flex-wrap items-center gap-6">
           <div className="flex items-center gap-2">
             <Label htmlFor="sort">Sort order</Label>

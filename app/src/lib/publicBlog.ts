@@ -3,6 +3,10 @@
  * Parsers tolerate { status_code, data } or flat shapes.
  */
 
+import { parseBlogSeoFromPayload, type BlogSeo } from "@/lib/seo/blogSeo";
+
+export type { BlogSeo };
+
 export type PublicBlogPostSummary = {
   slug: string;
   title: string;
@@ -12,6 +16,7 @@ export type PublicBlogPostSummary = {
 
 export type PublicBlogPostDetail = PublicBlogPostSummary & {
   body_markdown: string;
+  seo: BlogSeo;
 };
 
 function apiBase(): string {
@@ -72,12 +77,16 @@ export function parseBlogDetailResponse(root: unknown): PublicBlogPostDetail | n
   const hero = payload.hero_image_url ?? payload.heroImageUrl;
   const body =
     String(payload.body_markdown ?? payload.bodyMarkdown ?? payload.body ?? "").trim();
+  const hero_image_url = hero != null && String(hero).trim() ? String(hero).trim() : null;
+  const excerpt = String(payload.excerpt ?? payload.summary ?? "").trim();
+  const seo = parseBlogSeoFromPayload(payload, { slug, title, excerpt, hero_image_url });
   return {
     slug,
     title,
-    excerpt: String(payload.excerpt ?? payload.summary ?? "").trim(),
-    hero_image_url: hero != null && String(hero).trim() ? String(hero).trim() : null,
+    excerpt,
+    hero_image_url,
     body_markdown: body,
+    seo,
   };
 }
 

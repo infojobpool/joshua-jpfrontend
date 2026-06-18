@@ -1,5 +1,9 @@
 /** Admin blog API response helpers */
 
+import { parseAdminBlogSeo, type AdminBlogSeo } from "@/lib/adminBlogSeo";
+
+export type { AdminBlogSeo };
+
 export type AdminBlogPostRow = {
   post_id: string;
   title: string;
@@ -9,6 +13,7 @@ export type AdminBlogPostRow = {
   slug?: string | null;
   is_published?: boolean;
   sort_order?: number;
+  seo?: AdminBlogSeo;
 };
 
 function unwrapList(root: unknown): unknown[] {
@@ -33,15 +38,24 @@ export function parseAdminBlogDetailResponse(data: unknown): AdminBlogPostRow | 
   const postId = String(d.post_id ?? d.id ?? "").trim();
   const title = String(d.title ?? "").trim();
   if (!postId || !title) return null;
+  const excerpt = String(d.excerpt ?? "").trim();
+  const slug = d.slug != null ? String(d.slug) : "";
+  const hero = d.hero_image_url != null ? String(d.hero_image_url) : "";
   return {
     post_id: postId,
     title,
-    excerpt: String(d.excerpt ?? "").trim(),
+    excerpt,
     body_markdown: typeof d.body_markdown === "string" ? d.body_markdown : "",
-    hero_image_url: d.hero_image_url != null ? String(d.hero_image_url) : "",
-    slug: d.slug != null ? String(d.slug) : "",
+    hero_image_url: hero,
+    slug,
     is_published: Boolean(d.is_published ?? d.isPublished ?? true),
     sort_order: Number(d.sort_order ?? d.sortOrder ?? 0) || 0,
+    seo: parseAdminBlogSeo(d.seo, {
+      slug: slug || postId,
+      title,
+      excerpt,
+      hero_image_url: hero,
+    }),
   };
 }
 
@@ -54,15 +68,24 @@ export function parseAdminBlogListResponse(data: unknown): AdminBlogPostRow[] {
     const postId = String(r.post_id ?? r.id ?? "").trim();
     const title = String(r.title ?? "").trim();
     if (!postId || !title) continue;
+    const excerpt = String(r.excerpt ?? "").trim();
+    const slug = r.slug != null ? String(r.slug) : "";
+    const hero = r.hero_image_url != null ? String(r.hero_image_url) : "";
     out.push({
       post_id: postId,
       title,
-      excerpt: String(r.excerpt ?? "").trim(),
+      excerpt,
       body_markdown: typeof r.body_markdown === "string" ? r.body_markdown : "",
-      hero_image_url: r.hero_image_url != null ? String(r.hero_image_url) : "",
-      slug: r.slug != null ? String(r.slug) : "",
+      hero_image_url: hero,
+      slug,
       is_published: Boolean(r.is_published ?? r.isPublished ?? true),
       sort_order: Number(r.sort_order ?? r.sortOrder ?? 0) || 0,
+      seo: parseAdminBlogSeo(r.seo, {
+        slug: slug || postId,
+        title,
+        excerpt,
+        hero_image_url: hero,
+      }),
     });
   }
   return out;

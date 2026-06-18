@@ -22,7 +22,13 @@ import {
 import { parseMediaUploadResponse } from "@/lib/parseMediaUploadResponse";
 import { formatAxiosApiError } from "@/lib/apiError";
 import { BlogMarkdownBodyField } from "@/components/blog/BlogMarkdownBodyField";
+import { BlogSeoFields } from "@/components/blog/BlogSeoFields";
 import { slugifyTitle } from "@/lib/slugifyTitle";
+import {
+  blogSeoToPayload,
+  defaultBlogSeo,
+  type BlogSeoFormState,
+} from "@/lib/adminBlogSeo";
 
 export default function AdminEditBlogPostPage() {
   const params = useParams();
@@ -41,6 +47,7 @@ export default function AdminEditBlogPostPage() {
   const [sortOrder, setSortOrder] = useState(10);
   const [autoSlug, setAutoSlug] = useState(false);
   const [isPublished, setIsPublished] = useState(true);
+  const [seo, setSeo] = useState<BlogSeoFormState>(() => defaultBlogSeo(""));
 
   const load = useCallback(async () => {
     if (!postId) return;
@@ -81,6 +88,7 @@ export default function AdminEditBlogPostPage() {
     setSortOrder(Number(row.sort_order) || 0);
     setIsPublished(row.is_published !== false);
     setAutoSlug(false);
+    setSeo(row.seo ?? defaultBlogSeo((row.slug ?? "").trim() || postId, row.title));
   }
 
   useEffect(() => {
@@ -90,6 +98,17 @@ export default function AdminEditBlogPostPage() {
   useEffect(() => {
     if (autoSlug) setSlug(slugifyTitle(title));
   }, [title, autoSlug]);
+
+  useEffect(() => {
+    if (autoSlug) {
+      const nextSlug = slugifyTitle(title) || slug.trim() || "post";
+      setSeo((prev) => ({
+        ...prev,
+        meta_title: prev.meta_title || title.trim(),
+        canonical_path: `/blog/${nextSlug}`,
+      }));
+    }
+  }, [title, autoSlug, slug]);
 
   const uploadHero = async (file: File | null) => {
     if (!file || !canWrite) return;
@@ -145,6 +164,11 @@ export default function AdminEditBlogPostPage() {
       };
       const effectiveSlug = (autoSlug ? slugifyTitle(title) : slug.trim()) || slugifyTitle(title);
       payload.slug = effectiveSlug;
+      payload.seo = blogSeoToPayload({
+        ...seo,
+        meta_title: seo.meta_title.trim() || title.trim(),
+        canonical_path: seo.canonical_path.trim() || `/blog/${effectiveSlug}`,
+      });
       const res = await axiosInstance.put(`admin/blog-posts/${encodeURIComponent(postId)}/`, payload);
       if (res.data?.status_code != null && res.data.status_code !== 200) {
         throw new Error(res.data?.message || "Update failed");
@@ -257,6 +281,24 @@ export default function AdminEditBlogPostPage() {
               </Button>
             </div>
           </div>
+          <BlogSeoFields
+            value={seo}
+            onChange={setSeo}
+            disabled={!canWrite}
+            uploading={uploading}
+            onUploadOgImage={
+              canWrite
+                ? async (file) => {
+                    const fd = new FormData();
+                    fd.append("file", file);
+                    const res = await axiosInstance.post("admin/blog-posts/upload-image/", fd, {
+                      headers: { "Content-Type": "multipart/form-data" },
+                    });
+                    return parseMediaUploadResponse(res);
+                  }
+                : undefined
+            }
+          />
           <div className="flex flex-wrap items-center gap-6">
             <div className="flex items-center gap-2">
               <Label htmlFor="sort">Sort order</Label>

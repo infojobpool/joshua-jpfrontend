@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { fetchPublicBlogPostBySlugServer, fetchPublicBlogPostSummariesServer } from "@/lib/publicBlog";
 import { BlogMarkdown } from "@/components/blog/BlogMarkdown";
 import { resolveApiMediaUrl } from "@/lib/profileImage";
-import { sitePath, toAbsoluteMediaUrl, truncateMetaDescription } from "@/lib/seo/site";
+import { buildPublicMetadata } from "@/lib/seo/metadata";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -17,55 +17,26 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const canonicalPath = sitePath(`/blog/${encodeURIComponent(slug)}`);
   const post = await fetchPublicBlogPostBySlugServer(slug);
 
   if (!post) {
-    return {
-      title: "Article not found | JobPool",
+    return buildPublicMetadata({
+      title: "Article not found",
       description: "This article may have been removed or is no longer published.",
-      alternates: { canonical: canonicalPath },
-      robots: { index: false, follow: false },
-    };
+      path: `/blog/${encodeURIComponent(slug)}`,
+      noindex: true,
+    });
   }
 
-  const title = `${post.title} | JobPool Blog`;
-  const description = post.excerpt?.trim()
-    ? truncateMetaDescription(post.excerpt)
-    : truncateMetaDescription(`Read "${post.title}" on the JobPool blog.`);
-
-  const ogImage = post.hero_image_url
-    ? toAbsoluteMediaUrl(resolveApiMediaUrl(post.hero_image_url))
-    : undefined;
-
-  return {
-    title,
-    description,
-    alternates: { canonical: canonicalPath },
-    openGraph: {
-      type: "article",
-      url: canonicalPath,
-      siteName: "JobPool",
-      title: post.title,
-      description,
-      ...(ogImage
-        ? {
-            images: [
-              {
-                url: ogImage,
-                alt: post.title,
-              },
-            ],
-          }
-        : {}),
-    },
-    twitter: {
-      card: ogImage ? "summary_large_image" : "summary",
-      title: post.title,
-      description,
-      ...(ogImage ? { images: [ogImage] } : {}),
-    },
-  };
+  const seo = post.seo;
+  return buildPublicMetadata({
+    title: seo.meta_title,
+    description: seo.meta_description,
+    path: seo.canonical_path,
+    ogImage: seo.og_image_url ? resolveApiMediaUrl(seo.og_image_url) : undefined,
+    noindex: seo.noindex,
+    ogType: "article",
+  });
 }
 
 export async function generateStaticParams() {
