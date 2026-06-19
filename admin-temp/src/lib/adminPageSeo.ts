@@ -4,6 +4,20 @@ import {
   type AdminPageSeoForm,
 } from "@/lib/publicStaticPages";
 
+function resolveMetaKeywords(d: Record<string, unknown>): string {
+  const override = d.override;
+  if (override && typeof override === "object" && !Array.isArray(override)) {
+    const o = override as Record<string, unknown>;
+    if ("meta_keywords" in o) {
+      return String(o.meta_keywords ?? "").trim();
+    }
+  }
+  if (d.meta_keywords != null) {
+    return String(d.meta_keywords ?? "").trim();
+  }
+  return "";
+}
+
 function parsePageRow(raw: unknown): AdminPageSeoForm | null {
   if (!raw || typeof raw !== "object") return null;
   const d = raw as Record<string, unknown>;
@@ -16,6 +30,7 @@ function parsePageRow(raw: unknown): AdminPageSeoForm | null {
     meta_title: String(d.meta_title ?? "").trim(),
     meta_description: String(d.meta_description ?? "").trim(),
     og_image_url: String(d.og_image_url ?? "").trim(),
+    meta_keywords: resolveMetaKeywords(d),
     noindex: Boolean(d.noindex),
     canonical_path: canonicalRaw.startsWith("/") ? canonicalRaw : `/${canonicalRaw}`,
   };
@@ -55,6 +70,7 @@ export function pageSeoToPayload(form: AdminPageSeoForm): Record<string, unknown
     meta_title: form.meta_title.trim() || null,
     meta_description: form.meta_description.trim() || null,
     og_image_url: form.og_image_url.trim() || null,
+    meta_keywords: form.meta_keywords.trim() || null,
     noindex: form.noindex,
     canonical_path: form.canonical_path.trim() || (path === "/" ? "/" : `${path}/`),
   };

@@ -134,6 +134,7 @@ export type AdminPageSeoForm = {
   meta_title: string;
   meta_description: string;
   og_image_url: string;
+  meta_keywords: string;
   noindex: boolean;
   canonical_path: string;
 };
@@ -147,6 +148,7 @@ export function emptyPageSeoForm(path: string): AdminPageSeoForm {
     meta_title: fb?.title ?? "",
     meta_description: fb?.description ?? "",
     og_image_url: "",
+    meta_keywords: "",
     noindex: false,
     canonical_path: normalized === "/" ? "/" : `${normalized}/`,
   };

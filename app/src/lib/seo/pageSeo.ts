@@ -11,9 +11,16 @@ export type PageSeoResolved = {
   meta_title: string;
   meta_description: string | null;
   og_image_url: string | null;
+  meta_keywords: string | null;
+  meta_keywords_list: string[];
   noindex: boolean;
   canonical_path: string;
 };
+
+function parseKeywordsList(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item) => String(item).trim()).filter(Boolean);
+}
 
 function parsePageSeoPayload(root: unknown): PageSeoResolved | null {
   if (!root || typeof root !== "object") return null;
@@ -31,6 +38,8 @@ function parsePageSeoPayload(root: unknown): PageSeoResolved | null {
 
   const metaDescRaw = d.meta_description;
   const ogRaw = d.og_image_url;
+  const metaKeywordsRaw = d.meta_keywords;
+  const metaKeywordsList = parseKeywordsList(d.meta_keywords_list);
 
   return {
     path,
@@ -39,6 +48,11 @@ function parsePageSeoPayload(root: unknown): PageSeoResolved | null {
     meta_description:
       metaDescRaw != null && String(metaDescRaw).trim() ? String(metaDescRaw).trim() : null,
     og_image_url: ogRaw != null && String(ogRaw).trim() ? String(ogRaw).trim() : null,
+    meta_keywords:
+      metaKeywordsRaw != null && String(metaKeywordsRaw).trim()
+        ? String(metaKeywordsRaw).trim()
+        : null,
+    meta_keywords_list: metaKeywordsList,
     noindex: Boolean(d.noindex),
     canonical_path,
   };

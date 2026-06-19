@@ -4,6 +4,7 @@ export type AdminBlogSeo = {
   meta_title: string;
   meta_description: string;
   og_image_url: string;
+  meta_keywords: string;
   noindex: boolean;
   canonical_path: string;
 };
@@ -16,6 +17,7 @@ export function defaultBlogSeo(slug: string, title = ""): BlogSeoFormState {
     meta_title: title.trim(),
     meta_description: "",
     og_image_url: "",
+    meta_keywords: "",
     noindex: false,
     canonical_path: `/blog/${pathSlug}`,
   };
@@ -39,6 +41,7 @@ export function parseAdminBlogSeo(
     meta_title: String(s.meta_title ?? fallbacks.title).trim() || fallbacks.title,
     meta_description: String(s.meta_description ?? fallbacks.excerpt).trim(),
     og_image_url: String(s.og_image_url ?? fallbacks.hero_image_url ?? "").trim(),
+    meta_keywords: String(s.meta_keywords ?? "").trim(),
     noindex: Boolean(s.noindex),
     canonical_path: canonical.startsWith("/") ? canonical : `/${canonical}`,
   };
@@ -49,7 +52,20 @@ export function blogSeoToPayload(seo: BlogSeoFormState): Record<string, unknown>
     meta_title: seo.meta_title.trim() || null,
     meta_description: seo.meta_description.trim() || null,
     og_image_url: seo.og_image_url.trim() || null,
+    meta_keywords: seo.meta_keywords.trim() || null,
     noindex: seo.noindex,
     canonical_path: seo.canonical_path.trim() || null,
+  };
+}
+
+/** Flat blog CRUD field names (alongside nested `seo` when supported). */
+export function blogSeoFlatFields(seo: BlogSeoFormState): Record<string, unknown> {
+  return {
+    seo_meta_title: seo.meta_title.trim() || null,
+    seo_meta_description: seo.meta_description.trim() || null,
+    seo_og_image_url: seo.og_image_url.trim() || null,
+    seo_meta_keywords: seo.meta_keywords.trim() || null,
+    seo_noindex: seo.noindex,
+    seo_canonical_path: seo.canonical_path.trim() || null,
   };
 }

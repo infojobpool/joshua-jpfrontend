@@ -64,6 +64,21 @@ export function BlogSeoFields({ value, onChange, disabled, onUploadOgImage, uplo
         />
       </div>
       <div className="space-y-2">
+        <Label htmlFor="seo-meta-keywords">Meta keywords</Label>
+        <Textarea
+          id="seo-meta-keywords"
+          rows={2}
+          maxLength={500}
+          value={value.meta_keywords}
+          onChange={(e) => patch({ meta_keywords: e.target.value })}
+          disabled={disabled}
+          placeholder="hiring, local tasks, home services (comma-separated)"
+        />
+        <p className="text-xs text-muted-foreground">
+          Comma-separated. Optional — Google mostly ignores keywords; useful for internal consistency.
+        </p>
+      </div>
+      <div className="space-y-2">
         <Label htmlFor="seo-og-image">OG image URL</Label>
         <p className="text-xs text-muted-foreground">Used for social previews. Defaults to hero image, then site default.</p>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

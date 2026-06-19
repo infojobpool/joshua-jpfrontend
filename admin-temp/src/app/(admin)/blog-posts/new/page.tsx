@@ -20,6 +20,7 @@ import { BlogMarkdownBodyField } from "@/components/blog/BlogMarkdownBodyField";
 import { BlogSeoFields } from "@/components/blog/BlogSeoFields";
 import { slugifyTitle } from "@/lib/slugifyTitle";
 import {
+  blogSeoFlatFields,
   blogSeoToPayload,
   defaultBlogSeo,
   type BlogSeoFormState,
@@ -112,6 +113,7 @@ export default function AdminNewBlogPostPage() {
         meta_title: seo.meta_title.trim() || title.trim(),
         canonical_path: seo.canonical_path.trim() || `/blog/${effectiveSlug}`,
       });
+      Object.assign(payload, blogSeoFlatFields(seo));
       const res = await axiosInstance.post("admin/blog-posts/", payload);
       if (res.data?.status_code != null && res.data.status_code !== 200) {
         throw new Error(res.data?.message || "Create failed");

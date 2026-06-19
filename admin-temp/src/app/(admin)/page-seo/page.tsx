@@ -207,6 +207,22 @@ export default function PageSeoAdminPage() {
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="page-meta-keywords">Meta keywords</Label>
+            <Textarea
+              id="page-meta-keywords"
+              rows={2}
+              maxLength={500}
+              value={form.meta_keywords}
+              onChange={(e) => patch({ meta_keywords: e.target.value })}
+              disabled={!canWrite}
+              placeholder="jobpool, hire taskers, local tasks (comma-separated)"
+            />
+            <p className="text-xs text-muted-foreground">
+              Comma-separated. Optional — Google mostly ignores keywords; useful for internal consistency.
+            </p>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="page-og">OG image URL</Label>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Input

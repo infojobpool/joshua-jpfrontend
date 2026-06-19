@@ -24,12 +24,15 @@ export function staticPageMetadata(path: string, fallback: StaticFallback) {
       });
     }
 
-    return buildPublicMetadata({
-      title: seo.meta_title,
-      description: seo.meta_description ?? undefined,
-      path: seo.canonical_path || canonicalFallback,
-      ogImage: seo.og_image_url ?? undefined,
-      noindex: seo.noindex,
-    });
+    return {
+      ...buildPublicMetadata({
+        title: seo.meta_title,
+        description: seo.meta_description ?? undefined,
+        path: seo.canonical_path || canonicalFallback,
+        ogImage: seo.og_image_url ?? undefined,
+        noindex: seo.noindex,
+      }),
+      keywords: seo.meta_keywords_list.length > 0 ? seo.meta_keywords_list : undefined,
+    };
   };
 }

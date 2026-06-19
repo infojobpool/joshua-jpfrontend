@@ -29,14 +29,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const seo = post.seo;
-  return buildPublicMetadata({
-    title: seo.meta_title,
-    description: seo.meta_description,
-    path: seo.canonical_path,
-    ogImage: seo.og_image_url ? resolveApiMediaUrl(seo.og_image_url) : undefined,
-    noindex: seo.noindex,
-    ogType: "article",
-  });
+  return {
+    ...buildPublicMetadata({
+      title: seo.meta_title,
+      description: seo.meta_description,
+      path: seo.canonical_path,
+      ogImage: seo.og_image_url ? resolveApiMediaUrl(seo.og_image_url) : undefined,
+      noindex: seo.noindex,
+      ogType: "article",
+    }),
+    keywords: seo.meta_keywords_list.length > 0 ? seo.meta_keywords_list : undefined,
+  };
 }
 
 export async function generateStaticParams() {

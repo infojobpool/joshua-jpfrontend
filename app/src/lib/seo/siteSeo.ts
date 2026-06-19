@@ -1,5 +1,10 @@
 import type { SiteSeo } from "./types";
 
+function parseKeywordsList(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item) => String(item).trim()).filter(Boolean);
+}
+
 function apiBase(): string {
   const raw =
     (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_BASE_URL?.trim()) ||
@@ -20,6 +25,7 @@ function parseSiteSeoPayload(root: unknown): SiteSeo | null {
   const metaTitleRaw = d.meta_title;
   const metaDescRaw = d.meta_description;
   const ogRaw = d.og_image_url;
+  const metaKeywordsRaw = d.meta_keywords;
 
   return {
     meta_title:
@@ -27,6 +33,11 @@ function parseSiteSeoPayload(root: unknown): SiteSeo | null {
     meta_description:
       metaDescRaw != null && String(metaDescRaw).trim() ? String(metaDescRaw).trim() : null,
     og_image_url: ogRaw != null && String(ogRaw).trim() ? String(ogRaw).trim() : null,
+    meta_keywords:
+      metaKeywordsRaw != null && String(metaKeywordsRaw).trim()
+        ? String(metaKeywordsRaw).trim()
+        : null,
+    meta_keywords_list: parseKeywordsList(d.meta_keywords_list),
     noindex: Boolean(d.noindex),
     canonical_path,
   };

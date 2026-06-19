@@ -2,6 +2,26 @@
 
 import { parseAdminBlogSeo, type AdminBlogSeo } from "@/lib/adminBlogSeo";
 
+function mergeSeoFromPost(d: Record<string, unknown>): Record<string, unknown> {
+  const nested =
+    d.seo && typeof d.seo === "object" && !Array.isArray(d.seo)
+      ? { ...(d.seo as Record<string, unknown>) }
+      : {};
+  if (d.seo_meta_title != null && nested.meta_title == null) nested.meta_title = d.seo_meta_title;
+  if (d.seo_meta_description != null && nested.meta_description == null) {
+    nested.meta_description = d.seo_meta_description;
+  }
+  if (d.seo_og_image_url != null && nested.og_image_url == null) nested.og_image_url = d.seo_og_image_url;
+  if (d.seo_meta_keywords != null && nested.meta_keywords == null) {
+    nested.meta_keywords = d.seo_meta_keywords;
+  }
+  if (d.seo_noindex != null && nested.noindex == null) nested.noindex = d.seo_noindex;
+  if (d.seo_canonical_path != null && nested.canonical_path == null) {
+    nested.canonical_path = d.seo_canonical_path;
+  }
+  return nested;
+}
+
 export type { AdminBlogSeo };
 
 export type AdminBlogPostRow = {
@@ -50,7 +70,7 @@ export function parseAdminBlogDetailResponse(data: unknown): AdminBlogPostRow | 
     slug,
     is_published: Boolean(d.is_published ?? d.isPublished ?? true),
     sort_order: Number(d.sort_order ?? d.sortOrder ?? 0) || 0,
-    seo: parseAdminBlogSeo(d.seo, {
+    seo: parseAdminBlogSeo(mergeSeoFromPost(d), {
       slug: slug || postId,
       title,
       excerpt,
@@ -80,7 +100,7 @@ export function parseAdminBlogListResponse(data: unknown): AdminBlogPostRow[] {
       slug,
       is_published: Boolean(r.is_published ?? r.isPublished ?? true),
       sort_order: Number(r.sort_order ?? r.sortOrder ?? 0) || 0,
-      seo: parseAdminBlogSeo(r.seo, {
+      seo: parseAdminBlogSeo(mergeSeoFromPost(r), {
         slug: slug || postId,
         title,
         excerpt,
