@@ -129,7 +129,9 @@ export function PaymentModal({
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Payment Details</CardTitle>
-          <CardDescription>You pay the task budget. Fees are deducted from that amount, not added on top.</CardDescription>
+          <CardDescription>
+            Platform fee and GST on that fee are added at checkout. Total to pay is shown below.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {feeError ? (

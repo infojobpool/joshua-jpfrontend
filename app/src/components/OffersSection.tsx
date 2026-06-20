@@ -1017,7 +1017,7 @@ export function OffersSection({
           <DialogHeader>
             <DialogTitle>Accept offer & pay</DialogTitle>
             <DialogDescription>
-              You pay the task budget only. Platform fee and GST are deducted from that amount, not added on top. You can still cancel here without accepting the bid.
+              Platform fee and GST on that fee are added at checkout. Total to pay is shown below. You can still cancel here without accepting the bid.
             </DialogDescription>
           </DialogHeader>
           {acceptFeeOffer ? (

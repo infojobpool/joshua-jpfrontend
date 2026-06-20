@@ -2,9 +2,12 @@ import axiosInstance from "@/lib/axiosInstance";
 
 export type FeePreviewRole = "poster" | "tasker";
 
-/** Poster checkout: fees are deducted from the task budget, not added on top. */
-export const POSTER_INCLUSIVE_FEE_NOTE =
-  "You pay the task budget only. Platform fee and GST are deducted from that amount, not added on top.";
+/** Taskmaster checkout: platform fee + GST are added on top of the task budget. */
+export const POSTER_FEES_ON_TOP_NOTE =
+  "Platform fee and GST on that fee are added at checkout. Your total payment is shown below.";
+
+/** @deprecated Use POSTER_FEES_ON_TOP_NOTE — kept for imports that may still reference the old name. */
+export const POSTER_INCLUSIVE_FEE_NOTE = POSTER_FEES_ON_TOP_NOTE;
 
 /** Line item in the fee breakdown (`kind` may include `"total"` for a summary row). */
 export interface FeeLine {
@@ -16,32 +19,38 @@ export interface FeeLine {
 
 /** Poster-side fee preview (checkout / post-task estimate). */
 export interface PosterFeeData {
+  role?: "poster";
   bid_amount?: number;
   platform_fee?: number;
   taxes?: number;
   commission_amount?: number;
   gst_amount?: number;
   payable_amount?: number;
-  /** Approx. tasker payout after deductions from the task budget. */
+  /** Razorpay total — task budget + platform fee + GST when fees_on_top. */
+  fees_on_top?: boolean;
+  /** Approx. tasker payout after tasker-side deductions from the bid. */
   tasker_net_amount?: number;
   promo_fees_waived?: boolean;
   promo_waiver_amount?: number;
   lines?: FeeLine[];
-  /** Legacy nested preview — prefer `tasker_net_amount`. */
   tasker_net_preview?: TaskerFeeData;
   [key: string]: unknown;
 }
 
 /** Tasker-side estimate: platform fee + GST on fee deducted from the bid. */
 export interface TaskerFeeData {
+  role?: "tasker";
   bid_amount?: number;
   platform_fee?: number;
+  platform_fee_rate?: number;
+  gst_rate?: number;
   /** GST on platform fee (mirrors `gst_amount` when both are returned). */
   reference_taxes?: number;
   commission_amount?: number;
   gst_amount?: number;
   estimated_net?: number;
   payable_amount?: number;
+  fees_deducted_from_bid?: boolean;
   promo_fees_waived?: boolean;
   promo_waiver_amount?: number;
   lines?: FeeLine[];
@@ -130,26 +139,30 @@ export function buildPaymentDescriptionFromPosterPreview(
   taskTitle: string,
   d: PosterFeeData,
 ): string {
-  const parts = [`Payment for: ${taskTitle}`, "", POSTER_INCLUSIVE_FEE_NOTE, "", "Cost breakdown:"];
+  const note = d.promo_fees_waived
+    ? "Promo active: fees waived — you pay the task budget only."
+    : POSTER_FEES_ON_TOP_NOTE;
+  const parts = [`Payment for: ${taskTitle}`, "", note, "", "Cost breakdown:"];
   const lines = d.lines?.length
     ? d.lines
     : [
         { label: "Task budget", amount: d.bid_amount ?? 0 },
         ...(d.commission_amount != null || d.platform_fee != null
-          ? [{ label: "Platform fee (from budget)", amount: Number(d.commission_amount ?? d.platform_fee ?? 0) }]
+          ? [{ label: "Platform fee", amount: Number(d.commission_amount ?? d.platform_fee ?? 0) }]
           : []),
         ...(d.gst_amount != null || d.taxes != null
           ? [{ label: "GST on platform fee", amount: Number(d.gst_amount ?? d.taxes ?? 0) }]
           : []),
       ];
   for (const row of lines) {
+    if ((row.kind || "").toLowerCase() === "total") continue;
     parts.push(`• ${row.label}: ${formatInr(Number(row.amount))}`);
   }
   const taskerNet = posterTaskerNetAmount(d);
   if (taskerNet != null) {
     parts.push(`• Tasker receives (approx.): ${formatInr(taskerNet)}`);
   }
-  const youPay = posterPayableAmount(d, Number(d.bid_amount ?? 0));
-  if (youPay != null) parts.push(`• You pay: ${formatInr(youPay)}`);
+  const total = posterPayableAmount(d, Number(d.bid_amount ?? 0));
+  if (total != null) parts.push(`• Total to pay: ${formatInr(total)}`);
   return parts.join("\n");
 }

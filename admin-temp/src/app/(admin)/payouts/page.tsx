@@ -80,9 +80,14 @@ interface Payout {
   poster: Poster;
   jobId?: number;
   taskTitle?: string;
+  /** Task bid amount (task budget). */
   amount: number;
+  /** Tasker platform fee + GST deducted from bid. */
   fee: number;
+  /** Amount paid out to tasker after tasker-side fees. */
   netAmount: number;
+  /** Total Razorpay amount paid by taskmaster (bid + poster fees + GST). */
+  posterPaidAmount: number;
   status: string;
   method: string;
   reference: string;
@@ -252,9 +257,10 @@ export default function PayoutsPage() {
             jobId: order.job_id,
             taskTitle: order.job_title || order.task_title || "",
               amount: Number(order.bid_amount) || 0,
-            fee:
-                (Number(order.gst) || 0) + (Number(order.commission) || 0),
-              netAmount: Number(order.payable_amount) || 0,
+              fee:
+                (Number(order.tasker_platform_fee) || 0) + (Number(order.tasker_gst) || 0),
+              netAmount: Number(order.tasker_net_payout) || 0,
+              posterPaidAmount: Number(order.payable_amount) || 0,
             status: statusMap[order.status] || "Unknown",
             method: order.method || "Bank Transfer",
             reference: order.payment_id || `REF-${order.order_id}`,
@@ -396,8 +402,10 @@ export default function PayoutsPage() {
               "Tasker",
               "Poster",
               "Task",
-              "Amount",
-              "NetAmount",
+              "BidAmount",
+              "TaskerFee",
+              "TaskerPayout",
+              "PosterPaid",
               "Status",
               "Method",
               "Date",
@@ -407,7 +415,9 @@ export default function PayoutsPage() {
               p.poster.name,
               p.taskTitle || "",
               p.amount.toFixed(2),
+              p.fee.toFixed(2),
               p.netAmount.toFixed(2),
+              p.posterPaidAmount.toFixed(2),
               p.status,
               p.method,
               formatDate(p.date),
@@ -665,11 +675,14 @@ export default function PayoutsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium">
-                          INR {payout.amount.toFixed(2)}
+                        <div className="font-medium tabular-nums">
+                          Bid INR {payout.amount.toFixed(2)}
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          Net: INR {payout.netAmount.toFixed(2)}
+                        <div className="text-sm text-muted-foreground tabular-nums">
+                          Payout INR {payout.netAmount.toFixed(2)}
+                        </div>
+                        <div className="text-xs text-muted-foreground tabular-nums">
+                          Poster paid INR {payout.posterPaidAmount.toFixed(2)}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -852,11 +865,33 @@ export default function PayoutsPage() {
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                   <div>
-                                    <Label>Amount</Label>
-                                    <div className="font-medium">
+                                    <Label>Bid amount</Label>
+                                    <div className="font-medium tabular-nums">
                                       INR {selectedPayout.amount.toFixed(2)}
                                     </div>
                                   </div>
+                                  <div>
+                                    <Label>Tasker payout (net)</Label>
+                                    <div className="font-medium tabular-nums">
+                                      INR {selectedPayout.netAmount.toFixed(2)}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label>Tasker fees (platform + GST)</Label>
+                                    <div className="tabular-nums">
+                                      INR {selectedPayout.fee.toFixed(2)}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <Label>Poster paid (Razorpay total)</Label>
+                                    <div className="tabular-nums">
+                                      INR {selectedPayout.posterPaidAmount.toFixed(2)}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
                                   <div>
                                     <Label>Status</Label>
                                     <Badge
