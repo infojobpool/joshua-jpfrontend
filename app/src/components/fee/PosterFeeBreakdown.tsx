@@ -2,10 +2,9 @@
 
 import {
   POSTER_FEES_ON_TOP_NOTE,
-  feeLinesForDisplay,
   formatInr,
+  posterFeeLinesForDisplay,
   posterPayableAmount,
-  posterTaskerNetAmount,
   type PosterFeeData,
 } from "@/lib/feePreview";
 
@@ -17,9 +16,8 @@ type PosterFeeBreakdownProps = {
 };
 
 export function PosterFeeBreakdown({ data, bidFallback, compact = false }: PosterFeeBreakdownProps) {
-  const displayLines = feeLinesForDisplay(data.lines);
+  const displayLines = posterFeeLinesForDisplay(data.lines);
   const totalToPay = posterPayableAmount(data, bidFallback);
-  const taskerNet = posterTaskerNetAmount(data);
   const noteClass = compact ? "text-slate-500" : "text-muted-foreground";
   const rowLabelClass = compact ? "text-slate-600" : "text-muted-foreground";
   const extraClass = compact ? "text-slate-500" : "text-muted-foreground";
@@ -68,12 +66,6 @@ export function PosterFeeBreakdown({ data, bidFallback, compact = false }: Poste
             </div>
           )}
         </>
-      )}
-      {taskerNet != null && (
-        <div className={`flex justify-between gap-2 text-sm ${extraClass}`}>
-          <span>Tasker receives (approx.)</span>
-          <span className="tabular-nums">{formatInr(taskerNet)}</span>
-        </div>
       )}
       {totalToPay != null && (
         <div

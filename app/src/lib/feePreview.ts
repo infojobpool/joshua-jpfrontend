@@ -96,6 +96,16 @@ export function feeLinesForDisplay(lines: FeeLine[] | undefined): FeeLine[] {
   return lines.filter((l) => (l.kind || "").toLowerCase() !== "total");
 }
 
+/** Poster UI: hide tasker payout estimate rows (taskmaster only needs their total). */
+export function posterFeeLinesForDisplay(lines: FeeLine[] | undefined): FeeLine[] {
+  return feeLinesForDisplay(lines).filter((l) => {
+    const id = (l.id || "").toLowerCase();
+    if (id === "tasker_net" || id === "tasker_net_preview") return false;
+    if (/tasker receives|tasker payout|estimated tasker/i.test(l.label)) return false;
+    return true;
+  });
+}
+
 /** Tasker UI: API deduction lines only (net/total row is shown in the footer). */
 export function taskerFeeLinesForDisplay(lines: FeeLine[] | undefined): FeeLine[] {
   return feeLinesForDisplay(lines).filter((l) => {
