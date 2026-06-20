@@ -2,6 +2,7 @@
 
 import {
   POSTER_FEES_ON_TOP_NOTE,
+  feeLineDisplayLabel,
   formatInr,
   posterFeeLinesForDisplay,
   posterPayableAmount,
@@ -43,7 +44,7 @@ export function PosterFeeBreakdown({ data, bidFallback, compact = false }: Poste
       {displayLines.length > 0 ? (
         displayLines.map((line, idx) => (
           <div key={line.id || `${line.label}-${idx}`} className="flex justify-between gap-2 text-sm">
-            <span className={rowLabelClass}>{line.label}</span>
+            <span className={rowLabelClass}>{feeLineDisplayLabel(line)}</span>
             <span className="font-medium tabular-nums">{formatInr(Number(line.amount))}</span>
           </div>
         ))

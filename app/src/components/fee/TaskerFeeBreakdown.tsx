@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  feeLineDisplayLabel,
   formatInr,
   taskerEstimatedNet,
   taskerFeeLinesForDisplay,
@@ -23,7 +24,7 @@ export function TaskerFeeBreakdown({ data, bidFallback }: TaskerFeeBreakdownProp
           <div className="space-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
             {displayLines.map((line, idx) => (
               <div key={line.id || `${line.label}-${idx}`} className="flex justify-between gap-2">
-                <span className="text-slate-600">{line.label}</span>
+                <span className="text-slate-600">{feeLineDisplayLabel(line)}</span>
                 <span className="font-medium tabular-nums text-slate-900">{formatInr(Number(line.amount))}</span>
               </div>
             ))}
@@ -45,7 +46,7 @@ export function TaskerFeeBreakdown({ data, bidFallback }: TaskerFeeBreakdownProp
       {displayLines.length > 0 ? (
         displayLines.map((line, idx) => (
           <div key={line.id || `${line.label}-${idx}`} className="flex justify-between gap-2">
-            <span className="text-slate-600">{line.label}</span>
+            <span className="text-slate-600">{feeLineDisplayLabel(line)}</span>
             <span className="font-medium tabular-nums text-slate-900">{formatInr(Number(line.amount))}</span>
           </div>
         ))
