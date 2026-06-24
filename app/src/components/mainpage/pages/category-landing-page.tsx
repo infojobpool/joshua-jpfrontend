@@ -15,8 +15,8 @@ export function CategoryLandingPage({ category, related }: CategoryLandingPagePr
   const Icon = categoryIcon(category.name);
   const palette = categoryPalette(category.id);
   const count = category.job_count ?? 0;
-  const browseHref = `/browse?category=${encodeURIComponent(category.id)}`;
-  const postHref = `/post-task?category=${encodeURIComponent(category.id)}`;
+  const browseHref = `/browse?category=${encodeURIComponent(category.slug)}`;
+  const postHref = `/post-task?category=${encodeURIComponent(category.slug)}`;
 
   return (
     <div className="min-h-screen bg-slate-50">

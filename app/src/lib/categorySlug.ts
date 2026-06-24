@@ -37,3 +37,34 @@ export function findCategoryBySlug(categories: PublicCategory[], slug: string): 
     categories.find((c) => categoryNameToSlug(c.name) === key)
   );
 }
+
+export type CategoryIdName = {
+  category_id: string;
+  category_name: string;
+};
+
+export function toPublicCategories(rows: CategoryIdName[]): PublicCategory[] {
+  return assignCategorySlugs(
+    rows.map((c) => ({ id: c.category_id, name: c.category_name })),
+  );
+}
+
+/** Map ?category= slug, name slug, or legacy category_id → category_id for filtering. */
+export function resolveCategoryUrlParam(
+  param: string,
+  rows: CategoryIdName[],
+): string | undefined {
+  const key = param.trim();
+  if (!key || rows.length === 0) return undefined;
+  if (rows.some((c) => c.category_id === key)) return key;
+  return findCategoryBySlug(toPublicCategories(rows), key)?.id;
+}
+
+/** Human-readable slug for browse/post-task URLs (?category=cleaner). */
+export function categorySlugForId(categoryId: string, rows: CategoryIdName[]): string {
+  const pub = toPublicCategories(rows);
+  const found = pub.find((c) => c.id === categoryId);
+  if (found) return found.slug;
+  const row = rows.find((c) => c.category_id === categoryId);
+  return row ? categoryNameToSlug(row.category_name) || categoryId : categoryId;
+}

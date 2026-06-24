@@ -33,6 +33,10 @@ import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessH
 import {
   getPayoutEligibilityStats,
 } from "@/lib/payoutProfileCompletion";
+import {
+  categorySlugForId,
+  resolveCategoryUrlParam,
+} from "@/lib/categorySlug";
 
 interface User {
   id: string;
@@ -353,15 +357,28 @@ export default function PostTaskPage() {
     return () => window.clearTimeout(id);
   }, [loading, user, searchParams]);
 
-  /** Prefill category from category landing pages (?category=category_id). */
+  /** Prefill category from landing / browse links (?category=cleaner or legacy category_id). */
   useEffect(() => {
     if (loading || !user || categories.length === 0) return;
-    const catId = searchParams.get("category")?.trim();
-    if (!catId) return;
-    const exists = categories.some((c) => c.id === catId);
-    if (!exists) return;
-    setFormData((prev) => (prev.category === catId ? prev : { ...prev, category: catId }));
-  }, [loading, user, searchParams, categories]);
+    const catParam = searchParams.get("category")?.trim();
+    if (!catParam) return;
+
+    const apiRows = categories.map((c) => ({
+      category_id: c.id,
+      category_name: c.name,
+    }));
+    const resolvedId = resolveCategoryUrlParam(catParam, apiRows);
+    if (!resolvedId) return;
+
+    setFormData((prev) => (prev.category === resolvedId ? prev : { ...prev, category: resolvedId }));
+
+    const slug = categorySlugForId(resolvedId, apiRows);
+    if (slug.toLowerCase() !== catParam.toLowerCase()) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("category", slug);
+      router.replace(`/post-task?${params.toString()}`, { scroll: false });
+    }
+  }, [loading, user, searchParams, categories, router]);
 
   useEffect(() => {
     if (loading || !user) return;

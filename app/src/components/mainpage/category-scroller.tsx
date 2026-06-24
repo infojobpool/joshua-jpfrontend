@@ -3,6 +3,7 @@
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { useRef } from "react"
+import { categoryNameToSlug } from "@/lib/categorySlug"
 import {
   ChevronLeft,
   ChevronRight,
@@ -44,9 +45,6 @@ export function CategoryScroller() {
     scrollRef.current.scrollBy({ left: dir === "left" ? -step : step, behavior: "smooth" })
   }
 
-  const slug = (name: string) =>
-    name.toLowerCase().replace(/\s*&\s*/g, "-").replace(/\s+/g, "-")
-
   return (
     <section className="pt-8 pb-12 md:pt-10 md:pb-14 bg-white overflow-hidden">
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 max-w-7xl mx-auto">
@@ -80,7 +78,7 @@ export function CategoryScroller() {
             {categories.map(({ name, icon: Icon }) => (
               <Link
                 key={name}
-                href={`/browse?category=${encodeURIComponent(slug(name))}`}
+                href={`/browse?category=${encodeURIComponent(categoryNameToSlug(name))}`}
                 className="flex-shrink-0 scroll-snap-start"
               >
                 <motion.div

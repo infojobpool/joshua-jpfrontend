@@ -678,7 +678,11 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  categorySlugForId,
+  resolveCategoryUrlParam,
+} from "@/lib/categorySlug";
 import { Input } from "../../../components/ui/input";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent } from "../../../components/ui/card";
@@ -746,6 +750,8 @@ interface Category {
 }
 
 export function BrowseTasksPage() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const categoryFromUrl = searchParams.get("category")?.trim() || "";
 
@@ -893,13 +899,23 @@ export function BrowseTasksPage() {
   }, []);
 
   useEffect(() => {
-    if (categoryFromUrl) {
-      setSelectedCategories([categoryFromUrl]);
-      setDraftSelectedCategories([categoryFromUrl]);
-      setShowFilters(true);
-      setMobileFilterExpanded(true);
+    if (!categoryFromUrl || categories.length === 0) return;
+
+    const resolvedId = resolveCategoryUrlParam(categoryFromUrl, categories);
+    if (!resolvedId) return;
+
+    setSelectedCategories([resolvedId]);
+    setDraftSelectedCategories([resolvedId]);
+    setShowFilters(true);
+    setMobileFilterExpanded(true);
+
+    const slug = categorySlugForId(resolvedId, categories);
+    if (slug.toLowerCase() !== categoryFromUrl.toLowerCase()) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("category", slug);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
-  }, [categoryFromUrl]);
+  }, [categoryFromUrl, categories, pathname, router, searchParams]);
 
   const handleCategoryChange = (categoryId: string) => {
     setSelectedCategories((prev) =>

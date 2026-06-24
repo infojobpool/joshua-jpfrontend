@@ -1,7 +1,7 @@
 "use client"
 
 import React, { Component, useState, useEffect, useRef, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,6 +20,10 @@ import {
 } from "@/lib/homeJobsCache"
 import { storeTaskForNav, prefetchBidsForTask } from "@/lib/taskNavCache"
 import { toast } from "sonner"
+import {
+  categorySlugForId,
+  resolveCategoryUrlParam,
+} from "@/lib/categorySlug"
 
 class BrowseErrorBoundary extends Component<
   { children: React.ReactNode },
@@ -174,6 +178,7 @@ const isMobileViewport = () => typeof window !== "undefined" && window.innerWidt
 
 function BrowseContent() {
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const [user, setUser] = useState<{ name: string } | null>(null)
   const [loading, setLoading] = useState(false)
@@ -184,12 +189,27 @@ function BrowseContent() {
 
   useEffect(() => {
     try {
-      const cat = searchParams?.get?.("category")
-      if (cat) setCategory(cat)
       const q = searchParams?.get?.("q")
       if (q) setSearchTerm(q)
     } catch (_) {}
   }, [searchParams])
+
+  useEffect(() => {
+    const catParam = searchParams?.get?.("category")?.trim()
+    if (!catParam || categories.length === 0) return
+
+    const resolvedId = resolveCategoryUrlParam(catParam, categories)
+    if (!resolvedId) return
+
+    setCategory(resolvedId)
+
+    const slug = categorySlugForId(resolvedId, categories)
+    if (slug.toLowerCase() !== catParam.toLowerCase()) {
+      const params = new URLSearchParams(searchParams.toString())
+      params.set("category", slug)
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+    }
+  }, [searchParams, categories, pathname, router])
   const [priceRange, setPriceRange] = useState([0, 500])
   const [location, setLocation] = useState("")
   const [showFilters, setShowFilters] = useState(false)

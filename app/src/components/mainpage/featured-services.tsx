@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Heart, Palette, Wrench, Users, Star, ArrowRight, ArrowLeft, Car, Home, Camera, BookOpen, Utensils, Truck } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
+import { categoryNameToSlug } from "@/lib/categorySlug"
 
 export function FeaturedServices() {
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -273,7 +274,7 @@ export function FeaturedServices() {
                     </div>
 
                     {/* CTA Button */}
-                    <Link href={`/browse?category=${service.category.toLowerCase()}`}>
+                    <Link href={`/browse?category=${encodeURIComponent(categoryNameToSlug(service.category))}`}>
                       <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 h-auto">
                         Browse {service.category}
                         <ArrowRight className="ml-1 h-3 w-3" />
