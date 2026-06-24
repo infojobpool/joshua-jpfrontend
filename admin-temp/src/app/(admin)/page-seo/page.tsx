@@ -33,6 +33,7 @@ import {
   PUBLIC_STATIC_SEO_PAGES,
   type AdminPageSeoForm,
 } from "@/lib/publicStaticPages";
+import { fetchCategorySeoPageStubs } from "@/lib/adminCategorySeoPages";
 
 export default function PageSeoAdminPage() {
   const canWrite = useCanAdminWrite();
@@ -49,7 +50,8 @@ export default function PageSeoAdminPage() {
     try {
       const res = await axiosInstance.get("admin/page-seo/");
       const fromApi = parseAdminPageSeoListResponse(res.data);
-      const merged = mergePageSeoRows(PUBLIC_STATIC_SEO_PAGES, fromApi);
+      const categoryStubs = await fetchCategorySeoPageStubs();
+      const merged = mergePageSeoRows([...PUBLIC_STATIC_SEO_PAGES, ...categoryStubs], fromApi);
       setPages(merged);
       setForm((prev) => {
         const current = merged.find((p) => normalizeSeoPath(p.path) === normalizeSeoPath(prev.path));
@@ -57,7 +59,8 @@ export default function PageSeoAdminPage() {
       });
     } catch (e: unknown) {
       toast.error(formatAxiosApiError(e) || "Failed to load page SEO.");
-      const merged = mergePageSeoRows(PUBLIC_STATIC_SEO_PAGES, []);
+      const categoryStubs = await fetchCategorySeoPageStubs();
+      const merged = mergePageSeoRows([...PUBLIC_STATIC_SEO_PAGES, ...categoryStubs], []);
       setPages(merged);
     } finally {
       setLoading(false);

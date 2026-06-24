@@ -1,15 +1,17 @@
 import type { MetadataRoute } from "next";
 import { absoluteUrl, sitePath } from "@/lib/seo/site";
 import { fetchAllBlogSlugsForSitemap, fetchAllListingIdsForSitemap } from "@/lib/seo/sitemapData";
+import { fetchPublicCategoriesServer } from "@/lib/taskCategoriesServer";
+import { categoryLandingPath } from "@/lib/seo/categoryLandingSeo";
 
 const STATIC_PATHS = [
   "/",
   "/browse/",
-  "/browse-tasks/",
   "/listings/",
-  "/blog/",
-  "/aboutus/",
   "/how-it-works/",
+  "/pricing/",
+  "/for-posters/",
+  "/for-taskers/",
   "/categories/",
   "/contact/",
   "/faq/",
@@ -18,6 +20,8 @@ const STATIC_PATHS = [
   "/privacy-policy/",
   "/termsandconditions/",
   "/support/",
+  "/supportpage/",
+  "/aboutus/",
   "/listing-request/",
 ] as const;
 
@@ -28,7 +32,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: absoluteUrl(path),
     lastModified: now,
     changeFrequency: path === "/" ? "daily" : "weekly",
-    priority: path === "/" ? 1 : path === "/browse/" || path === "/listings/" ? 0.9 : 0.7,
+    priority: path === "/" ? 1 : path === "/browse/" || path === "/listings/" ? 0.9 : path === "/pricing/" || path === "/for-posters/" || path === "/for-taskers/" || path === "/how-it-works/" ? 0.85 : 0.7,
   }));
 
   let blogEntries: MetadataRoute.Sitemap = [];
@@ -46,6 +50,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     /* public blog API unavailable during build */
   }
 
+  const blogIndexEntry: MetadataRoute.Sitemap = [
+    {
+      url: absoluteUrl("/blog/"),
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+  ];
+
   try {
     const ids = await fetchAllListingIdsForSitemap();
     listingEntries = ids.map((id) => ({
@@ -58,5 +71,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     /* offerings feed unavailable during build */
   }
 
-  return [...staticEntries, ...blogEntries, ...listingEntries];
+  let categoryEntries: MetadataRoute.Sitemap = [];
+
+  try {
+    const categories = await fetchPublicCategoriesServer();
+    categoryEntries = categories.map((c) => ({
+      url: absoluteUrl(categoryLandingPath(c.slug)),
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.75,
+    }));
+  } catch {
+    /* categories API unavailable during build */
+  }
+
+  return [...staticEntries, ...blogIndexEntry, ...blogEntries, ...listingEntries, ...categoryEntries];
 }

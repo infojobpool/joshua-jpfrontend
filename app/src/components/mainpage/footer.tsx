@@ -155,6 +155,15 @@ const APP_STORE_URL = "https://apps.apple.com/in/app/jobpool-official/id67574424
 export function Footer() {
   const footerLinks = [
     {
+      title: "Get started",
+      links: [
+        { name: "Post a task", href: "/for-posters" },
+        { name: "Earn as a tasker", href: "/for-taskers" },
+        { name: "Pricing & fees", href: "/pricing" },
+        { name: "How it works", href: "/how-it-works" },
+      ],
+    },
+    {
       title: "Company",
       links: [
         { name: "About us", href: "/aboutus" },
@@ -178,7 +187,7 @@ export function Footer() {
   return (
     <footer className="bg-slate-900 text-white">
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 py-12 md:py-16">
-        <div className="grid gap-8 lg:grid-cols-4">
+        <div className="grid gap-8 lg:grid-cols-5">
           <div className="flex flex-col">
             <Link href="/" className="inline-block mb-6">
               <motion.div

@@ -353,6 +353,16 @@ export default function PostTaskPage() {
     return () => window.clearTimeout(id);
   }, [loading, user, searchParams]);
 
+  /** Prefill category from category landing pages (?category=category_id). */
+  useEffect(() => {
+    if (loading || !user || categories.length === 0) return;
+    const catId = searchParams.get("category")?.trim();
+    if (!catId) return;
+    const exists = categories.some((c) => c.id === catId);
+    if (!exists) return;
+    setFormData((prev) => (prev.category === catId ? prev : { ...prev, category: catId }));
+  }, [loading, user, searchParams, categories]);
+
   useEffect(() => {
     if (loading || !user) return;
     try {

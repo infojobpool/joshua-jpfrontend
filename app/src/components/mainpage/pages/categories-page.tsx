@@ -17,6 +17,7 @@ import {
 import { ArrowRight, Loader2, RefreshCw, Search } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import { categoryIcon, categoryPalette } from "@/lib/categoryPresentation";
+import { assignCategorySlugs, categoryNameToSlug } from "@/lib/categorySlug";
 import { toast } from "sonner";
 
 interface Category {
@@ -56,6 +57,17 @@ export function CategoriesPage() {
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
+
+  const slugByCategoryId = useMemo(() => {
+    const withSlugs = assignCategorySlugs(
+      categories.map((c) => ({
+        id: c.category_id,
+        name: c.category_name,
+        job_count: c.job_count,
+      }))
+    );
+    return Object.fromEntries(withSlugs.map((c) => [c.id, c.slug]));
+  }, [categories]);
 
   const filteredCategories = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -171,7 +183,7 @@ export function CategoriesPage() {
                       transition={{ delay: Math.min(index * 0.03, 0.3) }}
                     >
                       <Link
-                        href={`/browse-tasks?category=${encodeURIComponent(category.category_id)}`}
+                        href={`/categories/${encodeURIComponent(slugByCategoryId[category.category_id] ?? (categoryNameToSlug(category.category_name) || category.category_id))}`}
                         className={`group flex h-full flex-col rounded-2xl border bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${palette.border}`}
                       >
                         <div className="flex items-start gap-4">
