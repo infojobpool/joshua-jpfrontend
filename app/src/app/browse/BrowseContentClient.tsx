@@ -18,7 +18,7 @@ import {
   isOpenListingJob,
   type RawJob,
 } from "@/lib/homeJobsCache"
-import { storeTaskForNav, prefetchBidsForTask } from "@/lib/taskNavCache"
+import { warmTaskDetailNavigation } from "@/lib/taskNavCache"
 import { toast } from "sonner"
 import {
   categorySlugForId,
@@ -65,17 +65,48 @@ class BrowseErrorBoundary extends Component<
   }
 }
 
+function warmBrowseTaskNav(task: {
+  id: string;
+  title: string;
+  description: string;
+  budget: number;
+  location?: string;
+  posted_by?: string;
+  user_ref_id?: string;
+  category?: string;
+  category_name?: string;
+  dueDate?: string;
+  postedAt?: string;
+  job_images?: { urls?: string[] };
+}) {
+  try {
+    warmTaskDetailNavigation({
+      id: String(task.id),
+      title: task.title,
+      description: task.description,
+      budget: task.budget,
+      location: task.location,
+      posted_by: task.posted_by,
+      posted_by_id: task.user_ref_id,
+      category: task.category_name || task.category,
+      dueDate: task.dueDate,
+      postedAt: task.postedAt,
+      images: task.job_images?.urls?.map((url: string, i: number) => ({
+        id: `img${i + 1}`,
+        url,
+        alt: `Image ${i + 1}`,
+      })),
+    });
+  } catch {}
+}
+
 function TaskCardWithPrefetch({
   task,
   index,
-  prefetchBidsForTask,
-  storeTaskForNav,
   prefetchFirstN,
 }: {
   task: any;
   index: number;
-  prefetchBidsForTask: (id: string) => void;
-  storeTaskForNav: (t: any) => void;
   prefetchFirstN: number;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -85,19 +116,19 @@ function TaskCardWithPrefetch({
     const io = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
-          try { prefetchBidsForTask(task.id); } catch {}
+          warmBrowseTaskNav(task);
         }
       },
       { threshold: 0.25, rootMargin: "50px" }
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [task?.id, prefetchBidsForTask]);
+  }, [task?.id, task]);
   useEffect(() => {
     if (index < prefetchFirstN) {
-      try { prefetchBidsForTask(task.id); } catch {}
+      warmBrowseTaskNav(task);
     }
-  }, [index, prefetchFirstN, task?.id]);
+  }, [index, prefetchFirstN, task?.id, task]);
   return (
     <div ref={cardRef}>
     <Card className="flex flex-col bg-white dark:bg-slate-800/95 border border-slate-200/60 dark:border-slate-700/60 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_6px_16px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.06),0_12px_24px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.25),0_12px_24px_rgba(0,0,0,0.35)] hover:-translate-y-0.5 transition-all duration-300 rounded-2xl overflow-hidden">
@@ -157,9 +188,9 @@ function TaskCardWithPrefetch({
           <Link
             href={`/tasks/${task.id}`}
             className="block"
-            onClick={() => { try { storeTaskForNav({ ...task, posted_by_id: task.user_ref_id, images: task.job_images?.urls?.map((url: string, i: number) => ({ id: `img${i+1}`, url, alt: `Image ${i+1}` })) }); } catch {} }}
-            onMouseEnter={() => { try { prefetchBidsForTask(task.id); } catch {} }}
-            onTouchStart={() => { try { prefetchBidsForTask(task.id); } catch {} }}
+            onClick={() => warmBrowseTaskNav(task)}
+            onMouseEnter={() => warmBrowseTaskNav(task)}
+            onTouchStart={() => warmBrowseTaskNav(task)}
           >
             <Button className="w-full font-bold rounded-2xl shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/25">View Task</Button>
           </Link>
@@ -882,7 +913,7 @@ function BrowseContent() {
               <div className="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredTasks.map((task, index) => (
                   <div key={task.id} className="min-w-0">
-                    <TaskCardWithPrefetch task={task} index={index} prefetchBidsForTask={prefetchBidsForTask} storeTaskForNav={storeTaskForNav} prefetchFirstN={5} />
+                    <TaskCardWithPrefetch task={task} index={index} prefetchFirstN={5} />
                   </div>
                 ))}
               </div>

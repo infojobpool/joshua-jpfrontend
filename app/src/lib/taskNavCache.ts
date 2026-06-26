@@ -237,3 +237,13 @@ export function clearPrefetchJobWithBids(taskId: string) {
     sessionStorage.removeItem(PREFETCH_JOBWB_PREFIX + taskId);
   } catch (_) {}
 }
+
+/** Call on hover/tap before navigating to /tasks/[id] for instant task detail paint. */
+export function warmTaskDetailNavigation(task: NavTaskInput) {
+  if (typeof window === "undefined" || !task.id) return;
+  try {
+    storeTaskForNav(task);
+    prefetchBidsForTask(task.id, task.posted_by_id);
+    prefetchJobWithBidsForTask(task.id);
+  } catch (_) {}
+}

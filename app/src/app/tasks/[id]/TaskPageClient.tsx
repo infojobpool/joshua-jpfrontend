@@ -144,6 +144,9 @@ export default function TaskDetailPage() {
     bidsFromCombinedRef.current = false;
     prefetchedBidsRef.current = null;
     setUserProfileFetchDone(false);
+    setTaskerFeePreview(null);
+    setTaskerFeeError(null);
+    setTaskerFeeLoading(false);
   }, [id]);
 
   // Track task view for GA4 funnel
@@ -168,13 +171,8 @@ export default function TaskDetailPage() {
     return () => document.removeEventListener("visibilitychange", handleFocus);
   }, [task, userId, offers.length, bidsLoading]);
 
+  /** Prefetch tasker fee while the user types their bid — confirm modal reuses cached preview. */
   useEffect(() => {
-    if (!showConfirmBid) {
-      setTaskerFeePreview(null);
-      setTaskerFeeError(null);
-      setTaskerFeeLoading(false);
-      return;
-    }
     const n = parseFloat(offerAmount) || 0;
     if (n <= 0) {
       setTaskerFeePreview(null);
@@ -202,12 +200,12 @@ export default function TaskDetailPage() {
           if (!cancelled) setTaskerFeeLoading(false);
         }
       })();
-    }, 300);
+    }, 200);
     return () => {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [showConfirmBid, offerAmount]);
+  }, [offerAmount]);
 
   const [completeReviewAsTaskmaster, setCompleteReviewAsTaskmaster] = useState(false);
   const taskerId = offers.length > 0 ? offers[0].tasker.id : (task?.assignedTasker?.id ? String(task.assignedTasker.id) : null);

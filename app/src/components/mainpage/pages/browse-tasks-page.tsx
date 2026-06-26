@@ -717,6 +717,7 @@ import {
 import { Checkbox } from "../../../components/ui/checkbox";
 import axiosInstance from "../../../lib/axiosInstance";
 import { toast } from "sonner";
+import { warmTaskDetailNavigation, type NavTaskInput } from "@/lib/taskNavCache";
 
 interface Task {
   id: string;
@@ -747,6 +748,34 @@ interface Category {
   category_name: string;
   status: boolean;
   created_at: string;
+}
+
+function browseJobToNavInput(job: Task): NavTaskInput {
+  return {
+    id: String(job.id),
+    title: job.title,
+    description: job.description,
+    budget: job.budget,
+    location: job.location,
+    posted_by: job.posted_by,
+    posted_by_id: job.user_ref_id,
+    category: job.category_name || job.category,
+    dueDate: job.dueDate,
+    postedAt: job.postedAt,
+    images: job.job_images?.urls?.length
+      ? job.job_images.urls.map((url, i) => ({
+          id: `img${i + 1}`,
+          url,
+          alt: `Image ${i + 1}`,
+        }))
+      : undefined,
+  };
+}
+
+function warmBrowseJobNav(job: Task) {
+  try {
+    warmTaskDetailNavigation(browseJobToNavInput(job));
+  } catch {}
 }
 
 export function BrowseTasksPage() {
@@ -1539,7 +1568,13 @@ export function BrowseTasksPage() {
                                       : "Unavailable"}
                                   </Badge>
                                 </div>
-                                <Link href={`/tasks/${job.id}`} className="min-w-0">
+                                <Link
+                                  href={`/tasks/${job.id}`}
+                                  className="min-w-0"
+                                  onClick={() => warmBrowseJobNav(job)}
+                                  onMouseEnter={() => warmBrowseJobNav(job)}
+                                  onTouchStart={() => warmBrowseJobNav(job)}
+                                >
                                   <h3 className="mb-2 break-words text-lg font-bold text-slate-900 transition-colors hover:text-blue-600 md:text-xl">
                                     {job.title}
                                   </h3>
@@ -1606,7 +1641,12 @@ export function BrowseTasksPage() {
 
                                 {/* Button */}
                                 <div className="mt-auto">
-                                  <Link href={`/tasks/${job.id}`}>
+                                  <Link
+                                    href={`/tasks/${job.id}`}
+                                    onClick={() => warmBrowseJobNav(job)}
+                                    onMouseEnter={() => warmBrowseJobNav(job)}
+                                    onTouchStart={() => warmBrowseJobNav(job)}
+                                  >
                                     <Button className="w-full bg-blue-600 hover:bg-blue-700">
                                       View Details
                                     </Button>

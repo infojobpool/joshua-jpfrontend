@@ -63,27 +63,58 @@ type FeePreviewApiEnvelope = {
   data?: PosterFeeData | TaskerFeeData;
 };
 
+const FEE_PREVIEW_CACHE_MS = 90_000;
+const feePreviewCache = new Map<string, { data: PosterFeeData | TaskerFeeData; at: number }>();
+const feePreviewInflight = new Map<string, Promise<PosterFeeData | TaskerFeeData>>();
+
+function feePreviewCacheKey(bidAmount: number, role: FeePreviewRole): string {
+  return `${role}:${Math.round(bidAmount)}`;
+}
+
 /**
  * POST /fee-preview/ — single source of truth for fee math (matches backend fee_breakdown).
+ * In-memory cache + in-flight dedupe so bid modal opens with data already loaded.
  */
 export async function fetchFeePreview(
   bidAmount: number,
   role: FeePreviewRole,
 ): Promise<PosterFeeData | TaskerFeeData> {
-  const { data: raw } = await axiosInstance.post<FeePreviewApiEnvelope | PosterFeeData | TaskerFeeData>(
-    "/fee-preview/",
-    { bid_amount: bidAmount, role },
-  );
-
-  const body = raw as FeePreviewApiEnvelope;
-  if (body && typeof body === "object" && "status_code" in body) {
-    if (body.status_code !== 200 || body.data == null) {
-      throw new Error(body.message || "Unable to load fees");
-    }
-    return body.data;
+  const key = feePreviewCacheKey(bidAmount, role);
+  const hit = feePreviewCache.get(key);
+  if (hit && Date.now() - hit.at < FEE_PREVIEW_CACHE_MS) {
+    return hit.data;
   }
 
-  return raw as PosterFeeData | TaskerFeeData;
+  const pending = feePreviewInflight.get(key);
+  if (pending) return pending;
+
+  const promise = (async () => {
+    const { data: raw } = await axiosInstance.post<FeePreviewApiEnvelope | PosterFeeData | TaskerFeeData>(
+      "/fee-preview/",
+      { bid_amount: bidAmount, role },
+    );
+
+    const body = raw as FeePreviewApiEnvelope;
+    let data: PosterFeeData | TaskerFeeData;
+    if (body && typeof body === "object" && "status_code" in body) {
+      if (body.status_code !== 200 || body.data == null) {
+        throw new Error(body.message || "Unable to load fees");
+      }
+      data = body.data;
+    } else {
+      data = raw as PosterFeeData | TaskerFeeData;
+    }
+
+    feePreviewCache.set(key, { data, at: Date.now() });
+    return data;
+  })();
+
+  feePreviewInflight.set(key, promise);
+  try {
+    return await promise;
+  } finally {
+    feePreviewInflight.delete(key);
+  }
 }
 
 export function formatInr(amount: number): string {

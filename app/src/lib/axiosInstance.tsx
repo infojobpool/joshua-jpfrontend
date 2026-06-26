@@ -60,6 +60,12 @@ function isVerificationWrite(url: string | undefined): boolean {
   return u.includes("verify-aadhaar") || u.includes("verify-pan");
 }
 
+/** Fee calculator — must not queue behind global throttle or POST dedupe (body varies by amount). */
+function isFeePreviewWrite(url: string | undefined): boolean {
+  if (!url) return false;
+  return url.toLowerCase().includes("fee-preview");
+}
+
 /** Listings workspace read: GET offerings with user_id should not be throttled by client budget. */
 function isProfileListingsRead(
   url: string | undefined,
@@ -159,7 +165,8 @@ axiosInstance.interceptors.request.use(
         isTaskDetailRead(urlStr) ||
         isProfileListingsRead(urlStr, config.params) ||
         isWalletSummaryRead(urlStr) ||
-        isVerificationWrite(urlStr);
+        isVerificationWrite(urlStr) ||
+        isFeePreviewWrite(urlStr);
       const now = Date.now();
       if (now - requestThrottle.windowStart > requestThrottle.windowSize) {
         // Reset window
@@ -203,7 +210,8 @@ axiosInstance.interceptors.request.use(
       isChatInboxLightRead(urlStr) ||
       isChatMessageWrite(urlStr) ||
       isJobPostWrite(urlStr) ||
-      isVerificationWrite(urlStr);
+      isVerificationWrite(urlStr) ||
+      isFeePreviewWrite(urlStr);
     if (!skipDedupe) {
       const requestKey = `${config.method?.toUpperCase()}_${config.url}_${JSON.stringify(config.params)}`;
       if (pendingRequests.has(requestKey)) {
