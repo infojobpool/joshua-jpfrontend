@@ -69,8 +69,49 @@ export type FeeConfig = {
   tasker_platform_rate?: number;
   gst_rate?: number;
   fees_on_top?: boolean;
+  promo_fees_waived?: boolean;
   version?: number;
 };
+
+function readConfigRate(raw: Record<string, unknown>, ...keys: string[]): number | undefined {
+  for (const key of keys) {
+    const v = raw[key];
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "string" && v.trim() && !Number.isNaN(Number(v))) return Number(v);
+  }
+  return undefined;
+}
+
+/** API returns poster_platform_fee_rate / tasker_platform_fee_rate — normalize to one shape. */
+export function normalizeFeeConfig(raw: unknown): FeeConfig | null {
+  if (!raw || typeof raw !== "object") return null;
+  const bag = raw as Record<string, unknown>;
+  const poster = readConfigRate(
+    bag,
+    "poster_platform_rate",
+    "poster_platform_fee_rate",
+    "poster_fee_rate",
+  );
+  const tasker = readConfigRate(
+    bag,
+    "tasker_platform_rate",
+    "tasker_platform_fee_rate",
+    "tasker_fee_rate",
+  );
+  const gst = readConfigRate(bag, "gst_rate", "gst");
+  if (poster == null && tasker == null && gst == null) return null;
+  return {
+    poster_platform_rate: poster,
+    tasker_platform_rate: tasker,
+    gst_rate: gst,
+    fees_on_top: bag.fees_on_top === true || bag.fees_on_top === 1,
+    promo_fees_waived:
+      bag.promo_fees_waived === true ||
+      bag.promo_fees_waived === 1 ||
+      bag.promo_fees_waived === "true",
+    version: typeof bag.version === "number" ? bag.version : undefined,
+  };
+}
 
 /** True when amounts were computed client-side from fee-config (not yet confirmed by API). */
 export type FeePreviewMeta = {
@@ -100,9 +141,9 @@ export async function fetchFeeConfig(): Promise<FeeConfig | null> {
       const body = raw as FeeConfigEnvelope;
       let config: FeeConfig | null = null;
       if (body && typeof body === "object" && "status_code" in body) {
-        if (body.status_code === 200 && body.data) config = body.data;
+        if (body.status_code === 200 && body.data) config = normalizeFeeConfig(body.data);
       } else if (raw && typeof raw === "object") {
-        config = raw as FeeConfig;
+        config = normalizeFeeConfig(raw);
       }
       if (config) {
         feeConfigCache = { data: config, at: Date.now() };

@@ -2288,7 +2288,7 @@ export default function TaskDetailPage() {
             ) : taskerFeePreview ? (
               <>
                 <SimpleTaskerFeeSummary data={taskerFeePreview} bidAmount={offerAmountNumber} />
-                {taskerFeeIsEstimate && taskerFeeLoading ? (
+                {taskerFeeIsEstimate && taskerFeeLoading && (taskerFeePreview as { _is_local_estimate?: boolean })?._is_local_estimate !== true ? (
                   <p className="text-xs text-slate-500">Updating exact fees…</p>
                 ) : null}
               </>
