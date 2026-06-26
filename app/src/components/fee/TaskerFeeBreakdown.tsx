@@ -14,6 +14,11 @@ type TaskerFeeBreakdownProps = {
 };
 
 export function TaskerFeeBreakdown({ data, bidFallback }: TaskerFeeBreakdownProps) {
+  if (!data || typeof data !== "object") {
+    return (
+      <p className="text-sm text-muted-foreground">Fee estimate unavailable. You can still submit your bid.</p>
+    );
+  }
   const displayLines = taskerFeeLinesForDisplay(data.lines);
   const estimatedNet = taskerEstimatedNet(data, bidFallback);
 

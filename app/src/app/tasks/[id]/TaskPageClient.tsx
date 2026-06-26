@@ -1984,7 +1984,9 @@ export default function TaskDetailPage() {
 
   const viewerId = userId ?? user?.id ?? "";
   const isTaskPoster: boolean = !!(task.poster?.id && viewerId && sameUserId(task.poster.id, viewerId));
-  const hasSubmittedOffer = offers.some((offer) => sameUserId(offer.tasker.id, viewerId));
+  const hasSubmittedOffer = offers.some(
+    (offer) => offer.tasker?.id != null && sameUserId(offer.tasker.id, viewerId),
+  );
   const bidAmountNumber = parseFloat(offerAmount) || 0;
   const acceptedOfferAmount =
     offers.find((o) => (o as { status?: string }).status === "accepted")?.amount ??

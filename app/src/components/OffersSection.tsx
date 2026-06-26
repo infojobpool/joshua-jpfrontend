@@ -433,7 +433,7 @@ export function OffersSection({
 
   // Tasker review lines: fetch profiles in parallel but merge each as it arrives (faster perceived load).
   useEffect(() => {
-    const taskerIds = [...new Set(offers.map((o) => o.tasker.id).filter(Boolean))];
+    const taskerIds = [...new Set(offers.map((o) => o.tasker?.id).filter(Boolean))] as string[];
     if (taskerIds.length === 0) {
       setTaskerReviewStats({});
       return;
@@ -551,8 +551,10 @@ export function OffersSection({
   // Deduplicate offers: If same user has multiple offers, keep only the most recent one
   // This prevents showing duplicate offers from the same tasker
   const deduplicatedOffers = offers.reduce((acc: Offer[], current: Offer) => {
+    const currentTaskerId = current.tasker?.id;
+    if (!currentTaskerId) return acc;
     const existingIndex = acc.findIndex(
-      (offer) => offer.tasker.id === current.tasker.id
+      (offer) => offer.tasker?.id === currentTaskerId,
     );
     
     if (existingIndex === -1) {

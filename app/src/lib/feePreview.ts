@@ -246,21 +246,24 @@ export function formatInr(amount: number): string {
 }
 
 /** Strip rate hints like "(10%)" from API line labels — amounts stay from API. */
-export function sanitizeFeeLineLabel(label: string): string {
-  return label
+export function sanitizeFeeLineLabel(label: string | null | undefined): string {
+  const text = typeof label === "string" ? label : "";
+  return text
     .replace(/\s*\([^)]*\d+(?:\.\d+)?\s*%[^)]*\)/gi, "")
     .replace(/\s{2,}/g, " ")
     .trim();
 }
 
 /** User-facing label for a fee line (no hardcoded rates in copy). */
-export function feeLineDisplayLabel(line: FeeLine): string {
+export function feeLineDisplayLabel(line: FeeLine | null | undefined): string {
+  if (!line || typeof line !== "object") return "Fee";
   const id = (line.id || "").toLowerCase();
   if (id === "platform_fee") return "Platform fee";
   if (id === "gst" || id === "taxes") return "GST on platform fee";
   if (id === "bid_amount" || id === "task_budget") return "Task budget";
   if (id === "payable" || id === "total") return sanitizeFeeLineLabel(line.label) || "Total to pay";
   const cleaned = sanitizeFeeLineLabel(line.label);
+  if (!cleaned) return id ? id.replace(/_/g, " ") : "Fee";
   if (/^platform fee\b/i.test(cleaned)) return "Platform fee";
   if (/^gst\b/i.test(cleaned)) return "GST on platform fee";
   return cleaned;

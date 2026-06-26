@@ -1,7 +1,8 @@
 /** Parse bids array + pagination meta from GET /get-job-with-bids/ (and prefetched JSON). */
 
 export type JobBidsPayload = {
-  bids: unknown[];
+  /** Null when the response did not include a `bids` array (fallback fetch may be needed). */
+  bids: unknown[] | null;
   bidsTotal: number | null;
   bidsHasMore: boolean;
 };
@@ -20,8 +21,8 @@ export function parseJobBidsPayload(res: unknown): JobBidsPayload {
   const bag =
     envelope && typeof envelope === "object" ? (envelope as Record<string, unknown>) : {};
 
-  const bids = Array.isArray(bag.bids) ? bag.bids : [];
-  const bidsTotal = readTotal(bag.bids_total, bids.length);
+  const bids = Array.isArray(bag.bids) ? bag.bids : null;
+  const bidsTotal = readTotal(bag.bids_total, bids?.length ?? 0);
   const bidsHasMore =
     bag.bids_has_more === true ||
     bag.bids_has_more === 1 ||
