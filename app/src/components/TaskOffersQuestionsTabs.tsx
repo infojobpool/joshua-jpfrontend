@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { OffersSection, type OffersSectionProps } from "@/components/OffersSection";
 import { TaskPublicQuestionsSection } from "@/components/TaskPublicQuestionsSection";
 import { fetchTaskPublicQuestions } from "@/lib/taskPublicQaApi";
+import { offersCountLabel } from "@/lib/jobBids";
 
 /** Same props as OffersSection plus poster id for Q&A permissions */
 export type TaskOffersQuestionsTabsProps = OffersSectionProps & {
@@ -13,7 +14,7 @@ export type TaskOffersQuestionsTabsProps = OffersSectionProps & {
 };
 
 export function TaskOffersQuestionsTabs(props: TaskOffersQuestionsTabsProps) {
-  const { posterId, qaRefreshKey = 0, task, offers, ...offersRest } = props;
+  const { posterId, qaRefreshKey = 0, task, offers, bidsTotal, bidsHasMore, ...offersRest } = props;
   const [tab, setTab] = useState<"offers" | "questions">("offers");
   const [qaTotal, setQaTotal] = useState<number | null>(null);
   const [questionsMounted, setQuestionsMounted] = useState(false);
@@ -62,7 +63,7 @@ export function TaskOffersQuestionsTabs(props: TaskOffersQuestionsTabsProps) {
           className={`${pill} ${tab === "offers" ? active : idle}`}
           onClick={() => setTab("offers")}
         >
-          Offers ({offers.length})
+          Offers ({offersCountLabel(offers.length, bidsTotal)})
         </button>
         <button
           type="button"
@@ -76,7 +77,13 @@ export function TaskOffersQuestionsTabs(props: TaskOffersQuestionsTabsProps) {
       </div>
 
       <div role="tabpanel" hidden={tab !== "offers"} className={tab !== "offers" ? "hidden" : ""}>
-        <OffersSection task={task} offers={offers} {...offersRest} />
+        <OffersSection
+          task={task}
+          offers={offers}
+          bidsTotal={bidsTotal}
+          bidsHasMore={bidsHasMore}
+          {...offersRest}
+        />
       </div>
 
       {(questionsMounted || tab === "questions") && (

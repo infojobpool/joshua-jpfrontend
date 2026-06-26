@@ -8,8 +8,12 @@ import { Label } from "@/components/ui/label";
 import { PosterFeeBreakdown } from "@/components/fee/PosterFeeBreakdown";
 import { TaskerFeeBreakdown } from "@/components/fee/TaskerFeeBreakdown";
 import {
+  fetchFeeConfig,
   fetchFeePreview,
+  fetchFeePreviewBatch,
+  formatFeeRatePercent,
   formatInr,
+  type FeeConfig,
   type PosterFeeData,
   type TaskerFeeData,
 } from "@/lib/feePreview";
@@ -18,12 +22,50 @@ const EXAMPLE_AMOUNTS = [500, 1000, 3000, 5000];
 
 export default function PricingPage() {
   const [amount, setAmount] = useState("1000");
+  const [feeConfig, setFeeConfig] = useState<FeeConfig | null>(null);
+  const [tierPoster, setTierPoster] = useState<Map<number, PosterFeeData>>(new Map());
+  const [tierTasker, setTierTasker] = useState<Map<number, TaskerFeeData>>(new Map());
+  const [tierFeesLoaded, setTierFeesLoaded] = useState(false);
   const [posterFees, setPosterFees] = useState<PosterFeeData | null>(null);
   const [taskerFees, setTaskerFees] = useState<TaskerFeeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const bid = parseFloat(amount) || 0;
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [config, posterMap, taskerMap] = await Promise.all([
+          fetchFeeConfig(),
+          fetchFeePreviewBatch(EXAMPLE_AMOUNTS, "poster"),
+          fetchFeePreviewBatch(EXAMPLE_AMOUNTS, "tasker"),
+        ]);
+        if (cancelled) return;
+        setFeeConfig(config);
+        setTierPoster(
+          new Map(
+            [...posterMap.entries()].map(([k, v]) => [k, v as PosterFeeData]),
+          ),
+        );
+        setTierTasker(
+          new Map(
+            [...taskerMap.entries()].map(([k, v]) => [k, v as TaskerFeeData]),
+          ),
+        );
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Unable to load fees");
+        }
+      } finally {
+        if (!cancelled) setTierFeesLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (bid <= 0) {
@@ -33,6 +75,16 @@ export default function PricingPage() {
       setError(null);
       return;
     }
+
+    const rounded = Math.round(bid);
+    if (EXAMPLE_AMOUNTS.includes(rounded) && tierFeesLoaded) {
+      setPosterFees(tierPoster.get(rounded) ?? null);
+      setTaskerFees(tierTasker.get(rounded) ?? null);
+      setLoading(!tierPoster.has(rounded) && !tierTasker.has(rounded));
+      setError(null);
+      return;
+    }
+
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -62,7 +114,11 @@ export default function PricingPage() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [bid]);
+  }, [bid, tierFeesLoaded, tierPoster, tierTasker]);
+
+  const posterRate = formatFeeRatePercent(feeConfig?.poster_platform_rate);
+  const taskerRate = formatFeeRatePercent(feeConfig?.tasker_platform_rate);
+  const gstRate = formatFeeRatePercent(feeConfig?.gst_rate);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -72,8 +128,16 @@ export default function PricingPage() {
             Pricing & fees
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">
-            Transparent platform fees and GST — calculated live from JobPool&apos;s fee engine. Amounts below update
-            automatically; we never hardcode rates in the app.
+            Transparent platform fees and GST — rates from JobPool&apos;s fee engine
+            {posterRate && taskerRate && gstRate ? (
+              <>
+                {" "}
+                (platform fee {posterRate} for posters and {taskerRate} for taskers; GST {gstRate} on the
+                platform fee).
+              </>
+            ) : (
+              ". Amounts below update automatically from live estimates."
+            )}
           </p>
         </div>
 

@@ -318,6 +318,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./ui/dialog";
 import { NoOffersEmptyState } from "./NoOffersEmptyState";
+import { offersCountLabel } from "@/lib/jobBids";
 
 interface Image {
   id: string;
@@ -379,6 +380,9 @@ export interface OffersSectionProps {
   paymentCheckDone?: boolean;
   /** When true and offers empty, show loading skeleton instead of "No offers yet" */
   bidsLoading?: boolean;
+  /** Total bids from GET /get-job-with-bids/ when paginated */
+  bidsTotal?: number | null;
+  bidsHasMore?: boolean;
 }
 
 function sameOfferUserId(a: unknown, b: unknown): boolean {
@@ -405,6 +409,8 @@ export function OffersSection({
   isPaymentPending: parentPaymentPending,
   paymentCheckDone,
   bidsLoading = false,
+  bidsTotal = null,
+  bidsHasMore = false,
 }: OffersSectionProps) {
   const [error, setError] = useState("");
   const router = useRouter();
@@ -852,7 +858,9 @@ export function OffersSection({
       <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-blue-50/40 pb-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <CardTitle className="text-lg font-semibold text-slate-900">Offers ({offers.length})</CardTitle>
+            <CardTitle className="text-lg font-semibold text-slate-900">
+              Offers ({offersCountLabel(offers.length, bidsTotal)})
+            </CardTitle>
             <CardDescription className="text-slate-600 text-sm mt-1">
           {effectiveIsTaskPoster
             ? "Choose the best offer for your task"
@@ -860,6 +868,11 @@ export function OffersSection({
             ? "Your submitted offer"
             : "Submit an offer for this task"}
             </CardDescription>
+            {bidsHasMore ? (
+              <p className="text-xs text-slate-500 mt-2">
+                Showing the latest offers. More bids exist on this task.
+              </p>
+            ) : null}
           </div>
         </div>
       </CardHeader>

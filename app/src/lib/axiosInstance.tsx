@@ -42,6 +42,8 @@ function isTaskDetailRead(url: string | undefined): boolean {
   const u = url.toLowerCase();
   if (u.includes('get-job-with-bids') || u.includes('get-job')) return true;
   if (u.includes('get-bids') || u.includes('get-user-bids')) return true;
+  if (u.includes('/users/') && u.includes('/summary')) return true;
+  if (u.includes('fee-config')) return true;
   if (u.includes('profile') && u.includes('user_id')) return true;
   return false;
 }
@@ -63,7 +65,8 @@ function isVerificationWrite(url: string | undefined): boolean {
 /** Fee calculator — must not queue behind global throttle or POST dedupe (body varies by amount). */
 function isFeePreviewWrite(url: string | undefined): boolean {
   if (!url) return false;
-  return url.toLowerCase().includes("fee-preview");
+  const u = url.toLowerCase();
+  return u.includes("fee-preview");
 }
 
 /** Listings workspace read: GET offerings with user_id should not be throttled by client budget. */

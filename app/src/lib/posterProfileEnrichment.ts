@@ -7,6 +7,7 @@ import { hasRealProfilePhotoUrl } from "@/lib/payoutProfileCompletion";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 import { pickRecentPosterReviews } from "@/lib/posterReviewsFromProfile";
 import { readPosterProfileCache, writePosterProfileCache, type PosterProfileCacheEntry } from "@/lib/posterProfileCache";
+import { fetchUserSummary } from "@/lib/userSummary";
 
 export type PosterEnrichment = {
   avatar?: string;
@@ -18,16 +19,20 @@ export type PosterEnrichment = {
 
 const inflight = new Map<string, Promise<PosterEnrichment | null>>();
 
+export function posterNeedsReviewEnrichment(poster: {
+  taskmasterReviewCount?: number | null;
+  recentPosterReviews?: PosterReviewSnippet[];
+}): boolean {
+  return poster.taskmasterReviewCount == null || !Array.isArray(poster.recentPosterReviews);
+}
+
+/** True when poster review stats still need GET /profile (avatar comes from job.posted_by_profile_image). */
 export function posterNeedsEnrichment(poster: {
   avatar?: string;
   taskmasterReviewCount?: number | null;
   recentPosterReviews?: PosterReviewSnippet[];
 }): boolean {
-  return (
-    !hasRealProfilePhotoUrl(poster.avatar) ||
-    poster.taskmasterReviewCount == null ||
-    !Array.isArray(poster.recentPosterReviews)
-  );
+  return posterNeedsReviewEnrichment(poster);
 }
 
 export function applyPosterEnrichment<T extends PosterEnrichment>(poster: T, patch: PosterEnrichment): T {
@@ -109,7 +114,7 @@ export async function fetchPosterProfileEnrichment(userId: string): Promise<Post
   if (!id) return null;
 
   const cached = readPosterProfileCache(id);
-  if (cached && !posterNeedsEnrichment(enrichmentFromCacheEntry(cached))) {
+  if (cached && !posterNeedsReviewEnrichment(enrichmentFromCacheEntry(cached))) {
     return enrichmentFromCacheEntry(cached);
   }
 
@@ -141,12 +146,21 @@ export async function fetchPosterProfileEnrichment(userId: string): Promise<Post
   return promise;
 }
 
-/** Fire-and-forget before navigation (card hover / tap). */
+/** Fire-and-forget before navigation — uses GET /users/{id}/summary/ for avatar (not full /profile). */
 export function prefetchPosterProfile(userId: string | undefined | null): void {
   if (!userId || typeof window === "undefined") return;
   const id = String(userId).trim();
   if (!id) return;
   const hit = readPosterProfileCache(id);
-  if (hit && !posterNeedsEnrichment(enrichmentFromCacheEntry(hit))) return;
-  void fetchPosterProfileEnrichment(id);
+  if (hit && hasRealProfilePhotoUrl(hit.avatar)) return;
+  void fetchUserSummary(id).then((summary) => {
+    if (!summary?.profile_image) return;
+    writePosterProfileCache(id, {
+      avatar: summary.profile_image,
+      rating: hit?.rating ?? null,
+      taskmasterAverageRating: hit?.taskmasterAverageRating ?? null,
+      taskmasterReviewCount: hit?.taskmasterReviewCount ?? null,
+      recentPosterReviews: hit?.recentPosterReviews ?? [],
+    });
+  });
 }

@@ -9,9 +9,18 @@ import { TaskInfo } from "@/components/TaskInfo";
 import { ExpandableTaskLocationSection } from "@/components/TaskLocationMap";
 import { Toaster } from "@/components/ui/sonner";
 import axiosInstance from "@/lib/axiosInstance";
-import { fetchFeePreview, formatInr, type TaskerFeeData } from "@/lib/feePreview";
+import {
+  cacheFeePreview,
+  fetchFeePreview,
+  formatInr,
+  parseTaskerFeePreviewFromBidResponse,
+  taskerEstimatedNet,
+  type TaskerFeeData,
+} from "@/lib/feePreview";
+import { parseJobBidsPayload } from "@/lib/jobBids";
 import { TaskerFeeBreakdown } from "@/components/fee/TaskerFeeBreakdown";
-import { jobIdVariants, jobIdTryList } from "@/lib/jobIdVariants";
+import { canonicalJobId } from "@/lib/jobIdVariants";
+import { fetchUserSummary, isUserVerifiedForBidding } from "@/lib/userSummary";
 import { resolveApiMediaUrl, resolveProfileImageUrl } from "@/lib/profileImage";
 import { hasRealProfilePhotoUrl } from "@/lib/payoutProfileCompletion";
 import { readPosterProfileCache } from "@/lib/posterProfileCache";
@@ -23,7 +32,6 @@ import {
   prefetchPosterProfile,
 } from "@/lib/posterProfileEnrichment";
 import {
-  extractProfileImageFromApiResponse,
   getProfileImageFromUser,
   isProfileComplete,
 } from "@/lib/profileUtils";
@@ -88,6 +96,8 @@ export default function TaskDetailPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [bidsLoading, setBidsLoading] = useState<boolean>(false);
+  const [bidsTotal, setBidsTotal] = useState<number | null>(null);
+  const [bidsHasMore, setBidsHasMore] = useState<boolean>(false);
   const [showConfirmBid, setShowConfirmBid] = useState<boolean>(false);
   const [showProfileNudgeForBid, setShowProfileNudgeForBid] = useState<boolean>(false);
   const [showCancelDialog, setShowCancelDialog] = useState<boolean>(false);
@@ -147,6 +157,8 @@ export default function TaskDetailPage() {
     setTaskerFeePreview(null);
     setTaskerFeeError(null);
     setTaskerFeeLoading(false);
+    setBidsTotal(null);
+    setBidsHasMore(false);
   }, [id]);
 
   // Track task view for GA4 funnel
@@ -258,7 +270,7 @@ export default function TaskDetailPage() {
     }
   }, [task?.id, task?.poster?.id]);
 
-  // Fetch poster profile when still missing avatar / review stats
+  // Fetch poster review stats only when missing (avatar comes from job.posted_by_profile_image)
   useEffect(() => {
     if (!task?.poster?.id || !task?.id) return;
     if (!posterNeedsEnrichment(task.poster)) {
@@ -352,186 +364,75 @@ export default function TaskDetailPage() {
       return;
     }
 
-      // Fetch user profile and verification status
-      const fetchProfile = async () => {
+      // Avatar + verification via lightweight GET /users/{id}/summary/
+      const fetchUserSummaryForBid = async () => {
         if (!userId) return;
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-          
-          // Try to get verification status from profile endpoint (cache-bust to avoid stale verification)
-          const cacheBuster = `_t=${Date.now()}`;
-          const response = await axiosInstance.get(`/profile?user_id=${userId}&${cacheBuster}`, {
-            signal: controller.signal
-          });
-          clearTimeout(timeoutId);
-          
-          if (process.env.NODE_ENV === "development") {
-            console.log("🔍 Profile API response keys:", response.data ? Object.keys(response.data) : []);
-          }
-          
-          const data = response.data;
-          const payload = data?.data ?? data;
-          const rawImg = extractProfileImageFromApiResponse(response.data);
-          const avatarUrl = rawImg ? resolveProfileImageUrl(rawImg) ?? rawImg : "";
-          const profile: UserProfile = {
-            profile_id: payload?.profile_id || data.profile_id || "",
-            name: payload?.name || data.name || "",
-            email: payload?.email || data.email || "",
-            phone: payload?.phone_number || data.phone_number || "",
-            avatar: avatarUrl,
-            joinDate: payload?.tstamp || data.tstamp
-              ? new Date(String(payload?.tstamp ?? data.tstamp)).toLocaleDateString()
-              : "",
-          };
-          setUserProfile(profile);
-
-          if (rawImg) {
-            const storedUser = localStorage.getItem("user");
-            if (storedUser) {
-              try {
-                const parsedUser = JSON.parse(storedUser);
-                parsedUser.profile_image = rawImg;
-                parsedUser.profile_img = rawImg;
-                parsedUser.avatar = avatarUrl || rawImg;
-                localStorage.setItem("user", JSON.stringify(parsedUser));
-              } catch {
-                /* ignore */
-              }
-            }
-          }
-          
-          // Check verification status from API response - try multiple possible locations
-          // Check all possible nested structures
-          const apiVerificationStatus = 
-            data?.verification_status !== undefined ? data.verification_status :
-            data?.verificationStatus !== undefined ? data.verificationStatus :
-            data?.data?.verification_status !== undefined ? data.data.verification_status :
-            data?.data?.verificationStatus !== undefined ? data.data.verificationStatus :
-            response.data?.verification_status !== undefined ? response.data.verification_status :
-            response.data?.verificationStatus !== undefined ? response.data.verificationStatus :
-            response.data?.data?.verification_status !== undefined ? response.data.data.verification_status :
-            response.data?.data?.verificationStatus !== undefined ? response.data.data.verificationStatus :
-            null;
-          
-          
-          // Also check if verification status might be in pan_verified, aadhaar_verified fields
-          const panVerified = data?.pan_verified || data?.panVerified || data?.data?.pan_verified || response.data?.pan_verified;
-          const aadhaarVerified = data?.aadhaar_verified || data?.aadhaarVerified || data?.aadhaar_verified || data?.data?.aadhaar_verified || response.data?.aadhaar_verified;
-          const bankVerified = data?.bank_verified || data?.bankVerified || data?.data?.bank_verified || response.data?.bank_verified;
-          
-          console.log("🔍 Individual verification flags:", { panVerified, aadhaarVerified, bankVerified });
-          
-          // If we have individual flags but no status number, calculate it
-          let calculatedStatus = null;
-          if (apiVerificationStatus === null && (panVerified !== undefined || aadhaarVerified !== undefined || bankVerified !== undefined)) {
-            if (bankVerified === true || bankVerified === 1) calculatedStatus = 3;
-            else if (aadhaarVerified === true || aadhaarVerified === 1) calculatedStatus = 2;
-            else if (panVerified === true || panVerified === 1) calculatedStatus = 1;
-            else calculatedStatus = 0;
-            console.log("🔍 Calculated verification status from flags:", calculatedStatus);
-          }
-          
-          const finalVerificationStatus = apiVerificationStatus !== null ? apiVerificationStatus : calculatedStatus;
-          
-          // If still no status found, check if bank_info exists (indicates at least some verification)
-          if (finalVerificationStatus === null) {
-            const bankInfo = data?.bank_info || data?.bankInfo || data?.data?.bank_info || response.data?.bank_info;
-            if (bankInfo && Object.keys(bankInfo).length > 0) {
-              // If bank info exists, assume at least PAN + Aadhar + Bank (3)
-              calculatedStatus = 3;
-              console.log("🔍 Found bank_info, assuming verification_status = 3");
-            }
-          }
-          
-          const finalStatus = finalVerificationStatus !== null ? finalVerificationStatus : calculatedStatus;
-          
-          if (finalStatus !== null && finalStatus !== undefined) {
-            // Convert to number if it's a string
-            const statusNum = typeof finalStatus === 'string' ? parseInt(finalStatus, 10) : Number(finalStatus);
-            const verified = !isNaN(statusNum) && statusNum >= 2; // >= 2 = PAN + Aadhar (sufficient for bidding)
-            setIsVerified(verified);
+        const applyLocalStorageVerification = () => {
+          const storedUser = localStorage.getItem("user");
+          if (!storedUser) {
+            setIsVerified(false);
             setVerificationChecked(true);
-            console.log("✅ Verification status from API:", finalStatus, "->", statusNum, "Verified:", verified);
-            
-            // Update localStorage user with latest verification status
-            const storedUser = localStorage.getItem("user");
-            if (storedUser) {
-              const parsedUser = JSON.parse(storedUser);
-              parsedUser.verification_status = statusNum;
-              localStorage.setItem("user", JSON.stringify(parsedUser));
-              console.log("💾 Updated localStorage verification_status to:", statusNum);
-            }
-          } else {
-            // Fallback to localStorage verification status
-            const storedUser = localStorage.getItem("user");
-            if (storedUser) {
-              const parsedUser = JSON.parse(storedUser);
-              const statusNum = typeof parsedUser.verification_status === 'string' ? parseInt(parsedUser.verification_status, 10) : Number(parsedUser.verification_status);
-              
-              if (!isNaN(statusNum) && statusNum >= 0) {
-                // Valid number found in localStorage
-                const verified = statusNum >= 2; // >= 2 = PAN + Aadhar (sufficient for bidding)
-                setIsVerified(verified);
-                setVerificationChecked(true);
-                console.log("⚠️ Using localStorage verification status:", parsedUser.verification_status, "->", statusNum, "Verified:", verified);
-              } else {
-                // Invalid or missing verification status - assume not verified
-                console.warn("⚠️ Invalid verification_status in localStorage:", parsedUser.verification_status);
-                setIsVerified(false);
-                setVerificationChecked(true);
-                console.log("❌ No valid verification status found, defaulting to not verified");
-              }
-            } else {
-              // No user in localStorage
-              setIsVerified(false);
-              setVerificationChecked(true);
-              console.log("❌ No user found in localStorage");
-            }
-          }
-        } catch (err: any) {
-          // Handle AbortError silently for background tasks
-          if (err.name === 'AbortError' || err.name === 'CanceledError') {
-            console.log("Profile fetch timed out (background task)");
-            // Still check localStorage for verification status
-            const storedUser = localStorage.getItem("user");
-            if (storedUser) {
-              const parsedUser = JSON.parse(storedUser);
-              const statusNum = typeof parsedUser.verification_status === 'string' ? parseInt(parsedUser.verification_status, 10) : Number(parsedUser.verification_status);
-              const verified = !isNaN(statusNum) && statusNum >= 2; // >= 2 = PAN + Aadhar (sufficient for bidding)
-              setIsVerified(verified);
-              setVerificationChecked(true);
-            }
             return;
           }
-          console.error("Failed to fetch profile:", err);
-          if (err.response?.status === 401) {
-            logout();
-            router.push("/signin");
-          } else {
-            // Fallback to localStorage verification status on error
-            const storedUser = localStorage.getItem("user");
-            if (storedUser) {
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            const statusNum =
+              typeof parsedUser.verification_status === "string"
+                ? parseInt(parsedUser.verification_status, 10)
+                : Number(parsedUser.verification_status);
+            setIsVerified(isUserVerifiedForBidding(statusNum));
+            setVerificationChecked(true);
+          } catch {
+            setIsVerified(false);
+            setVerificationChecked(true);
+          }
+        };
+
+        try {
+          const summary = await fetchUserSummary(String(userId));
+          if (!summary) {
+            applyLocalStorageVerification();
+            return;
+          }
+
+          setUserProfile({
+            profile_id: "",
+            name: summary.name,
+            email: "",
+            phone: "",
+            avatar: summary.profile_image || "",
+            joinDate: "",
+          });
+
+          const verified = isUserVerifiedForBidding(summary.verification_status);
+          setIsVerified(verified);
+          setVerificationChecked(true);
+
+          const storedUser = localStorage.getItem("user");
+          if (storedUser) {
+            try {
               const parsedUser = JSON.parse(storedUser);
-              const statusNum = typeof parsedUser.verification_status === 'string' ? parseInt(parsedUser.verification_status, 10) : Number(parsedUser.verification_status);
-              const verified = !isNaN(statusNum) && statusNum >= 2; // >= 2 = PAN + Aadhar (sufficient for bidding)
-              setIsVerified(verified);
-              setVerificationChecked(true);
-              console.log("Fallback verification check from localStorage on error:", parsedUser.verification_status, "->", statusNum, "Verified:", verified);
-            } else {
-              // If no user in localStorage, assume not verified
-              setIsVerified(false);
-              setVerificationChecked(true);
+              parsedUser.verification_status = summary.verification_status;
+              if (summary.profile_image) {
+                parsedUser.profile_image = summary.profile_image;
+                parsedUser.profile_img = summary.profile_image;
+                parsedUser.avatar = summary.profile_image;
+              }
+              localStorage.setItem("user", JSON.stringify(parsedUser));
+            } catch {
+              /* ignore */
             }
           }
+        } catch (err: unknown) {
+          console.error("Failed to fetch user summary:", err);
+          applyLocalStorageVerification();
         } finally {
           setUserProfileFetchDone(true);
         }
       };
 
-      // Always fetch profile to get latest verification status (even if we have localStorage data)
       if (userId) {
-        fetchProfile();
+        fetchUserSummaryForBid();
       } else {
         // If no userId, check localStorage only - only trust "verified" to avoid false warning
         const storedUser = localStorage.getItem("user");
@@ -681,11 +582,13 @@ export default function TaskDetailPage() {
         // Primary request – use get-job-with-bids (parallel id variants) or fallback to get-job
         const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
         const token = localStorage.getItem("token");
-        const tryIds = jobIdTryList(id);
+        const apiJobId = canonicalJobId(id);
 
         let data: any;
         let job: any;
         let combinedBids: any[] | null = null;
+        let combinedBidsTotal: number | null = null;
+        let combinedBidsHasMore = false;
         let lastFetchErr: unknown;
 
         const fetchJson = async (path: string, signal: AbortSignal) => {
@@ -706,35 +609,33 @@ export default function TaskDetailPage() {
         if (peeked?.res) {
           data = peeked.res;
           job = peeked.res.data.job ?? peeked.res.data;
-          const rawBids = peeked.res.data.bids;
-          combinedBids = Array.isArray(rawBids) ? rawBids : null;
+          const parsedBids = parseJobBidsPayload(peeked.res);
+          combinedBids = parsedBids.bids;
+          combinedBidsTotal = parsedBids.bidsTotal;
+          combinedBidsHasMore = parsedBids.bidsHasMore;
         }
 
         if (!job) {
           try {
-            const won = await Promise.any(
-              tryIds.map((tryId) =>
-                (async () => {
-                  const ctrl = new AbortController();
-                  const tid = setTimeout(() => ctrl.abort(), 12_000);
-                  try {
-                    const res = await fetchJson(`/get-job-with-bids/${tryId}/`, ctrl.signal);
-                    if (res?.status_code === 200 && res?.data) {
-                      const j = res.data.job ?? res.data;
-                      if (!j) throw new Error("no job");
-                      return res;
-                    }
-                    throw new Error("bad response");
-                  } finally {
-                    clearTimeout(tid);
-                  }
-                })()
-              )
-            );
-            data = won;
-            job = won.data.job ?? won.data;
-            const rawBids = won.data.bids;
-            combinedBids = Array.isArray(rawBids) ? rawBids : null;
+            const ctrl = new AbortController();
+            const tid = setTimeout(() => ctrl.abort(), 12_000);
+            try {
+              const res = await fetchJson(`/get-job-with-bids/${apiJobId}/`, ctrl.signal);
+              if (res?.status_code === 200 && res?.data) {
+                const j = res.data.job ?? res.data;
+                if (!j) throw new Error("no job");
+                data = res;
+                job = j;
+                const parsedBids = parseJobBidsPayload(res);
+                combinedBids = parsedBids.bids;
+                combinedBidsTotal = parsedBids.bidsTotal;
+                combinedBidsHasMore = parsedBids.bidsHasMore;
+              } else {
+                throw new Error("bad response");
+              }
+            } finally {
+              clearTimeout(tid);
+            }
           } catch (e) {
             lastFetchErr = e;
           }
@@ -743,31 +644,25 @@ export default function TaskDetailPage() {
         // Fallback: get-job only (loadBids effect will fetch bids separately)
         if (!job) {
           try {
-            const won = await Promise.any(
-              tryIds.map((tryId) =>
-                (async () => {
-                  const ctrl = new AbortController();
-                  const tid = setTimeout(() => ctrl.abort(), 12_000);
-                  try {
-                    const res = await fetchJson(`/get-job/${tryId}/`, ctrl.signal);
-                    if (res?.status_code === 200) {
-                      return res;
-                    }
-                    throw new Error("bad response");
-                  } finally {
-                    clearTimeout(tid);
-                  }
-                })()
-              )
-            );
-            data = won;
-            job = won.data;
+            const ctrl = new AbortController();
+            const tid = setTimeout(() => ctrl.abort(), 12_000);
+            try {
+              const res = await fetchJson(`/get-job/${apiJobId}/`, ctrl.signal);
+              if (res?.status_code === 200) {
+                data = res;
+                job = res.data;
+              } else {
+                throw new Error("bad response");
+              }
+            } finally {
+              clearTimeout(tid);
+            }
           } catch (e) {
             lastFetchErr = e;
           }
           if (!job) {
             try {
-              const axiosResp = await axiosInstance.get(`/get-job/${id}/`);
+              const axiosResp = await axiosInstance.get(`/get-job/${apiJobId}/`);
               data = axiosResp.data;
               job = data?.data;
             } catch (fallbackErr) {
@@ -1032,6 +927,8 @@ export default function TaskDetailPage() {
           });
           setOffers(newOffers);
           setBids(taskBids);
+          setBidsTotal(combinedBidsTotal);
+          setBidsHasMore(combinedBidsHasMore);
           setBidsLoading(false);
           bidsFromCombinedRef.current = true;
           try { storeBidsInCache(id, taskBids); } catch (_) {}
@@ -1134,7 +1031,8 @@ export default function TaskDetailPage() {
           // jobpoolbackend.onrender.com returns 404 for get-bids, so we bypass axios baseURL
           console.log("Fetching all bids for task (user is poster)");
           const token = localStorage.getItem("token");
-          const primaryUrl = `https://api.jobpool.in/api/v1/get-bids/${id}/`;
+          const bidJobId = canonicalJobId(id);
+          const primaryUrl = `https://api.jobpool.in/api/v1/get-bids/${bidJobId}/`;
           try {
             const fetchRes = await fetch(primaryUrl, {
               method: "GET",
@@ -1153,7 +1051,7 @@ export default function TaskDetailPage() {
           } catch (primaryErr: any) {
             console.warn("api.jobpool.in get-bids failed, trying axios baseURL:", primaryErr?.message);
             try {
-              const axiosResponse = await axiosInstance.get(`/get-bids/${id}/`, {
+              const axiosResponse = await axiosInstance.get(`/get-bids/${bidJobId}/`, {
                 signal: controller.signal
               });
               response = {
@@ -1171,8 +1069,9 @@ export default function TaskDetailPage() {
         } else {
           // Non-poster: try to fetch all bids for this task (amounts hidden in UI)
           console.log("Fetching all task bids for non-poster (privacy enforced in UI)");
+          const bidJobId = canonicalJobId(id);
           try {
-            const axiosResponse = await axiosInstance.get(`/get-bids/${id}/`, {
+            const axiosResponse = await axiosInstance.get(`/get-bids/${bidJobId}/`, {
               signal: controller.signal
             });
             // Convert axios response to fetch-like response
@@ -1462,7 +1361,7 @@ export default function TaskDetailPage() {
     const offerAmountNumber = parseFloat(offerAmount);
 
     const payload = {
-      job_ref_id: id,
+      job_ref_id: canonicalJobId(id),
       bidder_ref_id: userId,
       bid_amount: offerAmountNumber,
       bid_description: offerMessage,
@@ -1472,10 +1371,20 @@ export default function TaskDetailPage() {
     setShowConfirmBid(false);
 
     try {
-      const response = await axiosInstance.post("/bid-a-job/", payload);
+      const bidResponse = await axiosInstance.post("/bid-a-job/", payload);
 
-      if (response.data.status_code === 201) {
-        toast.success("Offer submitted successfully! You can track it in My Bids.");
+      if (bidResponse.data.status_code === 201) {
+        const feeFromBid = parseTaskerFeePreviewFromBidResponse(bidResponse.data);
+        if (feeFromBid) {
+          cacheFeePreview(offerAmountNumber, "tasker", feeFromBid);
+          setTaskerFeePreview(feeFromBid);
+        }
+        const net = feeFromBid ? taskerEstimatedNet(feeFromBid, offerAmountNumber) : null;
+        toast.success(
+          net != null
+            ? `Offer submitted! Estimated you receive ${formatInr(net)} after fees.`
+            : "Offer submitted successfully! You can track it in My Bids.",
+        );
         addNotifications([{
           id: `bid-${id}-${userId}-${Date.now()}`,
           type: "system",
@@ -1527,8 +1436,8 @@ export default function TaskDetailPage() {
         } catch {}
 
         // Refresh bids from API to ensure all offers are up-to-date
-        const response = await axiosInstance.get(`/get-user-bids/${userId}/`);
-        const data: ApiBidResponse = response.data;
+        const userBidsResponse = await axiosInstance.get(`/get-user-bids/${userId}/`);
+        const data: ApiBidResponse = userBidsResponse.data;
         if (data.status_code === 200) {
           const taskBids = data.data.filter((bid: Bid) => bid.job_id === id);
           const newOffers: Offer[] = taskBids.map((bid: Bid, index: number) => ({
@@ -1571,7 +1480,7 @@ export default function TaskDetailPage() {
         // Redirect to Dashboard -> My Bids tab
         router.push("/dashboard?tab=my-bids");
       } else {
-        throw new Error(response.data.message || "Failed to submit offer");
+        throw new Error(bidResponse.data.message || "Failed to submit offer");
       }
     } catch (error: any) {
       console.error("Error submitting offer:", error);
@@ -1655,26 +1564,19 @@ export default function TaskDetailPage() {
         headers["X-Access-Token"] = token;
       }
 
-      const tryIds = jobIdVariants(task.id);
+      const jid = canonicalJobId(task.id);
       let resp: any = null;
       let lastErr: any = null;
 
-      for (let i = 0; i < tryIds.length; i++) {
-        const jid = tryIds[i];
-        try {
-          if (completeReviewAsTaskmaster) {
-            resp = await axiosInstance.put(`/mark-complete-by-taskmaster/${jid}/`, reviewBody, { headers });
-          } else {
-            resp = await axiosInstance.put(`/mark-complete/${jid}/`, reviewBody, { headers });
-          }
-          break;
-        } catch (e: any) {
-          lastErr = e;
-          const st = e?.response?.status;
-          const more = i < tryIds.length - 1;
-          if (more && (st === 404 || st === 500)) continue;
-          throw e;
+      try {
+        if (completeReviewAsTaskmaster) {
+          resp = await axiosInstance.put(`/mark-complete-by-taskmaster/${jid}/`, reviewBody, { headers });
+        } else {
+          resp = await axiosInstance.put(`/mark-complete/${jid}/`, reviewBody, { headers });
         }
+      } catch (e: any) {
+        lastErr = e;
+        throw e;
       }
       if (!resp && lastErr) throw lastErr;
 
@@ -2160,6 +2062,8 @@ export default function TaskDetailPage() {
                   isPaymentPending={isPaymentPending}
                   paymentCheckDone={paymentCheckDone}
                   bidsLoading={bidsLoading}
+                  bidsTotal={bidsTotal}
+                  bidsHasMore={bidsHasMore}
                 />
               }
             />
@@ -2403,10 +2307,14 @@ export default function TaskDetailPage() {
             </div>
             {taskerFeeError ? (
               <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{taskerFeeError}</p>
-            ) : taskerFeeLoading || !taskerFeePreview ? (
+            ) : taskerFeeLoading ? (
               <p className="text-sm text-muted-foreground">Loading fee estimate…</p>
-            ) : (
+            ) : taskerFeePreview ? (
               <TaskerFeeBreakdown data={taskerFeePreview} bidFallback={bidAmountNumber} />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Final fees are confirmed when you submit your bid.
+              </p>
             )}
           </div>
           <DialogFooter>
@@ -2419,7 +2327,7 @@ export default function TaskDetailPage() {
             </Button>
             <Button
               onClick={confirmBidSubmission}
-              disabled={isSubmitting || taskerFeeLoading || !!taskerFeeError || !taskerFeePreview}
+              disabled={isSubmitting}
             >
               {isSubmitting ? "Submitting..." : "Confirm Bid"}
             </Button>

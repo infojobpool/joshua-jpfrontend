@@ -1,5 +1,5 @@
 import { resolveApiMediaUrl } from "@/lib/profileImage";
-import { jobIdTryList, jobIdsAlign } from "@/lib/jobIdVariants";
+import { canonicalJobId, jobIdsAlign } from "@/lib/jobIdVariants";
 import {
   applyPosterEnrichment,
   enrichmentFromCacheEntry,
@@ -173,13 +173,13 @@ export function prefetchJobWithBidsForTask(taskId: string) {
 
   const token = localStorage.getItem("token");
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
-  const tryIds = jobIdTryList(taskId);
+  const apiJobId = canonicalJobId(taskId);
 
-  const fetchOne = async (tryId: string) => {
+  const fetchOne = async () => {
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), 12_000);
     try {
-      const r = await fetch(`${API_BASE}/get-job-with-bids/${tryId}/`, {
+      const r = await fetch(`${API_BASE}/get-job-with-bids/${apiJobId}/`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -200,7 +200,7 @@ export function prefetchJobWithBidsForTask(taskId: string) {
     }
   };
 
-  Promise.any(tryIds.map((tid) => fetchOne(tid)))
+  void fetchOne()
     .then((json) => {
       try {
         sessionStorage.setItem(key, JSON.stringify({ fetchedAt: Date.now(), res: json }));

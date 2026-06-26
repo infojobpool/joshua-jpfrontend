@@ -63,6 +63,61 @@ type FeePreviewApiEnvelope = {
   data?: PosterFeeData | TaskerFeeData;
 };
 
+/** Global fee rates from GET /fee-config/ — for static UI copy; amounts still from POST /fee-preview/. */
+export type FeeConfig = {
+  poster_platform_rate?: number;
+  tasker_platform_rate?: number;
+  gst_rate?: number;
+  fees_on_top?: boolean;
+  version?: number;
+};
+
+type FeeConfigEnvelope = {
+  status_code?: number;
+  message?: string;
+  data?: FeeConfig;
+};
+
+let feeConfigCache: { data: FeeConfig; at: number } | null = null;
+let feeConfigInflight: Promise<FeeConfig | null> | null = null;
+const FEE_CONFIG_CACHE_MS = 300_000;
+
+export async function fetchFeeConfig(): Promise<FeeConfig | null> {
+  if (feeConfigCache && Date.now() - feeConfigCache.at < FEE_CONFIG_CACHE_MS) {
+    return feeConfigCache.data;
+  }
+  if (feeConfigInflight) return feeConfigInflight;
+
+  feeConfigInflight = (async () => {
+    try {
+      const { data: raw } = await axiosInstance.get<FeeConfigEnvelope | FeeConfig>("/fee-config/");
+      const body = raw as FeeConfigEnvelope;
+      let config: FeeConfig | null = null;
+      if (body && typeof body === "object" && "status_code" in body) {
+        if (body.status_code === 200 && body.data) config = body.data;
+      } else if (raw && typeof raw === "object") {
+        config = raw as FeeConfig;
+      }
+      if (config) {
+        feeConfigCache = { data: config, at: Date.now() };
+      }
+      return config;
+    } catch {
+      return null;
+    } finally {
+      feeConfigInflight = null;
+    }
+  })();
+
+  return feeConfigInflight;
+}
+
+export function formatFeeRatePercent(rate: number | undefined): string {
+  if (rate == null || !Number.isFinite(rate)) return "";
+  const pct = rate <= 1 ? rate * 100 : rate;
+  return `${Math.round(pct)}%`;
+}
+
 const FEE_PREVIEW_CACHE_MS = 90_000;
 const feePreviewCache = new Map<string, { data: PosterFeeData | TaskerFeeData; at: number }>();
 const feePreviewInflight = new Map<string, Promise<PosterFeeData | TaskerFeeData>>();
@@ -115,6 +170,75 @@ export async function fetchFeePreview(
   } finally {
     feePreviewInflight.delete(key);
   }
+}
+
+type FeePreviewBatchEnvelope = {
+  status_code?: number;
+  message?: string;
+  data?: { previews?: (PosterFeeData | TaskerFeeData)[] } | (PosterFeeData | TaskerFeeData)[];
+};
+
+function previewBidAmount(row: PosterFeeData | TaskerFeeData): number {
+  const n = row.bid_amount ?? (row as { bidAmount?: number }).bidAmount;
+  return typeof n === "number" && Number.isFinite(n) ? Math.round(n) : 0;
+}
+
+/** POST /fee-preview/batch/ — pricing tiers and other multi-amount UIs. */
+export async function fetchFeePreviewBatch(
+  amounts: number[],
+  role: FeePreviewRole,
+): Promise<Map<number, PosterFeeData | TaskerFeeData>> {
+  const unique = [...new Set(amounts.map((a) => Math.round(a)).filter((a) => a > 0))];
+  const out = new Map<number, PosterFeeData | TaskerFeeData>();
+  if (unique.length === 0) return out;
+
+  const { data: raw } = await axiosInstance.post<FeePreviewBatchEnvelope>(
+    "/fee-preview/batch/",
+    { role, amounts: unique, bid_amounts: unique },
+  );
+
+  const body = raw as FeePreviewBatchEnvelope;
+  let rows: (PosterFeeData | TaskerFeeData)[] = [];
+  if (body && typeof body === "object" && "status_code" in body) {
+    if (body.status_code !== 200) {
+      throw new Error(body.message || "Unable to load fees");
+    }
+    const payload = body.data;
+    if (Array.isArray(payload)) rows = payload;
+    else if (payload && typeof payload === "object" && Array.isArray(payload.previews)) {
+      rows = payload.previews;
+    }
+  } else if (Array.isArray(raw)) {
+    rows = raw as (PosterFeeData | TaskerFeeData)[];
+  }
+
+  rows.forEach((row, index) => {
+    const key = previewBidAmount(row) || unique[index];
+    if (key > 0) {
+      out.set(key, row);
+      feePreviewCache.set(feePreviewCacheKey(key, role), { data: row, at: Date.now() });
+    }
+  });
+
+  return out;
+}
+
+/** Tasker fee object returned on POST /bid-a-job/ (authoritative after submit). */
+export function parseTaskerFeePreviewFromBidResponse(raw: unknown): TaskerFeeData | null {
+  if (!raw || typeof raw !== "object") return null;
+  const root = raw as Record<string, unknown>;
+  const data = (root.data ?? root) as Record<string, unknown>;
+  const fp = data.fee_preview ?? data.feePreview ?? root.fee_preview ?? root.feePreview;
+  if (!fp || typeof fp !== "object") return null;
+  return fp as TaskerFeeData;
+}
+
+export function cacheFeePreview(
+  bidAmount: number,
+  role: FeePreviewRole,
+  data: PosterFeeData | TaskerFeeData,
+): void {
+  feePreviewCache.set(feePreviewCacheKey(bidAmount, role), { data, at: Date.now() });
 }
 
 export function formatInr(amount: number): string {
