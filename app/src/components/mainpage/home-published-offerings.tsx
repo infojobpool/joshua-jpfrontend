@@ -397,7 +397,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
               {feedEmpty ? (
                 fetchFailed ? (
                   <>
-                    We couldn&apos;t load listings just now. Check your connection and tap <span className="font-medium text-gray-700">Retry</span>, or try again in a moment.
+                    We couldn&apos;t load listings just now. The server may be slow — tap <span className="font-medium text-gray-700">Retry</span>, or try again in a moment.
                   </>
                 ) : (
                   <>
@@ -546,7 +546,7 @@ export function HomePublishedOfferings({ variant }: { variant: "mobile" | "deskt
             <p className="mt-2 text-sm text-gray-500 leading-relaxed">
               {feedEmpty ? (
                 fetchFailed ? (
-                  <>We couldn&apos;t load listings just now. Check your connection and tap Retry.</>
+                  <>We couldn&apos;t load listings just now. The server may be slow — tap Retry.</>
                 ) : (
                   <>
                     Published offerings from providers will appear in this row. Visitors can still post a task or open a

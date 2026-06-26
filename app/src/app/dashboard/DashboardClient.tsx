@@ -56,7 +56,7 @@ import useStore from "@/lib/Zustand";
 import { formatDateWithTime } from "@/lib/utils";
 import { dueDisplayForListCard } from "@/lib/taskDueDisplay";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
-import { storeTaskForNav, prefetchBidsForTask } from "@/lib/taskNavCache";
+import { warmTaskDetailNavigation } from "@/lib/taskNavCache";
 import { useNotifications } from "@/lib/useNotifications";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 import { EmptyState } from "@/components/EmptyState";
@@ -254,6 +254,46 @@ function isRealJobImageUrl(url: string | undefined): boolean {
 function filterRealJobImages(images?: Image[] | null): Image[] {
   if (!images?.length) return [];
   return images.filter((img) => isRealJobImageUrl(img?.url));
+}
+
+function warmDashboardTaskNav(task: Task) {
+  try {
+    warmTaskDetailNavigation({
+      id: String(task.id),
+      title: task.title,
+      description: task.description,
+      budget: task.budget,
+      location: task.location,
+      status: task.status,
+      posted_by: task.posted_by,
+      posted_by_id: task.posted_by_id ?? task.user_ref_id,
+      posted_by_profile_image: task.posted_by_profile_image,
+      category: task.category,
+      dueDate: task.dueDate,
+      postedAt: task.postedAt,
+      images: task.images?.map((img) => ({ id: img.id, url: img.url, alt: img.alt })),
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
+function warmDashboardBidNav(bid: BidRequest) {
+  try {
+    const imgs = filterRealJobImages(bid.images);
+    warmTaskDetailNavigation({
+      id: String(bid.task_id),
+      title: bid.task_title,
+      description: bid.task_description,
+      budget: bid.job_budget ?? 0,
+      location: bid.task_location,
+      posted_by: bid.posted_by,
+      category: bid.category_name || bid.job_category,
+      images: imgs.length ? imgs : undefined,
+    });
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Centered strip under card title — real photos only (no placeholder). */
@@ -1687,7 +1727,7 @@ export default function Dashboard() {
       try {
         const token = localStorage.getItem('token');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 18_000);
+        const timeoutId = setTimeout(() => controller.abort(), 45_000);
         const uid = (userId || effectiveUserId)?.toString();
 
         // When Near me is on, use jobs-nearby (returns lat/lng → maps show)
@@ -4855,21 +4895,9 @@ export default function Dashboard() {
                             <Link
                               href={`/tasks/${task.id}`}
                               className="min-w-0 flex-1"
-                              onClick={() => {
-                                try {
-                                  storeTaskForNav(task);
-                                } catch {}
-                              }}
-                              onMouseEnter={() => {
-                                try {
-                                  prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
-                                } catch {}
-                              }}
-                              onTouchStart={() => {
-                                try {
-                                  prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
-                                } catch {}
-                              }}
+                              onClick={() => warmDashboardTaskNav(task)}
+                              onMouseEnter={() => warmDashboardTaskNav(task)}
+                              onTouchStart={() => warmDashboardTaskNav(task)}
                             >
                               <Button
                                 variant="outline"
@@ -4904,21 +4932,9 @@ export default function Dashboard() {
                           <Link
                             href={`/tasks/${task.id}`}
                             className="min-w-0 flex-1"
-                            onClick={() => {
-                              try {
-                                storeTaskForNav(task);
-                              } catch {}
-                            }}
-                            onMouseEnter={() => {
-                              try {
-                                prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
-                              } catch {}
-                            }}
-                            onTouchStart={() => {
-                              try {
-                                prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
-                              } catch {}
-                            }}
+                            onClick={() => warmDashboardTaskNav(task)}
+                            onMouseEnter={() => warmDashboardTaskNav(task)}
+                            onTouchStart={() => warmDashboardTaskNav(task)}
                           >
                             <Button
                               variant="outline"
@@ -5412,21 +5428,9 @@ export default function Dashboard() {
                             <Link
                               href={`/tasks/${task.id}`}
                               className="block w-full"
-                              onClick={() => {
-                                try {
-                                  storeTaskForNav(task);
-                                } catch {}
-                              }}
-                              onMouseEnter={() => {
-                                try {
-                                  prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
-                                } catch {}
-                              }}
-                              onTouchStart={() => {
-                                try {
-                                  prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
-                                } catch {}
-                              }}
+                              onClick={() => warmDashboardTaskNav(task)}
+                              onMouseEnter={() => warmDashboardTaskNav(task)}
+                              onTouchStart={() => warmDashboardTaskNav(task)}
                             >
                               <TaskOfferCtaButton hasOffer={hasUserBid} />
                             </Link>
@@ -5666,19 +5670,11 @@ export default function Dashboard() {
                               onClick={() => {
                                 try {
                                   sessionStorage.setItem("nav_from_assigned", "1");
-                                  storeTaskForNav(task);
                                 } catch {}
+                                warmDashboardTaskNav(task);
                               }}
-                              onMouseEnter={() => {
-                                try {
-                                  prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
-                                } catch {}
-                              }}
-                              onTouchStart={() => {
-                                try {
-                                  prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
-                                } catch {}
-                              }}
+                              onMouseEnter={() => warmDashboardTaskNav(task)}
+                              onTouchStart={() => warmDashboardTaskNav(task)}
                             >
                               <Button
                                 variant="outline"
@@ -5703,19 +5699,11 @@ export default function Dashboard() {
                               onClick={() => {
                                 try {
                                   sessionStorage.setItem("nav_from_assigned", "1");
-                                  storeTaskForNav(task);
                                 } catch {}
+                                warmDashboardTaskNav(task);
                               }}
-                              onMouseEnter={() => {
-                                try {
-                                  prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
-                                } catch {}
-                              }}
-                              onTouchStart={() => {
-                                try {
-                                  prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
-                                } catch {}
-                              }}
+                              onMouseEnter={() => warmDashboardTaskNav(task)}
+                              onTouchStart={() => warmDashboardTaskNav(task)}
                             >
                               <Button
                                 variant="outline"
@@ -5869,21 +5857,9 @@ export default function Dashboard() {
                         <Link
                           href={`/tasks/${task.id}`}
                           className="min-w-0 flex-1"
-                          onClick={() => {
-                            try {
-                              storeTaskForNav(task);
-                            } catch {}
-                          }}
-                          onMouseEnter={() => {
-                            try {
-                              prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
-                            } catch {}
-                          }}
-                          onTouchStart={() => {
-                            try {
-                              prefetchBidsForTask(String(task.id), task.posted_by_id ?? task.user_ref_id);
-                            } catch {}
-                          }}
+                          onClick={() => warmDashboardTaskNav(task)}
+                          onMouseEnter={() => warmDashboardTaskNav(task)}
+                          onTouchStart={() => warmDashboardTaskNav(task)}
                         >
                           <Button
                             variant="outline"
@@ -6039,30 +6015,9 @@ export default function Dashboard() {
                         <Link
                           href={`/tasks/${bid.task_id}`}
                           className="block w-full"
-                          onClick={() => {
-                            try {
-                              const imgs = filterRealJobImages(bid.images);
-                              storeTaskForNav({
-                                id: bid.task_id,
-                                title: bid.task_title,
-                                description: bid.task_description,
-                                budget: bid.job_budget ?? 0,
-                                location: bid.task_location,
-                                posted_by: bid.posted_by,
-                                images: imgs.length ? imgs : undefined,
-                              });
-                            } catch {}
-                          }}
-                          onMouseEnter={() => {
-                            try {
-                              prefetchBidsForTask(String(bid.task_id));
-                            } catch {}
-                          }}
-                          onTouchStart={() => {
-                            try {
-                              prefetchBidsForTask(String(bid.task_id));
-                            } catch {}
-                          }}
+                          onClick={() => warmDashboardBidNav(bid)}
+                          onMouseEnter={() => warmDashboardBidNav(bid)}
+                          onTouchStart={() => warmDashboardBidNav(bid)}
                         >
                           <Button
                             variant="outline"

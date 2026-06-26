@@ -105,12 +105,28 @@ export async function getHomeOfferingsCached(limit = DEFAULT_LIMIT): Promise<Off
         persistOfferings(rows);
       }
       return rows;
-    } catch {
+    } catch (e) {
       tryHydrateOfferingsFromDisk();
       if (cache && cache.rows.length > 0) {
-        return cache.rows.slice(0, limit);
+        return cache.rows;
       }
-      return [];
+      /** Stale disk snapshot (beyond TTL) — still better than a false “connection” empty state. */
+      try {
+        const raw = readDiskSnapshotRaw();
+        if (raw) {
+          const p = JSON.parse(raw) as { rows?: Offering[] };
+          if (Array.isArray(p.rows) && p.rows.length > 0) {
+            cache = { rows: p.rows, fetchedAt: Date.now() - TTL_MS - 1 };
+            return p.rows;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      throw Object.assign(new Error("HOME_OFFERINGS_FETCH_FAILED"), {
+        code: "HOME_OFFERINGS_FETCH_FAILED",
+        cause: e,
+      });
     }
   })();
   try {

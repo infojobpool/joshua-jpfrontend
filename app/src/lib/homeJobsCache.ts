@@ -314,7 +314,7 @@ export async function fetchRecentOpenJobsQuick(
     const recent = await axiosInstance.get("/recent-open-jobs/", {
       params: { limit },
       signal,
-      timeout: 12_000,
+      timeout: 22_000,
     });
     const rd = recent?.data;
     if (!isGetAllJobsResponseOk(rd, recent?.status)) return [];
@@ -350,7 +350,7 @@ export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
       try {
         const recent = await axiosInstance.get("/recent-open-jobs/", {
           params: { limit: 16 },
-          timeout: 14_000,
+          timeout: 22_000,
         });
         const rd = recent?.data;
         if (isGetAllJobsResponseOk(rd, recent?.status)) {
@@ -371,7 +371,7 @@ export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
         /* Older API without recent-open-jobs */
       }
 
-      const response = await axiosInstance.get("/get-all-jobs/", { timeout: 26_000 });
+      const response = await axiosInstance.get("/get-all-jobs/", { timeout: 45_000 });
       const data = response?.data;
       if (isGetAllJobsResponseOk(data, response?.status)) {
         gotSuccessfulHttpParse = true;
@@ -391,6 +391,19 @@ export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
     tryHydrateCacheFromDisk();
     if (cache && cache.jobs.length > 0) {
       return cache.jobs;
+    }
+    /** Last resort: stale disk snapshot so home does not flash a false “connection” error. */
+    try {
+      const raw = readDiskSnapshotRaw();
+      if (raw) {
+        const p = JSON.parse(raw) as { jobs?: RawJob[] };
+        if (Array.isArray(p.jobs) && p.jobs.length > 0) {
+          cache = { jobs: p.jobs, fetchedAt: Date.now() - TTL_MS - 1 };
+          return p.jobs;
+        }
+      }
+    } catch {
+      /* ignore */
     }
     if (!gotSuccessfulHttpParse) {
       throw Object.assign(new Error("HOME_JOBS_FETCH_FAILED"), { code: "HOME_JOBS_FETCH_FAILED" });

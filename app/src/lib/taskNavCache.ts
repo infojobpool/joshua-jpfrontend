@@ -81,7 +81,7 @@ export function storeTaskForNav(task: NavTaskInput) {
   } catch (_) {}
 }
 
-export function getNavTask(taskId: string): { task: any } | null {
+function readNavTaskEntry(taskId: string, consume: boolean): { task: any } | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = sessionStorage.getItem(NAV_TASK_KEY);
@@ -93,11 +93,28 @@ export function getNavTask(taskId: string): { task: any } | null {
       sessionStorage.removeItem(NAV_TASK_KEY);
       return null;
     }
-    sessionStorage.removeItem(NAV_TASK_KEY);
+    if (consume) sessionStorage.removeItem(NAV_TASK_KEY);
     return { task: parsed.task };
   } catch (_) {
     return null;
   }
+}
+
+/** Read nav task without removing (for instant paint + background refresh). */
+export function peekNavTask(taskId: string): { task: any } | null {
+  return readNavTaskEntry(taskId, false);
+}
+
+export function clearNavTask() {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(NAV_TASK_KEY);
+  } catch (_) {}
+}
+
+/** @deprecated Prefer peekNavTask + clearNavTask after fresh data loads. */
+export function getNavTask(taskId: string): { task: any } | null {
+  return readNavTaskEntry(taskId, true);
 }
 
 /** Prefetch bids + poster profile for task detail (fire-and-forget). Call on hover or when card is visible. */
@@ -158,6 +175,7 @@ export function storeBidsInCache(taskId: string, bids: any[]) {
 
 const PREFETCH_JOBWB_PREFIX = "jp_prefetch_jwb_";
 const PREFETCH_JOBWB_TTL_MS = 90_000;
+const JOB_WITH_BIDS_FETCH_MS = 45_000;
 
 /** Fire-and-forget: parallel GET /get-job-with-bids/ for all id shapes; warms session + bids cache for task detail. */
 export function prefetchJobWithBidsForTask(taskId: string) {
@@ -177,7 +195,7 @@ export function prefetchJobWithBidsForTask(taskId: string) {
 
   const fetchOne = async () => {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 12_000);
+    const tid = setTimeout(() => ctrl.abort(), JOB_WITH_BIDS_FETCH_MS);
     try {
       const r = await fetch(`${API_BASE}/get-job-with-bids/${apiJobId}/`, {
         method: "GET",

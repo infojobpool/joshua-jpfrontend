@@ -357,7 +357,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
             <p className="text-sm font-medium text-gray-600">No open tasks yet</p>
             <p className="mt-1 max-w-sm px-4 text-center text-xs text-gray-500 leading-relaxed">
               {fetchFailed
-                ? "We couldn’t load tasks just now. Check your connection and tap Retry."
+                ? "The server is responding slowly. Tap Retry, or try again in a moment."
                 : "Open tasks will show here when people post jobs you can apply for."}
             </p>
             <Button
@@ -531,7 +531,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
             <p className="font-medium text-gray-600">No open tasks yet</p>
             <p className="mt-1 max-w-md px-4 text-sm text-gray-500">
               {fetchFailed
-                ? "We couldn’t load tasks just now. Check your connection and tap Retry."
+                ? "The server is responding slowly. Tap Retry, or try again in a moment."
                 : "Be the first to post one, or check back soon for new listings."}
             </p>
             <Button

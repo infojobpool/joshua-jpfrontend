@@ -36,7 +36,8 @@ import {
 } from "@/lib/profileUtils";
 import {
   getBidsFromCache,
-  getNavTask,
+  peekNavTask,
+  clearNavTask,
   prefetchBidsForTask,
   storeBidsInCache,
   peekPrefetchJobWithBids,
@@ -52,6 +53,13 @@ import { Button } from "@/components/ui/button";
 import { ShareTaskButton } from "@/components/ShareTaskButton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { analytics } from "@/lib/analytics";
+import {
+  isLikelyOfflineError,
+  isSlowServerError,
+  loadFailureUserMessage,
+  retryToastMessage,
+  TASK_DETAIL_FETCH_MS,
+} from "@/lib/slowApiErrors";
 
 /** Compare user ids from API/JWT/localStorage (number vs string caused poster to see bid form briefly). */
 function sameUserId(a: unknown, b: unknown): boolean {
@@ -78,7 +86,14 @@ export default function TaskDetailPage() {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [authLoading, setAuthLoading] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      return !localStorage.getItem("user");
+    } catch {
+      return true;
+    }
+  });
   const [task, setTask] = useState<Task | null>(null);
   const [posterProfileLoading, setPosterProfileLoading] = useState(false);
   const [bids, setBids] = useState<Bid[]>([]);
@@ -221,6 +236,87 @@ export default function TaskDetailPage() {
     [],
   );
 
+  const applyCachedBidsToState = useCallback(
+    (rawBids: any[], posterIdStr: string) => {
+      const validBids = rawBids.filter((b: any) => {
+        const bidderId = String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? "").trim();
+        return !bidderId || !posterIdStr || bidderId !== posterIdStr;
+      });
+      const newOffers = validBids.map((b: any, i: number) => ({
+        id: `bid${i + 1}`,
+        tasker: {
+          id: String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? ""),
+          name: b.bidder_name ?? b.user_name ?? b.tasker_name ?? "Unknown",
+          avatar: "/images/placeholder.svg",
+          rating: null,
+          taskCount: null,
+          joinedDate: null,
+        },
+        amount: Number(b.bid_amount ?? b.amount ?? 0),
+        message: b.bid_description ?? b.message ?? "",
+        createdAt: b.created_at ?? b.createdAt ?? new Date().toISOString(),
+        status: b.status ?? "pending",
+      }));
+      setOffers(newOffers);
+      setBids(rawBids);
+      setBidsLoading(false);
+    },
+    [],
+  );
+
+  // Instant paint from nav / localStorage / prefetched bids before network (avoids skeleton flash)
+  useLayoutEffect(() => {
+    if (!id) return;
+    let hydratedTask: Task | null = null;
+
+    const navTask = peekNavTask(id);
+    if (navTask?.task) {
+      hydratedTask = enrichPosterOnTask(navTask.task);
+    } else {
+      try {
+        const cached = localStorage.getItem(`task_${id}`);
+        if (cached) {
+          const cachedData = JSON.parse(cached);
+          const cacheAge = Date.now() - (cachedData?.timestamp || 0);
+          if (cachedData?.task && cacheAge < 300_000) {
+            hydratedTask = cachedData.task;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    if (hydratedTask) {
+      setTask(hydratedTask);
+      setLoading(false);
+      const earlyPosterId = String(hydratedTask.poster?.id ?? "").trim();
+      if (earlyPosterId) {
+        prefetchBidsForTask(id, earlyPosterId);
+        prefetchPosterProfile(earlyPosterId);
+      }
+    }
+
+    const cachedBids = getBidsFromCache(id);
+    if (cachedBids?.bids?.length) {
+      const posterIdStr = String(hydratedTask?.poster?.id ?? "").trim();
+      applyCachedBidsToState(cachedBids.bids, posterIdStr);
+    } else if (hydratedTask) {
+      try {
+        const cached = localStorage.getItem(`task_${id}`);
+        if (cached) {
+          const cachedData = JSON.parse(cached);
+          if (Array.isArray(cachedData?.bids) && cachedData.bids.length > 0) {
+            const posterIdStr = String(hydratedTask.poster?.id ?? "").trim();
+            applyCachedBidsToState(cachedData.bids, posterIdStr);
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [id, enrichPosterOnTask, applyCachedBidsToState]);
+
   // Hydrate poster from session cache before paint (repeat visits / hover prefetch)
   useLayoutEffect(() => {
     if (!task?.id || !task?.poster?.id) return;
@@ -346,115 +442,92 @@ export default function TaskDetailPage() {
       router.push("/signin");
       return;
     }
+    // User summary + bid sync deferred until task shell is visible (see effect below)
+  }, [router, userId, isAuthenticated, storeUser]);
 
-      // Avatar + verification via lightweight GET /users/{id}/summary/
-      const fetchUserSummaryForBid = async () => {
-        if (!userId) return;
-        const applyLocalStorageVerification = () => {
-          const storedUser = localStorage.getItem("user");
-          if (!storedUser) {
-            setIsVerified(false);
-            setVerificationChecked(true);
-            return;
-          }
-          try {
-            const parsedUser = JSON.parse(storedUser);
-            const statusNum =
-              typeof parsedUser.verification_status === "string"
-                ? parseInt(parsedUser.verification_status, 10)
-                : Number(parsedUser.verification_status);
-            setIsVerified(isUserVerifiedForBidding(statusNum));
-            setVerificationChecked(true);
-          } catch {
-            setIsVerified(false);
-            setVerificationChecked(true);
-          }
-        };
+  // After task is on screen, refresh verification avatar and sync bids (does not block task paint)
+  useEffect(() => {
+    if (!userId || loading || !task) return;
 
-        try {
-          const summary = await fetchUserSummary(String(userId));
-          if (!summary) {
-            applyLocalStorageVerification();
-            return;
-          }
+    const applyLocalStorageVerification = () => {
+      const storedUser = localStorage.getItem("user");
+      if (!storedUser) {
+        setIsVerified(false);
+        setVerificationChecked(true);
+        return;
+      }
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        const statusNum =
+          typeof parsedUser.verification_status === "string"
+            ? parseInt(parsedUser.verification_status, 10)
+            : Number(parsedUser.verification_status);
+        setIsVerified(isUserVerifiedForBidding(statusNum));
+        setVerificationChecked(true);
+      } catch {
+        setIsVerified(false);
+        setVerificationChecked(true);
+      }
+    };
 
-          setUserProfile({
-            profile_id: "",
-            name: summary.name,
-            email: "",
-            phone: "",
-            avatar: summary.profile_image || "",
-            joinDate: "",
-          });
-
-          const verified = isUserVerifiedForBidding(summary.verification_status);
-          setIsVerified(verified);
-          setVerificationChecked(true);
-
-          const storedUser = localStorage.getItem("user");
-          if (storedUser) {
-            try {
-              const parsedUser = JSON.parse(storedUser);
-              parsedUser.verification_status = summary.verification_status;
-              if (summary.profile_image) {
-                parsedUser.profile_image = summary.profile_image;
-                parsedUser.profile_img = summary.profile_image;
-                parsedUser.avatar = summary.profile_image;
-              }
-              localStorage.setItem("user", JSON.stringify(parsedUser));
-            } catch {
-              /* ignore */
-            }
-          }
-        } catch (err: unknown) {
-          console.error("Failed to fetch user summary:", err);
+    const fetchUserSummaryForBid = async () => {
+      try {
+        const summary = await fetchUserSummary(String(userId));
+        if (!summary) {
           applyLocalStorageVerification();
+          return;
         }
-      };
 
-      if (userId) {
-        fetchUserSummaryForBid();
-      } else {
-        // If no userId, check localStorage only - only trust "verified" to avoid false warning
+        setUserProfile({
+          profile_id: "",
+          name: summary.name,
+          email: "",
+          phone: "",
+          avatar: summary.profile_image || "",
+          joinDate: "",
+        });
+
+        const verified = isUserVerifiedForBidding(summary.verification_status);
+        setIsVerified(verified);
+        setVerificationChecked(true);
+
         const storedUser = localStorage.getItem("user");
         if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          if (parsedUser.verification_status !== undefined && parsedUser.verification_status !== null) {
-            const statusNum = typeof parsedUser.verification_status === 'string' ? parseInt(parsedUser.verification_status, 10) : Number(parsedUser.verification_status);
-            const verified = !isNaN(statusNum) && statusNum >= 2;
-            if (verified) {
-              setIsVerified(true);
-              setVerificationChecked(true);
-            } else {
-              setIsVerified(false);
-              setVerificationChecked(false); // Wait for API before showing warning
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            parsedUser.verification_status = summary.verification_status;
+            if (summary.profile_image) {
+              parsedUser.profile_image = summary.profile_image;
+              parsedUser.profile_img = summary.profile_image;
+              parsedUser.avatar = summary.profile_image;
             }
-          } else {
-            setIsVerified(false);
-            setVerificationChecked(false);
+            localStorage.setItem("user", JSON.stringify(parsedUser));
+          } catch {
+            /* ignore */
           }
         }
+      } catch (err: unknown) {
+        console.error("Failed to fetch user summary:", err);
+        applyLocalStorageVerification();
       }
+    };
 
-      // Sync user's bids to localStorage
-      if (userId) {
-        const syncBids = async () => {
-          try {
-            const response = await axiosInstance.get(`/get-user-bids/${userId}/`);
-            const data: ApiBidResponse = response.data;
-            if (data.status_code === 200) {
-              localStorage.setItem("bids", JSON.stringify(data.data));
-              console.log("Synced user bids to localStorage:", data.data);
-            }
-          } catch (error) {
-            console.error("Error syncing user bids:", error);
-          }
-        };
-        
-        void syncBids();
+    void fetchUserSummaryForBid();
+
+    const syncBids = async () => {
+      try {
+        const response = await axiosInstance.get(`/get-user-bids/${userId}/`);
+        const data: ApiBidResponse = response.data;
+        if (data.status_code === 200) {
+          localStorage.setItem("bids", JSON.stringify(data.data));
+        }
+      } catch (error) {
+        console.error("Error syncing user bids:", error);
       }
-    // No cleanup necessary
-  }, [router, userId, isAuthenticated, storeUser]);
+    };
+
+    void syncBids();
+  }, [userId, loading, task?.id]);
 
   // Load task data
   useEffect(() => {
@@ -462,8 +535,26 @@ export default function TaskDetailPage() {
       const cacheKey = `task_${id}`;
       try {
         setLoadError(null);
-        // Instant display: use nav cache (from dashboard/browse click) or localStorage
-        const navTask = getNavTask(id);
+        // Instant display: nav cache (useLayoutEffect may have already painted; peek keeps entry for retry)
+        const navTask = peekNavTask(id);
+        let hasCachedTaskShell = !!navTask?.task;
+        if (!hasCachedTaskShell) {
+          try {
+            const raw = localStorage.getItem(cacheKey);
+            if (raw) {
+              const cd = JSON.parse(raw);
+              if (cd?.task && Date.now() - (cd.timestamp || 0) < 300_000) {
+                hasCachedTaskShell = true;
+              }
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+        if (!hasCachedTaskShell && !peekPrefetchJobWithBids(id)) {
+          setLoading(true);
+        }
+
         if (navTask?.task) {
           const hydratedNav = enrichPosterOnTask(navTask.task);
           setTask(hydratedNav);
@@ -476,79 +567,41 @@ export default function TaskDetailPage() {
               runPosterProfileEnrichment(earlyPosterId, id);
             }
           }
-          // Fetch full data in background (will replace with fresh task + bids)
-        } else {
-          setLoading(true);
         }
 
-        // Show prefetched bids immediately (from hover) – instant display before API returns
         const cachedBids = getBidsFromCache(id);
         const hasCachedBids = !!(cachedBids?.bids?.length > 0);
         if (hasCachedBids) {
           const posterIdStr = String(navTask?.task?.poster?.id ?? "").trim();
-          const validBids = cachedBids.bids.filter((b: any) => {
-            const bidderId = String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? "").trim();
-            return !bidderId || !posterIdStr || bidderId !== posterIdStr;
-          });
-          const newOffers = validBids.map((b: any, i: number) => ({
-            id: `bid${i + 1}`,
-            tasker: {
-              id: String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? ""),
-              name: b.bidder_name ?? b.user_name ?? b.tasker_name ?? "Unknown",
-              avatar: "/images/placeholder.svg",
-              rating: null,
-              taskCount: null,
-              joinedDate: null,
-            },
-            amount: Number(b.bid_amount ?? b.amount ?? 0),
-            message: b.bid_description ?? b.message ?? "",
-            createdAt: b.created_at ?? b.createdAt ?? new Date().toISOString(),
-            status: b.status ?? "pending",
-          }));
-          setOffers(newOffers);
-          setBids(cachedBids.bids);
-          setBidsLoading(false);
+          applyCachedBidsToState(cachedBids.bids, posterIdStr);
+        } else if (!hasCachedBids) {
+          setBidsLoading(true);
         }
-        if (!hasCachedBids) setBidsLoading(true);
 
-        // Use cache only if fresh (< 5 min) – stale cache can have wrong assignedTasker/offers state
-        const cached = !navTask && localStorage.getItem(cacheKey);
+        const cached = localStorage.getItem(cacheKey);
         if (cached) {
           try {
             const cachedData = JSON.parse(cached);
             const cacheAge = Date.now() - (cachedData?.timestamp || 0);
-            if (cachedData?.task && cacheAge < 300000) {
-              console.log("Using fresh cached task data");
-              setTask(cachedData.task);
-              setLoading(false);
-              // Use prefetched bids if available (from hover prefetch)
-              if (Array.isArray(cachedData.bids) && cachedData.bids.length > 0) {
-                const posterIdStr = String(cachedData.task?.poster?.id || "").trim();
-                const validBids = cachedData.bids.filter((b: any) => {
-                  const bidderId = String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? "").trim();
-                  return !bidderId || !posterIdStr || bidderId !== posterIdStr;
-                });
-                const newOffers = validBids.map((b: any, i: number) => ({
-                  id: `bid${i + 1}`,
-                  tasker: {
-                    id: String(b.bidder_id ?? b.user_id ?? b.tasker_id ?? ""),
-                    name: b.bidder_name ?? b.user_name ?? b.tasker_name ?? "Unknown",
-                    avatar: "/images/placeholder.svg",
-                    rating: null,
-                    taskCount: null,
-                    joinedDate: null,
-                  },
-                  amount: Number(b.bid_amount ?? b.amount ?? 0),
-                  message: b.bid_description ?? b.message ?? "",
-                  createdAt: b.created_at ?? b.createdAt ?? new Date().toISOString(),
-                  status: b.status ?? "pending",
-                }));
-            setOffers(newOffers);
-            setBids(cachedData.bids);
-            setBidsLoading(false);
+            if (cachedData?.task && cacheAge < 300_000) {
+              if (!navTask?.task) {
+                setTask(cachedData.task);
+                setLoading(false);
+              }
+              if (
+                Array.isArray(cachedData.bids) &&
+                cachedData.bids.length > 0 &&
+                !hasCachedBids
+              ) {
+                const posterIdStr = String(
+                  navTask?.task?.poster?.id ?? cachedData.task?.poster?.id ?? "",
+                ).trim();
+                applyCachedBidsToState(cachedData.bids, posterIdStr);
               }
             }
-          } catch {}
+          } catch {
+            /* ignore */
+          }
         }
 
         // Primary request – use get-job-with-bids (parallel id variants) or fallback to get-job
@@ -590,7 +643,7 @@ export default function TaskDetailPage() {
         if (!job) {
           try {
             const ctrl = new AbortController();
-            const tid = setTimeout(() => ctrl.abort(), 12_000);
+            const tid = setTimeout(() => ctrl.abort(), TASK_DETAIL_FETCH_MS);
             try {
               const res = await fetchJson(`/get-job-with-bids/${apiJobId}/`, ctrl.signal);
               if (res?.status_code === 200 && res?.data) {
@@ -617,7 +670,7 @@ export default function TaskDetailPage() {
         if (!job) {
           try {
             const ctrl = new AbortController();
-            const tid = setTimeout(() => ctrl.abort(), 12_000);
+            const tid = setTimeout(() => ctrl.abort(), TASK_DETAIL_FETCH_MS);
             try {
               const res = await fetchJson(`/get-job/${apiJobId}/`, ctrl.signal);
               if (res?.status_code === 200) {
@@ -918,59 +971,63 @@ export default function TaskDetailPage() {
         if (combinedBids != null) cachePayload.bids = combinedBids;
         localStorage.setItem(cacheKey, JSON.stringify(cachePayload));
         try {
+          clearNavTask();
           clearPrefetchJobWithBids(id);
         } catch (_) {}
       } catch (error: any) {
         console.error("Error loading task data:", error);
+        let showedCachedShell = false;
         try {
           const cached = localStorage.getItem(cacheKey);
           if (cached) {
             const cachedData = JSON.parse(cached);
             if (cachedData?.task) {
               setTask(cachedData.task);
-              if ((error as any)?.name !== "AbortError") {
+              setLoading(false);
+              showedCachedShell = true;
+              if (!isSlowServerError(error)) {
                 toast.error(
-                  error?.response?.data?.detail || "Couldn't refresh – showing cached data"
+                  error?.response?.data?.detail || "Couldn't refresh — showing saved copy",
                 );
               }
-              return;
             }
           }
         } catch (cacheError) {
           console.warn("Failed to load from cache:", cacheError);
         }
-        const isNotFound = error?.response?.status === 404 || error?.message === "HTTP 404";
-        const isConnectionError =
-          !error?.response ||
-          error?.code === "ERR_NETWORK" ||
-          error?.code === "ECONNABORTED" ||
-          (error?.message?.toLowerCase?.() || "").includes("network") ||
-          (error as any)?.name === "AbortError";
-        const isRetryable =
-          (error as any)?.name === "AbortError" ||
-          (error?.response?.status ?? 0) >= 500 ||
-          error?.code === "ERR_NETWORK" ||
-          error?.code === "ECONNABORTED" ||
-          (error?.message?.toLowerCase?.() || "").includes("network");
+        if (showedCachedShell && isSlowServerError(error)) {
+          return;
+        }
 
-        if (isRetryable && loadRetryCountRef.current < 2) {
+        const isNotFound = error?.response?.status === 404 || error?.message === "HTTP 404";
+        const isRetryable =
+          isSlowServerError(error) ||
+          isLikelyOfflineError(error) ||
+          (error?.response?.status ?? 0) >= 500;
+
+        if (isRetryable && loadRetryCountRef.current < 3) {
           loadRetryCountRef.current += 1;
-          setTimeout(() => setTaskRefreshKey((k) => k + 1), 2000);
-          toast.error("Connection issue. Retrying in 2 seconds…");
+          setTimeout(() => setTaskRefreshKey((k) => k + 1), showedCachedShell ? 4000 : 2500);
+          if (!showedCachedShell) {
+            toast.error(retryToastMessage(error));
+          }
           return;
         }
         setLoadError(isNotFound ? "not_found" : "connection");
         toast.error(
-          error?.response?.data?.detail || (isNotFound ? "Task not found" : "Failed to load task details")
+          error?.response?.data?.detail ||
+            (isNotFound ? "Task not found" : loadFailureUserMessage(error, "this task")),
         );
-        setTask(null);
+        if (!showedCachedShell) {
+          setTask(null);
+        }
       } finally {
         setLoading(false);
       }
     };
 
     loadTaskData();
-  }, [id, taskRefreshKey, enrichPosterOnTask, runPosterProfileEnrichment]);
+  }, [id, taskRefreshKey, enrichPosterOnTask, runPosterProfileEnrichment, applyCachedBidsToState]);
 
   // Load bids/offers – skipped if already loaded from get-job-with-bids; runs for retry or after fallback to get-job
   useEffect(() => {
@@ -1930,7 +1987,11 @@ export default function TaskDetailPage() {
     const isConnectionErr = loadError === "connection";
     return (
       <div className="flex h-screen items-center justify-center flex-col gap-4 px-4">
-        <p className="text-center">{isConnectionErr ? "Couldn't load task. Check your connection and try again." : "Task not found"}</p>
+        <p className="text-center">
+          {isConnectionErr
+            ? "Couldn't load this task. The server may be slow — wait a moment and try again."
+            : "Task not found"}
+        </p>
         <div className="flex gap-3 flex-wrap justify-center">
           <Button
             variant="default"

@@ -309,6 +309,7 @@ export async function listOfferingFeedApi(limit = 24, offset = 0): Promise<Offer
   try {
     const res = await axiosInstance.get("offerings/feed/", {
       params: { limit, offset },
+      timeout: 40_000,
     });
     const payload = unwrapOfferingEnvelope(res) ?? res.data;
     const rows = extractOfferingsPayload(payload);
