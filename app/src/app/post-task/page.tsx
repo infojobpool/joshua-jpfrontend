@@ -20,11 +20,8 @@ import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, IndianRupee, Loader, Pencil, Upload, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import axiosInstance from "../../lib/axiosInstance";
-import {
-  fetchFeePreview,
-  type PosterFeeData,
-} from "@/lib/feePreview";
 import { PosterFeeBreakdown } from "@/components/fee/PosterFeeBreakdown";
+import { useFeePreview } from "@/hooks/useFeePreview";
 import useStore from "../../lib/Zustand";
 import { handleAxiosError } from "../../lib/handleAxiosError";
 import LocationDetector from "../../components/LocationDetector";
@@ -152,10 +149,14 @@ export default function PostTaskPage() {
     total: number;
     remaining: number;
   } | null>(null);
-  const [posterFeePreview, setPosterFeePreview] = useState<PosterFeeData | null>(null);
-  const [posterFeePreviewLoading, setPosterFeePreviewLoading] = useState(false);
-  const [posterFeePreviewError, setPosterFeePreviewError] = useState<string | null>(null);
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.jobpool.in/api/v1";
+
+  const budgetAmount = parseFloat(String(formData.budget)) || 0;
+  const {
+    data: posterFeePreview,
+    isRefreshing: posterFeePreviewLoading,
+    error: posterFeePreviewError,
+  } = useFeePreview(currentStep === TOTAL_STEPS ? budgetAmount : 0, "poster");
 
   useEffect(() => {
     const today = new Date();
@@ -405,45 +406,6 @@ export default function PostTaskPage() {
     const id = window.setTimeout(() => setPostActionUnlocked(true), 450);
     return () => window.clearTimeout(id);
   }, [currentStep]);
-
-  // Must run unconditionally (same order every render) — was after `if (loading)` and caused Rules of Hooks crash.
-  useEffect(() => {
-    if (currentStep !== TOTAL_STEPS) {
-      return;
-    }
-    const budgetAmt = parseFloat(String(formData.budget)) || 0;
-    if (budgetAmt <= 0) {
-      setPosterFeePreview(null);
-      setPosterFeePreviewError(null);
-      setPosterFeePreviewLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setPosterFeePreviewLoading(true);
-    setPosterFeePreviewError(null);
-    const timer = setTimeout(() => {
-      void (async () => {
-        try {
-          const data = (await fetchFeePreview(budgetAmt, "poster")) as PosterFeeData;
-          if (!cancelled) {
-            setPosterFeePreview(data);
-            setPosterFeePreviewError(null);
-          }
-        } catch (e: unknown) {
-          if (!cancelled) {
-            setPosterFeePreview(null);
-            setPosterFeePreviewError(e instanceof Error ? e.message : "Unable to load fee estimate");
-          }
-        } finally {
-          if (!cancelled) setPosterFeePreviewLoading(false);
-        }
-      })();
-    }, 400);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [currentStep, formData.budget]);
 
   const validateStep = (step: number): boolean => {
     switch (step) {
@@ -726,8 +688,6 @@ export default function PostTaskPage() {
     localStorage.removeItem("bids");
     router.push("/");
   };
-
-  const budgetAmount = parseFloat(formData.budget.toString()) || 0;
 
   const stepMeta = WIZARD_STEPS[currentStep - 1];
 
@@ -1093,11 +1053,11 @@ export default function PostTaskPage() {
                             <p className="mb-1 font-medium text-slate-800">Payment estimate</p>
                             {posterFeePreviewError ? (
                               <p className="text-red-600">{posterFeePreviewError}</p>
-                            ) : posterFeePreviewLoading || !posterFeePreview ? (
+                            ) : posterFeePreviewLoading && !posterFeePreview ? (
                               <p className="text-slate-500">Loading estimate…</p>
-                            ) : (
+                            ) : posterFeePreview ? (
                               <PosterFeeBreakdown data={posterFeePreview} bidFallback={budgetAmount} compact />
-                            )}
+                            ) : null}
                           </div>
                         ) : null}
                       </dl>

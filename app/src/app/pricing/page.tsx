@@ -7,114 +7,42 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PosterFeeBreakdown } from "@/components/fee/PosterFeeBreakdown";
 import { TaskerFeeBreakdown } from "@/components/fee/TaskerFeeBreakdown";
+import { useFeePreview } from "@/hooks/useFeePreview";
 import {
-  fetchFeeConfig,
-  fetchFeePreview,
   fetchFeePreviewBatch,
   formatFeeRatePercent,
   formatInr,
+  getFeeConfigSync,
+  warmFeeEngine,
   type FeeConfig,
-  type PosterFeeData,
-  type TaskerFeeData,
 } from "@/lib/feePreview";
 
 const EXAMPLE_AMOUNTS = [500, 1000, 3000, 5000];
 
 export default function PricingPage() {
   const [amount, setAmount] = useState("1000");
-  const [feeConfig, setFeeConfig] = useState<FeeConfig | null>(null);
-  const [tierPoster, setTierPoster] = useState<Map<number, PosterFeeData>>(new Map());
-  const [tierTasker, setTierTasker] = useState<Map<number, TaskerFeeData>>(new Map());
-  const [tierFeesLoaded, setTierFeesLoaded] = useState(false);
-  const [posterFees, setPosterFees] = useState<PosterFeeData | null>(null);
-  const [taskerFees, setTaskerFees] = useState<TaskerFeeData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [feeConfig, setFeeConfig] = useState<FeeConfig | null>(() => getFeeConfigSync());
 
   const bid = parseFloat(amount) || 0;
+  const {
+    data: posterFees,
+    isRefreshing: posterRefreshing,
+    error: posterError,
+  } = useFeePreview(bid, "poster");
+  const {
+    data: taskerFees,
+    isRefreshing: taskerRefreshing,
+    error: taskerError,
+  } = useFeePreview(bid, "tasker");
 
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const [config, posterMap, taskerMap] = await Promise.all([
-          fetchFeeConfig(),
-          fetchFeePreviewBatch(EXAMPLE_AMOUNTS, "poster"),
-          fetchFeePreviewBatch(EXAMPLE_AMOUNTS, "tasker"),
-        ]);
-        if (cancelled) return;
-        setFeeConfig(config);
-        setTierPoster(
-          new Map(
-            [...posterMap.entries()].map(([k, v]) => [k, v as PosterFeeData]),
-          ),
-        );
-        setTierTasker(
-          new Map(
-            [...taskerMap.entries()].map(([k, v]) => [k, v as TaskerFeeData]),
-          ),
-        );
-      } catch (e: unknown) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Unable to load fees");
-        }
-      } finally {
-        if (!cancelled) setTierFeesLoaded(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    void warmFeeEngine().then(setFeeConfig);
+    void fetchFeePreviewBatch(EXAMPLE_AMOUNTS, "poster");
+    void fetchFeePreviewBatch(EXAMPLE_AMOUNTS, "tasker");
   }, []);
 
-  useEffect(() => {
-    if (bid <= 0) {
-      setPosterFees(null);
-      setTaskerFees(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    const rounded = Math.round(bid);
-    if (EXAMPLE_AMOUNTS.includes(rounded) && tierFeesLoaded) {
-      setPosterFees(tierPoster.get(rounded) ?? null);
-      setTaskerFees(tierTasker.get(rounded) ?? null);
-      setLoading(!tierPoster.has(rounded) && !tierTasker.has(rounded));
-      setError(null);
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    const timer = setTimeout(() => {
-      void (async () => {
-        try {
-          const [poster, tasker] = await Promise.all([
-            fetchFeePreview(bid, "poster") as Promise<PosterFeeData>,
-            fetchFeePreview(bid, "tasker") as Promise<TaskerFeeData>,
-          ]);
-          if (!cancelled) {
-            setPosterFees(poster);
-            setTaskerFees(tasker);
-          }
-        } catch (e: unknown) {
-          if (!cancelled) {
-            setPosterFees(null);
-            setTaskerFees(null);
-            setError(e instanceof Error ? e.message : "Unable to load fees");
-          }
-        } finally {
-          if (!cancelled) setLoading(false);
-        }
-      })();
-    }, 350);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [bid, tierFeesLoaded, tierPoster, tierTasker]);
+  const error = posterError ?? taskerError;
+  const loading = bid > 0 && !posterFees && !taskerFees && (posterRefreshing || taskerRefreshing);
 
   const posterRate = formatFeeRatePercent(feeConfig?.poster_platform_rate);
   const taskerRate = formatFeeRatePercent(feeConfig?.tasker_platform_rate);

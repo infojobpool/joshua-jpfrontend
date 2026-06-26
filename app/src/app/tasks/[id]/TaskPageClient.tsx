@@ -11,12 +11,12 @@ import { Toaster } from "@/components/ui/sonner";
 import axiosInstance from "@/lib/axiosInstance";
 import {
   cacheFeePreview,
-  fetchFeePreview,
   formatInr,
   parseTaskerFeePreviewFromBidResponse,
+  scheduleFeePreviewBatchRefresh,
   taskerEstimatedNet,
-  type TaskerFeeData,
 } from "@/lib/feePreview";
+import { useFeePreview } from "@/hooks/useFeePreview";
 import { parseJobBidsPayload } from "@/lib/jobBids";
 import { SimpleTaskerFeeSummary } from "@/components/fee/SimpleTaskerFeeSummary";
 import { canonicalJobId } from "@/lib/jobIdVariants";
@@ -138,9 +138,14 @@ export default function TaskDetailPage() {
   const prefetchedBidsRef = useRef<{ id: string; data: any } | null>(null);
   const bidsFromCombinedRef = useRef<boolean>(false);
   const [completeReviewOpen, setCompleteReviewOpen] = useState(false);
-  const [taskerFeePreview, setTaskerFeePreview] = useState<TaskerFeeData | null>(null);
-  const [taskerFeeLoading, setTaskerFeeLoading] = useState(false);
-  const [taskerFeeError, setTaskerFeeError] = useState<string | null>(null);
+
+  const offerAmountNumber = parseFloat(offerAmount) || 0;
+  const {
+    data: taskerFeePreview,
+    isRefreshing: taskerFeeLoading,
+    isEstimate: taskerFeeIsEstimate,
+    error: taskerFeeError,
+  } = useFeePreview(offerAmountNumber, "tasker");
 
   // Reset retries and payment check when switching to a different task
   useEffect(() => {
@@ -151,14 +156,17 @@ export default function TaskDetailPage() {
     paymentToastShownRef.current = false;
     bidsFromCombinedRef.current = false;
     prefetchedBidsRef.current = null;
-    setTaskerFeePreview(null);
-    setTaskerFeeError(null);
-    setTaskerFeeLoading(false);
     setBidsTotal(null);
     setBidsHasMore(false);
   }, [id]);
 
-  // Track task view for GA4 funnel
+  // Prefetch fee for task budget so confirm dialog is warm when user matches budget
+  useEffect(() => {
+    const b = Math.round(Number(task?.budget) || 0);
+    if (b > 0) {
+      scheduleFeePreviewBatchRefresh(b, "tasker");
+    }
+  }, [task?.budget]);
   const trackedTaskIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!task || !id || loading || loadError) return;
@@ -179,42 +187,6 @@ export default function TaskDetailPage() {
     document.addEventListener("visibilitychange", handleFocus);
     return () => document.removeEventListener("visibilitychange", handleFocus);
   }, [task, userId, offers.length, bidsLoading]);
-
-  /** Prefetch tasker fee while the user types their bid — confirm modal reuses cached preview. */
-  useEffect(() => {
-    const n = parseFloat(offerAmount) || 0;
-    if (n <= 0) {
-      setTaskerFeePreview(null);
-      setTaskerFeeError(null);
-      setTaskerFeeLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setTaskerFeeLoading(true);
-    setTaskerFeeError(null);
-    const t = setTimeout(() => {
-      void (async () => {
-        try {
-          const data = (await fetchFeePreview(n, "tasker")) as TaskerFeeData;
-          if (!cancelled) {
-            setTaskerFeePreview(data);
-            setTaskerFeeError(null);
-          }
-        } catch (e: unknown) {
-          if (!cancelled) {
-            setTaskerFeePreview(null);
-            setTaskerFeeError(e instanceof Error ? e.message : "Unable to load fees");
-          }
-        } finally {
-          if (!cancelled) setTaskerFeeLoading(false);
-        }
-      })();
-    }, 0);
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
-  }, [offerAmount]);
 
   const [completeReviewAsTaskmaster, setCompleteReviewAsTaskmaster] = useState(false);
   const taskerId =
@@ -1376,7 +1348,6 @@ export default function TaskDetailPage() {
         const feeFromBid = parseTaskerFeePreviewFromBidResponse(bidResponse.data);
         if (feeFromBid) {
           cacheFeePreview(offerAmountNumber, "tasker", feeFromBid);
-          setTaskerFeePreview(feeFromBid);
         }
         const net = feeFromBid ? taskerEstimatedNet(feeFromBid, offerAmountNumber) : null;
         toast.success(
@@ -1987,7 +1958,6 @@ export default function TaskDetailPage() {
   const hasSubmittedOffer = offers.some(
     (offer) => offer.tasker?.id != null && sameUserId(offer.tasker.id, viewerId),
   );
-  const bidAmountNumber = parseFloat(offerAmount) || 0;
   const acceptedOfferAmount =
     offers.find((o) => (o as { status?: string }).status === "accepted")?.amount ??
     (task.assignedTasker?.id
@@ -2309,14 +2279,19 @@ export default function TaskDetailPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between rounded-lg bg-blue-50 px-3 py-3">
               <span className="font-bold text-gray-800">Bid amount</span>
-              <span className="text-lg font-bold tabular-nums text-blue-600">{formatInr(bidAmountNumber)}</span>
+              <span className="text-lg font-bold tabular-nums text-blue-600">{formatInr(offerAmountNumber)}</span>
             </div>
             {taskerFeeError ? (
               <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{taskerFeeError}</p>
-            ) : taskerFeeLoading ? (
+            ) : taskerFeeLoading && !taskerFeePreview ? (
               <p className="text-sm text-muted-foreground">Loading fee estimate…</p>
             ) : taskerFeePreview ? (
-              <SimpleTaskerFeeSummary data={taskerFeePreview} bidAmount={bidAmountNumber} />
+              <>
+                <SimpleTaskerFeeSummary data={taskerFeePreview} bidAmount={offerAmountNumber} />
+                {taskerFeeIsEstimate && taskerFeeLoading ? (
+                  <p className="text-xs text-slate-500">Updating exact fees…</p>
+                ) : null}
+              </>
             ) : (
               <p className="text-sm text-muted-foreground">
                 Final fees are confirmed when you submit your bid.

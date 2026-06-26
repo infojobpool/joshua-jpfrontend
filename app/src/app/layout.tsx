@@ -21,6 +21,7 @@ import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { PwaInstallTracker } from "@/components/PwaInstallTracker";
 import { RouteTransition } from "@/components/RouteTransition";
 import { AppFeatureGuide } from "@/components/onboarding/AppFeatureGuide";
+import { FeeConfigWarmup } from "@/components/FeeConfigWarmup";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -102,6 +103,7 @@ export default function RootLayout({
             <HomeJobsPrefetch />
           </Suspense>
           <PromoPopup />
+          <FeeConfigWarmup />
           <MobileLayout>
             <AppEntranceWrapper>
               <MainHeader />

@@ -63,13 +63,19 @@ type FeePreviewApiEnvelope = {
   data?: PosterFeeData | TaskerFeeData;
 };
 
-/** Global fee rates from GET /fee-config/ — for static UI copy; amounts still from POST /fee-preview/. */
+/** Global fee rates from GET /fee-config/ — drives instant local estimates; batch/API refresh for promos. */
 export type FeeConfig = {
   poster_platform_rate?: number;
   tasker_platform_rate?: number;
   gst_rate?: number;
   fees_on_top?: boolean;
   version?: number;
+};
+
+/** True when amounts were computed client-side from fee-config (not yet confirmed by API). */
+export type FeePreviewMeta = {
+  isEstimate?: boolean;
+  isRefreshing?: boolean;
 };
 
 type FeeConfigEnvelope = {
@@ -110,6 +116,187 @@ export async function fetchFeeConfig(): Promise<FeeConfig | null> {
   })();
 
   return feeConfigInflight;
+}
+
+/** Cached config for synchronous local estimates (null until first fetch). */
+export function getFeeConfigSync(): FeeConfig | null {
+  return feeConfigCache?.data ?? null;
+}
+
+/** Call once on app load — idempotent. */
+export function warmFeeEngine(): Promise<FeeConfig | null> {
+  return fetchFeeConfig();
+}
+
+function normalizeRate(rate: number | undefined): number {
+  if (rate == null || !Number.isFinite(rate)) return 0;
+  return rate <= 1 ? rate : rate / 100;
+}
+
+function normalizeFeePreviewData(data: PosterFeeData | TaskerFeeData): PosterFeeData | TaskerFeeData {
+  if (Array.isArray(data.lines)) {
+    data.lines = data.lines
+      .filter((line): line is FeeLine => line != null && typeof line === "object")
+      .map((line) => ({
+        id: typeof line.id === "string" ? line.id : undefined,
+        label: typeof line.label === "string" ? line.label : "",
+        amount: Number(line.amount) || 0,
+        kind: typeof line.kind === "string" ? line.kind : undefined,
+      }));
+  } else {
+    delete data.lines;
+  }
+  return data;
+}
+
+/** Instant estimate from cached fee-config (no network). */
+export function estimateFeePreviewLocal(
+  bidAmount: number,
+  role: FeePreviewRole,
+  config: FeeConfig,
+): PosterFeeData | TaskerFeeData | null {
+  const bid = Math.round(bidAmount);
+  if (bid <= 0) return null;
+
+  const gstRate = normalizeRate(config.gst_rate);
+
+  if (role === "tasker") {
+    const platformRate = normalizeRate(config.tasker_platform_rate);
+    const platformFee = Math.round(bid * platformRate);
+    const gst = Math.round(platformFee * gstRate);
+    const net = bid - platformFee - gst;
+    return {
+      role: "tasker",
+      bid_amount: bid,
+      platform_fee: platformFee,
+      commission_amount: platformFee,
+      gst_amount: gst,
+      reference_taxes: gst,
+      estimated_net: net,
+      fees_deducted_from_bid: true,
+      platform_fee_rate: config.tasker_platform_rate,
+      gst_rate: config.gst_rate,
+      _is_local_estimate: true,
+    } as TaskerFeeData;
+  }
+
+  const platformRate = normalizeRate(config.poster_platform_rate);
+  const platformFee = Math.round(bid * platformRate);
+  const gst = Math.round(platformFee * gstRate);
+  const payable = bid + platformFee + gst;
+  const taskerRate = normalizeRate(config.tasker_platform_rate);
+  const taskerPlatformFee = Math.round(bid * taskerRate);
+  const taskerGst = Math.round(taskerPlatformFee * gstRate);
+  const taskerNet = bid - taskerPlatformFee - taskerGst;
+
+  return {
+    role: "poster",
+    bid_amount: bid,
+    platform_fee: platformFee,
+    commission_amount: platformFee,
+    gst_amount: gst,
+    payable_amount: payable,
+    fees_on_top: config.fees_on_top ?? true,
+    tasker_net_amount: taskerNet,
+    _is_local_estimate: true,
+  } as PosterFeeData;
+}
+
+export function getCachedFeePreview(
+  bidAmount: number,
+  role: FeePreviewRole,
+): PosterFeeData | TaskerFeeData | null {
+  const key = feePreviewCacheKey(bidAmount, role);
+  const hit = feePreviewCache.get(key);
+  if (hit && Date.now() - hit.at < FEE_PREVIEW_CACHE_MS) {
+    return hit.data;
+  }
+  return null;
+}
+
+/** Cache → local config math. No network. */
+export function resolveFeePreviewInstant(
+  bidAmount: number,
+  role: FeePreviewRole,
+): PosterFeeData | TaskerFeeData | null {
+  const cached = getCachedFeePreview(bidAmount, role);
+  if (cached) return cached;
+  const config = getFeeConfigSync();
+  if (!config) return null;
+  return estimateFeePreviewLocal(bidAmount, role, config);
+}
+
+const FEE_BATCH_DEBOUNCE_MS = 600;
+const batchTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const batchPendingAmounts = new Map<string, Set<number>>();
+const batchCallbacks = new Map<string, Set<(amount: number, data: PosterFeeData | TaskerFeeData) => void>>();
+
+function batchKey(role: FeePreviewRole): string {
+  return role;
+}
+
+/** Debounced POST /fee-preview/batch/ — one call after typing stops, not per keystroke. */
+export function scheduleFeePreviewBatchRefresh(
+  bidAmount: number,
+  role: FeePreviewRole,
+  onUpdated?: (data: PosterFeeData | TaskerFeeData) => void,
+): void {
+  const amount = Math.round(bidAmount);
+  if (amount <= 0) return;
+
+  const key = batchKey(role);
+  if (onUpdated) {
+    let cbs = batchCallbacks.get(key);
+    if (!cbs) {
+      cbs = new Set();
+      batchCallbacks.set(key, cbs);
+    }
+    cbs.add((amt, data) => {
+      if (amt === amount) onUpdated(data);
+    });
+  }
+
+  let amounts = batchPendingAmounts.get(key);
+  if (!amounts) {
+    amounts = new Set();
+    batchPendingAmounts.set(key, amounts);
+  }
+  amounts.add(amount);
+
+  const existing = batchTimers.get(key);
+  if (existing) clearTimeout(existing);
+
+  batchTimers.set(
+    key,
+    setTimeout(() => {
+      batchTimers.delete(key);
+      const toFetch = [...(batchPendingAmounts.get(key) ?? [])];
+      batchPendingAmounts.set(key, new Set());
+      const callbacks = batchCallbacks.get(key);
+      batchCallbacks.set(key, new Set());
+
+      if (toFetch.length === 0) return;
+
+      void fetchFeePreviewBatch(toFetch, role)
+        .then((map) => {
+          map.forEach((data, amt) => {
+            callbacks?.forEach((cb) => cb(amt, data));
+          });
+        })
+        .catch(() => {
+          /* keep local estimate visible */
+        });
+    }, FEE_BATCH_DEBOUNCE_MS),
+  );
+}
+
+export function cancelFeePreviewBatchRefresh(role: FeePreviewRole): void {
+  const key = batchKey(role);
+  const t = batchTimers.get(key);
+  if (t) clearTimeout(t);
+  batchTimers.delete(key);
+  batchPendingAmounts.delete(key);
+  batchCallbacks.delete(key);
 }
 
 export function formatFeeRatePercent(rate: number | undefined): string {
@@ -160,18 +347,7 @@ export async function fetchFeePreview(
       data = raw as PosterFeeData | TaskerFeeData;
     }
 
-    if (Array.isArray(data.lines)) {
-      data.lines = data.lines
-        .filter((line): line is FeeLine => line != null && typeof line === "object")
-        .map((line) => ({
-          id: typeof line.id === "string" ? line.id : undefined,
-          label: typeof line.label === "string" ? line.label : "",
-          amount: Number(line.amount) || 0,
-          kind: typeof line.kind === "string" ? line.kind : undefined,
-        }));
-    } else {
-      delete data.lines;
-    }
+    data = normalizeFeePreviewData(data);
 
     feePreviewCache.set(key, { data, at: Date.now() });
     return data;
@@ -228,8 +404,9 @@ export async function fetchFeePreviewBatch(
   rows.forEach((row, index) => {
     const key = previewBidAmount(row) || unique[index];
     if (key > 0) {
-      out.set(key, row);
-      feePreviewCache.set(feePreviewCacheKey(key, role), { data: row, at: Date.now() });
+      const normalized = normalizeFeePreviewData({ ...row });
+      out.set(key, normalized);
+      feePreviewCache.set(feePreviewCacheKey(key, role), { data: normalized, at: Date.now() });
     }
   });
 
