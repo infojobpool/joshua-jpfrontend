@@ -160,6 +160,19 @@ export async function fetchFeePreview(
       data = raw as PosterFeeData | TaskerFeeData;
     }
 
+    if (Array.isArray(data.lines)) {
+      data.lines = data.lines
+        .filter((line): line is FeeLine => line != null && typeof line === "object")
+        .map((line) => ({
+          id: typeof line.id === "string" ? line.id : undefined,
+          label: typeof line.label === "string" ? line.label : "",
+          amount: Number(line.amount) || 0,
+          kind: typeof line.kind === "string" ? line.kind : undefined,
+        }));
+    } else {
+      delete data.lines;
+    }
+
     feePreviewCache.set(key, { data, at: Date.now() });
     return data;
   })();
@@ -271,8 +284,8 @@ export function feeLineDisplayLabel(line: FeeLine | null | undefined): string {
 
 /** Non-total lines for display; total row often has kind === "total". */
 export function feeLinesForDisplay(lines: FeeLine[] | undefined): FeeLine[] {
-  if (!lines?.length) return [];
-  return lines.filter((l) => (l.kind || "").toLowerCase() !== "total");
+  if (!Array.isArray(lines) || lines.length === 0) return [];
+  return lines.filter((l) => l && typeof l === "object" && (l.kind || "").toLowerCase() !== "total");
 }
 
 /** Poster UI: hide tasker payout estimate rows (taskmaster only needs their total). */
@@ -280,7 +293,7 @@ export function posterFeeLinesForDisplay(lines: FeeLine[] | undefined): FeeLine[
   return feeLinesForDisplay(lines).filter((l) => {
     const id = (l.id || "").toLowerCase();
     if (id === "tasker_net" || id === "tasker_net_preview") return false;
-    if (/tasker receives|tasker payout|estimated tasker/i.test(l.label)) return false;
+    if (/tasker receives|tasker payout|estimated tasker/i.test(String(l.label ?? ""))) return false;
     return true;
   });
 }
@@ -292,7 +305,7 @@ export function taskerFeeLinesForDisplay(lines: FeeLine[] | undefined): FeeLine[
     const kind = (l.kind || "").toLowerCase();
     if (kind === "total") return false;
     if (id === "net") return false;
-    if (/estimated you receive|you receive/i.test(l.label)) return false;
+    if (/estimated you receive|you receive/i.test(String(l.label ?? ""))) return false;
     return true;
   });
 }

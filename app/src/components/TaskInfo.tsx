@@ -299,7 +299,7 @@ export function TaskInfo({
   const [formData, setFormData] = useState({
     title: task.title,
     description: task.description,
-    budget: task.budget.toString(),
+    budget: String(task.budget ?? ""),
     location: task.location,
     dueDate: task.dueDate,
     category: task.category,
@@ -366,7 +366,7 @@ export function TaskInfo({
     setFormData({
       title: task.title,
       description: task.description,
-      budget: task.budget.toString(),
+      budget: String(task.budget ?? ""),
       location: task.location,
       dueDate: task.dueDate,
       category: task.category,

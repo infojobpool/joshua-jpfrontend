@@ -18,11 +18,10 @@ import {
   type TaskerFeeData,
 } from "@/lib/feePreview";
 import { parseJobBidsPayload } from "@/lib/jobBids";
-import { TaskerFeeBreakdown } from "@/components/fee/TaskerFeeBreakdown";
+import { SimpleTaskerFeeSummary } from "@/components/fee/SimpleTaskerFeeSummary";
 import { canonicalJobId } from "@/lib/jobIdVariants";
 import { fetchUserSummary, isUserVerifiedForBidding } from "@/lib/userSummary";
 import { resolveApiMediaUrl, resolveProfileImageUrl } from "@/lib/profileImage";
-import { hasRealProfilePhotoUrl } from "@/lib/payoutProfileCompletion";
 import { readPosterProfileCache } from "@/lib/posterProfileCache";
 import {
   applyPosterEnrichment,
@@ -220,7 +219,12 @@ export default function TaskDetailPage() {
   }, [offerAmount]);
 
   const [completeReviewAsTaskmaster, setCompleteReviewAsTaskmaster] = useState(false);
-  const taskerId = offers.length > 0 ? offers[0].tasker.id : (task?.assignedTasker?.id ? String(task.assignedTasker.id) : null);
+  const taskerId =
+    offers.length > 0 && offers[0]?.tasker?.id
+      ? String(offers[0].tasker.id)
+      : task?.assignedTasker?.id
+        ? String(task.assignedTasker.id)
+        : null;
 
   const enrichPosterOnTask = useCallback((base: Task): Task => {
     const posterId = String(base.poster?.id ?? "").trim();
@@ -471,15 +475,7 @@ export default function TaskDetailPage() {
           }
         };
         
-        // Call functions in parallel (non-blocking)
-        Promise.allSettled([
-          fetchProfile(),
-          syncBids()
-        ]).then(() => {
-          console.log("Background tasks completed");
-        }).catch(err => {
-          console.warn("Some background tasks failed:", err);
-        });
+        void syncBids();
       }
     // No cleanup necessary
   }, [router, userId, isAuthenticated, storeUser]);
@@ -1267,6 +1263,7 @@ export default function TaskDetailPage() {
 
   const handleSubmitOffer = async (e: FormEvent) => {
     e.preventDefault();
+    try {
     if (!offerAmount || !offerMessage || !userId) {
       toast.error("Please fill in all required fields");
       return;
@@ -1330,6 +1327,10 @@ export default function TaskDetailPage() {
     }
     
     setShowConfirmBid(true);
+    } catch (err) {
+      console.error("handleSubmitOffer failed:", err);
+      toast.error("Could not open bid confirmation. Please try again.");
+    }
   };
 
   const confirmBidSubmission = async () => {
@@ -1681,7 +1682,8 @@ export default function TaskDetailPage() {
     if (receiverId) {
       targetReceiverId = receiverId;
     } else if (sameUserId(task.poster.id, userId)) {
-      targetReceiverId = offers.length > 0 ? offers[0].tasker.id : undefined;
+      const firstTaskerId = offers.find((o) => o.tasker?.id != null)?.tasker?.id;
+      targetReceiverId = firstTaskerId != null ? String(firstTaskerId) : undefined;
     } else {
       targetReceiverId = task.poster.id;
     }
@@ -1990,8 +1992,12 @@ export default function TaskDetailPage() {
   const bidAmountNumber = parseFloat(offerAmount) || 0;
   const acceptedOfferAmount =
     offers.find((o) => (o as { status?: string }).status === "accepted")?.amount ??
-    (task.assignedTasker
-      ? offers.find((o) => String(o.tasker.id) === String(task.assignedTasker.id))?.amount
+    (task.assignedTasker?.id
+      ? offers.find(
+          (o) =>
+            o.tasker?.id != null &&
+            String(o.tasker.id) === String(task.assignedTasker!.id),
+        )?.amount
       : undefined) ??
     (Number(task.budget) || 0);
   const paymentPosterBidAmount = acceptedOfferAmount;
@@ -2312,7 +2318,7 @@ export default function TaskDetailPage() {
             ) : taskerFeeLoading ? (
               <p className="text-sm text-muted-foreground">Loading fee estimate…</p>
             ) : taskerFeePreview ? (
-              <TaskerFeeBreakdown data={taskerFeePreview} bidFallback={bidAmountNumber} />
+              <SimpleTaskerFeeSummary data={taskerFeePreview} bidAmount={bidAmountNumber} />
             ) : (
               <p className="text-sm text-muted-foreground">
                 Final fees are confirmed when you submit your bid.
