@@ -77,7 +77,6 @@ export default function TaskDetailPage() {
   const fromBid = searchParams.get('fromBid') === 'true';
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [userProfileFetchDone, setUserProfileFetchDone] = useState(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [task, setTask] = useState<Task | null>(null);
@@ -152,7 +151,6 @@ export default function TaskDetailPage() {
     paymentToastShownRef.current = false;
     bidsFromCombinedRef.current = false;
     prefetchedBidsRef.current = null;
-    setUserProfileFetchDone(false);
     setTaskerFeePreview(null);
     setTaskerFeeError(null);
     setTaskerFeeLoading(false);
@@ -211,7 +209,7 @@ export default function TaskDetailPage() {
           if (!cancelled) setTaskerFeeLoading(false);
         }
       })();
-    }, 200);
+    }, 0);
     return () => {
       cancelled = true;
       clearTimeout(t);
@@ -313,6 +311,15 @@ export default function TaskDetailPage() {
         if (parsedUser.id) {
           setUser(parsedUser);
           setAuthLoading(false);
+          const lsImg = getProfileImageFromUser(parsedUser as Parameters<typeof getProfileImageFromUser>[0]);
+          setUserProfile({
+            profile_id: "",
+            name: parsedUser.name || "",
+            email: "",
+            phone: "",
+            avatar: lsImg || "",
+            joinDate: "",
+          });
           console.log("Loaded user from localStorage (hydration-safe):", parsedUser);
           
           // Only trust localStorage if it says user IS verified (>=2) - avoids false "Verification Required" from stale data
@@ -430,8 +437,6 @@ export default function TaskDetailPage() {
         } catch (err: unknown) {
           console.error("Failed to fetch user summary:", err);
           applyLocalStorageVerification();
-        } finally {
-          setUserProfileFetchDone(true);
         }
       };
 
@@ -457,7 +462,6 @@ export default function TaskDetailPage() {
             setVerificationChecked(false);
           }
         }
-        setUserProfileFetchDone(true);
       }
 
       // Sync user's bids to localStorage
@@ -1302,13 +1306,7 @@ export default function TaskDetailPage() {
       return;
     }
 
-    if (!userProfileFetchDone) {
-      toast.error("Please wait a moment while we load your profile…");
-      return;
-    }
-
-    // Soft profile nudge: only when we still have no real photo after checking both
-    // localStorage (profile_* / avatar) and the latest GET /profile result (userProfile).
+    // Soft profile nudge: localStorage first; summary API may refresh avatar in background.
     const parsedUser = storedUser ? JSON.parse(storedUser) : null;
     const lsImg = getProfileImageFromUser(parsedUser);
     const apiImg = getProfileImageFromUser(
