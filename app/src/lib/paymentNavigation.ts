@@ -178,12 +178,11 @@ export function isIosStandalonePwa(): boolean {
 }
 
 /**
- * Payment links only where embedded Razorpay modal fails (Android PWA / native).
- * iOS uses embedded Razorpay overlay — same simple flow as mobile Safari website.
+ * Embedded Razorpay on all platforms (iOS + Android app/PWA and mobile web).
+ * Payment-link / external-browser flow is kept in code only as fallback if re-enabled.
  */
 export function shouldUsePaymentLinkFlow(): boolean {
-  if (isIosDevice()) return false;
-  return isCapacitorNative() || isStandalonePwa();
+  return false;
 }
 
 /** Same-origin /payments route (relative or current app origin only). */
