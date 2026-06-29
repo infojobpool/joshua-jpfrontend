@@ -98,6 +98,28 @@ export function buildPublicPaymentsUrl(p: PaymentUrlParams): string {
   return `${origin}/payments/?${toSearchParams(p).toString()}`;
 }
 
+/** Safari checkout: public payments page with autopay so Razorpay opens immediately in mobile Safari. */
+export function buildSafariPaymentsCheckoutUrl(p: PaymentUrlParams): string {
+  const qs = toSearchParams(p);
+  qs.set("autopay", "1");
+  const origin = PUBLIC_ORIGIN.replace(/\/$/, "");
+  return `${origin}/payments/?${qs.toString()}`;
+}
+
+export function isPublicPaymentsUrl(url: string): boolean {
+  try {
+    const u = new URL(url.trim(), PUBLIC_ORIGIN);
+    return u.pathname.replace(/\/$/, "") === "/payments";
+  } catch {
+    return false;
+  }
+}
+
+/** iPhone app/PWA must pay in Safari — embedded Razorpay fails in the home-screen WebView. */
+export function needsIosSafariCheckout(): boolean {
+  return isIosStandalonePwa() || (isCapacitorNative() && isIosDevice());
+}
+
 /** Where Razorpay / backend should redirect after payment (public site). */
 export function paymentReturnCallbackUrl(): string {
   return `${PUBLIC_ORIGIN.replace(/\/$/, "")}/payment-callback/`;
@@ -113,35 +135,25 @@ export function paymentLinkRedirectFields(): Record<string, string> {
   };
 }
 
-export function isExternalPaymentUrl(url: string): boolean {
-  try {
-    const u = new URL(url);
-    return !u.pathname.replace(/\/$/, "").endsWith("/payments");
-  } catch {
-    return true;
-  }
-}
-
-/** Same-origin /payments route (Capacitor localhost or www). */
-export function isInAppPaymentsUrl(url: string): boolean {
-  if (!url) return false;
-  try {
-    const u = new URL(url, typeof window !== "undefined" ? window.location.href : PUBLIC_ORIGIN);
-    return u.pathname.replace(/\/$/, "") === "/payments";
-  } catch {
-    return url.startsWith("/payments");
-  }
+export function isIosDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent || "");
 }
 
 /** True in Capacitor iOS/Android shell (not mobile Safari browsing the website). */
 export function isCapacitorNative(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    const C = (window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
-    return Boolean(C?.isNativePlatform?.());
+    const C = (window as { Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string } })
+      .Capacitor;
+    if (C?.isNativePlatform?.()) return true;
+    const platform = C?.getPlatform?.();
+    if (platform === "ios" || platform === "android") return true;
   } catch {
-    return false;
+    /* ignore */
   }
+  const host = window.location.hostname;
+  return host === "localhost" || host === "127.0.0.1";
 }
 
 export function isStandalonePwa(): boolean {
@@ -153,6 +165,11 @@ export function isStandalonePwa(): boolean {
   );
 }
 
+/** iPhone/iPad “Add to Home Screen” app — cannot open Razorpay inside the WebView. */
+export function isIosStandalonePwa(): boolean {
+  return isIosDevice() && isStandalonePwa() && !isCapacitorNative();
+}
+
 /**
  * Payment links + system browser: Capacitor native app and installed PWA only.
  * iPhone Safari (website) uses embedded Razorpay checkout — redirects via JS handler.
@@ -161,24 +178,85 @@ export function shouldUsePaymentLinkFlow(): boolean {
   return isCapacitorNative() || isStandalonePwa();
 }
 
+/** Same-origin /payments route (relative or current app origin only). */
+export function isLocalPaymentsRoute(url: string): boolean {
+  if (!url) return false;
+  const trimmed = url.trim();
+  if (trimmed.startsWith("/payments")) return true;
+  try {
+    const u = new URL(trimmed, typeof window !== "undefined" ? window.location.href : PUBLIC_ORIGIN);
+    if (u.pathname.replace(/\/$/, "") !== "/payments") return false;
+    if (typeof window === "undefined") return true;
+    return u.origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
+/** Razorpay or other external HTTPS checkout (not our /payments page). */
+export function isExternalCheckoutUrl(url: string): boolean {
+  const trimmed = url?.trim() ?? "";
+  if (!/^https:\/\//i.test(trimmed)) return false;
+  return !isLocalPaymentsRoute(trimmed);
+}
+
 export type OpenCheckoutOptions = {
   router?: { push: (path: string) => void };
-  /** Fires when user closes in-app browser (Capacitor Browser plugin). */
   onBrowserClosed?: () => void;
+  onNeedSafariCopy?: () => void;
 };
 
+async function copyCheckoutUrl(url: string, onCopied?: () => void): Promise<boolean> {
+  try {
+    await navigator.clipboard?.writeText(url);
+    onCopied?.();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function shareCheckoutUrl(url: string): Promise<"opened" | "blocked"> {
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        url,
+        title: "JobPool Payment",
+        text: "Open in Safari to pay with Razorpay",
+      });
+      return "opened";
+    }
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") return "blocked";
+  }
+  return "blocked";
+}
+
+/** Share / Browser.open the Safari payments page (Razorpay works there without Xcode rebuild). */
+export async function openSafariPaymentsCheckout(
+  params: PaymentUrlParams,
+  options?: OpenCheckoutOptions,
+): Promise<"opened" | "blocked"> {
+  const url = buildSafariPaymentsCheckoutUrl(params);
+  return openExternalCheckout(url, options).then((r) => (r === "navigated" ? "opened" : r));
+}
+
 /**
- * Open Razorpay checkout. Native iOS uses SFSafariViewController (Capacitor Browser)
- * so Razorpay can redirect to payment-callback after pay.
+ * Open Razorpay checkout safely on iOS.
+ * Never uses window.location for external URLs on iOS (causes blue error screen + app reset).
  */
 export async function openExternalCheckout(
   url: string,
   options?: OpenCheckoutOptions,
 ): Promise<"opened" | "blocked" | "navigated"> {
-  if (typeof window === "undefined" || !url) return "blocked";
+  if (typeof window === "undefined" || !url?.trim()) return "blocked";
 
-  if (isInAppPaymentsUrl(url)) {
-    const u = new URL(url, window.location.href);
+  const clean = url.trim();
+  const iosSafari = needsIosSafariCheckout();
+  const publicPayments = isPublicPaymentsUrl(clean);
+
+  if (isLocalPaymentsRoute(clean) && !iosSafari) {
+    const u = new URL(clean, window.location.href);
     const path = u.pathname.endsWith("/") ? u.pathname : `${u.pathname}/`;
     const target = `${path}${u.search}`;
     if (options?.router) {
@@ -189,6 +267,11 @@ export async function openExternalCheckout(
     return "navigated";
   }
 
+  if (!/^https:\/\//i.test(clean)) {
+    return "blocked";
+  }
+
+  // Capacitor iOS: in-app Browser when available; otherwise Share to Safari (works without Xcode rebuild)
   if (isCapacitorNative()) {
     try {
       const { Browser } = await import("@capacitor/browser");
@@ -198,27 +281,40 @@ export async function openExternalCheckout(
           options?.onBrowserClosed?.();
         });
       } catch {
-        /* listener optional */
+        /* optional */
       }
-      await Browser.open({ url, presentationStyle: "fullscreen" });
+      await Browser.open({ url: clean, presentationStyle: "fullscreen" });
       return "opened";
     } catch (err) {
-      console.warn("Capacitor Browser.open failed — rebuild app with npx cap sync ios", err);
-      window.location.href = url;
-      return "navigated";
+      console.warn("Capacitor Browser.open failed", err);
+      if (isIosDevice()) {
+        const shared = await shareCheckoutUrl(clean);
+        if (shared === "opened") return "opened";
+      }
+      await copyCheckoutUrl(clean, options?.onNeedSafariCopy);
+      return "blocked";
     }
   }
 
-  // Installed PWA on iOS: full navigation so Razorpay redirect chain works
-  if (isStandalonePwa() && /iPhone|iPad|iPod/i.test(navigator.userAgent || "")) {
-    window.location.href = url;
-    return "navigated";
+  // iOS home-screen PWA: Share → Safari (never navigate in-app — Razorpay breaks + blue screen)
+  if (iosSafari && (isExternalCheckoutUrl(clean) || publicPayments || isLocalPaymentsRoute(clean))) {
+    const shared = await shareCheckoutUrl(clean);
+    if (shared === "opened") return "opened";
+    await copyCheckoutUrl(clean, options?.onNeedSafariCopy);
+    return "blocked";
   }
 
-  const opened = window.open(url, "_blank", "noopener,noreferrer");
+  if (isIosDevice() && isExternalCheckoutUrl(clean)) {
+    const shared = await shareCheckoutUrl(clean);
+    if (shared === "opened") return "opened";
+    await copyCheckoutUrl(clean, options?.onNeedSafariCopy);
+    return "blocked";
+  }
+
+  const opened = window.open(clean, "_blank", "noopener,noreferrer");
   if (!opened) {
-    window.location.href = url;
-    return "navigated";
+    await copyCheckoutUrl(clean, options?.onNeedSafariCopy);
+    return "blocked";
   }
   return "opened";
 }

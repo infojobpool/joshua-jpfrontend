@@ -322,8 +322,11 @@ import { offersCountLabel } from "@/lib/jobBids";
 import {
   buildPaymentsPath,
   buildPublicPaymentsUrl,
+  buildSafariPaymentsCheckoutUrl,
   isCapacitorNative,
+  needsIosSafariCheckout,
   openExternalCheckout,
+  openSafariPaymentsCheckout,
   paymentLinkRedirectFields,
   persistPaymentSession,
   paymentsRouteFromSession,
@@ -433,6 +436,19 @@ export function OffersSection({
   const [isAccepting, setIsAccepting] = useState<string | null>(null);
   const [paymentUrlForApp, setPaymentUrlForApp] = useState<string | null>(null);
   const [paymentLinkLoading, setPaymentLinkLoading] = useState(false);
+  const iosPwaCheckout = needsIosSafariCheckout();
+
+  useEffect(() => {
+    if (!paymentUrlForApp || paymentLinkLoading || !iosPwaCheckout) return;
+    void (async () => {
+      try {
+        await navigator.clipboard?.writeText(paymentUrlForApp);
+        toast.success("Payment link copied. Tap Open in Safari or paste in Safari's address bar.");
+      } catch {
+        /* user can tap Copy Link */
+      }
+    })();
+  }, [paymentUrlForApp, paymentLinkLoading, iosPwaCheckout]);
   /** Poster reviews fees before accept-bid + payment (web & PWA). */
   const [acceptFeeOffer, setAcceptFeeOffer] = useState<Offer | null>(null);
   const [acceptFeePreview, setAcceptFeePreview] = useState<PosterFeeData | null>(null);
@@ -707,6 +723,38 @@ export function OffersSection({
 
         // PWA / native app: payment link (Copy / Open in browser). Embedded Razorpay modal is blank in WebView.
         if (shouldUsePaymentLinkFlow()) {
+          const checkoutParams = {
+            taskId: task.id,
+            taskerId: offer.tasker.id,
+            taskPosterId: task.poster.id,
+            amount: offer.amount,
+            taskTitle: task.title,
+          };
+
+          // iPhone: open Safari payments page immediately (Razorpay works there — no Xcode rebuild needed)
+          if (needsIosSafariCheckout()) {
+            setPaymentLinkLoading(true);
+            try {
+              toast.info("Choose Safari in the share menu — Razorpay will open there.");
+              const result = await openSafariPaymentsCheckout(checkoutParams, {
+                onBrowserClosed: () => {
+                  toast.message("Back in JobPool", {
+                    description: "If payment succeeded, open Dashboard to see the updated task.",
+                  });
+                },
+                onNeedSafariCopy: () => {
+                  toast.success("Payment link copied. Open Safari, paste in the address bar, and pay.");
+                },
+              });
+              if (result === "blocked") {
+                setPaymentUrlForApp(buildSafariPaymentsCheckoutUrl(checkoutParams));
+              }
+            } finally {
+              setPaymentLinkLoading(false);
+            }
+            return;
+          }
+
           setPaymentLinkLoading(true);
           try {
             let posterFees: PosterFeeData;
@@ -770,6 +818,9 @@ export function OffersSection({
                     toast.message("Back in JobPool", {
                       description: "If payment succeeded, open Dashboard to see the updated task.",
                     });
+                  },
+                  onNeedSafariCopy: () => {
+                    toast.info("Link copied. Open Safari, paste in the address bar, and pay.");
                   },
                 });
                 return;
@@ -1140,17 +1191,37 @@ export function OffersSection({
       <Dialog open={!!paymentUrlForApp || paymentLinkLoading} onOpenChange={(open) => !open && !paymentLinkLoading && setPaymentUrlForApp(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{paymentLinkLoading ? "Creating payment link..." : "Open in Safari to Pay"}</DialogTitle>
+            <DialogTitle>{paymentLinkLoading ? "Opening payment…" : "Open in Safari to Pay"}</DialogTitle>
             <DialogDescription>
               {paymentLinkLoading
                 ? "Please wait..."
-                : "Payment cannot complete in the app. Copy the link below, open Safari, paste the link, and complete payment there. Then return to the JobPool app."}
+                : iosPwaCheckout
+                  ? "Tap Open in Safari below, choose Safari in the share menu, and Razorpay will open automatically."
+                  : "Payment cannot complete in the app. Copy the link below, open Safari, paste the link, and complete payment there. Then return to the JobPool app."}
             </DialogDescription>
           </DialogHeader>
           {paymentUrlForApp && !paymentLinkLoading && (
             <DialogFooter className="flex-col gap-2 sm:flex-col">
+              {iosPwaCheckout ? (
+                <Button
+                  className="jp-btn-blue-gradient w-full rounded-lg font-semibold"
+                  onClick={async () => {
+                    const result = await openExternalCheckout(paymentUrlForApp, {
+                      onNeedSafariCopy: () => {
+                        toast.success("Link copied. Open Safari, paste in the address bar, and pay.");
+                      },
+                    });
+                    if (result === "opened") {
+                      setPaymentUrlForApp(null);
+                    }
+                  }}
+                >
+                  Open in Safari
+                </Button>
+              ) : null}
               <Button
-                className="jp-btn-blue-gradient w-full rounded-lg font-semibold"
+                variant={iosPwaCheckout ? "outline" : "default"}
+                className={iosPwaCheckout ? "w-full" : "jp-btn-blue-gradient w-full rounded-lg font-semibold"}
                 onClick={async () => {
                   try {
                     await navigator.clipboard?.writeText(paymentUrlForApp);
@@ -1160,7 +1231,7 @@ export function OffersSection({
                   }
                 }}
               >
-                Copy Link (recommended)
+                Copy Link{iosPwaCheckout ? "" : " (recommended)"}
               </Button>
               {typeof navigator !== "undefined" && navigator.share && (
                 <Button
@@ -1180,6 +1251,7 @@ export function OffersSection({
                   Share Link
                 </Button>
               )}
+              {!iosPwaCheckout ? (
               <Button
                 variant="outline"
                 className="w-full"
@@ -1191,20 +1263,24 @@ export function OffersSection({
                         description: "If payment succeeded, open Dashboard to see the updated task.",
                       });
                     },
+                    onNeedSafariCopy: () => {
+                      toast.info("Link copied. Open Safari, paste in the address bar, and pay.");
+                    },
                   });
                   if (result === "blocked") {
-                    toast.info("Popup blocked. Use 'Copy Link' above, then paste in Safari to pay.");
-                  } else if (result === "navigated") {
+                    toast.info("Open Safari, paste the copied link, and complete payment.");
+                  } else if (result === "opened") {
                     setPaymentUrlForApp(null);
-                  } else {
-                    toast.info("Complete payment in the browser, then return to JobPool.");
                   }
                 }}
               >
                 Open Payment Page
               </Button>
+              ) : null}
               <p className="text-xs text-muted-foreground text-center w-full">
-                Opens Razorpay in your browser. Use Copy Link if this page goes blank.
+                {iosPwaCheckout
+                  ? "Safari opens Razorpay directly. Return to JobPool after paying."
+                  : "Opens Razorpay in your browser. Use Copy Link if this page goes blank."}
               </p>
               <Button variant="ghost" onClick={() => setPaymentUrlForApp(null)}>Cancel</Button>
             </DialogFooter>
