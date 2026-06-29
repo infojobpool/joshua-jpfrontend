@@ -319,6 +319,14 @@ import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./ui/dialog";
 import { NoOffersEmptyState } from "./NoOffersEmptyState";
 import { offersCountLabel } from "@/lib/jobBids";
+import {
+  buildPaymentsPath,
+  buildPublicPaymentsUrl,
+  openPaymentUrl,
+  persistPaymentSession,
+  paymentsRouteFromSession,
+  shouldUsePaymentLinkFlow,
+} from "@/lib/paymentNavigation";
 
 interface Image {
   id: string;
@@ -640,7 +648,12 @@ export function OffersSection({
           description: `You accepted ${offer.tasker.name}'s offer for ₹${offer.amount}. Complete payment to confirm.`,
           createdAt: new Date().toISOString(),
           read: false,
-          link: `/payments?taskId=${task.id}&taskerId=${offer.tasker.id}&taskPosterId=${task.poster.id}&amount=${offer.amount}`,
+          link: buildPaymentsPath({
+            taskId: task.id,
+            taskerId: offer.tasker.id,
+            taskPosterId: task.poster.id,
+            amount: offer.amount,
+          }),
           direction: "received",
           taskId: task.id,
         }]);
@@ -666,13 +679,13 @@ export function OffersSection({
         }
         
         // Store tasker_id and taskposter_id in sessionStorage
-        sessionStorage.setItem("paymentData", JSON.stringify({
+        persistPaymentSession({
           taskId: task.id,
           taskerId: offer.tasker.id,
           taskPosterId: task.poster.id,
           amount: offer.amount,
           taskTitle: task.title,
-        }));
+        });
         
         // Store accepted bidder info for immediate UI update
         sessionStorage.setItem("acceptedBidder", JSON.stringify({
@@ -690,14 +703,8 @@ export function OffersSection({
           timestamp: Date.now()
         }));
 
-        // PWA or mobile: use payment link (Copy/Open). Avoids Razorpay modal which shows blank on PWA.
-        const isStandalone =
-          typeof window !== "undefined" &&
-          (window.matchMedia?.("(display-mode: standalone)")?.matches ||
-            window.matchMedia?.("(display-mode: fullscreen)")?.matches ||
-            (navigator as any).standalone === true ||
-            /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || ""));
-        if (isStandalone) {
+        // PWA / native app: payment link (Copy / Open in browser). Embedded Razorpay modal is blank in WebView.
+        if (shouldUsePaymentLinkFlow()) {
           setPaymentLinkLoading(true);
           try {
             let posterFees: PosterFeeData;
@@ -755,15 +762,25 @@ export function OffersSection({
               } catch (_) {}
               setPaymentUrlForApp(razorpayUrl);
             } else {
-              const taskTitleParam = task.title ? `&taskTitle=${encodeURIComponent(task.title)}` : "";
-              const fallbackUrl = `${window.location.origin}/payments?taskId=${task.id}&taskerId=${offer.tasker.id}&taskPosterId=${task.poster.id}&amount=${offer.amount}${taskTitleParam}`;
+              const fallbackUrl = buildPublicPaymentsUrl({
+                taskId: task.id,
+                taskerId: offer.tasker.id,
+                taskPosterId: task.poster.id,
+                amount: offer.amount,
+                taskTitle: task.title,
+              });
               toast.error("Payment link unavailable. Copy link below and open in Safari.");
               setPaymentUrlForApp(fallbackUrl);
             }
           } catch (e: any) {
             console.error("create-payment-link failed:", e?.response?.data ?? e);
-            const taskTitleParam = task.title ? `&taskTitle=${encodeURIComponent(task.title)}` : "";
-            const fallbackUrl = `${window.location.origin}/payments?taskId=${task.id}&taskerId=${offer.tasker.id}&taskPosterId=${task.poster.id}&amount=${offer.amount}${taskTitleParam}`;
+            const fallbackUrl = buildPublicPaymentsUrl({
+              taskId: task.id,
+              taskerId: offer.tasker.id,
+              taskPosterId: task.poster.id,
+              amount: offer.amount,
+              taskTitle: task.title,
+            });
             toast.error("Copy the link below and paste in Safari to pay.");
             setPaymentUrlForApp(fallbackUrl);
           } finally {
@@ -771,7 +788,15 @@ export function OffersSection({
           }
           return;
         }
-        router.push("/payments");
+        router.push(
+          buildPaymentsPath({
+            taskId: task.id,
+            taskerId: offer.tasker.id,
+            taskPosterId: task.poster.id,
+            amount: offer.amount,
+            taskTitle: task.title,
+          }),
+        );
     } else {
       toast.error(response.data.message || "Failed to accept bid");
       throw new Error(response.data.message || "Failed to accept bid");
@@ -979,7 +1004,7 @@ export function OffersSection({
                         </span>
                         <button
                           type="button"
-                          onClick={() => router.push("/payments")}
+                          onClick={() => router.push(paymentsRouteFromSession())}
                           className="text-xs font-medium text-blue-700 hover:underline"
                         >
                           Complete payment
@@ -1144,19 +1169,21 @@ export function OffersSection({
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => {
-                  const opened = window.open(paymentUrlForApp, "_blank", "noopener,noreferrer");
-                  if (!opened) {
+                onClick={async () => {
+                  const result = await openPaymentUrl(paymentUrlForApp, router);
+                  if (result === "blocked") {
                     toast.info("Popup blocked. Use 'Copy Link' above, then paste in Safari to pay.");
+                  } else if (result === "navigated") {
+                    setPaymentUrlForApp(null);
                   } else {
-                    toast.info("If you see a blank page, close it and use Copy Link instead.");
+                    toast.info("Complete payment in the browser, then return to JobPool.");
                   }
                 }}
               >
                 Open Payment Page
               </Button>
               <p className="text-xs text-muted-foreground text-center w-full">
-                Open may show a blank page in the app. Copy Link is most reliable.
+                Opens Razorpay in your browser. Use Copy Link if this page goes blank.
               </p>
               <Button variant="ghost" onClick={() => setPaymentUrlForApp(null)}>Cancel</Button>
             </DialogFooter>

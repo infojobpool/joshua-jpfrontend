@@ -17,6 +17,7 @@ import {
   type PosterFeeData,
 } from "@/lib/feePreview";
 import { getRazorpayCheckoutBranding } from "@/lib/razorpayBranding";
+import { openPaymentUrl, shouldUsePaymentLinkFlow } from "@/lib/paymentNavigation";
 
 // Mock task data (replace with actual task data, e.g., via API or props)
 const mockTask: Task = {
@@ -95,42 +96,51 @@ export default function PaymentPage() {
 
   // Retrieve data from sessionStorage or URL params (when opened in Safari from copy link)
   useEffect(() => {
+    let resolved: PaymentData | null = null;
+
     const data = sessionStorage.getItem("paymentData");
     if (data) {
       try {
-        const parsedData: PaymentData = JSON.parse(data);
-        setPaymentData(parsedData);
-        console.log("Retrieved payment data from sessionStorage:", parsedData);
+        resolved = JSON.parse(data) as PaymentData;
+        setPaymentData(resolved);
+        console.log("Retrieved payment data from sessionStorage:", resolved);
       } catch (err) {
         console.error("Error parsing payment data:", err);
         setErrorMessage("Invalid payment data");
         setShowPaymentFailed(true);
       }
     } else {
-      // Opened in Safari/browser - no sessionStorage. Use URL params.
       const taskId = searchParams.get("taskId");
       const amount = searchParams.get("amount");
       const taskerId = searchParams.get("taskerId") || "";
       const taskPosterId = searchParams.get("taskPosterId") || "";
       if (taskId && amount && !isNaN(parseFloat(amount))) {
         const taskTitle = searchParams.get("taskTitle");
-        setPaymentData({
+        resolved = {
           taskId,
           taskerId,
           taskPosterId,
           amount: parseFloat(amount),
-          ...(taskTitle && { taskTitle: decodeURIComponent(taskTitle) }),
-        });
+          ...(taskTitle ? { taskTitle: decodeURIComponent(taskTitle) } : {}),
+        };
+        setPaymentData(resolved);
         setShowPaymentModal(true);
-        console.log("Retrieved payment data from URL params:", { taskId, amount, taskerId, taskPosterId });
+        try {
+          sessionStorage.setItem("paymentData", JSON.stringify(resolved));
+        } catch {
+          /* ignore */
+        }
+        console.log("Retrieved payment data from URL params:", resolved);
       } else {
         console.warn("No payment data in sessionStorage or URL params");
         setErrorMessage("Payment data not found");
         setShowPaymentFailed(true);
       }
-    }    
-    // Mark that user has entered the payment page
-    sessionStorage.setItem("payment_page_visited", "true");
+    }
+
+    if (resolved?.taskId) {
+      sessionStorage.setItem("payment_page_visited", "true");
+    }
   }, [searchParams]);
 
   // Warn user before leaving page without completing payment
@@ -224,13 +234,8 @@ export default function PaymentPage() {
       checkout_image: checkoutBranding.image,
     };
 
-    // PWA or mobile: use payment link. Modal shows blank on PWA; mobile UA ensures consistency.
-    const isStandalonePWA =
-      typeof window !== "undefined" &&
-      (window.matchMedia?.("(display-mode: standalone)")?.matches ||
-        window.matchMedia?.("(display-mode: fullscreen)")?.matches ||
-        (navigator as any).standalone === true ||
-        /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || ""));
+    // PWA / native app: payment link in system browser (embedded Razorpay modal is blank in WebView).
+    const isStandalonePWA = shouldUsePaymentLinkFlow();
 
     let openedEmbedded = false;
     try {
@@ -475,19 +480,22 @@ export default function PaymentPage() {
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => {
-                  const opened = window.open(paymentUrlForSafari, "_blank", "noopener,noreferrer");
-                  if (!opened) {
+                onClick={async () => {
+                  if (!paymentUrlForSafari) return;
+                  const result = await openPaymentUrl(paymentUrlForSafari, router);
+                  if (result === "blocked") {
                     toast.info("Popup blocked. Use 'Copy Link' above, then paste in Safari to pay.");
+                  } else if (result === "navigated") {
+                    setPaymentUrlForSafari(null);
                   } else {
-                    toast.info("If you see a blank page, close it and use Copy Link instead.");
+                    toast.info("Complete payment in the browser, then return to JobPool.");
                   }
                 }}
               >
                 Open Payment Page
               </Button>
               <p className="text-xs text-muted-foreground text-center w-full">
-                Open may show a blank page in the app. Copy Link is most reliable.
+                Opens Razorpay in your browser. Use Copy Link if this page goes blank.
               </p>
               <Button variant="ghost" onClick={() => setPaymentUrlForSafari(null)}>
                 Cancel

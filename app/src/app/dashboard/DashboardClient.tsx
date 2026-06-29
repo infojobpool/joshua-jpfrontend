@@ -57,6 +57,7 @@ import { formatDateWithTime } from "@/lib/utils";
 import { dueDisplayForListCard } from "@/lib/taskDueDisplay";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 import { warmTaskDetailNavigation } from "@/lib/taskNavCache";
+import { paymentsRouteFromSession } from "@/lib/paymentNavigation";
 import { useNotifications } from "@/lib/useNotifications";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 import { EmptyState } from "@/components/EmptyState";
@@ -947,7 +948,7 @@ export default function Dashboard() {
               duration: 6000,
               action: {
                 label: "Complete Payment",
-                onClick: () => router.push("/payments"),
+                onClick: () => router.push(paymentsRouteFromSession()),
               },
             });
           }

@@ -53,6 +53,7 @@ import { Button } from "@/components/ui/button";
 import { ShareTaskButton } from "@/components/ShareTaskButton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { analytics } from "@/lib/analytics";
+import { paymentsRouteFromSession } from "@/lib/paymentNavigation";
 import {
   isLikelyOfflineError,
   isSlowServerError,
@@ -1676,7 +1677,7 @@ export default function TaskDetailPage() {
       toast.success("Payment processed successfully");
       setShowPaymentModal(false);
       setIsSubmitting(false);
-      router.push("/payments");
+      router.push(paymentsRouteFromSession());
     }, 1500);
   };
 
@@ -1696,7 +1697,7 @@ export default function TaskDetailPage() {
         duration: 5000,
         action: {
           label: "Complete Payment",
-          onClick: () => router.push("/payments"),
+          onClick: () => router.push(paymentsRouteFromSession()),
         },
       });
       return;
@@ -1889,7 +1890,7 @@ export default function TaskDetailPage() {
                 duration: 6000,
                 action: {
                   label: "Complete Payment",
-                  onClick: () => router.push("/payments"),
+                  onClick: () => router.push(paymentsRouteFromSession()),
                 },
               });
             }

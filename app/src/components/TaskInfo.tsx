@@ -157,9 +157,10 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { resolveApiMediaUrl } from "@/lib/profileImage";
 import { hasRealProfilePhotoUrl } from "@/lib/payoutProfileCompletion";
-import { useRouter } from "next/navigation";
+import { paymentsRouteFromSession } from "@/lib/paymentNavigation";
 import type { PosterReviewSnippet } from "@/app/types";
 import { toViewTransitionKey } from "@/lib/viewTransition";
 
@@ -885,7 +886,7 @@ export function TaskInfo({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => router.push("/payments")}
+                  onClick={() => router.push(paymentsRouteFromSession())}
                   className="h-7 w-full px-2.5 text-[11px] bg-amber-50 border-amber-200 hover:bg-amber-100 text-amber-900 font-medium sm:w-auto sm:self-end"
                 >
                   Complete payment

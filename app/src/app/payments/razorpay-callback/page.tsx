@@ -147,7 +147,7 @@ export default function RazorpayCallbackPage() {
         </CardHeader>
         {status === "error" && (
           <CardFooter className="flex flex-col gap-2">
-            <Button onClick={() => (window.location.href = "/payments")}>Try Again</Button>
+            <Button onClick={() => (window.location.href = "/payments/")}>Try Again</Button>
             <Button variant="outline" onClick={() => openInAppOrWeb("/dashboard")}>
               Back to Dashboard
             </Button>
