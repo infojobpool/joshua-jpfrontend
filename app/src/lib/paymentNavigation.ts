@@ -33,6 +33,13 @@ export function buildPaymentsPath(p: PaymentUrlParams): string {
   return `/payments/?${toSearchParams(p).toString()}`;
 }
 
+/** In-app router path with autopay — Razorpay opens immediately after accept (no extra taps). */
+export function buildPaymentsPathWithAutopay(p: PaymentUrlParams): string {
+  const qs = toSearchParams(p);
+  qs.set("autopay", "1");
+  return `/payments/?${qs.toString()}`;
+}
+
 export type PaymentSessionData = PaymentUrlParams & { taskTitle?: string };
 
 /** Write payment context for in-app navigation (survives refresh within same tab). */
@@ -171,10 +178,11 @@ export function isIosStandalonePwa(): boolean {
 }
 
 /**
- * Payment links + system browser: Capacitor native app and installed PWA only.
- * iPhone Safari (website) uses embedded Razorpay checkout — redirects via JS handler.
+ * Payment links only where embedded Razorpay modal fails (Android PWA / native).
+ * iOS uses embedded Razorpay overlay — same simple flow as mobile Safari website.
  */
 export function shouldUsePaymentLinkFlow(): boolean {
+  if (isIosDevice()) return false;
   return isCapacitorNative() || isStandalonePwa();
 }
 
