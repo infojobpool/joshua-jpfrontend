@@ -17,7 +17,7 @@ import {
   type PosterFeeData,
 } from "@/lib/feePreview";
 import { getRazorpayCheckoutBranding } from "@/lib/razorpayBranding";
-import { openPaymentUrl, shouldUsePaymentLinkFlow } from "@/lib/paymentNavigation";
+import { openExternalCheckout, paymentLinkRedirectFields, shouldUsePaymentLinkFlow, isCapacitorNative } from "@/lib/paymentNavigation";
 
 // Mock task data (replace with actual task data, e.g., via API or props)
 const mockTask: Task = {
@@ -232,6 +232,7 @@ export default function PaymentPage() {
       payment_description: buildPaymentDescriptionFromPosterPreview(taskTitle || `Task ${taskId}`, posterFees),
       checkout_name: checkoutBranding.name,
       checkout_image: checkoutBranding.image,
+      ...paymentLinkRedirectFields(),
     };
 
     // PWA / native app: payment link in system browser (embedded Razorpay modal is blank in WebView).
@@ -261,6 +262,17 @@ export default function PaymentPage() {
             })
           );
         } catch (_) {}
+        if (isCapacitorNative()) {
+          toast.info("Complete payment in the window that opens, then return to JobPool.");
+          void openExternalCheckout(paymentUrl, {
+            onBrowserClosed: () => {
+              toast.message("Back in JobPool", {
+                description: "If payment succeeded, open Dashboard to see the updated task.",
+              });
+            },
+          });
+          return;
+        }
         setPaymentUrlForSafari(paymentUrl);
         return;
       }
@@ -482,7 +494,14 @@ export default function PaymentPage() {
                 className="w-full"
                 onClick={async () => {
                   if (!paymentUrlForSafari) return;
-                  const result = await openPaymentUrl(paymentUrlForSafari, router);
+                  const result = await openExternalCheckout(paymentUrlForSafari, {
+                    router,
+                    onBrowserClosed: () => {
+                      toast.message("Back in JobPool", {
+                        description: "If payment succeeded, open Dashboard to see the updated task.",
+                      });
+                    },
+                  });
                   if (result === "blocked") {
                     toast.info("Popup blocked. Use 'Copy Link' above, then paste in Safari to pay.");
                   } else if (result === "navigated") {

@@ -322,7 +322,9 @@ import { offersCountLabel } from "@/lib/jobBids";
 import {
   buildPaymentsPath,
   buildPublicPaymentsUrl,
-  openPaymentUrl,
+  isCapacitorNative,
+  openExternalCheckout,
+  paymentLinkRedirectFields,
   persistPaymentSession,
   paymentsRouteFromSession,
   shouldUsePaymentLinkFlow,
@@ -740,6 +742,7 @@ export function OffersSection({
               payment_description: paymentDescription,
               checkout_name: checkoutBranding.name,
               checkout_image: checkoutBranding.image,
+              ...paymentLinkRedirectFields(),
             });
             const res = paymentUrlRes.data;
             const d = res?.data;
@@ -760,6 +763,17 @@ export function OffersSection({
                   })
                 );
               } catch (_) {}
+              if (isCapacitorNative()) {
+                toast.info("Complete payment in the window that opens, then return to JobPool.");
+                void openExternalCheckout(razorpayUrl, {
+                  onBrowserClosed: () => {
+                    toast.message("Back in JobPool", {
+                      description: "If payment succeeded, open Dashboard to see the updated task.",
+                    });
+                  },
+                });
+                return;
+              }
               setPaymentUrlForApp(razorpayUrl);
             } else {
               const fallbackUrl = buildPublicPaymentsUrl({
@@ -1170,7 +1184,14 @@ export function OffersSection({
                 variant="outline"
                 className="w-full"
                 onClick={async () => {
-                  const result = await openPaymentUrl(paymentUrlForApp, router);
+                  const result = await openExternalCheckout(paymentUrlForApp, {
+                    router,
+                    onBrowserClosed: () => {
+                      toast.message("Back in JobPool", {
+                        description: "If payment succeeded, open Dashboard to see the updated task.",
+                      });
+                    },
+                  });
                   if (result === "blocked") {
                     toast.info("Popup blocked. Use 'Copy Link' above, then paste in Safari to pay.");
                   } else if (result === "navigated") {

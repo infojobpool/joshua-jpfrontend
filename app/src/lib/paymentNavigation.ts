@@ -98,9 +98,19 @@ export function buildPublicPaymentsUrl(p: PaymentUrlParams): string {
   return `${origin}/payments/?${toSearchParams(p).toString()}`;
 }
 
-export function buildPublicPaymentsUrlFromRecord(params: Record<string, string>): string {
-  const origin = PUBLIC_ORIGIN.replace(/\/$/, "");
-  return `${origin}/payments/?${new URLSearchParams(params).toString()}`;
+/** Where Razorpay / backend should redirect after payment (public site). */
+export function paymentReturnCallbackUrl(): string {
+  return `${PUBLIC_ORIGIN.replace(/\/$/, "")}/payment-callback/`;
+}
+
+/** Extra fields for create-payment-link / create-order when backend supports them. */
+export function paymentLinkRedirectFields(): Record<string, string> {
+  const url = paymentReturnCallbackUrl();
+  return {
+    callback_url: url,
+    redirect_url: url,
+    return_url: url,
+  };
 }
 
 export function isExternalPaymentUrl(url: string): boolean {
@@ -123,25 +133,19 @@ export function isInAppPaymentsUrl(url: string): boolean {
   }
 }
 
-export async function isNativeAppShell(): Promise<boolean> {
+/** True in Capacitor iOS/Android shell (not mobile Safari browsing the website). */
+export function isCapacitorNative(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    const { Capacitor } = await import("@capacitor/core");
-    if (Capacitor.isNativePlatform()) return true;
+    const C = (window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+    return Boolean(C?.isNativePlatform?.());
   } catch {
-    /* ignore */
+    return false;
   }
-  return (
-    window.matchMedia?.("(display-mode: standalone)")?.matches === true ||
-    window.matchMedia?.("(display-mode: fullscreen)")?.matches === true ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true
-  );
 }
 
-/** Mobile / PWA / native: prefer payment-link flow over embedded Razorpay modal. */
-export function shouldUsePaymentLinkFlow(): boolean {
+export function isStandalonePwa(): boolean {
   if (typeof window === "undefined") return false;
-  if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent || "")) return true;
   return (
     window.matchMedia?.("(display-mode: standalone)")?.matches === true ||
     window.matchMedia?.("(display-mode: fullscreen)")?.matches === true ||
@@ -150,12 +154,26 @@ export function shouldUsePaymentLinkFlow(): boolean {
 }
 
 /**
- * Open Razorpay or other external checkout in system browser on native (avoids WebView → home redirect).
- * Internal /payments URLs use client navigation.
+ * Payment links + system browser: Capacitor native app and installed PWA only.
+ * iPhone Safari (website) uses embedded Razorpay checkout — redirects via JS handler.
  */
-export async function openPaymentUrl(
+export function shouldUsePaymentLinkFlow(): boolean {
+  return isCapacitorNative() || isStandalonePwa();
+}
+
+export type OpenCheckoutOptions = {
+  router?: { push: (path: string) => void };
+  /** Fires when user closes in-app browser (Capacitor Browser plugin). */
+  onBrowserClosed?: () => void;
+};
+
+/**
+ * Open Razorpay checkout. Native iOS uses SFSafariViewController (Capacitor Browser)
+ * so Razorpay can redirect to payment-callback after pay.
+ */
+export async function openExternalCheckout(
   url: string,
-  router?: { push: (path: string) => void },
+  options?: OpenCheckoutOptions,
 ): Promise<"opened" | "blocked" | "navigated"> {
   if (typeof window === "undefined" || !url) return "blocked";
 
@@ -163,27 +181,38 @@ export async function openPaymentUrl(
     const u = new URL(url, window.location.href);
     const path = u.pathname.endsWith("/") ? u.pathname : `${u.pathname}/`;
     const target = `${path}${u.search}`;
-    if (router) {
-      router.push(target);
+    if (options?.router) {
+      options.router.push(target);
       return "navigated";
     }
     window.location.href = target;
     return "navigated";
   }
 
-  try {
-    const { Capacitor } = await import("@capacitor/core");
-    if (Capacitor.isNativePlatform()) {
+  if (isCapacitorNative()) {
+    try {
+      const { Browser } = await import("@capacitor/browser");
       try {
-        const { Browser } = await import("@capacitor/browser");
-        await Browser.open({ url, presentationStyle: "fullscreen" });
-        return "opened";
+        const listener = await Browser.addListener("browserFinished", () => {
+          void listener.remove();
+          options?.onBrowserClosed?.();
+        });
       } catch {
-        /* @capacitor/browser not linked — fall through */
+        /* listener optional */
       }
+      await Browser.open({ url, presentationStyle: "fullscreen" });
+      return "opened";
+    } catch (err) {
+      console.warn("Capacitor Browser.open failed — rebuild app with npx cap sync ios", err);
+      window.location.href = url;
+      return "navigated";
     }
-  } catch {
-    /* web */
+  }
+
+  // Installed PWA on iOS: full navigation so Razorpay redirect chain works
+  if (isStandalonePwa() && /iPhone|iPad|iPod/i.test(navigator.userAgent || "")) {
+    window.location.href = url;
+    return "navigated";
   }
 
   const opened = window.open(url, "_blank", "noopener,noreferrer");
@@ -192,4 +221,12 @@ export async function openPaymentUrl(
     return "navigated";
   }
   return "opened";
+}
+
+/** @deprecated Use openExternalCheckout */
+export async function openPaymentUrl(
+  url: string,
+  router?: { push: (path: string) => void },
+): Promise<"opened" | "blocked" | "navigated"> {
+  return openExternalCheckout(url, { router });
 }
