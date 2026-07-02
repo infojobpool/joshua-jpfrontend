@@ -3396,7 +3396,6 @@ export default function Dashboard() {
           ? "Your confirmation was saved. Waiting for tasker to mark complete."
           : "Your completion was saved. Waiting for task owner confirmation."
       );
-      setCompleteReviewTask(null);
       if (completeReviewAsTaskmaster) {
         const completedTask = postedTasks.find((t) => t.id === jobId);
         if (completedTask) {

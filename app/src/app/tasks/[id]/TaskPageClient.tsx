@@ -1625,7 +1625,6 @@ export default function TaskDetailPage() {
           : prev
       );
 
-      setCompleteReviewOpen(false);
       localStorage.removeItem(`task_${task.id}`);
       setTaskRefreshKey((k) => k + 1);
 
