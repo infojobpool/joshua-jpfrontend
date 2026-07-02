@@ -15,18 +15,11 @@ import {
   Briefcase,
   Store,
 } from "lucide-react"
-import {
-  differenceInCalendarDays,
-  differenceInYears,
-  format,
-  formatDistanceToNow,
-  isToday,
-  isYesterday,
-} from "date-fns"
 import { toast, Toaster } from "sonner"
 import axiosInstance from "@/lib/axiosInstance"
 import useStore from "@/lib/Zustand"
 import { cn } from "@/lib/utils"
+import { formatChatListTimestamp, parseMessageToMs } from "@/lib/chatMessageTime"
 
 // Define proper TypeScript interfaces
 interface User {
@@ -114,15 +107,7 @@ function pickAvatarGradient(seed: string): string {
 }
 
 function formatChatListTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const now = new Date();
-  if (isToday(d)) return format(d, "h:mm a");
-  if (isYesterday(d)) return "Yesterday";
-  const days = differenceInCalendarDays(now, d);
-  if (days >= 0 && days < 6) return formatDistanceToNow(d, { addSuffix: true });
-  if (differenceInYears(now, d) === 0) return format(d, "MMM d");
-  return format(d, "MMM d, yyyy");
+  return formatChatListTimestamp(iso);
 }
 
 type MyChatsInboxResult =
@@ -423,8 +408,9 @@ export default function MessagesPage() {
 
         // Sort chats by last message time (newest first)
         chatSummaries.sort((a, b) => {
-          if (!a.lastMessageTime || !b.lastMessageTime) return 0;
-          return new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime();
+          const ta = parseMessageToMs(a.lastMessageTime) ?? 0;
+          const tb = parseMessageToMs(b.lastMessageTime) ?? 0;
+          return tb - ta;
         });
 
         // Only overwrite when we have fresh data - avoid wiping hydrated/cached chats when fetch returns empty (e.g. API delay, empty userChats on nav)

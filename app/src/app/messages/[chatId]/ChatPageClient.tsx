@@ -18,6 +18,7 @@ import {
   sameChatUserId,
   isSendMessageSuccess,
   extractSentMessageId,
+  extractSentMessageTimestamp,
 } from "@/lib/chatSendResponse"
 
 /** Match auto intro copy like: interested in 'Event & Wedding Photography' */
@@ -90,7 +91,7 @@ export default function ChatPageClient() {
   const searchParams = useSearchParams()
   const { userId, user, logout } = useStore()
   const [loading, setLoading] = useState(true)
-  const [sending, setSending] = useState(false)
+  const sendInFlightRef = useRef(false)
   const [message, setMessage] = useState("")
   const [messages, setMessages] = useState<Message[]>([])
   const [chatInfo, setChatInfo] = useState<ChatInfo | null>(null)
@@ -105,9 +106,11 @@ export default function ChatPageClient() {
   /** Hysteresis: keyboard “open” vs closed so we do not thrash setState on small gap changes. */
   const keyboardLikelyOpenRef = useRef(false)
   const [keyboardCompact, setKeyboardCompact] = useState(false)
+  /** Resolved once per chat open — background polls must not re-fetch /profile. */
+  const chatMetaResolvedRef = useRef(false)
+  const fetchMessagesRef = useRef<((showLoading?: boolean) => Promise<void>) | null>(null)
   /** After initial fetch (with loading spinner), do not snap to bottom — user reads from the top. */
   const suppressNextScrollAfterLoad = useRef(false)
-  const fetchMessagesRef = useRef<((showLoading?: boolean) => Promise<void>) | null>(null)
 
 
 
@@ -137,6 +140,7 @@ export default function ChatPageClient() {
     }
 
     lastMessagesStableKeyRef.current = "";
+    chatMetaResolvedRef.current = false;
 
     // Fix user.id if it's undefined
     if (userId && (!user?.id || user.id === undefined)) {
@@ -295,7 +299,7 @@ export default function ChatPageClient() {
         response = await getMessagesOnce();
       } catch (firstErr) {
         if (!showLoading) throw firstErr;
-        await new Promise((r) => setTimeout(r, 700));
+        await new Promise((r) => setTimeout(r, 250));
         response = await getMessagesOnce();
       }
 
@@ -336,7 +340,12 @@ export default function ChatPageClient() {
       lastMessagesStableKeyRef.current = nextStableKey;
       setMessages(sorted);
 
-      // Determine other user info
+      const shouldResolveMeta = showLoading || !chatMetaResolvedRef.current;
+      if (!shouldResolveMeta) {
+        return;
+      }
+
+      // Determine other user info (once per chat — not on every 2s poll)
       if (fetchedMessages.length > 0) {
         const firstMessage = fetchedMessages[0];
         
@@ -442,6 +451,7 @@ export default function ChatPageClient() {
         });
         // Persist chat id for list page
         persistChatId(chatId)
+        chatMetaResolvedRef.current = true;
         
         console.log('✅ Final other user info:', {
           id: otherUserId,
@@ -472,6 +482,7 @@ export default function ChatPageClient() {
               });
               // Persist chat id for list page
               persistChatId(chatId)
+              chatMetaResolvedRef.current = true;
               return;
             }
           }
@@ -495,6 +506,7 @@ export default function ChatPageClient() {
             console.log('✅ Got user name from direct chat ID:', fetchedName);
             // Persist chat id for list page
             persistChatId(chatId)
+            chatMetaResolvedRef.current = true;
             return;
           }
         }
@@ -540,128 +552,103 @@ export default function ChatPageClient() {
   fetchMessagesRef.current = fetchMessages;
 
   const sendMessage = async () => {
-    if (!message.trim() || !chatInfo) return;
+    if (!message.trim() || !chatInfo || sendInFlightRef.current) return;
 
-    // Check if we have a valid receiver ID
     if (!chatInfo.otherUser.id || chatInfo.otherUser.id === "unknown" || chatInfo.otherUser.id === "undefined") {
       toast.error("Cannot send message: Other user information not available");
       return;
     }
 
+    const currentUserId = userId;
+    if (chatInfo.otherUser.id === currentUserId) {
+      toast.error("Cannot send message: Invalid recipient configuration");
+      return;
+    }
+
+    const text = message.trim();
+    const tempId = `pending-${Date.now()}`;
+    const sid = String(currentUserId ?? "");
+    const rid = String(chatInfo.otherUser.id ?? "");
+    const displayName = (user?.name || "You").trim() || "You";
+    const optimistic: Message = {
+      id: tempId,
+      messagesid: tempId,
+      description: text,
+      tstamp: new Date().toISOString(),
+      sender_id: sid,
+      receiver_id: rid,
+      sender_name: displayName,
+      receiver_name: chatInfo.otherUser.name || "Unknown User",
+      userrefid: sid,
+      username: displayName,
+      is_read: false,
+    };
+
+    setMessages((prev) => {
+      const next = [...prev, optimistic].sort(compareMessagesByTime);
+      lastMessagesStableKeyRef.current = messagesListStableKey(next);
+      return next;
+    });
+    setMessage("");
+    sendInFlightRef.current = true;
+
     try {
-      setSending(true);
-      // Use the userId from store since user.id is undefined
-      const currentUserId = userId;
-      
-      console.log('🔍 ChatInfo object:', chatInfo);
-      console.log('🔍 Sending message with data:', {
-        chat_id: chatId,
-        sender_id: currentUserId,
-        receiver_id: chatInfo.otherUser.id,
-        description: message.trim(),
-      });
-      
-      // Log the full URL being called
-      console.log('🔍 Full API URL:', `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/send-message/`);
-      if (chatInfo.otherUser.id === currentUserId) {
-        toast.error('Cannot send message: Invalid recipient configuration');
-        return;
-      }
-      
-      // Try different possible endpoints for sending messages
-      let response;
-      try {
-        // First try the original endpoint
-        response = await axiosInstance.post('/send-message/', {
+      const response = await axiosInstance.post(
+        "/send-message/",
+        {
           chat_id: chatId,
           sender_id: currentUserId,
           receiver_id: chatInfo.otherUser.id,
-          description: message.trim(),
-        });
-      } catch (error: any) {
-        if (error.response?.status === 404) {
-          try {
-            response = await axiosInstance.post('/create-message/', {
-              chat_id: chatId,
-              sender_id: currentUserId,
-              receiver_id: chatInfo.otherUser.id,
-              description: message.trim(),
-            });
-          } catch (secondError: any) {
-            if (secondError.response?.status === 404) {
-              try {
-                response = await axiosInstance.post('/add-message/', {
-                  chat_id: chatId,
-                  sender_id: currentUserId,
-                  receiver_id: chatInfo.otherUser.id,
-                  description: message.trim(),
-                });
-              } catch (thirdError: any) {
-                response = await axiosInstance.post('/message/', {
-                  chat_id: chatId,
-                  sender_id: currentUserId,
-                  receiver_id: chatInfo.otherUser.id,
-                  description: message.trim(),
-                });
-              }
-            } else {
-              throw secondError;
-            }
-          }
-        } else {
-          throw error;
-        }
-      }
+          description: text,
+        },
+        { timeout: 20_000 },
+      );
 
-      const body = response.data as LooseSendPayload
+      const body = response.data as LooseSendPayload;
       if (isSendMessageSuccess(response)) {
-        const mid = extractSentMessageId(body)
-        const sid = String(currentUserId ?? "")
-        const rid = String(chatInfo.otherUser.id ?? "")
-        const displayName = (user?.name || "You").trim() || "You"
-        const newMessage: Message = {
-          id: mid,
-          messagesid: mid,
-          description: message.trim(),
-          tstamp: new Date().toISOString(),
-          timestamp: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-          sender_id: sid,
-          receiver_id: rid,
-          sender_name: displayName,
-          receiver_name: chatInfo.otherUser.name || "Unknown User",
-          userrefid: sid,
-          username: displayName,
-          is_read: false,
-        }
+        const mid = extractSentMessageId(body);
+        const serverTs = extractSentMessageTimestamp(body) ?? optimistic.tstamp;
 
         setMessages((prev) => {
-          const next = [...prev, newMessage].sort(compareMessagesByTime);
+          const next = prev
+            .map((m) =>
+              m.id === tempId
+                ? {
+                    ...m,
+                    id: mid,
+                    messagesid: mid,
+                    tstamp: serverTs,
+                    timestamp: serverTs,
+                    created_at: serverTs,
+                  }
+                : m,
+            )
+            .sort(compareMessagesByTime);
           lastMessagesStableKeyRef.current = messagesListStableKey(next);
           return next;
         });
-        setMessage("");
 
-        // Do not await — slow mark-as-read kept the send spinner up for seconds after the message already sent.
         void axiosInstance
           .put(`/mark-as-read/${encodeURIComponent(mid)}`, undefined, {
             params: userId ? { user_id: userId } : undefined,
-            timeout: 12_000,
+            timeout: 8_000,
           })
           .catch(() => {});
       } else {
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
         const reason =
           (typeof body?.reason === "string" && body.reason) ||
           (typeof body?.message === "string" && body.message) ||
-          "Failed to send message"
-        toast.error(reason)
+          "Failed to send message";
+        toast.error(reason);
       }
-      } catch (error: any) {
-        const data = error.response?.data as { reason?: string; message?: string } | undefined;
-        toast.error(data?.reason || data?.message || "Failed to send message");
-      } finally {
-        setSending(false);
-      }
+    } catch (error: unknown) {
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      const data = (error as { response?: { data?: { reason?: string; message?: string } } })?.response?.data;
+      toast.error(data?.reason || data?.message || "Failed to send message");
+    } finally {
+      sendInFlightRef.current = false;
+    }
   };
 
   const scrollToBottom = () => {
@@ -938,20 +925,15 @@ export default function ChatPageClient() {
               autoCorrect="on"
               className="min-h-[48px] flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
               style={{ fontSize: "16px" }}
-              disabled={sending}
               enterKeyHint="send"
             />
             <button
               onClick={sendMessage}
-              disabled={!message.trim() || sending}
+              disabled={!message.trim()}
               className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md transition hover:from-indigo-600 hover:to-violet-700 active:scale-95 disabled:opacity-50 touch-manipulation"
               aria-label="Send message"
             >
-              {sending ? (
-                <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Send className="h-5 w-5" />
-              )}
+              <Send className="h-5 w-5" />
             </button>
           </div>
         </div>

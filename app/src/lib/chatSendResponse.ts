@@ -30,12 +30,29 @@ export function extractSentMessageId(data: unknown): string {
   if (data == null || typeof data !== "object") return `local-${Date.now()}`
   const root = data as LooseSendPayload
   const inner = (root.data as LooseSendPayload | undefined) ?? root
+  const msg =
+    inner.message != null && typeof inner.message === "object"
+      ? (inner.message as LooseSendPayload)
+      : inner
   const id =
+    msg.message_id ??
+    msg.messageId ??
+    msg.messagesid ??
+    msg.id ??
     inner.message_id ??
     inner.messageId ??
-    inner.id ??
-    (typeof inner.message === "object" && inner.message != null
-      ? (inner.message as LooseSendPayload).id
-      : undefined)
+    inner.id
   return id != null && String(id).trim() !== "" ? String(id) : `local-${Date.now()}`
+}
+
+export function extractSentMessageTimestamp(data: unknown): string | undefined {
+  if (data == null || typeof data !== "object") return undefined
+  const root = data as LooseSendPayload
+  const inner = (root.data as LooseSendPayload | undefined) ?? root
+  const msg =
+    inner.message != null && typeof inner.message === "object"
+      ? (inner.message as LooseSendPayload)
+      : inner
+  const raw = msg.tstamp ?? msg.timestamp ?? msg.created_at ?? inner.tstamp
+  return raw != null && String(raw).trim() !== "" ? String(raw) : undefined
 }

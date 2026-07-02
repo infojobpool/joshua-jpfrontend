@@ -17,8 +17,8 @@ export function useCompactAppFooter(): boolean {
     let isNative = false;
 
     const recompute = () => {
-      /** Align with Tailwind `md` (min-width 768px): compact only below that. */
-      const narrow = window.matchMedia("(max-width: 767px)").matches;
+      /** Align with Tailwind `lg` (min-width 1024px): compact only below that. */
+      const narrow = window.matchMedia("(max-width: 1023px)").matches;
       const standalone =
         window.matchMedia("(display-mode: standalone)").matches ||
         (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
@@ -27,7 +27,7 @@ export function useCompactAppFooter(): boolean {
 
     recompute();
 
-    const mq = window.matchMedia("(max-width: 767px)");
+    const mq = window.matchMedia("(max-width: 1023px)");
     mq.addEventListener("change", recompute);
     window.addEventListener("resize", recompute);
 

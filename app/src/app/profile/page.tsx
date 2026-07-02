@@ -718,7 +718,7 @@ export default function ProfilePage() {
         onSignOut={handleSignOut}
         minimal
       />
-      <main className="flex-1 w-full min-w-0 max-w-6xl mx-auto box-border overflow-x-hidden py-6 md:py-10 px-4 md:px-6 pb-28 md:pb-10">
+      <main className="flex-1 w-full min-w-0 max-w-6xl mx-auto box-border overflow-x-hidden py-6 md:py-10 px-4 md:px-6 pb-28 lg:pb-10">
         {isListingsTab && isLoading ? (
           <p className="mb-3 text-center text-xs font-medium text-slate-500" aria-live="polite">
             Updating profile in the background…

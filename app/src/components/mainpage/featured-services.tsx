@@ -158,7 +158,7 @@ export function FeaturedServices() {
   useEffect(() => {
     if (typeof window === "undefined") return
 
-    const isDesktop = window.matchMedia("(min-width: 768px)").matches
+    const isDesktop = window.matchMedia("(min-width: 1024px)").matches
     if (!isDesktop) return
 
     if (isHovered) return

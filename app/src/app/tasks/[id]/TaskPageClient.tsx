@@ -2063,9 +2063,9 @@ export default function TaskDetailPage() {
       </div>
 
       <main className="container mx-auto max-w-6xl px-4 md:px-6 py-4 md:py-6 md:min-h-[60vh]">
-        <div className="grid gap-4 lg:grid-cols-3 lg:min-h-[400px]">
+        <div className="grid gap-4 md:grid-cols-3 md:min-h-[400px]">
           {/* Main Content - Left Column */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="md:col-span-2 space-y-4">
             <TaskInfo
               task={fromBid ? { ...task, status: "requested" } : task}
               posterProfileLoading={posterProfileLoading}

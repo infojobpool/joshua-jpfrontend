@@ -114,10 +114,10 @@ export function MobileBottomNav() {
 
   return (
     <div
-      className="fixed left-0 right-0 bottom-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-gray-200/80 dark:border-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.2)] z-50 md:hidden mobile-nav-appear"
+      className="fixed left-0 right-0 bottom-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-gray-200/80 dark:border-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.2)] z-50 lg:hidden mobile-nav-appear"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="flex items-center justify-between px-2 py-1.5 max-w-lg mx-auto gap-0.5">
+      <div className="flex items-center justify-between px-3 py-1.5 max-w-2xl mx-auto gap-1">
         {navItems.map((item) => {
           if (item.type === "post") {
             return (

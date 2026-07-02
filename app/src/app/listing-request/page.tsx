@@ -245,7 +245,7 @@ export default function ListingRequestPage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50/80">
       <Toaster />
       <Header user={headerUser} onSignOut={handleSignOut} minimal />
-      <div className="container max-w-xl mx-auto px-4 py-6 pb-28 md:pb-12">
+      <div className="container max-w-xl mx-auto px-4 py-6 pb-28 lg:pb-12">
         <div className="mb-6">
           <Link
             href={providerId ? `/profilepage/${providerId}` : "/dashboard"}

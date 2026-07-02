@@ -600,7 +600,7 @@ export default function VerificationFlow() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4 pb-28 md:pb-8">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4 pb-28 lg:pb-8">
       <Card className={`w-full ${currentStep === 3 ? "max-w-2xl" : "max-w-4xl"}`}>
         <CardHeader>
           <CardTitle className="text-2xl font-bold">Account Verification</CardTitle>

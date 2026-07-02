@@ -11,7 +11,7 @@ export const useAppFeatureGuideStore = create<AppFeatureGuideStore>((set) => ({
   open: false,
   openGuide: () => {
     if (typeof window !== "undefined") {
-      const onDesktop = window.matchMedia("(min-width: 768px)").matches;
+      const onDesktop = window.matchMedia("(min-width: 1024px)").matches;
       const path = (window.location.pathname || "/").replace(/\/$/, "") || "/";
       // Desktop tour anchors live on Dashboard (header hidden on most app routes).
       if (onDesktop && path !== "/dashboard") {

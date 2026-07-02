@@ -20,6 +20,7 @@ import {
 } from "@/lib/homeJobsCache"
 import { warmTaskDetailNavigation } from "@/lib/taskNavCache"
 import { toast } from "sonner"
+import { isCompactLayoutWidth } from "@/lib/breakpoints"
 import {
   categorySlugForId,
   resolveCategoryUrlParam,
@@ -201,11 +202,6 @@ function TaskCardWithPrefetch({
   );
 }
 
-// Use native <select> on mobile to avoid Radix Portal crashes in WebView/PWA (see Radix #2673, #1681)
-const isMobileView = () => typeof window !== "undefined" && window.innerWidth < 768
-
-// Native <select> works reliably on mobile WebViews; Radix Select uses Portals which can crash
-const isMobileViewport = () => typeof window !== "undefined" && window.innerWidth < 768
 
 function BrowseContent() {
   const router = useRouter()
@@ -216,7 +212,8 @@ function BrowseContent() {
   const [searchTerm, setSearchTerm] = useState("")
   const [category, setCategory] = useState("all")
   // Use native select on mobile from first paint to avoid Radix Portal crash (initial state, not useEffect)
-  const useNativeSelect = isMobileViewport()
+  const useNativeSelect =
+    typeof window !== "undefined" && isCompactLayoutWidth(window.innerWidth)
 
   useEffect(() => {
     try {
@@ -612,9 +609,9 @@ function BrowseContent() {
           <p className="text-muted-foreground">Find tasks that match your skills and availability</p>
         </div>
 
-        <div className="grid min-w-0 gap-6 md:grid-cols-4">
-          {/* Sidebar filters: desktop only. On mobile the same controls render once below via "Filters" toggle (avoids duplicate panels). */}
-          <div className="hidden md:block md:col-span-1 space-y-6">
+        <div className="grid min-w-0 gap-6 lg:grid-cols-4">
+          {/* Sidebar filters: desktop only. On tablet/phone the same controls render via "Filters" toggle. */}
+          <div className="hidden lg:block lg:col-span-1 space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Filters</CardTitle>
@@ -724,7 +721,7 @@ function BrowseContent() {
             </Card>
           </div>
 
-          <div className="min-w-0 space-y-6 md:col-span-3">
+          <div className="min-w-0 space-y-6 lg:col-span-3">
             <div className="flex min-w-0 flex-col gap-4 sm:flex-row">
               <form onSubmit={handleSearch} className="flex min-w-0 flex-1 gap-2">
                 <div className="relative min-w-0 flex-1">
@@ -739,14 +736,14 @@ function BrowseContent() {
                 </div>
                 <Button type="submit">Search</Button>
               </form>
-              <Button variant="outline" className="md:hidden" onClick={() => setShowFilters(!showFilters)}>
+              <Button variant="outline" className="lg:hidden" onClick={() => setShowFilters(!showFilters)}>
                 <Filter className="mr-2 h-4 w-4" />
                 Filters
               </Button>
             </div>
 
             {showFilters && (
-              <Card className="md:hidden">
+              <Card className="lg:hidden">
                 <CardHeader>
                   <CardTitle className="text-lg">Filters</CardTitle>
                 </CardHeader>

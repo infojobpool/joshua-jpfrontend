@@ -23,7 +23,7 @@ export default function Home() {
   return (
     <div className="flex min-w-0 w-full flex-col">
       {/* Mobile landing (default on small screens) */}
-      <div className="md:hidden min-w-0 w-full">
+      <div className="lg:hidden min-w-0 w-full">
         <MobileHeroSection />
         <TrustBadgesSection />
         <MobileWelcomeBonus />
@@ -35,7 +35,7 @@ export default function Home() {
       </div>
 
       {/* Desktop landing (md and up) */}
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <HeroSection />
         <RecentAvailableTasks variant="desktop" />
         <HomePublishedOfferings variant="desktop" />

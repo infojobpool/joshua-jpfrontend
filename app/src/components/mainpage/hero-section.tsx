@@ -28,7 +28,7 @@ export function HeroSection() {
             Welcome back, {firstName}!
           </p>
         ) : null}
-        <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.28fr)] xl:gap-14">
+        <div className="grid items-center gap-8 md:grid-cols-2 md:gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.28fr)] xl:gap-14">
           {/* Left: Post your first task CTA */}
           <motion.div
             className="flex flex-col justify-center max-w-xl"
@@ -68,7 +68,7 @@ export function HeroSection() {
 
           {/* Right: Hero image with overlay cards */}
           <motion.div
-            className="relative hidden lg:block w-full min-w-0"
+            className="relative hidden md:block w-full min-w-0"
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}

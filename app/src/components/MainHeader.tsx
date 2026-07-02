@@ -77,33 +77,33 @@ const MainHeader: React.FC = () => {
     <header
       className={cn(
         "shrink-0 bg-white/95 backdrop-blur-sm sticky top-0 z-50",
-        isMarketingHome ? "max-md:border-b-0 max-md:shadow-none" : "border-b border-gray-100",
+        isMarketingHome ? "max-lg:border-b-0 max-lg:shadow-none" : "border-b border-gray-100",
       )}
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div
           className={cn(
-            "flex items-center justify-between gap-3 md:min-h-0 md:h-[4.25rem] md:py-2 lg:h-[4.5rem] lg:py-2.5",
+            "flex items-center justify-between gap-3 lg:min-h-0 lg:h-[4.25rem] lg:py-2 xl:h-[4.5rem] xl:py-2.5",
             isMarketingHome
               ? isAuthenticated
-                ? "max-md:min-h-0 max-md:py-1 max-md:pb-1"
-                : "max-md:min-h-0 max-md:py-0.5 max-md:pb-1"
+                ? "max-lg:min-h-0 max-lg:py-1 max-lg:pb-1"
+                : "max-lg:min-h-0 max-lg:py-0.5 max-lg:pb-1"
               : isDashboard
-                ? "max-md:min-h-0 max-md:py-1 max-md:pb-1"
-                : "min-h-[5.75rem] py-2.5 md:min-h-0 md:py-2",
+                ? "max-lg:min-h-0 max-lg:py-1 max-lg:pb-1"
+                : "min-h-[5.75rem] py-2.5 lg:min-h-0 lg:py-2",
           )}
         >
           {/* Logo — mobile: full JOB POOL lockup PNG; desktop: wide mark */}
           <Link
             href="/"
             data-tour="tour-header-home"
-            className="flex min-w-0 flex-1 items-center gap-2 group flex-shrink-0 md:flex-initial"
+            className="flex min-w-0 flex-1 items-center gap-2 group flex-shrink-0 lg:flex-initial"
           >
             <img
               src="/images/jobpool-logo-header.png"
               alt="JobPool"
               className={cn(
-                "w-auto max-w-[min(340px,82vw)] object-contain object-left md:hidden",
+                "w-auto max-w-[min(340px,82vw)] object-contain object-left lg:hidden",
                 isMarketingHome
                   ? isAuthenticated
                     ? "h-10 sm:h-11"
@@ -116,12 +116,12 @@ const MainHeader: React.FC = () => {
             <img
               src="/images/new_logo_22-removebg-preview.png"
               alt="JobPool"
-              className="hidden md:block h-9 md:h-10 lg:h-11 w-auto object-contain drop-shadow-sm transition-all duration-300 group-hover:drop-shadow-md group-hover:opacity-90"
+              className="hidden lg:block h-9 lg:h-10 xl:h-11 w-auto object-contain drop-shadow-sm transition-all duration-300 group-hover:drop-shadow-md group-hover:opacity-90"
             />
           </Link>
 
           {/* Desktop: marketing links only (Messages lives in the action cluster) */}
-          <nav className="hidden min-w-0 md:flex flex-1 items-center justify-center gap-x-5 gap-y-1 px-4 text-sm font-medium text-slate-600 lg:gap-x-7">
+          <nav className="hidden min-w-0 lg:flex flex-1 items-center justify-center gap-x-5 gap-y-1 px-4 text-sm font-medium text-slate-600 xl:gap-x-7">
             <Link href="/how-it-works" className="shrink-0 whitespace-nowrap transition-colors hover:text-blue-600">
               How It Works
             </Link>
@@ -137,7 +137,7 @@ const MainHeader: React.FC = () => {
           </nav>
 
           {/* Desktop auth: single primary CTA + compact icon actions (name shown on home hero, not repeated here) */}
-          <div className="hidden shrink-0 md:flex items-center gap-2 lg:gap-2.5">
+          <div className="hidden shrink-0 lg:flex items-center gap-2 xl:gap-2.5">
             {isAuthenticated ? (
               <>
                 <Link href="/post-task" data-tour="tour-header-post-task">
@@ -180,7 +180,7 @@ const MainHeader: React.FC = () => {
           </div>
 
           {/* Mobile: notifications + menu */}
-          <div className="md:hidden flex shrink-0 items-center gap-2">
+          <div className="lg:hidden flex shrink-0 items-center gap-2">
             {isAuthenticated ? (
               <Link
                 href="/notifications"
@@ -214,7 +214,7 @@ const MainHeader: React.FC = () => {
 
         {/* Mobile Navigation Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-100 py-4 transition-all duration-200 ease-in-out">
+          <div className="lg:hidden border-t border-gray-100 py-4 transition-all duration-200 ease-in-out">
             <nav className="flex flex-col space-y-4">
               <Link 
                 href="/how-it-works" 

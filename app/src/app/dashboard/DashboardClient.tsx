@@ -53,6 +53,7 @@ import { fetchRecentOpenJobsQuick } from "@/lib/homeJobsCache";
 import { isCoercedTruthy, isJobCompletedFlag, isOpenForAvailableList } from "@/lib/jobStatusNormalize";
 import { jobIdVariants } from "@/lib/jobIdVariants";
 import useStore from "@/lib/Zustand";
+import { DESKTOP_MIN_WIDTH } from "@/lib/breakpoints";
 import { formatDateWithTime } from "@/lib/utils";
 import { dueDisplayForListCard } from "@/lib/taskDueDisplay";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
@@ -556,8 +557,8 @@ export default function Dashboard() {
   }, [userId, user]);
   useEffect(() => {
     setMounted(true);
-    setIsMobile(typeof window !== "undefined" && window.innerWidth < 768);
-    const onResize = () => setIsMobile(window.innerWidth < 768);
+    setIsMobile(typeof window !== "undefined" && window.innerWidth < DESKTOP_MIN_WIDTH);
+    const onResize = () => setIsMobile(window.innerWidth < DESKTOP_MIN_WIDTH);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -3999,7 +4000,7 @@ export default function Dashboard() {
               <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">Manage your tasks and bids</p>
             </div>
           )}
-          <div className="hidden md:flex items-center gap-4 animate-slide-in-right">
+          <div className="hidden lg:flex items-center gap-4 animate-slide-in-right">
             <Link
               href="/"
               data-tour="tour-desktop-home"
@@ -4162,7 +4163,7 @@ export default function Dashboard() {
 
         {/* Compact mobile header (disabled to avoid duplicate profile chip) */}
         {false && (
-          <div className="md:hidden -mt-1 mb-3 flex items-center justify-end">
+          <div className="lg:hidden -mt-1 mb-3 flex items-center justify-end">
             <div className="relative">
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
@@ -4274,7 +4275,7 @@ export default function Dashboard() {
 
         {/* Premium Post Task Button */}
         {/* Hide big CTA bar on small screens to avoid duplicate name/header block */}
-        <div className="hidden md:flex justify-start mb-8 animate-fade-in-up">
+        <div className="hidden lg:flex justify-start mb-8 animate-fade-in-up">
           <div className="flex items-center justify-between w-full gap-4">
             <button
               onClick={() => setShowNotifications((s) => !s)}
@@ -4655,7 +4656,7 @@ export default function Dashboard() {
                 )}
               </div>
               {!isMobile && (
-                <div className="ml-auto hidden md:flex items-center gap-2 pr-1">
+                <div className="ml-auto hidden lg:flex items-center gap-2 pr-1">
                   <span className="text-xs text-gray-500">Counts:</span>
                   <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">In Progress {myTasksSummary.inProgress}</span>
                   <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-700">Open {myTasksSummary.open}</span>

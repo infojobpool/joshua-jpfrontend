@@ -141,7 +141,7 @@ export function Features() {
   return (
     <section className="bg-slate-50 py-8 md:py-10" ref={containerRef}>
       <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-        <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-10">
+        <div className="grid items-center gap-8 md:grid-cols-2 md:gap-10">
           <div className="space-y-6 md:space-y-7">
             <motion.div
               initial={{ opacity: 0, y: -20 }}

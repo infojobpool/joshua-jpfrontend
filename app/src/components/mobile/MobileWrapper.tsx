@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { DESKTOP_MIN_WIDTH } from "@/lib/breakpoints";
 
 interface MobileWrapperProps {
   children: React.ReactNode;
@@ -13,7 +14,7 @@ export function MobileWrapper({
   children, 
   mobileComponent, 
   desktopComponent, 
-  breakpoint = 768 
+  breakpoint = DESKTOP_MIN_WIDTH
 }: MobileWrapperProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
@@ -46,7 +47,7 @@ export function MobileWrapper({
 }
 
 // Hook for mobile detection
-export function useIsMobile(breakpoint: number = 768) {
+export function useIsMobile(breakpoint: number = DESKTOP_MIN_WIDTH) {
   const [isMobile, setIsMobile] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
 
