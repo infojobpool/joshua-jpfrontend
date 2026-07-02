@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useLayoutEffect, useRef, useMemo } from "react"
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, Fragment } from "react"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -10,9 +10,11 @@ import axiosInstance from "@/lib/axiosInstance"
 import useStore from "@/lib/Zustand"
 import {
   compareMessagesByTime,
-  formatChatTimestamp,
+  formatChatBubbleTime,
+  formatChatDateSeparator,
   getMessageTimeRaw,
   parseMessageToMs,
+  sameCalendarDayMs,
 } from "@/lib/chatMessageTime"
 import {
   sameChatUserId,
@@ -835,6 +837,11 @@ export default function ChatPageClient() {
           {messages.length > 0 && (
             messages.map((msg, index) => {
             const currentUserId = userId;
+            const ms = parseMessageToMs(getMessageTimeRaw(msg));
+            const prevMs =
+              index > 0 ? parseMessageToMs(getMessageTimeRaw(messages[index - 1])) : null;
+            const showDateSeparator =
+              ms != null && (prevMs == null || !sameCalendarDayMs(ms, prevMs));
             
             // Handle different message formats
             let isOwnMessage = false;
@@ -849,8 +856,15 @@ export default function ChatPageClient() {
             }
             
             return (
+              <Fragment key={msg.id || msg.messagesid || `msg-${index}`}>
+                {showDateSeparator && ms != null ? (
+                  <div className="flex justify-center py-2 sm:py-2.5">
+                    <span className="rounded-full bg-white/95 px-3 py-1 text-[11px] font-medium text-slate-500 shadow-sm ring-1 ring-slate-200/80">
+                      {formatChatDateSeparator(ms)}
+                    </span>
+                  </div>
+                ) : null}
               <div
-                key={msg.id || msg.messagesid || `msg-${index}`}
                 className={`flex ${isOwnMessage ? "justify-end" : "justify-start"} items-end gap-1.5 sm:gap-2`}
               >
                 {!isOwnMessage && (
@@ -869,13 +883,11 @@ export default function ChatPageClient() {
                     <p className="text-[15px] leading-snug">{msg.description}</p>
                   </div>
                   <p className={`mt-0.5 text-[10px] text-slate-400 sm:text-[11px] ${isOwnMessage ? "mr-0.5 text-right" : "ml-0.5"}`}>
-                    {(() => {
-                      const ms = parseMessageToMs(getMessageTimeRaw(msg));
-                      return ms != null ? formatChatTimestamp(ms) : "—";
-                    })()}
+                    {ms != null ? formatChatBubbleTime(ms) : "—"}
                   </p>
                 </div>
               </div>
+              </Fragment>
             );
           })
           )}

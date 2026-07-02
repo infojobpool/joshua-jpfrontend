@@ -19,7 +19,7 @@ import { toast, Toaster } from "sonner"
 import axiosInstance from "@/lib/axiosInstance"
 import useStore from "@/lib/Zustand"
 import { cn } from "@/lib/utils"
-import { formatChatListTimestamp, parseMessageToMs } from "@/lib/chatMessageTime"
+import { formatChatListTimestamp, parseMessageToMs, compareMessagesByTime, extractMessagesFromGetMessagesResponse, getMessageTimeRaw } from "@/lib/chatMessageTime"
 
 // Define proper TypeScript interfaces
 interface User {
@@ -219,8 +219,8 @@ export default function MessagesPage() {
           const inbox = await fetchInboxFromMyChats(uid)
           if (inbox.ok) {
             const sorted = [...inbox.chats].sort((a, b) => {
-              const ta = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0
-              const tb = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0
+              const ta = parseMessageToMs(a.lastMessageTime) ?? 0
+              const tb = parseMessageToMs(b.lastMessageTime) ?? 0
               return tb - ta
             })
             setChats(sorted)
@@ -345,17 +345,28 @@ export default function MessagesPage() {
             const result = results[j];
             try {
               if (result.status === "fulfilled" && result.value?.data?.status_code === 200 && result.value?.data?.data) {
-                const messages = result.value.data.data.messages || [];
+                const messages = extractMessagesFromGetMessagesResponse(result.value.data.data);
                 if (messages.length > 0) {
-                  const lastMessage = messages[messages.length - 1];
-                  const otherUserId = lastMessage.sender_id === userId ? lastMessage.receiver_id : lastMessage.sender_id;
-                  const otherUserName = lastMessage.sender_id === userId ? lastMessage.receiver_name : lastMessage.sender_name;
+                  const sorted = [...messages].sort(compareMessagesByTime);
+                  const lastMessage = sorted[sorted.length - 1];
+                  const otherUserId =
+                    lastMessage.userrefid && String(lastMessage.userrefid) !== uid
+                      ? String(lastMessage.userrefid)
+                      : lastMessage.sender_id === userId
+                        ? lastMessage.receiver_id
+                        : lastMessage.sender_id;
+                  const otherUserName =
+                    lastMessage.userrefid && String(lastMessage.userrefid) !== uid
+                      ? lastMessage.username
+                      : lastMessage.sender_id === userId
+                        ? lastMessage.receiver_name
+                        : lastMessage.sender_name;
                   chatSummaries.push({
                     chatid: chatId,
-                    otherUserId,
-                    otherUser: otherUserName,
-                    lastMessage: lastMessage.description,
-                    lastMessageTime: lastMessage.tstamp,
+                    otherUserId: String(otherUserId ?? ""),
+                    otherUser: otherUserName || taskChatOtherUser[chatId] || "User",
+                    lastMessage: lastMessage.description || "",
+                    lastMessageTime: String(getMessageTimeRaw(lastMessage) ?? ""),
                     taskTitle: taskChatTaskTitle[chatId] || undefined,
                     unreadCount: 0,
                   });
