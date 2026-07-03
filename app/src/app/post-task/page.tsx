@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Toaster } from "../../components/ui/sonner";
-import { toast } from "sonner";
+import { invalidateHomeJobsCache } from "@/lib/homeJobsCache";
 import { ChevronLeft, ChevronRight, IndianRupee, Loader, Pencil, Upload, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import axiosInstance from "../../lib/axiosInstance";
@@ -636,7 +636,14 @@ export default function PostTaskPage() {
           /* ignore */
         }
         toast.success("Your task has been posted!");
-        router.push("/dashboard");
+        invalidateHomeJobsCache();
+        try {
+          localStorage.removeItem("availableTasks");
+          localStorage.removeItem("availableTasksTimestamp");
+        } catch {
+          /* ignore */
+        }
+        router.push("/dashboard?tab=my-tasks");
         return;
       }
       if (response.data.status_code === 403) {

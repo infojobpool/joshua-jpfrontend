@@ -22,6 +22,10 @@ import { warmTaskDetailNavigation } from "@/lib/taskNavCache"
 import { toast } from "sonner"
 import { isCompactLayoutWidth } from "@/lib/breakpoints"
 import {
+  TASK_PRICE_FILTER_DEFAULT,
+  TASK_PRICE_FILTER_MAX,
+} from "@/lib/taskPriceFilter"
+import {
   categorySlugForId,
   resolveCategoryUrlParam,
 } from "@/lib/categorySlug"
@@ -238,7 +242,7 @@ function BrowseContent() {
       router.replace(`${pathname}?${params.toString()}`, { scroll: false })
     }
   }, [searchParams, categories, pathname, router])
-  const [priceRange, setPriceRange] = useState([0, 500])
+  const [priceRange, setPriceRange] = useState<[number, number]>([...TASK_PRICE_FILTER_DEFAULT])
   const [location, setLocation] = useState("")
   const [showFilters, setShowFilters] = useState(false)
   const [tasks, setTasks] = useState<Task[]>([])
@@ -653,15 +657,15 @@ function BrowseContent() {
                   <label className="text-sm font-medium">Price Range</label>
                   <div className="pt-4">
                     <Slider
-                      defaultValue={[0, 500]}
-                      max={500}
-                      step={10}
+                      defaultValue={[...TASK_PRICE_FILTER_DEFAULT]}
+                      max={TASK_PRICE_FILTER_MAX}
+                      step={500}
                       value={priceRange}
                       onValueChange={setPriceRange}
                     />
                     <div className="flex justify-between mt-2 text-sm text-muted-foreground">
-                      <span>₹{priceRange[0]}</span>
-                      <span>₹{priceRange[1]}</span>
+                      <span>₹{priceRange[0].toLocaleString("en-IN")}</span>
+                      <span>₹{priceRange[1].toLocaleString("en-IN")}</span>
                     </div>
                   </div>
                 </div>
@@ -783,15 +787,15 @@ function BrowseContent() {
                     <label className="text-sm font-medium">Price Range</label>
                     <div className="pt-4">
                       <Slider
-                        defaultValue={[0, 500]}
-                        max={500}
-                        step={10}
+                        defaultValue={[...TASK_PRICE_FILTER_DEFAULT]}
+                        max={TASK_PRICE_FILTER_MAX}
+                        step={500}
                         value={priceRange}
                         onValueChange={setPriceRange}
                       />
                       <div className="flex justify-between mt-2 text-sm text-muted-foreground">
-                        <span>₹{priceRange[0]}</span>
-                        <span>₹{priceRange[1]}</span>
+                        <span>₹{priceRange[0].toLocaleString("en-IN")}</span>
+                        <span>₹{priceRange[1].toLocaleString("en-IN")}</span>
                       </div>
                     </div>
                   </div>
@@ -891,7 +895,7 @@ function BrowseContent() {
                         onClick={() => {
                           setSearchTerm("")
                           setCategory("all")
-                          setPriceRange([0, 500])
+                          setPriceRange([...TASK_PRICE_FILTER_DEFAULT])
                           setLocation("")
                         }}
                       >

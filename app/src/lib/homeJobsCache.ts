@@ -208,8 +208,8 @@ function resolveHomeCardImageUrl(raw: string | null): string | null {
 }
 
 /**
- * Open listing available to taskers. Per FRONTEND_API_BROWSE.md, boolean `status === false`
- * means open; `true` means taken/in progress. Also accepts common string statuses.
+ * Open listing available to taskers. Backend: boolean `status === false` means open.
+ * Also accepts string/number shapes from slim APIs.
  */
 export function isOpenListingJob(job: RawJob): boolean {
   const j = job as Record<string, unknown>;
@@ -218,12 +218,13 @@ export function isOpenListingJob(job: RawJob): boolean {
 
   const st = job.status;
 
-  if (st === false) return true;
-
-  if (st === true) return false;
+  if (st === false || st === 0) return true;
+  if (st === true || st === 1) return false;
 
   if (typeof st === "string") {
     const s = st.toLowerCase().trim();
+    if (s === "false" || s === "0" || s === "no") return true;
+    if (s === "true" || s === "1" || s === "yes") return false;
     if (
       /cancel|completed|closed|assigned|in.?progress|paid|working|accepted/.test(s)
     ) {

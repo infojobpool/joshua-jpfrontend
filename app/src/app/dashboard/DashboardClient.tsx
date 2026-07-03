@@ -50,6 +50,11 @@ import {
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import { fetchRecentOpenJobsQuick } from "@/lib/homeJobsCache";
+import {
+  TASK_PRICE_FILTER_DEFAULT,
+  TASK_PRICE_FILTER_MAX,
+  isDefaultTaskPriceFilter,
+} from "@/lib/taskPriceFilter";
 import { isCoercedTruthy, isJobCompletedFlag, isOpenForAvailableList } from "@/lib/jobStatusNormalize";
 import { jobIdVariants } from "@/lib/jobIdVariants";
 import useStore from "@/lib/Zustand";
@@ -690,7 +695,7 @@ export default function Dashboard() {
   const [categoriesLoading, setCategoriesLoading] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [category, setCategory] = useState("all");
-  const [priceRange, setPriceRange] = useState([0, 50000]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([...TASK_PRICE_FILTER_DEFAULT]);
   const [location, setLocation] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   /** Mobile Available tab: show keyword search field (header uses icon only). */
@@ -715,7 +720,7 @@ export default function Dashboard() {
   const availableFiltersActive = useMemo(() => {
     if (searchTerm.trim() !== "") return true;
     if (category !== "all") return true;
-    if (priceRange[0] !== 0 || priceRange[1] !== 50000) return true;
+    if (!isDefaultTaskPriceFilter(priceRange)) return true;
     if (location.trim() !== "") return true;
     if (nearMeMode) return true;
     if (!onlyOpen) return true;
@@ -726,7 +731,7 @@ export default function Dashboard() {
   const clearAvailableFilters = useCallback(() => {
     setSearchTerm("");
     setCategory("all");
-    setPriceRange([0, 50000]);
+    setPriceRange([...TASK_PRICE_FILTER_DEFAULT]);
     setLocation("");
     setNearMeMode(false);
     setNearMeError(null);
@@ -5013,8 +5018,8 @@ export default function Dashboard() {
                       </label>
                         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-all duration-200">
                           <Slider
-                            defaultValue={[0, 50000]}
-                            max={50000}
+                            defaultValue={[...TASK_PRICE_FILTER_DEFAULT]}
+                            max={TASK_PRICE_FILTER_MAX}
                             step={10}
                             value={priceRange}
                             onValueChange={setPriceRange}
@@ -5183,7 +5188,7 @@ export default function Dashboard() {
                               Price range
                             </label>
                             <div className="rounded-lg border bg-gray-50 px-2 py-3 dark:border-slate-600 dark:bg-slate-900/80">
-                              <Slider value={priceRange} onValueChange={setPriceRange} max={50000} step={10} />
+                              <Slider value={priceRange} onValueChange={setPriceRange} max={TASK_PRICE_FILTER_MAX} step={500} />
                               <div className="mt-2 flex justify-between text-sm text-gray-700 dark:text-slate-300">
                                 <span>₹{priceRange[0].toLocaleString()}</span>
                                 <span>₹{priceRange[1].toLocaleString()}</span>

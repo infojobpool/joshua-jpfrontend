@@ -327,7 +327,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     if (loading) {
       return (
         <motion.div
-          className="md:hidden px-4 py-4 bg-white"
+          className="lg:hidden px-4 py-4 bg-white"
           initial={{ opacity: 0.55 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.22, ease: "easeOut" }}
@@ -347,7 +347,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
 
     if (tasks.length === 0) {
       return (
-        <div className="md:hidden px-4 py-6 bg-white">
+        <div className="lg:hidden px-4 py-6 bg-white">
           <h3 className="font-home-section-title border-l-[3px] border-blue-500 pl-2.5 text-lg text-slate-900">
             Recent available tasks
           </h3>
@@ -402,7 +402,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
 
     return (
       <motion.div
-        className="md:hidden w-full min-w-0 max-w-full px-4 py-4 bg-white"
+        className="lg:hidden w-full min-w-0 max-w-full px-4 py-4 bg-white"
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.22, ease: "easeOut" }}
@@ -486,7 +486,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
   if (loading) {
     return (
       <motion.section
-        className="hidden bg-gray-50 py-8 md:block md:py-10 overflow-hidden"
+        className="hidden bg-gray-50 py-8 lg:block lg:py-10 overflow-hidden"
         initial={{ opacity: 0.55 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.22, ease: "easeOut" }}
@@ -510,7 +510,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
 
   if (tasks.length === 0) {
     return (
-      <section className="hidden bg-gray-50 py-8 md:block md:py-10 overflow-hidden">
+      <section className="hidden bg-gray-50 py-8 lg:block lg:py-10 overflow-hidden">
         <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
           <motion.div
             className="mx-auto mb-6 max-w-7xl text-left"
@@ -574,7 +574,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
 
   return (
     <motion.section
-      className="hidden bg-gray-50 py-8 md:block md:py-10 overflow-hidden"
+      className="hidden bg-gray-50 py-8 lg:block lg:py-10 overflow-hidden"
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.22, ease: "easeOut" }}
