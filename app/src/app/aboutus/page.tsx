@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Button } from "../../components/ui/button";
+import { COMPANY_HEAD_OFFICE_ADDRESS } from "@/lib/companyInfo";
 
 export default function AboutUs() {
   const containerVariants = {
@@ -165,7 +166,7 @@ export default function AboutUs() {
           A product by Klughire®
         </p>
         <p className="mt-3 text-xs text-slate-500">
-          8-3-169/60/438, Indira Nagar Colony Road, Yousufguda, Hyderabad, Telangana, 500045, India
+          {COMPANY_HEAD_OFFICE_ADDRESS}
         </p>
       </footer>
     </div>

@@ -18,7 +18,7 @@ import {
 const APP_STORE_URL = "https://apps.apple.com/in/app/jobpool-official/id6757442431";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=in.jobpool.www.twa&hl=en_IN";
 
-const COMPANY_ADDRESS = "8-3-169/60/438, Indira Nagar Colony Road, Yousufguda, Hyderabad, Telangana, 500045, India";
+import { COMPANY_HEAD_OFFICE_ADDRESS } from "@/lib/companyInfo";
 
 const socialLinks = [
   { name: "Facebook", href: "https://www.facebook.com/people/Job-Pool-India/100095047053131/", icon: Facebook },
@@ -149,7 +149,7 @@ const Footer: React.FC = () => {
                 Company
               </h3>
               <p className="mt-3 text-sm text-slate-400">
-                {COMPANY_ADDRESS}
+                {COMPANY_HEAD_OFFICE_ADDRESS}
               </p>
               <ul className="mt-4 space-y-3">
                 <li>

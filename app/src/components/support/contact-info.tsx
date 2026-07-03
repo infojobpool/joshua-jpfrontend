@@ -1,6 +1,7 @@
 "use client"
 
 import { Mail, MapPin, Clock } from "lucide-react"
+import { COMPANY_HEAD_OFFICE_ADDRESS } from "@/lib/companyInfo"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 
@@ -50,11 +51,9 @@ export function ContactInfo() {
           <div className="flex items-start space-x-3">
             <MapPin className="h-5 w-5 text-blue-600 mt-0.5" />
             <div>
-              <h3 className="font-medium">Address</h3>
+              <h3 className="font-medium">Head Office</h3>
               <p className="text-sm text-muted-foreground">
-                8-3-169/60/438, Indira Nagar Colony Road,<br />
-                Yousufguda, Hyderabad, Telangana, 500045<br />
-                India
+                {COMPANY_HEAD_OFFICE_ADDRESS}
               </p>
             </div>
           </div>

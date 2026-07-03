@@ -147,6 +147,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Facebook, Twitter, Instagram, Linkedin } from "lucide-react";
 import { analytics } from "@/lib/analytics";
+import { COMPANY_HEAD_OFFICE_ADDRESS } from "@/lib/companyInfo";
 
 const PLAY_STORE_URL =
   "https://play.google.com/store/apps/details?id=in.jobpool.www.twa&hl=en_IN";
@@ -312,7 +313,7 @@ export function Footer() {
           <div>
             <p className="text-white text-sm font-semibold">© 2023 Klughire Pvt Limited. All rights reserved.</p>
             <p className="mt-1.5 text-sm font-semibold text-blue-400">A product by Klughire®</p>
-            <p className="mt-2 text-xs text-slate-500">8-3-169/60/438, Indira Nagar Colony Road, Yousufguda, Hyderabad, Telangana, 500045, India</p>
+            <p className="mt-2 text-xs text-slate-500">{COMPANY_HEAD_OFFICE_ADDRESS}</p>
           </div>
           <div className="flex gap-4 mt-4 md:mt-0">
             <Link href="/privacy-policy" className="text-slate-400 hover:text-white text-sm">
