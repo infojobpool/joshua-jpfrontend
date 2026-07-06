@@ -24,10 +24,35 @@ export function isJobCompletedFlag(job: Record<string, unknown>): boolean {
 /** True if job should be excluded from “open / available” lists. */
 export function isJobDeletedOrCancelled(job: Record<string, unknown>): boolean {
   if (isCoercedTruthy(job.deletion_status)) return true;
+  if (isCoercedTruthy(job.deleted)) return true;
   if (isCoercedTruthy(job.cancel_status)) return true;
   if (isCoercedTruthy(job.cancelled)) return true;
-  const st = String(job.status ?? "").toLowerCase();
-  if (st.includes("deleted") || st.includes("cancel")) return true;
+  if (isCoercedTruthy(job.is_cancelled)) return true;
+  if (isCoercedTruthy(job.is_canceled)) return true;
+
+  const cancelledBy = job.cancelled_by_role ?? job.cancelled_by;
+  if (cancelledBy != null && String(cancelledBy).trim() !== "") return true;
+
+  const reason = job.cancellation_reason ?? job.cancellationReason;
+  if (reason != null && String(reason).trim() !== "") return true;
+
+  const cancelledAt = job.cancelled_at ?? job.cancelledAt;
+  if (cancelledAt != null && String(cancelledAt).trim() !== "") return true;
+
+  for (const key of ["status", "job_status", "listing_status"] as const) {
+    const st = String(job[key] ?? "")
+      .toLowerCase()
+      .trim();
+    if (!st) continue;
+    if (
+      st.includes("deleted") ||
+      st.includes("cancel") ||
+      st === "canceled"
+    ) {
+      return true;
+    }
+  }
+
   return false;
 }
 

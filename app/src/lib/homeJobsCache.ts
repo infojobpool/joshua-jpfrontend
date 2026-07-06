@@ -11,7 +11,7 @@ import {
 const TTL_MS = 120_000;
 /** Persist at most this many raw rows to keep disk cache small and fast. */
 const PERSIST_JOB_CAP = 100;
-const STORAGE_KEY = "jobpool_home_get_all_jobs_v1";
+const STORAGE_KEY = "jobpool_home_get_all_jobs_v2";
 /** Ignore disk snapshot older than this. */
 const DISK_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -111,21 +111,68 @@ function persistJobs(jobs: RawJob[]): void {
 /** Map `GET /recent-open-jobs/` slim rows into the shape used by home cards (legacy uses job_* keys). */
 function coerceRecentRowToRawJob(row: RawJob): RawJob {
   const legacy = row.job_id != null || row.job_title != null;
+  let coerced: RawJob;
   if (legacy) {
-    return row.status !== undefined ? row : { ...row, status: false };
+    coerced = row.status !== undefined ? row : { ...row, status: false };
+  } else {
+    const jobId = String(row.job_id ?? row.id ?? row.pk ?? "").trim();
+    if (!jobId) {
+      coerced = { ...row, status: row.status ?? false };
+    } else {
+      coerced = {
+        ...row,
+        job_id: jobId,
+        job_title: String(row.job_title ?? row.title ?? "Task"),
+        job_description: String(row.job_description ?? row.description ?? ""),
+        job_budget: Number(row.job_budget ?? row.budget ?? 0) || 0,
+        job_location: String(row.job_location ?? row.location ?? row.location_text ?? ""),
+        job_category_name: resolveJobCategoryDisplayName(row as Record<string, unknown>),
+        status: row.status ?? false,
+      };
+    }
   }
-  const jobId = String(row.job_id ?? row.id ?? row.pk ?? "").trim();
-  if (!jobId) return { ...row, status: row.status ?? false };
+  if (isJobDeletedOrCancelled(coerced as Record<string, unknown>)) {
+    return { ...coerced, status: "cancelled" };
+  }
+  return coerced;
+}
+
+function buildJobCatalogById(jobs: RawJob[]): Map<string, RawJob> {
+  const map = new Map<string, RawJob>();
+  for (const job of jobs) {
+    const id = canonicalJobId(String(job.job_id ?? job.id ?? ""));
+    if (id) map.set(id, job);
+  }
+  return map;
+}
+
+/** Merge cancel/deletion flags from full get-all-jobs row onto a slim recent-open-jobs row. */
+function mergeJobWithCatalog(slim: RawJob, full: RawJob | undefined): RawJob {
+  if (!full) return slim;
   return {
-    ...row,
-    job_id: jobId,
-    job_title: String(row.job_title ?? row.title ?? "Task"),
-    job_description: String(row.job_description ?? row.description ?? ""),
-    job_budget: Number(row.job_budget ?? row.budget ?? 0) || 0,
-    job_location: String(row.job_location ?? row.location ?? row.location_text ?? ""),
-    job_category_name: resolveJobCategoryDisplayName(row as Record<string, unknown>),
-    status: row.status ?? false,
+    ...slim,
+    status: slim.status ?? full.status,
+    job_status: slim.job_status ?? full.job_status,
+    cancel_status: slim.cancel_status ?? full.cancel_status,
+    cancelled: slim.cancelled ?? full.cancelled,
+    cancelled_by_role: slim.cancelled_by_role ?? full.cancelled_by_role,
+    cancelled_by: slim.cancelled_by ?? full.cancelled_by,
+    cancellation_reason: slim.cancellation_reason ?? full.cancellation_reason,
+    cancellationReason: slim.cancellationReason ?? full.cancellationReason,
+    cancelled_at: slim.cancelled_at ?? full.cancelled_at,
+    cancelledAt: slim.cancelledAt ?? full.cancelledAt,
+    deletion_status: slim.deletion_status ?? full.deletion_status,
+    job_completion_status: slim.job_completion_status ?? full.job_completion_status,
   };
+}
+
+/** Keep only rows that are still open after merging with the full jobs catalog. */
+function filterOpenJobsForHome(jobs: RawJob[], catalogById: Map<string, RawJob>): RawJob[] {
+  return jobs.filter((job) => {
+    const id = canonicalJobId(String(job.job_id ?? job.id ?? ""));
+    const merged = mergeJobWithCatalog(job, id ? catalogById.get(id) : undefined);
+    return isOpenListingJob(merged);
+  });
 }
 
 function parsePostedAtMs(job: RawJob): number {
@@ -392,40 +439,54 @@ export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
   inflight = (async () => {
     let gotSuccessfulHttpParse = false;
     try {
-      try {
-        const recent = await axiosInstance.get("/recent-open-jobs/", {
+      const recentPromise = axiosInstance
+        .get("/recent-open-jobs/", {
           params: { limit: 16 },
           timeout: 22_000,
-        });
-        const rd = recent?.data;
-        if (isGetAllJobsResponseOk(rd, recent?.status)) {
-          gotSuccessfulHttpParse = true;
-          let jobs = extractJobsArray(rd);
-          if (jobs.length === 0 && rd && typeof rd === "object") {
-            const r = rd as Record<string, unknown>;
-            if (Array.isArray(r.results)) jobs = r.results as RawJob[];
-          }
-          if (jobs.length > 0) {
-            const coerced = dedupeRawJobsForHome(jobs.map(coerceRecentRowToRawJob));
-            cache = { jobs: coerced, fetchedAt: Date.now() };
-            persistJobs(coerced);
-            return coerced;
-          }
+        })
+        .catch(() => null);
+      const allPromise = axiosInstance.get("/get-all-jobs/", { timeout: 45_000 }).catch(() => null);
+
+      const [recent, allResponse] = await Promise.all([recentPromise, allPromise]);
+
+      let catalog: RawJob[] = [];
+      if (allResponse?.data && isGetAllJobsResponseOk(allResponse.data, allResponse.status)) {
+        gotSuccessfulHttpParse = true;
+        catalog = dedupeRawJobsForHome(extractJobsArray(allResponse.data));
+      }
+      const catalogById = buildJobCatalogById(catalog);
+
+      let recentJobs: RawJob[] = [];
+      if (recent?.data && isGetAllJobsResponseOk(recent.data, recent.status)) {
+        gotSuccessfulHttpParse = true;
+        let jobs = extractJobsArray(recent.data);
+        if (jobs.length === 0 && recent.data && typeof recent.data === "object") {
+          const r = recent.data as Record<string, unknown>;
+          if (Array.isArray(r.results)) jobs = r.results as RawJob[];
         }
-      } catch {
-        /* Older API without recent-open-jobs */
+        if (jobs.length > 0) {
+          recentJobs = dedupeRawJobsForHome(jobs.map(coerceRecentRowToRawJob));
+        }
       }
 
-      const response = await axiosInstance.get("/get-all-jobs/", { timeout: 45_000 });
-      const data = response?.data;
-      if (isGetAllJobsResponseOk(data, response?.status)) {
-        gotSuccessfulHttpParse = true;
-        const jobs = dedupeRawJobsForHome(extractJobsArray(data));
+      if (recentJobs.length > 0) {
+        const openRecent =
+          catalogById.size > 0
+            ? filterOpenJobsForHome(recentJobs, catalogById)
+            : recentJobs.filter(isOpenListingJob);
+        const jobs =
+          openRecent.length > 0
+            ? openRecent
+            : filterOpenJobsForHome(catalog, catalogById).slice(0, 16);
         cache = { jobs, fetchedAt: Date.now() };
-        if (jobs.length > 0) {
-          persistJobs(jobs);
-        }
+        persistJobs(catalog.length > 0 ? catalog : jobs);
         return jobs;
+      }
+
+      if (catalog.length > 0) {
+        cache = { jobs: catalog, fetchedAt: Date.now() };
+        persistJobs(catalog);
+        return catalog;
       }
     } catch {
       /* ignore */

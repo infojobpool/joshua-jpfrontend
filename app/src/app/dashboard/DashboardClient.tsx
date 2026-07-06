@@ -64,6 +64,7 @@ import { formatDateWithTime } from "@/lib/utils";
 import { dueDisplayForListCard } from "@/lib/taskDueDisplay";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 import { warmTaskDetailNavigation } from "@/lib/taskNavCache";
+import { invalidateHomeJobsCache } from "@/lib/homeJobsCache";
 import { paymentsRouteFromSession } from "@/lib/paymentNavigation";
 import { useNotifications } from "@/lib/useNotifications";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
@@ -3566,6 +3567,7 @@ export default function Dashboard() {
         const cacheKey = `user_tasks_${currentUserId}`;
         localStorage.removeItem(cacheKey);
         try { sessionStorage.removeItem("postedTasks"); } catch {}
+        invalidateHomeJobsCache();
         
         // Update local state immediately (optimistic update)
         // For both pre-payment and post-payment cancellations
@@ -3739,6 +3741,7 @@ export default function Dashboard() {
         const cancellationData = response.data.data || {};
         
         toast.success(`Task cancelled successfully! ${cancellationFee ? `Fee: ${cancellationFee}. ` : ''}${refundMessage}`);
+        invalidateHomeJobsCache();
         
         // Update task in assigned tasks list - mark as cancelled but keep it visible
         setAssignedTasks((prev) =>

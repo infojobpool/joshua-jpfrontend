@@ -43,6 +43,7 @@ import {
   peekPrefetchJobWithBids,
   clearPrefetchJobWithBids,
 } from "@/lib/taskNavCache";
+import { invalidateHomeJobsCache } from "@/lib/homeJobsCache";
 import useStore from "@/lib/Zustand";
 import Link from "next/link";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
@@ -2235,6 +2236,7 @@ export default function TaskDetailPage() {
                     const cancellationFee = resp.data.cancellation_fee || "";
                     
                     toast.success(`Task cancelled successfully! ${cancellationFee ? `Fee: ${cancellationFee}. ` : ''}${refundMessage}`);
+                    invalidateHomeJobsCache();
                     setShowCancelDialog(false);
                     setCancelReason("");
                     
