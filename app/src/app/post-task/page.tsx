@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Toaster } from "../../components/ui/sonner";
 import { invalidateHomeJobsCache } from "@/lib/homeJobsCache";
+import { isPostJobCreated } from "@/lib/postJobApi";
 import { ChevronLeft, ChevronRight, IndianRupee, Loader, Pencil, Upload, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import axiosInstance from "../../lib/axiosInstance";
@@ -629,7 +630,7 @@ export default function PostTaskPage() {
         }
       );
 
-      if (response.data.status_code === 201) {
+      if (isPostJobCreated(response)) {
         try {
           sessionStorage.removeItem(WIZARD_DRAFT_KEY);
         } catch {
@@ -657,13 +658,27 @@ export default function PostTaskPage() {
     } catch (error: any) {
       if (error.response && error.response.data) {
         const errorData = error.response.data;
-        if (errorData.status_code === 403) {
+        if (Number(errorData.status_code) === 403 || errorData.status_code === 403) {
           toast.error(errorData.message || "Please complete verification to post a job");
+        } else if (isPostJobCreated(error.response)) {
+          toast.success("Your task has been posted!");
+          invalidateHomeJobsCache();
+          try {
+            sessionStorage.removeItem(WIZARD_DRAFT_KEY);
+            localStorage.removeItem("availableTasks");
+            localStorage.removeItem("availableTasksTimestamp");
+          } catch {
+            /* ignore */
+          }
+          router.push("/dashboard?tab=my-tasks");
         } else {
           toast.error(errorData.message || "Something went wrong. Please try again.");
         }
       } else {
-        handleAxiosError(error);
+        toast.error(
+          "Connection issue while posting. Check Tasks I posted — your task may already be live.",
+        );
+        console.error("Post task failed:", error);
       }
     } finally {
       postInFlightRef.current = false;

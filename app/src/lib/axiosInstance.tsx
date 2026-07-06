@@ -169,7 +169,8 @@ axiosInstance.interceptors.request.use(
         isProfileListingsRead(urlStr, config.params) ||
         isWalletSummaryRead(urlStr) ||
         isVerificationWrite(urlStr) ||
-        isFeePreviewWrite(urlStr);
+        isFeePreviewWrite(urlStr) ||
+        isJobPostWrite(urlStr);
       const now = Date.now();
       if (now - requestThrottle.windowStart > requestThrottle.windowSize) {
         // Reset window

@@ -59,6 +59,7 @@ import { isCoercedTruthy, isJobCompletedFlag, isOpenForAvailableList } from "@/l
 import { jobIdVariants } from "@/lib/jobIdVariants";
 import useStore from "@/lib/Zustand";
 import { DESKTOP_MIN_WIDTH } from "@/lib/breakpoints";
+import { formatJobPostedTimestamp, getJobPostedTimestampRaw } from "@/lib/jobPostedAt";
 import { formatDateWithTime } from "@/lib/utils";
 import { dueDisplayForListCard } from "@/lib/taskDueDisplay";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
@@ -339,48 +340,13 @@ interface APIResponse<T> {
   data: T;
 }
 
-// Parse date that might be dd/mm/yyyy (en-GB), yyyy-mm-dd, ISO, Unix timestamp, or other formats
-function parseDateSafe(raw: any): Date | null {
-  if (raw == null || raw === "") return null;
-  const s = String(raw).trim();
-  if (!s) return null;
-  const dmY = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s);
-  if (dmY) {
-    const [, d, m, y] = dmY;
-    const parsed = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
-    return isNaN(parsed.getTime()) ? null : parsed;
-  }
-  const yMd = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);
-  if (yMd) {
-    const [, y, m, d] = yMd;
-    const parsed = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
-    return isNaN(parsed.getTime()) ? null : parsed;
-  }
-  const num = Number(raw);
-  if (!isNaN(num) && num > 0) {
-    const parsed = num > 1e12 ? new Date(num) : new Date(num * 1000);
-    return isNaN(parsed.getTime()) ? null : parsed;
-  }
-  const parsed = new Date(raw);
-  return isNaN(parsed.getTime()) ? null : parsed;
-}
-
 // Helper to normalize timestamp fields for display & sorting
-// Uses same field order and Date check as TaskPageClient for consistency
 function formatTimestampValue(raw: any): {
   formatted: string;
   sortValue: number;
   iso: string;
 } {
-  const date = parseDateSafe(raw);
-  if (!date) {
-    return { formatted: "—", sortValue: 0, iso: "" };
-  }
-  return {
-    formatted: date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" }),
-    sortValue: date.getTime(),
-    iso: date.toISOString(),
-  };
+  return formatJobPostedTimestamp(raw);
 }
 
 // Deduplicate tasks by id (API may return same job twice)
@@ -429,17 +395,16 @@ function dedupeTasksByContent(tasks: Task[]): Task[] {
   return Array.from(byKey.values());
 }
 
-// Fetch get-job for tasks with missing dates and update state (no backend change needed)
+// Fetch get-job for posted tasks — get-user-jobs omits created_at and may only have due_date.
 function fillMissingDatesFromGetJob(
   tasks: Task[],
   setter: React.Dispatch<React.SetStateAction<Task[]>>,
   API_BASE: string
 ) {
-  const needsDate = tasks.filter((t) => !t.postedAt || t.postedAt === "—" || t.postedAt === "Unknown");
-  if (needsDate.length === 0) return;
+  if (tasks.length === 0) return;
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   if (!token) return;
-  const batch = needsDate.slice(0, 8);
+  const batch = tasks.slice(0, 20);
   Promise.all(
     batch.map((t) =>
       fetch(`${API_BASE}/get-job/${t.id}/`, {
@@ -455,7 +420,12 @@ function fillMissingDatesFromGetJob(
         const task = batch[i];
         if (!res || res.status_code !== 200 || !res.data) return;
         const job = res.data;
-        const raw = job.tstamp || job.timestamp || job.created_at || job.job_tstamp || job.job_due_date;
+        const raw =
+          getJobPostedTimestampRaw(job as Record<string, unknown>) ??
+          job.tstamp ??
+          job.timestamp ??
+          job.created_at ??
+          job.job_tstamp;
         const meta = formatTimestampValue(raw);
         if (meta.formatted !== "—") {
           updates.push({ id: task.id, postedAt: meta.formatted, postedAtSortValue: meta.sortValue, postedAtISO: meta.iso });
@@ -489,6 +459,12 @@ function getCardPostedAt(task: { id: string; postedAt: string }): string {
         raw = data?.task?.postedAt || raw;
       }
     } catch {}
+  }
+  if (!raw || raw === "—" || raw === "Unknown") {
+    return "Recently";
+  }
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(String(raw).trim())) {
+    return String(raw).trim();
   }
   const formatted = formatDateWithTime(raw || undefined);
   if (!formatted || formatted === "—" || formatted === "Invalid date" || formatted.toLowerCase().includes("invalid")) {
@@ -1535,14 +1511,7 @@ export default function Dashboard() {
             }
 
             // Use creation date for "posted" - check all known API date fields (get-user-jobs may use different names)
-            const inner = (job as any).job || job;
-            const postedRaw = inner.created_at || inner.job_created_at || inner.created_date || inner.date_created ||
-              inner.timestamp || inner.tstamp || inner.job_tstamp || inner.posted_at || inner.postedAt ||
-              inner.date || inner.updated_at || inner.job_due_date || inner.due_date ||
-              job.created_at || job.job_created_at || job.created_date || job.date_created ||
-              job.timestamp || job.tstamp || job.job_tstamp || (job as any).posted_at || (job as any).postedAt ||
-              (job as any).date || job.updated_at || job.job_due_date || job.due_date;
-            const postedMeta = formatTimestampValue(postedRaw);
+            const postedMeta = formatTimestampValue(getJobPostedTimestampRaw(job as Record<string, unknown>));
             return {
               id: job.job_id.toString(),
               title: job.job_title || "Untitled",
@@ -1666,7 +1635,7 @@ export default function Dashboard() {
       const deleted = isCoercedTruthy(job.deletion_status);
       const cancelled = isCoercedTruthy(job.cancel_status) || isCoercedTruthy(job.cancelled);
       const jobStatus = completed ? "completed" : deleted ? "deleted" : cancelled ? "canceled" : "open";
-      const postedMeta = formatTimestampValue(job.created_at || job.tstamp || job.timestamp || job.job_tstamp || job.job_created_at || job.created_date);
+      const postedMeta = formatTimestampValue(getJobPostedTimestampRaw(job as Record<string, unknown>));
       return {
         id: job.job_id.toString(),
         title: job.job_title || "Untitled",
@@ -1816,9 +1785,7 @@ export default function Dashboard() {
               // All other tasks remain "open" for bidding
               
               // Posted date: use creation timestamp only (not job_due_date – that's when task is due)
-              const postedMeta = formatTimestampValue(
-                job.created_at || job.tstamp || job.timestamp || job.job_tstamp || job.job_created_at || job.created_date
-              );
+              const postedMeta = formatTimestampValue(getJobPostedTimestampRaw(job as Record<string, unknown>));
 
               return {
                 id: job.job_id.toString(),
@@ -2137,16 +2104,10 @@ export default function Dashboard() {
                 }
               }
               
-              const rawDate = job.created_at || job.timestamp || job.tstamp || job.job_tstamp || job.job_due_date || job.updated_at || job.postedAt;
-              let postedAtFormatted = "Recently";
-              let postedAtSortValue = 0;
-              let postedAtISO = "";
-              const dateObj = parseDateSafe(rawDate);
-              if (dateObj) {
-                postedAtFormatted = formatDateWithTime(rawDate);
-                postedAtSortValue = dateObj.getTime();
-                postedAtISO = dateObj.toISOString();
-              }
+              const postedMeta = formatTimestampValue(getJobPostedTimestampRaw(job as Record<string, unknown>));
+              let postedAtFormatted = postedMeta.formatted === "—" ? "Recently" : postedMeta.formatted;
+              let postedAtSortValue = postedMeta.sortValue;
+              let postedAtISO = postedMeta.iso;
 
               // Check if cancelled - comprehensive check (same as in rendering)
               // Also check if cancelled_by_role or cancellation_reason exists (indicates cancellation)
@@ -2274,16 +2235,10 @@ export default function Dashboard() {
                 })
                 .map((job: any) => {
                   // Use same mapping logic as above
-                  const rawDate = job.created_at || job.timestamp || job.tstamp || job.job_tstamp || job.job_due_date || job.updated_at || job.postedAt;
-                  let postedAtFormatted = "Recently";
-                  let postedAtSortValue = 0;
-                  let postedAtISO = "";
-                  const dateObj = parseDateSafe(rawDate);
-                  if (dateObj) {
-                    postedAtFormatted = formatDateWithTime(rawDate);
-                    postedAtSortValue = dateObj.getTime();
-                    postedAtISO = dateObj.toISOString();
-                  }
+                  const postedMeta = formatTimestampValue(getJobPostedTimestampRaw(job as Record<string, unknown>));
+                  let postedAtFormatted = postedMeta.formatted === "—" ? "Recently" : postedMeta.formatted;
+                  let postedAtSortValue = postedMeta.sortValue;
+                  let postedAtISO = postedMeta.iso;
 
                   // Check if cancelled - comprehensive check (same as above)
                   const isCancelled = 
@@ -2677,11 +2632,13 @@ export default function Dashboard() {
                 location: job.job_location || job.location || "Unknown",
                 status: jobStatus,
                 job_completion_status: job.job_completion_status?.toString() || job.status?.toString() || undefined,
-                postedAt: job.created_at || job.timestamp || job.tstamp || job.job_tstamp || job.job_due_date || job.updated_at || job.postedAt || "",
-                postedAtSortValue: (() => {
-                  const raw = job.created_at || job.updated_at || job.completed_at || job.completed_date || job.timestamp || job.job_tstamp || job.tstamp || job.job_due_date;
-                  const d = parseDateSafe(raw);
-                  return d ? d.getTime() : 0;
+                ...(() => {
+                  const postedMeta = formatTimestampValue(getJobPostedTimestampRaw(job as Record<string, unknown>));
+                  return {
+                    postedAt: postedMeta.formatted === "—" ? "" : postedMeta.formatted,
+                    postedAtSortValue: postedMeta.sortValue,
+                    postedAtISO: postedMeta.iso,
+                  };
                 })(),
                 dueDate: job.job_due_date || job.dueDate || undefined,
                 dueDateFlexible: job.due_date_flexible === true,
@@ -2919,6 +2876,7 @@ export default function Dashboard() {
                       })
                       .map((job: any) => {
                         // Map to Task format
+                        const postedMeta = formatTimestampValue(getJobPostedTimestampRaw(job as Record<string, unknown>));
                         return {
                           id: job.job_id?.toString() || job.id?.toString() || String(Math.random()),
                           title: job.job_title || job.title || "Untitled",
@@ -2926,9 +2884,9 @@ export default function Dashboard() {
                           budget: Number(job.job_budget || job.budget || 0),
                           location: job.job_location || job.location || "Unknown",
                           status: "completed",
-                          postedAt: job.created_at || job.posted_at || new Date().toISOString(),
-                          postedAtSortValue: job.created_at ? new Date(job.created_at).getTime() : Date.now(),
-                          postedAtISO: job.created_at || new Date().toISOString(),
+                          postedAt: postedMeta.formatted === "—" ? "Recently" : postedMeta.formatted,
+                          postedAtSortValue: postedMeta.sortValue || Date.now(),
+                          postedAtISO: postedMeta.iso || new Date().toISOString(),
                           offers: 0,
                           posted_by: job.posted_by || "Unknown",
                           category: job.job_category_name || job.category || "Uncategorized",
@@ -3683,14 +3641,7 @@ export default function Dashboard() {
                     jobStatus = "in_progress";
                   }
                   
-                  const innerR = (job as any).job || job;
-                  const postedRaw = innerR.created_at || innerR.job_created_at || innerR.created_date || innerR.date_created ||
-                    innerR.timestamp || innerR.tstamp || innerR.job_tstamp || innerR.posted_at || innerR.postedAt ||
-                    innerR.date || innerR.updated_at || innerR.job_due_date || innerR.due_date ||
-                    job.created_at || job.job_created_at || job.created_date || job.date_created ||
-                    job.timestamp || job.tstamp || job.job_tstamp || (job as any).posted_at || (job as any).postedAt ||
-                    (job as any).date || job.updated_at || job.job_due_date || job.due_date;
-                  const postedMeta = formatTimestampValue(postedRaw);
+                  const postedMeta = formatTimestampValue(getJobPostedTimestampRaw(job as Record<string, unknown>));
                   return {
                     id: job.job_id.toString(),
                     title: job.job_title || "Untitled",
