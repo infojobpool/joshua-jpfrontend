@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Toaster } from "../../components/ui/sonner";
+import { toast } from "sonner";
 import { invalidateHomeJobsCache } from "@/lib/homeJobsCache";
 import { isPostJobCreated } from "@/lib/postJobApi";
 import { ChevronLeft, ChevronRight, IndianRupee, Loader, Pencil, Upload, X } from "lucide-react";
@@ -24,7 +25,6 @@ import axiosInstance from "../../lib/axiosInstance";
 import { PosterFeeBreakdown } from "@/components/fee/PosterFeeBreakdown";
 import { useFeePreview } from "@/hooks/useFeePreview";
 import useStore from "../../lib/Zustand";
-import { handleAxiosError } from "../../lib/handleAxiosError";
 import LocationDetector from "../../components/LocationDetector";
 import Header from "@/components/Header";
 import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint";
@@ -67,6 +67,7 @@ const CUSTOM_CATEGORY_VALUE = "__custom__";
 
 const TOTAL_STEPS = 4;
 const WIZARD_DRAFT_KEY = "jobpool_post_task_wizard_v1";
+const POST_SUCCESS_PATH = "/dashboard?tab=my-tasks";
 
 const WIZARD_STEPS = [
   {
@@ -135,6 +136,9 @@ export default function PostTaskPage() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   /** Synchronous guard — React state updates are async, so double-tap can fire two POSTs before isSubmitting flips. */
   const postInFlightRef = useRef(false);
+  /** Stay locked after success until navigation leaves this page. */
+  const postSucceededRef = useRef(false);
+  const [postRedirecting, setPostRedirecting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   /** Avoid accidental post when the same tap lands on "Post task" after Continue swaps the footer (mobile / flex-col-reverse). */
   const [postActionUnlocked, setPostActionUnlocked] = useState(false);
@@ -474,7 +478,7 @@ export default function PostTaskPage() {
   }, [formData.category, customCategoryName, categories]);
 
   const handleFinalPost = async () => {
-    if (isSubmitting || postInFlightRef.current) return;
+    if (postInFlightRef.current || postSucceededRef.current || isSubmitting) return;
     if (!validateStep(1)) {
       setCurrentStep(1);
       return;
@@ -487,8 +491,46 @@ export default function PostTaskPage() {
       setCurrentStep(3);
       return;
     }
-    await confirmPostSubmission();
+
+    postInFlightRef.current = true;
+    setIsSubmitting(true);
+    try {
+      await confirmPostSubmission();
+    } finally {
+      if (!postSucceededRef.current) {
+        postInFlightRef.current = false;
+        setIsSubmitting(false);
+      }
+    }
   };
+
+  const finishPostSuccess = useCallback(() => {
+    postSucceededRef.current = true;
+    postInFlightRef.current = true;
+    setPostRedirecting(true);
+    setIsSubmitting(true);
+
+    try {
+      sessionStorage.removeItem(WIZARD_DRAFT_KEY);
+      sessionStorage.removeItem("postedTasks");
+      localStorage.removeItem("postedTasks");
+      localStorage.removeItem("availableTasks");
+      localStorage.removeItem("availableTasksTimestamp");
+    } catch {
+      /* ignore */
+    }
+    invalidateHomeJobsCache();
+    toast.success("Task posted successfully!");
+
+    router.replace(POST_SUCCESS_PATH);
+    if (typeof window !== "undefined") {
+      window.setTimeout(() => {
+        if (window.location.pathname.includes("/post-task")) {
+          window.location.assign(POST_SUCCESS_PATH);
+        }
+      }, 600);
+    }
+  }, [router]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -534,65 +576,6 @@ export default function PostTaskPage() {
   };
 
   const confirmPostSubmission = async () => {
-    if (postInFlightRef.current) return;
-    postInFlightRef.current = true;
-    setIsSubmitting(true);
-
-    try {
-    // Double-check verification status before submission (fetch fresh from API)
-    try {
-      let effectiveUserId = userId;
-      if (!effectiveUserId) {
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          effectiveUserId = parsedUser?.id || parsedUser?.userId || parsedUser?.user_id;
-        }
-      }
-
-      if (effectiveUserId) {
-        // Fetch fresh verification status from API
-        const cacheBuster = `?user_id=${effectiveUserId}&_t=${Date.now()}`;
-        const response = await axiosInstance.get(`/profile${cacheBuster}`);
-        const data = response.data;
-        
-        const apiVerificationStatus = 
-          data.verification_status ?? 
-          data.verificationStatus ?? 
-          data.data?.verification_status ??
-          null;
-
-        // Require at least PAN + Aadhar (status >= 2) to post tasks
-        if (apiVerificationStatus === null || apiVerificationStatus === undefined) {
-          // Check explicit verification flags
-          const panVerified = data.pan_verified === true || data.pan_status === 'verified' || data.pan_status === 'approved';
-          const aadharVerified = data.aadhar_verified === true || data.aadhaar_verified === true || data.aadhar_status === 'verified' || data.aadhar_status === 'approved';
-          
-          if (!panVerified || !aadharVerified) {
-            toast.error("Please complete your verification (PAN and Aadhar) to post tasks");
-            router.push("/verification");
-            return;
-          }
-        } else if (typeof apiVerificationStatus === 'number' && apiVerificationStatus < 2) {
-          toast.error("Please complete your verification (PAN and Aadhar) to post tasks");
-          router.push("/verification");
-          return;
-        }
-      }
-    } catch (error: any) {
-      console.error("Failed to verify status before submission:", error);
-      // Fallback to localStorage check
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        if (parsedUser.verification_status === undefined || parsedUser.verification_status < 2) {
-          toast.error("Please complete your verification (PAN and Aadhar) to post tasks");
-          router.push("/verification");
-          return;
-        }
-      }
-    }
-
     if (!formData.location?.trim()) {
       toast.error("Please enter or detect your location");
       return;
@@ -620,6 +603,7 @@ export default function PostTaskPage() {
       formDataToSubmit.append("images", image.file);
     });
 
+    try {
       const response = await axiosInstance.post(
         "/post-a-job/",
         formDataToSubmit,
@@ -631,20 +615,7 @@ export default function PostTaskPage() {
       );
 
       if (isPostJobCreated(response)) {
-        try {
-          sessionStorage.removeItem(WIZARD_DRAFT_KEY);
-        } catch {
-          /* ignore */
-        }
-        toast.success("Your task has been posted!");
-        invalidateHomeJobsCache();
-        try {
-          localStorage.removeItem("availableTasks");
-          localStorage.removeItem("availableTasksTimestamp");
-        } catch {
-          /* ignore */
-        }
-        router.push("/dashboard?tab=my-tasks");
+        finishPostSuccess();
         return;
       }
       if (response.data.status_code === 403) {
@@ -661,16 +632,7 @@ export default function PostTaskPage() {
         if (Number(errorData.status_code) === 403 || errorData.status_code === 403) {
           toast.error(errorData.message || "Please complete verification to post a job");
         } else if (isPostJobCreated(error.response)) {
-          toast.success("Your task has been posted!");
-          invalidateHomeJobsCache();
-          try {
-            sessionStorage.removeItem(WIZARD_DRAFT_KEY);
-            localStorage.removeItem("availableTasks");
-            localStorage.removeItem("availableTasksTimestamp");
-          } catch {
-            /* ignore */
-          }
-          router.push("/dashboard?tab=my-tasks");
+          finishPostSuccess();
         } else {
           toast.error(errorData.message || "Something went wrong. Please try again.");
         }
@@ -680,9 +642,6 @@ export default function PostTaskPage() {
         );
         console.error("Post task failed:", error);
       }
-    } finally {
-      postInFlightRef.current = false;
-      setIsSubmitting(false);
     }
   };
 
@@ -1124,14 +1083,18 @@ export default function PostTaskPage() {
                       type="button"
                       disabled={
                         isSubmitting ||
+                        postRedirecting ||
                         verificationLoading ||
                         !postActionUnlocked
                       }
-                      className="w-full sm:w-auto h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 px-6 disabled:opacity-70"
+                      className="w-full sm:w-auto h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 px-6 disabled:opacity-70 disabled:pointer-events-none"
                       onClick={() => void handleFinalPost()}
                     >
-                      {isSubmitting ? (
-                        <Loader className="h-5 w-5 animate-spin" />
+                      {isSubmitting || postRedirecting ? (
+                        <>
+                          <Loader className="h-5 w-5 animate-spin mr-2" />
+                          {postRedirecting ? "Redirecting…" : "Posting…"}
+                        </>
                       ) : verificationLoading ? (
                         "Verifying…"
                       ) : (
