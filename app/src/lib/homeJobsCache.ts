@@ -1,4 +1,5 @@
 import axiosInstance from "@/lib/axiosInstance";
+import { canonicalJobId } from "@/lib/jobIdVariants";
 import { isJobCompletedFlag, isJobDeletedOrCancelled } from "@/lib/jobStatusNormalize";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 import {
@@ -237,6 +238,49 @@ export function isOpenListingJob(job: RawJob): boolean {
   return false;
 }
 
+/** Drop duplicate rows (same canonical id or same title/description/budget from double-post). */
+export function dedupeRawJobsForHome(jobs: RawJob[]): RawJob[] {
+  const byId = new Map<string, RawJob>();
+
+  for (const job of jobs) {
+    const rawId = String(job.job_id ?? job.id ?? "").trim();
+    if (!rawId) continue;
+    const id = canonicalJobId(rawId);
+    const existing = byId.get(id);
+    if (!existing) {
+      byId.set(id, job);
+      continue;
+    }
+    const preferNew =
+      rawId.startsWith("task_") && !String(existing.job_id ?? existing.id ?? "").startsWith("task_");
+    if (preferNew) byId.set(id, job);
+  }
+
+  const byContent = new Map<string, RawJob>();
+  for (const job of byId.values()) {
+    const title = String(job.job_title ?? job.title ?? "")
+      .trim()
+      .toLowerCase();
+    const description = String(job.job_description ?? job.description ?? "")
+      .trim()
+      .toLowerCase();
+    const budget = Number(job.job_budget ?? job.budget ?? 0) || 0;
+    const key = `${title}|${description}|${budget}`;
+    const existing = byContent.get(key);
+    if (!existing) {
+      byContent.set(key, job);
+      continue;
+    }
+    const jobId = String(job.job_id ?? job.id ?? "");
+    const existingId = String(existing.job_id ?? existing.id ?? "");
+    if (jobId.startsWith("task_") && !existingId.startsWith("task_")) {
+      byContent.set(key, job);
+    }
+  }
+
+  return Array.from(byContent.values());
+}
+
 /**
  * Open jobs only, newest first, capped. Empty ids dropped.
  */
@@ -245,7 +289,7 @@ export function selectOpenRecentTaskCards(
   limit: number,
   nameById?: Record<string, string>
 ): HomeTaskCard[] {
-  return jobs
+  return dedupeRawJobsForHome(jobs)
     .filter(isOpenListingJob)
     .sort((a, b) => parsePostedAtMs(b) - parsePostedAtMs(a))
     .slice(0, limit)
@@ -362,7 +406,7 @@ export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
             if (Array.isArray(r.results)) jobs = r.results as RawJob[];
           }
           if (jobs.length > 0) {
-            const coerced = jobs.map(coerceRecentRowToRawJob);
+            const coerced = dedupeRawJobsForHome(jobs.map(coerceRecentRowToRawJob));
             cache = { jobs: coerced, fetchedAt: Date.now() };
             persistJobs(coerced);
             return coerced;
@@ -376,7 +420,7 @@ export async function getAllJobsForHomeCached(): Promise<RawJob[]> {
       const data = response?.data;
       if (isGetAllJobsResponseOk(data, response?.status)) {
         gotSuccessfulHttpParse = true;
-        const jobs = extractJobsArray(data);
+        const jobs = dedupeRawJobsForHome(extractJobsArray(data));
         cache = { jobs, fetchedAt: Date.now() };
         if (jobs.length > 0) {
           persistJobs(jobs);

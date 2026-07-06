@@ -25,6 +25,8 @@ import { TransitionLink } from "@/components/TransitionLink";
 
 const DESKTOP_MAX = 12;
 const SECTION_SUBTITLE = "See open tasks and apply.";
+/** Duplicating the strip for seamless loop only when enough unique cards — otherwise twins show on screen. */
+const MARQUEE_LOOP_MIN_UNIQUE = 3;
 /** Mobile recent-tasks strip: auto-scroll speed (px/s) — time-based; keep modest so swipe still feels natural */
 const MOBILE_RECENT_AUTO_SCROLL_PX_PER_SEC = 52;
 const DESKTOP_RECENT_AUTO_SCROLL_PX_PER_SEC = 42;
@@ -206,7 +208,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
 
   /** Mobile strip: auto-advance via scrollLeft + seamless loop (pauses on touch / user scroll). */
   useEffect(() => {
-    if (variant !== "mobile" || tasks.length === 0) return;
+    if (variant !== "mobile" || tasks.length < MARQUEE_LOOP_MIN_UNIQUE) return;
     const el = mobileScrollRef.current;
     if (!el) return;
 
@@ -261,7 +263,7 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
 
   /** Desktop strip: same seamless loop auto-scroll (pauses on hover / user scroll / tab hidden). */
   useEffect(() => {
-    if (variant !== "desktop" || tasks.length === 0) return;
+    if (variant !== "desktop" || tasks.length < MARQUEE_LOOP_MIN_UNIQUE) return;
     const el = desktopScrollRef.current;
     if (!el) return;
 
@@ -390,7 +392,8 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
       );
     }
 
-    const loop = [...tasks, ...tasks];
+    const canLoopMarquee = tasks.length >= MARQUEE_LOOP_MIN_UNIQUE;
+    const loop = canLoopMarquee ? [...tasks, ...tasks] : tasks;
 
     const scheduleMarqueeResume = () => {
       if (resumeMarqueeTimerRef.current) clearTimeout(resumeMarqueeTimerRef.current);
@@ -562,7 +565,8 @@ export function RecentAvailableTasks({ variant }: { variant: "mobile" | "desktop
     );
   }
 
-  const loopDesktop = [...tasks, ...tasks];
+  const canLoopMarqueeDesktop = tasks.length >= MARQUEE_LOOP_MIN_UNIQUE;
+  const loopDesktop = canLoopMarqueeDesktop ? [...tasks, ...tasks] : tasks;
 
   const scheduleMarqueeResumeDesktop = () => {
     if (resumeMarqueeTimerRef.current) clearTimeout(resumeMarqueeTimerRef.current);
