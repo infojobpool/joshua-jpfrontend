@@ -290,6 +290,7 @@ import Link from "next/link";
 import { Search, Eye, EyeOff, CreditCard, Phone, Download, Calendar, ExternalLink } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
 import { toast } from "sonner";
+import { coerceAdminUserList } from "@/lib/adminUserList";
 import { ProfileReminderCell } from "@/components/admin/ProfileReminderCell";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -360,16 +361,17 @@ export default function CustomersPage() {
       setIsLoading(true);
       setError("");
       const [customersRes, withdrawals] = await Promise.all([
-        axiosInstance.get("all-user-details/"),
+        axiosInstance.get("all-user-details/", {
+          params: { include_stats: false },
+        }),
         fetchAdminWithdrawals().catch(() => [] as AdminWithdrawal[]),
       ]);
-      const raw = customersRes.data?.data ?? customersRes.data;
-      const list = Array.isArray(raw) ? raw : [];
+      const list = coerceAdminUserList(customersRes) as Customer[];
       setCustomers(list);
       setWithdrawalsByUserId(indexWithdrawalsByUserId(withdrawals));
     } catch {
-      toast.error("An error occurred while fetching customers");
       setError("Failed to load customers");
+      toast.error("An error occurred while fetching customers");
     } finally {
       setIsLoading(false);
     }
@@ -862,7 +864,7 @@ export default function CustomersPage() {
               ) : error ? (
                 <tr>
                   <td colSpan={9} className="px-6 py-12 text-center">
-                    <div className="text-red-600">
+                    <div className="text-red-600 text-sm max-w-xl mx-auto">
                       {error}
                     </div>
                     <button 

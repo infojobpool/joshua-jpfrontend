@@ -27,7 +27,7 @@ const axiosInstance = axios.create({
   },
   /** Must stay false unless the API sends real cookies + CORS uses a concrete origin (not `*`). Credentialed + `*` = browser blocks → "Provisional headers" + failed admin-login. */
   withCredentials: false,
-  timeout: 30000,
+  timeout: 90000,
   maxRedirects: 0,
 });
 
