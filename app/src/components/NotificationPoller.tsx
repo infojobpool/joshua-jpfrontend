@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import useStore from "@/lib/Zustand";
 import axiosInstance from "@/lib/axiosInstance";
 
-const POLL_INTERVAL_MS = 10000; // 10 seconds - more prompt
+const POLL_INTERVAL_MS = 30000; // 30s is enough for notification badges
 
 function mapApiNotificationToItem(n: any): {
   id: string;

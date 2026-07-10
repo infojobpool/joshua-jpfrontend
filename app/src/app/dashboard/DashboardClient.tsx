@@ -1736,7 +1736,7 @@ export default function Dashboard() {
           }
         }
 
-        const fetchResponse = await fetch(`${API_BASE}/get-all-jobs/`, {
+        const fetchResponse = await fetch(`${API_BASE}/get-all-jobs/?limit=50`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,

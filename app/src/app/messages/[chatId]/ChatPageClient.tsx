@@ -181,15 +181,25 @@ export default function ChatPageClient() {
     };
   }, [userId, chatId]);
 
-  /** Poll while chat is open so received messages appear without manual refresh. */
+  /** Poll while chat is open — 15s when tab active, 30s when backgrounded. */
   useEffect(() => {
     if (!userId || !chatId || loading) return;
-    const tick = () => {
-      if (document.visibilityState !== "visible") return;
+    const poll = () => {
       void fetchMessagesRef.current?.(false);
     };
-    const id = window.setInterval(tick, 2000);
-    return () => window.clearInterval(id);
+    let timer: ReturnType<typeof setInterval>;
+    const schedule = () => {
+      window.clearInterval(timer);
+      const POLL_MS = document.hidden ? 30000 : 15000;
+      timer = window.setInterval(() => void poll(), POLL_MS);
+    };
+    schedule();
+    const onVisibility = () => schedule();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [userId, chatId, loading]);
 
   /** Pin chat UI to Visual Viewport (iOS / WebView) so the composer stays above the keyboard. */

@@ -136,7 +136,7 @@ const axiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: false,
-  timeout: 60000,
+  timeout: 60000, // 60s — survives cold API start
   maxRedirects: 0, // Prevent redirects that cause CORS issues
 });
 

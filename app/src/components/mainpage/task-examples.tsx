@@ -6,6 +6,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { MapPin, Clock, IndianRupee, Star, ArrowRight } from "lucide-react";
 import axiosInstance from "../../lib/axiosInstance";
+import { extractJobsArray, isGetAllJobsResponseOk } from "@/lib/homeJobsCache";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -51,26 +52,31 @@ export function TaskExamples() {
   const fetchJobs = async () => {
     try {
       setIsLoading(true);
-      const response = await axiosInstance.get("/get-all-jobs/");
-      if (response.data.status_code === 200) {
-        const mappedJobs = response.data.data.jobs.map((job: any) => ({
-          id: job.job_id,
+      const response = await axiosInstance.get("/recent-open-jobs/", {
+        params: { limit: 12 },
+      });
+      if (isGetAllJobsResponseOk(response.data, response.status)) {
+        const jobsData = extractJobsArray(response.data);
+        const mappedJobs = jobsData.map((job: Record<string, unknown>) => ({
+          id: String(job.job_id ?? job.id ?? ""),
           user_ref_id: job.user_ref_id,
-          title: job.job_title,
-          description: job.job_description,
-          budget: job.job_budget,
-          location: job.job_location,
+          title: String(job.job_title ?? job.title ?? "Task"),
+          description: "",
+          budget: Number(job.job_budget ?? job.budget ?? 0),
+          location: String(job.job_location ?? job.location ?? ""),
           status: job.status,
           deletion_status: job.deletion_status,
           posted_by: job.posted_by,
-          dueDate: job.job_due_date,
-          category: job.job_category,
-          category_name: job.job_category_name,
-          job_images: job.job_images,
+          dueDate: job.job_due_date ?? job.due_date,
+          category: job.job_category ?? job.category,
+          category_name: job.job_category_name ?? job.category_name,
+          job_images: job.hero_image_url
+            ? { urls: [String(job.hero_image_url)] }
+            : job.job_images,
         }));
         setJobs(mappedJobs);
       } else {
-        toast.error(response.data.message || "Failed to fetch jobs");
+        toast.error((response.data as { message?: string })?.message || "Failed to fetch jobs");
       }
     } catch {
       toast.error("An error occurred while fetching jobs");

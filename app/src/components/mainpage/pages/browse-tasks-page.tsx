@@ -716,6 +716,7 @@ import {
 } from "../../../components/ui/dropdown-menu";
 import { Checkbox } from "../../../components/ui/checkbox";
 import axiosInstance from "../../../lib/axiosInstance";
+import { extractJobsArray, isGetAllJobsResponseOk } from "@/lib/homeJobsCache";
 import { toast } from "sonner";
 import { warmTaskDetailNavigation, type NavTaskInput } from "@/lib/taskNavCache";
 
@@ -825,30 +826,34 @@ export function BrowseTasksPage() {
   const fetchJobs = async () => {
     try {
       setIsLoading(true);
-      const response = await axiosInstance.get("/get-all-jobs/");
+      const response = await axiosInstance.get("/recent-open-jobs/", {
+        params: { limit: 50 },
+      });
 
-      if (response?.data?.status_code === 200) {
-        const jobsData = response?.data?.data?.jobs;
+      if (isGetAllJobsResponseOk(response.data, response.status)) {
+        const jobsData = extractJobsArray(response.data);
 
         if (Array.isArray(jobsData)) {
-          const mappedJobs = jobsData.map((job: any) => ({
-            id: job.job_id,
+          const mappedJobs = jobsData.map((job: Record<string, unknown>) => ({
+            id: String(job.job_id ?? job.id ?? ""),
             user_ref_id: job.user_ref_id,
-            title: job.job_title ?? "",
-            description: job.job_description ?? "",
-            budget: typeof job.job_budget === "number" ? job.job_budget : 0,
-            location: job.job_location ?? "",
+            title: String(job.job_title ?? job.title ?? ""),
+            description: String(job.job_description ?? ""),
+            budget: typeof job.job_budget === "number" ? job.job_budget : Number(job.budget ?? 0),
+            location: String(job.job_location ?? job.location ?? ""),
             status: Boolean(job.status),
             deletion_status: job.deletion_status,
             job_completion_status: job.job_completion_status,
             bid_accepted: job.bid_accepted,
             assigned_tasker_id: job.assigned_tasker_id ?? null,
-            posted_by: job.posted_by ?? "",
-            dueDate: job.job_due_date,
-            category: job.job_category ?? "",
-            category_name: job.job_category_name ?? "",
-            job_images: job.job_images,
-            postedAt: job.created_at ?? "",
+            posted_by: String(job.posted_by ?? ""),
+            dueDate: job.job_due_date ?? job.due_date,
+            category: String(job.job_category ?? job.category ?? ""),
+            category_name: String(job.job_category_name ?? job.category_name ?? ""),
+            job_images: job.hero_image_url
+              ? { urls: [String(job.hero_image_url)] }
+              : (job.job_images as Task["job_images"]),
+            postedAt: String(job.created_at ?? ""),
           }));
 
           // Show only available (open) tasks: not deleted, not completed, not assigned

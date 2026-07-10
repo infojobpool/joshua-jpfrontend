@@ -16,7 +16,7 @@ export interface NotificationItem {
   link: string;
 }
 
-const POLL_INTERVAL_MS = 10000; // 10 seconds - in sync with emails
+const POLL_INTERVAL_MS = 30000; // 30s is enough for notification badges
 const CLEARED_IDS_KEY = "notification_cleared_ids";
 const READ_IDS_KEY = "notification_read_ids";
 const KEEP_LATEST = 10;

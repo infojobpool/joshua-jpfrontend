@@ -305,7 +305,7 @@ function BrowseContent() {
     category: job.job_category,
     category_name: job.job_category_name,
     custom_category_name: job.custom_category_name || null,
-    job_images: job.job_images,
+    job_images: job.job_images ?? (job.hero_image_url ? { urls: [job.hero_image_url] } : undefined),
     postedAt: rawPosted,
     offers: 0,
     distance_km: typeof job.distance_km === "number" ? job.distance_km : undefined,
@@ -345,7 +345,9 @@ function BrowseContent() {
         }
       }
 
-      const response = await axiosInstance.get("/get-all-jobs/");
+      const response = await axiosInstance.get("/recent-open-jobs/", {
+        params: { limit: 50 },
+      });
       const data = response?.data;
       if (isGetAllJobsResponseOk(data, response?.status)) {
         const jobs = extractJobsArray(data);
