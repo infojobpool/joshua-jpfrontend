@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { CheckCircle } from "lucide-react"
 import axiosInstance from "../../lib/axiosInstance"
 import useStore from "../../lib/Zustand";
+import { verificationFailureMessage } from "@/lib/slowApiErrors";
 
 interface PanVerificationProps {
   onComplete: () => void
@@ -86,10 +87,10 @@ export default function PanVerification({ onComplete }: PanVerificationProps) {
       });
       setIsVerifying(false)
       setError(
-        err.response?.data?.message ||
-        err.response?.data?.detail ||
-        err.message ||
-        "Failed to connect to the server. Please try again later."
+        verificationFailureMessage(
+          err,
+          "Failed to connect to the server. Please try again later."
+        )
       )
     }
   }
@@ -142,6 +143,11 @@ export default function PanVerification({ onComplete }: PanVerificationProps) {
                 <p className="text-xs text-red-500">Please enter a valid PAN number (e.g., ABCDE1234F)</p>
               )}
               {error && <p className="text-xs text-red-500">{error}</p>}
+              {isVerifying && (
+                <p className="text-xs text-muted-foreground">
+                  Verifying with PAN records. This can take up to 60 seconds on a cold server.
+                </p>
+              )}
             </div>
 
             <Button

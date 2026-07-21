@@ -223,6 +223,7 @@ import { Label } from "@/components/ui/label";
 import { CheckCircle } from "lucide-react";
 import axiosInstance from "../../lib/axiosInstance";
 import useStore from "../../lib/Zustand";
+import { verificationFailureMessage } from "@/lib/slowApiErrors";
 
 interface AadharVerificationProps {
   onComplete: () => void;
@@ -321,17 +322,11 @@ function formatApiErrorPayload(payload: unknown, fallback: string): string {
 }
 
 function formatAxiosError(err: unknown, fallback: string): string {
-  const anyErr = err as { message?: string; response?: { data?: unknown } };
+  const anyErr = err as { message?: string };
   if (anyErr.message === "Too many requests - please slow down") {
     return "Too many requests. Please wait a few seconds and try again.";
   }
-  if (anyErr.response?.data) {
-    return formatApiErrorPayload(anyErr.response.data, fallback);
-  }
-  if (typeof anyErr.message === "string" && anyErr.message.trim()) {
-    return anyErr.message;
-  }
-  return fallback;
+  return verificationFailureMessage(err, fallback);
 }
 
 function isOtpSendSuccessful(payload: unknown, httpStatus: number): boolean {
@@ -634,7 +629,7 @@ export default function AadharVerification({
                 )}
                 {isVerifying && (
                   <p className="text-xs text-muted-foreground">
-                    Sending OTP to your Aadhaar-linked mobile. This can take up to 30 seconds.
+                    Sending OTP to your Aadhaar-linked mobile. This can take up to 60 seconds.
                   </p>
                 )}
                 <Button

@@ -1,6 +1,7 @@
 // lib/axiosInstance.ts
 
 import axios from 'axios';
+import { VERIFICATION_REQUEST_TIMEOUT_MS } from './slowApiErrors';
 import { notifyTokenUpdated, parseRefreshTokenBody } from './tokenRefresh';
 
 /** Light polling endpoints — must not consume the global throttle budget (was delaying chat by minutes). */
@@ -194,6 +195,10 @@ axiosInstance.interceptors.request.use(
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
       config.headers['X-Access-Token'] = token;
+    }
+
+    if (isVerificationWrite(urlStr)) {
+      config.timeout = VERIFICATION_REQUEST_TIMEOUT_MS;
     }
 
     /** GET/HEAD with Content-Type: application/json is non-simple and triggers CORS preflight on many APIs. */
