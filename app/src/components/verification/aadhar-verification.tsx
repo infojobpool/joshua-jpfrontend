@@ -221,9 +221,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CheckCircle } from "lucide-react";
-import axiosInstance from "../../lib/axiosInstance";
 import useStore from "../../lib/Zustand";
-import { verificationFailureMessage } from "@/lib/slowApiErrors";
+import { verificationApiFailureMessage, verificationFailureMessage } from "@/lib/slowApiErrors";
+import { postVerificationWithRetry } from "@/lib/verificationApi";
 
 interface AadharVerificationProps {
   onComplete: () => void;
@@ -385,12 +385,12 @@ export default function AadharVerification({
       // Match PAN flow: user_id + aadhaar_number as query params (JSON body returns 422).
       const sendOtpUrl = `/verify-aadhaar/?user_id=${encodeURIComponent(effectiveUserId)}&aadhaar_number=${encodeURIComponent(sanitizedAadhaar)}`;
       try {
-        response = await axiosInstance.post(sendOtpUrl);
+        response = await postVerificationWithRetry(sendOtpUrl);
       } catch (postError: any) {
         const status = postError.response?.status;
         if (status === 404 || status === 405) {
           console.log("🆔 [Aadhar] Query POST failed, trying JSON body");
-          response = await axiosInstance.post(`/verify-aadhaar/`, {
+          response = await postVerificationWithRetry(`/verify-aadhaar/`, {
             user_id: effectiveUserId,
             aadhaar_number: sanitizedAadhaar,
           });
@@ -415,7 +415,7 @@ export default function AadharVerification({
         );
       } else {
         setError(
-          formatApiErrorPayload(
+          verificationApiFailureMessage(
             data,
             "Unable to send OTP. Please check your Aadhar number and try again."
           )
@@ -458,12 +458,12 @@ export default function AadharVerification({
       let response;
       const otpQuery = `/verify-aadhaar/otp/?user_id=${encodeURIComponent(effectiveUserId)}&ref_id=${encodeURIComponent(refId)}&otp=${encodeURIComponent(otp)}&aadhaar_number=${encodeURIComponent(sanitizedAadhaar)}`;
       try {
-        response = await axiosInstance.post(otpQuery);
+        response = await postVerificationWithRetry(otpQuery);
       } catch (postError: any) {
         const status = postError.response?.status;
         if (status === 404 || status === 405) {
           console.log("🆔 [Aadhar] OTP query POST failed, trying JSON body");
-          response = await axiosInstance.post(`/verify-aadhaar/otp/`, {
+          response = await postVerificationWithRetry(`/verify-aadhaar/otp/`, {
             user_id: effectiveUserId,
             ref_id: refId,
             otp,
@@ -512,7 +512,9 @@ export default function AadharVerification({
         }, 1500); // 1.5 second delay to show success message
       } else {
         console.warn("⚠️ Verification response doesn't indicate success:", data);
-        setError(formatApiErrorPayload(data, "Invalid OTP. Please try again."));
+        setError(
+          verificationApiFailureMessage(data, "Invalid OTP. Please try again.")
+        );
       }
     } catch (err: any) {
       console.error("❌ [Aadhar] OTP verify error:", {
@@ -629,7 +631,7 @@ export default function AadharVerification({
                 )}
                 {isVerifying && (
                   <p className="text-xs text-muted-foreground">
-                    Sending OTP to your Aadhaar-linked mobile. This can take up to 60 seconds.
+                    Sending OTP to your Aadhaar-linked mobile. This can take up to 2 minutes — please keep this screen open.
                   </p>
                 )}
                 <Button

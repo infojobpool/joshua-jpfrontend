@@ -37,8 +37,8 @@ export function retryToastMessage(error: unknown): string {
 /** Task detail fetch: allow slow backend before abort (seconds). */
 export const TASK_DETAIL_FETCH_MS = 45_000;
 
-/** PAN / Aadhaar — Cashfree + cold API can exceed 6s backend default; client waits longer. */
-export const VERIFICATION_REQUEST_TIMEOUT_MS = 120_000;
+/** PAN / Aadhaar — Cashfree + cold API can exceed 60s; allow up to 3 minutes. */
+export const VERIFICATION_REQUEST_TIMEOUT_MS = 180_000;
 
 export function isVerificationTimeoutMessage(text: string): boolean {
   const msg = text.toLowerCase();
@@ -76,4 +76,17 @@ function extractApiMessage(payload: unknown): string | null {
   }
   if (root.data != null) return extractApiMessage(root.data);
   return null;
+}
+
+/** API may return timeout text in a 200 body — never show raw axios/ms jargon to users. */
+export function verificationApiFailureMessage(
+  payload: unknown,
+  fallback: string
+): string {
+  const fromBody = extractApiMessage(payload);
+  if (fromBody && isVerificationTimeoutMessage(fromBody)) {
+    return "Verification is taking longer than usual. Please wait 30 seconds and try again.";
+  }
+  if (fromBody) return fromBody;
+  return fallback;
 }

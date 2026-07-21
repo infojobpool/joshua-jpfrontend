@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { CheckCircle } from "lucide-react"
-import axiosInstance from "../../lib/axiosInstance"
 import useStore from "../../lib/Zustand";
-import { verificationFailureMessage } from "@/lib/slowApiErrors";
+import { verificationApiFailureMessage, verificationFailureMessage } from "@/lib/slowApiErrors";
+import { postVerificationWithRetry } from "@/lib/verificationApi";
 
 interface PanVerificationProps {
   onComplete: () => void
@@ -40,12 +40,14 @@ export default function PanVerification({ onComplete }: PanVerificationProps) {
       let response;
       // Try POST with query params (current backend expectation)
       try {
-        response = await axiosInstance.post(`/verify-pan/?user_id=${userId}&pan=${panNumber}`);
+        response = await postVerificationWithRetry(
+          `/verify-pan/?user_id=${userId}&pan=${panNumber}`
+        );
       } catch (postError: any) {
         // If POST fails with 404/405, try POST with JSON body
         if (postError.response?.status === 404 || postError.response?.status === 405) {
           console.log("🧾 [PAN] POST with query failed, trying POST with JSON body");
-          response = await axiosInstance.post(`/verify-pan/`, {
+          response = await postVerificationWithRetry(`/verify-pan/`, {
             user_id: userId,
             pan: panNumber,
           });
@@ -76,7 +78,12 @@ export default function PanVerification({ onComplete }: PanVerificationProps) {
           }
         } catch {}
       } else {
-        setError(data.message || data.detail || "Unable to verify PAN. Please check the number and try again.")
+        setError(
+          verificationApiFailureMessage(
+            data,
+            "Unable to verify PAN. Please check the number and try again."
+          )
+        )
       }
     } catch (err: any) {
       console.error("❌ [PAN] Verification error:", {
@@ -145,7 +152,7 @@ export default function PanVerification({ onComplete }: PanVerificationProps) {
               {error && <p className="text-xs text-red-500">{error}</p>}
               {isVerifying && (
                 <p className="text-xs text-muted-foreground">
-                  Verifying with PAN records. This can take up to 60 seconds on a cold server.
+                  Verifying with PAN records. This can take up to 2 minutes on a cold server — please keep this screen open.
                 </p>
               )}
             </div>
