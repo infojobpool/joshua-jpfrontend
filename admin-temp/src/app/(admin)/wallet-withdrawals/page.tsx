@@ -27,8 +27,12 @@ import {
   Calendar,
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
-import { formatAxiosApiError } from "@/lib/apiError";
-import { fetchAdminWithdrawals } from "@/lib/walletWithdrawalsApi";
+import { formatAxiosApiError, getApiErrorMessage } from "@/lib/apiError";
+import {
+  fetchAdminWithdrawals,
+  normalizeWithdrawalStatus,
+  withdrawalsLookPendingOnly,
+} from "@/lib/walletWithdrawalsApi";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { useCanAdminWrite } from "@/lib/adminAuth";
@@ -56,16 +60,7 @@ type StatusFilter = "all" | "pending" | "in_process" | "completed" | "failed";
 const NOTE_MAX = 500;
 
 function normalizeStatus(statusRaw?: string): StatusFilter {
-  const s = (statusRaw || "pending")
-    .toLowerCase()
-    .replace(/[\s-]+/g, "_")
-    .trim();
-  if (s === "in_process" || s === "processing" || s === "processed") return "in_process";
-  if (s === "completed" || s === "complete" || s === "success" || s === "paid" || s === "done") {
-    return "completed";
-  }
-  if (s === "failed" || s === "failure" || s === "rejected" || s === "cancelled") return "failed";
-  return "pending";
+  return normalizeWithdrawalStatus(statusRaw);
 }
 
 function normalizeWithdrawal(raw: Record<string, unknown>): Withdrawal | null {
@@ -546,9 +541,18 @@ export default function WalletWithdrawalsPage() {
           Wallet Withdrawals
         </h1>
         <p className="text-muted-foreground mt-1">
-          All UPI withdrawal requests with user and payout details. Add <strong>short notes</strong> per
-          row and save (stored server-side).
+          UPI withdrawal queue — pending, in process, completed, and failed when the API returns all
+          statuses. Mark <strong>Done</strong> when paid; rows move to Completed if the backend includes
+          them in <code className="text-xs bg-muted px-1 rounded">GET /admin/wallet/withdrawals</code>.
         </p>
+        {!isLoading && withdrawals.length > 0 && withdrawalsLookPendingOnly(withdrawals) ? (
+          <p className="mt-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 max-w-3xl">
+            All {withdrawals.length} rows show as <strong>Pending</strong>. If you previously marked
+            payouts Done and they disappeared, the API is likely returning the pending queue only — ask
+            backend to support <code className="bg-white/80 px-1 rounded">?include_all=true</code> on that
+            route.
+          </p>
+        ) : null}
         {focusUserId ? (
           <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-950">
             <span>
