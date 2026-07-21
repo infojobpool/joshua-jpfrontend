@@ -549,7 +549,7 @@ export default function WalletWithdrawalsPage() {
           <p className="mt-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 max-w-3xl">
             All {withdrawals.length} rows show as <strong>Pending</strong>. If you previously marked
             payouts Done and they disappeared, the API is likely returning the pending queue only — ask
-            backend to support <code className="bg-white/80 px-1 rounded">?include_all=true</code> on that
+            backend to support <code className="bg-white/80 px-1 rounded">?status=all&amp;limit=500</code> on that
             route.
           </p>
         ) : null}

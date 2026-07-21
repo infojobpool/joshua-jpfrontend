@@ -132,63 +132,38 @@ export function extractWithdrawalsList(payload: unknown): AdminWithdrawal[] {
   return [];
 }
 
-function withdrawalKey(w: AdminWithdrawal): string {
-  return String(w.transaction_id ?? w.id ?? "").trim();
-}
+/** Admin list — backend requires status=all to include completed/failed rows. */
+const WITHDRAWALS_FETCH_TIMEOUT_MS = 90_000;
+const WITHDRAWALS_ALL_PARAMS = { status: "all", limit: 500 } as const;
 
-function mergeWithdrawalLists(lists: AdminWithdrawal[][]): AdminWithdrawal[] {
-  const byId = new Map<string, AdminWithdrawal>();
-  for (const list of lists) {
-    for (const w of list) {
-      const key = withdrawalKey(w);
-      if (!key) continue;
-      byId.set(key, w);
-    }
-  }
-  return [...byId.values()].sort((a, b) => {
-    const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
-    const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
-    return tb - ta;
-  });
-}
-
-function listHasNonPending(rows: AdminWithdrawal[]): boolean {
-  return rows.some((w) => normalizeWithdrawalStatus(w.status) !== "pending");
+function parseWithdrawalsResponse(response: { data?: unknown }): AdminWithdrawal[] {
+  const wrapped = (response.data as { data?: unknown })?.data ?? response.data;
+  return extractWithdrawalsList(wrapped ?? response.data);
 }
 
 /**
- * Backend historically returned all statuses; some deploys only return pending unless
- * `include_all=true` (or similar) is passed — try those variants and keep the richest list.
+ * Fetch all wallet withdrawal rows (pending, in process, completed, failed).
+ * Pending-only responses happen when status=all is omitted on older API deploys.
  */
 export async function fetchAdminWithdrawals(): Promise<AdminWithdrawal[]> {
-  const paths = ["/admin/wallet/withdrawals/", "/admin/wallet/withdrawals"];
-  const paramVariants: Record<string, string>[] = [
-    { include_all: "true" },
-    { all_statuses: "true" },
-    { status: "all" },
-    {},
-  ];
-
-  let best: AdminWithdrawal[] = [];
+  const requestOpts = {
+    params: WITHDRAWALS_ALL_PARAMS,
+    timeout: WITHDRAWALS_FETCH_TIMEOUT_MS,
+  };
+  const paths = ["/admin/wallet/withdrawals", "/admin/wallet/withdrawals/"];
   let lastErr: unknown;
 
   for (const path of paths) {
-    for (const params of paramVariants) {
-      try {
-        const response = await axiosInstance.get(path, { params });
-        const wrapped = response.data?.data ?? response.data;
-        const list = extractWithdrawalsList(wrapped ?? response.data);
-        if (list.length > best.length) best = list;
-        if (listHasNonPending(list)) return list;
-      } catch (err) {
-        lastErr = err;
-        const status = (err as { response?: { status?: number } })?.response?.status;
-        if (status !== 404) throw err;
-      }
+    try {
+      const response = await axiosInstance.get(path, requestOpts);
+      return parseWithdrawalsResponse(response);
+    } catch (err) {
+      lastErr = err;
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status !== 404) throw err;
     }
   }
 
-  if (best.length) return best;
   throw lastErr ?? new Error("Failed to load withdrawals");
 }
 
