@@ -27,7 +27,8 @@ import {
   Calendar,
 } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
-import { getApiErrorMessage } from "@/lib/apiError";
+import { formatAxiosApiError } from "@/lib/apiError";
+import { fetchAdminWithdrawals } from "@/lib/walletWithdrawalsApi";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { useCanAdminWrite } from "@/lib/adminAuth";
@@ -182,6 +183,7 @@ export default function WalletWithdrawalsPage() {
   const [paidSubmitting, setPaidSubmitting] = useState(false);
   /** null = ok or not loaded; 'auth' = 401 / invalid token; 'other' = other error */
   const [loadError, setLoadError] = useState<null | "auth" | "other">(null);
+  const [loadErrorDetail, setLoadErrorDetail] = useState("");
   const [focusUserId, setFocusUserId] = useState("");
   const canWrite = useCanAdminWrite();
 
@@ -194,15 +196,14 @@ export default function WalletWithdrawalsPage() {
     try {
       setIsLoading(true);
       setLoadError(null);
-      const response = await axiosInstance.get("/admin/wallet/withdrawals");
-      const wrapped = response.data?.data ?? response.data;
-      const list = extractWithdrawalsList(wrapped ?? response.data);
+      setLoadErrorDetail("");
+      const list = await fetchAdminWithdrawals();
       setWithdrawals(list);
     } catch (err: unknown) {
       console.error("Withdrawals fetch error:", err);
-      const anyErr = err as { response?: { status?: number } };
+      const anyErr = err as { response?: { status?: number }; code?: string; message?: string };
       const status = anyErr.response?.status;
-      const detail = getApiErrorMessage(err).toLowerCase();
+      const detail = formatAxiosApiError(err).toLowerCase();
       const isAuth =
         status === 401 ||
         status === 403 ||
@@ -216,7 +217,10 @@ export default function WalletWithdrawalsPage() {
         ? status === 403
           ? "Admin access required. Sign in via the admin portal (admin-login), not the regular user login."
           : "Admin session expired or invalid. Log in again."
-        : getApiErrorMessage(err) || "Failed to load withdrawals";
+        : anyErr.code === "ECONNABORTED" || detail.includes("timeout")
+          ? "Timed out loading withdrawals — API may be waking from sleep. Wait 30s and tap Try again."
+          : formatAxiosApiError(err) || "Failed to load withdrawals";
+      setLoadErrorDetail(msg);
       toast.error(msg);
       setWithdrawals([]);
     } finally {
@@ -590,8 +594,20 @@ export default function WalletWithdrawalsPage() {
       ) : loadError === "other" ? (
         <Card>
           <CardContent className="pt-6">
-            <div className="text-center py-10">
-              <p className="text-muted-foreground mb-4">Could not load withdrawals.</p>
+            <div className="text-center py-10 px-4 max-w-lg mx-auto space-y-3">
+              <p className="text-muted-foreground">Could not load withdrawals.</p>
+              {loadErrorDetail ? (
+                <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                  {loadErrorDetail}
+                </p>
+              ) : null}
+              <p className="text-xs text-muted-foreground">
+                Confirm backend route{" "}
+                <code className="bg-muted px-1 rounded">GET /api/v1/admin/wallet/withdrawals</code>{" "}
+                is deployed and admin Vercel env{" "}
+                <code className="bg-muted px-1 rounded">NEXT_PUBLIC_API_BASE_URL</code> points to{" "}
+                <code className="bg-muted px-1 rounded">https://api.jobpool.in/api/v1</code>.
+              </p>
               <Button onClick={() => fetchWithdrawals()}>Try again</Button>
             </div>
           </CardContent>

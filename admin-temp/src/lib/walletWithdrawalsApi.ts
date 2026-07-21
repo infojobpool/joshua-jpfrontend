@@ -97,9 +97,20 @@ export function extractWithdrawalsList(payload: unknown): AdminWithdrawal[] {
 }
 
 export async function fetchAdminWithdrawals(): Promise<AdminWithdrawal[]> {
-  const response = await axiosInstance.get("/admin/wallet/withdrawals");
-  const wrapped = response.data?.data ?? response.data;
-  return extractWithdrawalsList(wrapped ?? response.data);
+  const paths = ["/admin/wallet/withdrawals/", "/admin/wallet/withdrawals"];
+  let lastErr: unknown;
+  for (const path of paths) {
+    try {
+      const response = await axiosInstance.get(path);
+      const wrapped = response.data?.data ?? response.data;
+      return extractWithdrawalsList(wrapped ?? response.data);
+    } catch (err) {
+      lastErr = err;
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status !== 404) throw err;
+    }
+  }
+  throw lastErr ?? new Error("Failed to load withdrawals");
 }
 
 export function indexWithdrawalsByUserId(
