@@ -24,6 +24,7 @@ import {
   getAdminTaskStatus,
   type AdminTaskStatus,
 } from "@/lib/adminTaskStatus";
+import { ALL_USER_DETAILS_FAST_PARAMS } from "@/lib/adminUserList";
 
 interface TaskStatus {
   id: number;
@@ -138,7 +139,7 @@ interface TaskOrder {
 const DASHBOARD_CACHE_KEY = "admin_dashboard_data";
 const DASHBOARD_CACHE_TTL_MS = 120_000;
 /** Admin list endpoints can be slow on cold API; avoid aborting before first byte. */
-const DASHBOARD_FETCH_TIMEOUT_MS = 45_000;
+const DASHBOARD_FETCH_TIMEOUT_MS = 90_000;
 
 function coerceUserList(res: { data?: unknown }): User[] {
   const root = res?.data as Record<string, unknown> | undefined;
@@ -246,7 +247,10 @@ export default function AdminDashboard() {
       const timeoutId = setTimeout(() => controller.abort(), DASHBOARD_FETCH_TIMEOUT_MS);
 
       const [usersResponse, jobsResponse, taskOrdersResponse] = await Promise.all([
-        axiosInstance.get("all-user-details/", { signal: controller.signal }),
+        axiosInstance.get("all-user-details/", {
+          signal: controller.signal,
+          params: ALL_USER_DETAILS_FAST_PARAMS,
+        }),
         axiosInstance.get("get-all-jobs-admin/", { signal: controller.signal }),
         axiosInstance
           .get("get-all-task-orders/", { signal: controller.signal })

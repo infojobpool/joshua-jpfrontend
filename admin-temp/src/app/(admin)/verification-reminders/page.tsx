@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import axiosInstance from "@/lib/axiosInstance";
+import { fetchAllUserDetailsAdmin } from "@/lib/adminUserList";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
@@ -53,9 +53,7 @@ export default function VerificationRemindersPage() {
   const fetchCustomers = async (opts?: { silent?: boolean }) => {
     try {
       if (!opts?.silent) setLoading(true);
-      const response = await axiosInstance.get("all-user-details/");
-      const raw = response.data?.data ?? response.data;
-      const list = Array.isArray(raw) ? raw : [];
+      const list = await fetchAllUserDetailsAdmin();
       setCustomers(list as CustomerRow[]);
     } catch {
       if (!opts?.silent) toast.error("Could not load users");

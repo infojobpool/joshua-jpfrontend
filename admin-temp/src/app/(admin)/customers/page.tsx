@@ -285,12 +285,16 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo } from "react";
 import Link from "next/link";
 import { Search, Eye, EyeOff, CreditCard, Phone, Download, Calendar, ExternalLink } from "lucide-react";
-import axiosInstance from "@/lib/axiosInstance";
 import { toast } from "sonner";
-import { coerceAdminUserList } from "@/lib/adminUserList";
+import { formatAxiosApiError } from "@/lib/apiError";
+import {
+  fetchAllUserDetailsAdmin,
+  readAdminCustomersCache,
+  writeAdminCustomersCache,
+} from "@/lib/adminUserList";
 import { ProfileReminderCell } from "@/components/admin/ProfileReminderCell";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -352,26 +356,60 @@ export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [verificationFilter, setVerificationFilter] = useState<VerificationFilter>("all");
   const [signupBonusFilter, setSignupBonusFilter] = useState<SignupBonusFilter>("all");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [visibleBankDetails, setVisibleBankDetails] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string>("");
+  const [usingStaleCache, setUsingStaleCache] = useState(false);
+
+  useLayoutEffect(() => {
+    const cached = readAdminCustomersCache<Customer>();
+    if (cached.length > 0) {
+      setCustomers(cached);
+      setIsLoading(false);
+      setUsingStaleCache(true);
+    }
+  }, []);
+
+  const loadWithdrawalsInBackground = () => {
+    void fetchAdminWithdrawals()
+      .then((withdrawals) => setWithdrawalsByUserId(indexWithdrawalsByUserId(withdrawals)))
+      .catch(() => {
+        /* signup bonus column can load without withdrawals */
+      });
+  };
 
   const fetchCustomers = async () => {
+    const cachedRows = readAdminCustomersCache<Customer>();
+    const hadRows = customers.length > 0 || cachedRows.length > 0;
     try {
-      setIsLoading(true);
+      setIsLoading(!hadRows);
       setError("");
-      const [customersRes, withdrawals] = await Promise.all([
-        axiosInstance.get("all-user-details/", {
-          params: { include_stats: false },
-        }),
-        fetchAdminWithdrawals().catch(() => [] as AdminWithdrawal[]),
-      ]);
-      const list = coerceAdminUserList(customersRes) as Customer[];
+      const list = (await fetchAllUserDetailsAdmin()) as Customer[];
       setCustomers(list);
-      setWithdrawalsByUserId(indexWithdrawalsByUserId(withdrawals));
-    } catch {
-      setError("Failed to load customers");
-      toast.error("An error occurred while fetching customers");
+      setUsingStaleCache(false);
+      writeAdminCustomersCache(list);
+      loadWithdrawalsInBackground();
+    } catch (err: unknown) {
+      const e = err as { code?: string; response?: { status?: number } };
+      console.error("Customers fetch error:", err);
+      let message = "Failed to load customers";
+      if (e?.code === "ECONNABORTED") {
+        message = "Timed out loading customers (API slow). Wait and tap Retry, or check backend is awake.";
+      } else if (e?.response?.status === 401) {
+        message = "Admin session expired. Log out and sign in again.";
+      } else if (e?.response?.status === 403) {
+        message = "Access denied. Sign in with an admin account.";
+      } else {
+        const detail = formatAxiosApiError(err);
+        if (detail && detail !== "Request failed") message = detail;
+      }
+      if (customers.length > 0 || cachedRows.length > 0) {
+        setUsingStaleCache(true);
+        toast.warning("Could not refresh customers — showing last saved list.", { duration: 6000 });
+      } else {
+        setError(message);
+        toast.error("An error occurred while fetching customers");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -809,6 +847,10 @@ export default function CustomersPage() {
         {hasActiveFilters ? (
           <p className="text-xs text-gray-500">
             Filters active — export uses the {filteredCustomers.length} row(s) shown below.
+          </p>
+        ) : usingStaleCache && customers.length > 0 ? (
+          <p className="text-xs text-amber-700">
+            Showing saved customer list while the API refreshes — tap Retry if counts look old.
           </p>
         ) : null}
       </div>
