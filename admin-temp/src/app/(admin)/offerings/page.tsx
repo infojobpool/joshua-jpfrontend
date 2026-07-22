@@ -1,13 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
-import axiosInstance from "@/lib/axiosInstance";
-import { getApiErrorMessage, formatAxiosApiError } from "@/lib/apiError";
-import { parseMediaUploadResponse } from "@/lib/parseMediaUploadResponse";
-import { useCanAdminWrite } from "@/lib/adminAuth";
+import { useCallback, useEffect, useState } from "react";
+import { MessageSquare, Store, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -23,779 +18,452 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Loader2, Eye, EyeOff, Pencil, ImagePlus } from "lucide-react";
+import axiosInstance from "@/lib/axiosInstance";
 
-const PAGE_LIMIT = 50;
-/** Match main app listing editor limits */
-const MAX_LISTING_PHOTOS = 6;
-const MAX_PHOTO_BYTES = 650 * 1024;
-
-function photoLinesFromText(text: string): string[] {
-  return text
-    .split(/[\n,]+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
-type StatusFilter = "all" | "draft" | "published" | "paused";
-type AdminHiddenFilter = "all" | "visible" | "hidden";
-
-interface AdminOfferingRow {
+interface OfferingRow {
   id: string;
   user_id: string;
+  title: string;
   type: string;
-  title: string;
-  category: string;
-  description: string;
-  location_text: string;
-  starting_price_inr: number;
-  photo_urls: string[];
+  category: string | null;
   status: string;
-  attestation_accepted: boolean;
   admin_hidden: boolean;
-  created_at: string;
-  updated_at: string;
   provider_display_name: string | null;
+  updated_at: string | null;
+  chat_count?: number;
 }
 
-function pickStr(r: Record<string, unknown>, ...keys: string[]): string {
-  for (const k of keys) {
-    const v = r[k];
-    if (v != null && typeof v === "string") return v;
-    if (typeof v === "number" && Number.isFinite(v)) return String(v);
-  }
-  return "";
+interface UserBrief {
+  user_id: string;
+  user_name: string | null;
+  user_email: string | null;
 }
 
-function normalizeRow(raw: Record<string, unknown>): AdminOfferingRow | null {
-  const id = pickStr(raw, "id");
-  if (!id) return null;
-  const photos = raw.photo_urls ?? raw.photoUrls;
-  const photo_urls = Array.isArray(photos)
-    ? (photos as unknown[]).filter((u): u is string => typeof u === "string")
-    : [];
-  const priceRaw = raw.starting_price_inr ?? raw.startingPriceInr;
-  const starting_price_inr =
-    typeof priceRaw === "number" && Number.isFinite(priceRaw)
-      ? priceRaw
-      : typeof priceRaw === "string"
-        ? parseFloat(priceRaw) || 0
-        : 0;
-  const nameRaw = raw.provider_display_name ?? raw.providerDisplayName;
-  return {
-    id,
-    user_id: pickStr(raw, "user_id", "userId"),
-    type: pickStr(raw, "type") || "service",
-    title: pickStr(raw, "title"),
-    category: pickStr(raw, "category"),
-    description: pickStr(raw, "description"),
-    location_text: pickStr(raw, "location_text", "locationText"),
-    starting_price_inr,
-    photo_urls,
-    status: (pickStr(raw, "status") || "draft").toLowerCase(),
-    attestation_accepted: Boolean(raw.attestation_accepted ?? raw.attestationAccepted),
-    admin_hidden: Boolean(raw.admin_hidden ?? raw.adminHidden),
-    created_at: pickStr(raw, "created_at", "createdAt"),
-    updated_at: pickStr(raw, "updated_at", "updatedAt"),
-    provider_display_name:
-      typeof nameRaw === "string" && nameRaw.trim() ? nameRaw.trim() : null,
+interface OfferingChat {
+  chat_id: string;
+  opened_at: string | null;
+  participants: UserBrief[];
+  enquirers: UserBrief[];
+  message_count: number;
+  last_message_at: string | null;
+  last_message_preview: string | null;
+  last_message_sender_user_id: string | null;
+  messages?: {
+    messagesid: number;
+    sender_user_id: string;
+    description: string;
+    tstamp: string | null;
+    readstatus: boolean;
+  }[] | null;
+}
+
+interface OfferingChatTracking {
+  offering: {
+    id: string;
+    title: string;
+    status: string;
+    owner: UserBrief;
+    created_at: string | null;
   };
+  summary: {
+    chat_count: number;
+    unique_enquirer_count: number;
+    total_messages: number;
+  };
+  chats: OfferingChat[];
 }
 
-function statusBadgeClass(status: string): string {
-  const s = status.toLowerCase();
-  if (s === "published") return "bg-emerald-100 text-emerald-800 hover:bg-emerald-100";
-  if (s === "paused") return "bg-amber-100 text-amber-800 hover:bg-amber-100";
-  return "bg-slate-100 text-slate-700 hover:bg-slate-100";
-}
-
-function filterHttpsPhotoUrls(urls: string[]): string[] {
-  return urls.filter((u) => typeof u === "string" && /^https?:\/\//i.test(u.trim()));
-}
-
-type OfferingStatusEdit = "draft" | "published" | "paused";
-type OfferingTypeEdit = "service" | "product";
-
-interface EditDraft {
-  offeringId: string;
-  type: OfferingTypeEdit;
+interface ChatSummaryListing {
+  offering_id: string;
   title: string;
-  category: string;
-  description: string;
-  location_text: string;
-  starting_price_inr: string;
-  status: OfferingStatusEdit;
-  photo_urls_text: string;
-  attestation_accepted: boolean;
+  status: string;
+  owner_user_id: string;
+  owner_name: string | null;
+  owner_email: string | null;
+  chat_count: number;
 }
 
-function rowToEditDraft(o: AdminOfferingRow): EditDraft {
-  const st = (o.status || "draft").toLowerCase();
-  let status: OfferingStatusEdit = "draft";
-  if (st === "published") status = "published";
-  else if (st === "paused") status = "paused";
-  const ty = (o.type || "service").toLowerCase() === "product" ? "product" : "service";
-  return {
-    offeringId: o.id,
-    type: ty,
-    title: o.title,
-    category: o.category,
-    description: o.description,
-    location_text: o.location_text,
-    starting_price_inr: String(Math.round(o.starting_price_inr) || 0),
-    status,
-    photo_urls_text: o.photo_urls.join("\n"),
-    attestation_accepted: o.attestation_accepted,
-  };
+type VisibilityFilter = "all" | "visible" | "hidden";
+
+function formatWhen(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
 }
 
 export default function AdminOfferingsPage() {
-  const [rows, setRows] = useState<AdminOfferingRow[]>([]);
+  const [rows, setRows] = useState<OfferingRow[]>([]);
   const [total, setTotal] = useState(0);
-  const [offset, setOffset] = useState(0);
-  const [queryEpoch, setQueryEpoch] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [actionId, setActionId] = useState<string | null>(null);
-  const [userIdFilter, setUserIdFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [adminHiddenFilter, setAdminHiddenFilter] = useState<AdminHiddenFilter>("all");
-  const [editOpen, setEditOpen] = useState(false);
-  const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
-  const [savingEdit, setSavingEdit] = useState(false);
-  const [photoUploading, setPhotoUploading] = useState(false);
-  const photoFileInputRef = useRef<HTMLInputElement>(null);
-  const canWrite = useCanAdminWrite();
-
-  /** Latest filter fields for fetchList (avoid refetch on every keystroke). */
-  const filtersRef = useRef({
-    userIdFilter,
-    statusFilter,
-    adminHiddenFilter,
-  });
-  filtersRef.current = { userIdFilter, statusFilter, adminHiddenFilter };
+  const [loading, setLoading] = useState(true);
+  const [visibility, setVisibility] = useState<VisibilityFilter>("all");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [topChats, setTopChats] = useState<ChatSummaryListing[]>([]);
+  const [tracking, setTracking] = useState<OfferingChatTracking | null>(null);
+  const [trackingLoading, setTrackingLoading] = useState(false);
+  const [includeMessages, setIncludeMessages] = useState(false);
 
   const fetchList = useCallback(async () => {
     try {
-      setIsLoading(true);
-      const { userIdFilter: uidRaw, statusFilter: st, adminHiddenFilter: ah } = filtersRef.current;
-      const params: Record<string, string | number | boolean> = {
-        limit: PAGE_LIMIT,
-        offset,
-      };
-      const uid = uidRaw.trim();
-      if (uid) params.user_id = uid;
-      if (st !== "all") params.status = st;
-      if (ah === "hidden") params.admin_hidden = true;
-      if (ah === "visible") params.admin_hidden = false;
-
-      const response = await axiosInstance.get("/admin/offerings/", { params });
-      if (response.data?.status_code !== 200) {
-        toast.error(response.data?.message || "Failed to load offerings");
-        setRows([]);
-        setTotal(0);
-        return;
+      setLoading(true);
+      const params = new URLSearchParams();
+      params.set("limit", "100");
+      params.set("offset", "0");
+      params.set("include_chat_stats", "true");
+      if (visibility === "hidden") params.set("admin_hidden", "true");
+      if (visibility === "visible") params.set("admin_hidden", "false");
+      const response = await axiosInstance.get(`admin/offerings/?${params.toString()}`);
+      if (response.data.status_code === 200 && response.data.data) {
+        setRows(response.data.data.offerings ?? []);
+        setTotal(response.data.data.total ?? 0);
+      } else {
+        toast.error(response.data.message || "Failed to load listings");
       }
-      const data = response.data?.data;
-      const listRaw = data?.offerings;
-      const list: AdminOfferingRow[] = [];
-      if (Array.isArray(listRaw)) {
-        for (const item of listRaw) {
-          if (item && typeof item === "object" && !Array.isArray(item)) {
-            const n = normalizeRow(item as Record<string, unknown>);
-            if (n) list.push(n);
-          }
-        }
-      }
-      setRows(list);
-      const t = data?.total;
-      setTotal(typeof t === "number" && Number.isFinite(t) ? t : list.length);
-    } catch (err) {
-      toast.error(getApiErrorMessage(err) || "Failed to load offerings");
-      setRows([]);
-      setTotal(0);
+    } catch {
+      toast.error("Failed to load listings");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }, [offset, queryEpoch]);
+  }, [visibility]);
+
+  const fetchChatSummary = useCallback(async () => {
+    try {
+      const response = await axiosInstance.get("admin/offerings-chat-summary/", {
+        params: { limit: 20 },
+      });
+      if (response.data.status_code === 200 && response.data.data) {
+        setTopChats(response.data.data.listings ?? []);
+      }
+    } catch {
+      // non-blocking
+    }
+  }, []);
 
   useEffect(() => {
-    void fetchList();
-  }, [fetchList]);
+    fetchList();
+    fetchChatSummary();
+  }, [fetchList, fetchChatSummary]);
 
-  const applyFilters = () => {
-    setOffset(0);
-    setQueryEpoch((e) => e + 1);
-  };
-
-  const openEdit = (o: AdminOfferingRow) => {
-    if (!canWrite) {
-      toast.error("Read-only access");
-      return;
-    }
-    setEditDraft(rowToEditDraft(o));
-    setEditOpen(true);
-  };
-
-  const saveEdit = async () => {
-    if (!canWrite || !editDraft) {
-      toast.error("Read-only access");
-      return;
-    }
-    const id = editDraft.offeringId;
-    const price = parseFloat(editDraft.starting_price_inr.replace(/,/g, ""));
-    if (!Number.isFinite(price) || price < 0) {
-      toast.error("Enter a valid starting price (₹).");
-      return;
-    }
-    const photoLines = editDraft.photo_urls_text
-      .split(/[\n,]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const photo_urls = filterHttpsPhotoUrls(photoLines);
-    const body: Record<string, unknown> = {
-      type: editDraft.type,
-      title: editDraft.title.trim(),
-      category: editDraft.category.trim(),
-      description: editDraft.description.trim(),
-      location_text: editDraft.location_text.trim(),
-      starting_price_inr: price,
-      status: editDraft.status,
-      photo_urls,
-      attestation_accepted: editDraft.attestation_accepted,
-    };
+  const setHidden = async (offeringId: string, adminHidden: boolean) => {
     try {
-      setSavingEdit(true);
-      const res = await axiosInstance.patch(`/admin/offerings/${id}/`, body);
-      if (res.data?.status_code !== 200) {
-        toast.error(res.data?.message || "Update failed");
-        return;
-      }
-      toast.success(res.data?.message || "Offering updated");
-      setEditOpen(false);
-      setEditDraft(null);
-      await fetchList();
-    } catch (err) {
-      toast.error(formatAxiosApiError(err) || getApiErrorMessage(err) || "Update failed");
-    } finally {
-      setSavingEdit(false);
-    }
-  };
-
-  const onListingPhotoFilesSelected = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files?.length || !editDraft) return;
-    if (!canWrite) {
-      toast.error("Read-only access");
-      e.target.value = "";
-      return;
-    }
-    const existing = photoLinesFromText(editDraft.photo_urls_text);
-    let lines = [...existing];
-    setPhotoUploading(true);
-    try {
-      let added = 0;
-      for (const file of Array.from(files)) {
-        if (lines.length >= MAX_LISTING_PHOTOS) {
-          toast.error(`You can add up to ${MAX_LISTING_PHOTOS} photos per listing.`);
-          break;
-        }
-        if (!file.type.startsWith("image/")) {
-          toast.error(`${file.name} is not an image.`);
-          continue;
-        }
-        if (file.size > MAX_PHOTO_BYTES) {
-          toast.error(`${file.name} is too large (max ${Math.round(MAX_PHOTO_BYTES / 1024)} KB).`);
-          continue;
-        }
-        try {
-          const fd = new FormData();
-          fd.append("file", file);
-          const res = await axiosInstance.post("offerings/upload-image/", fd, {
-            headers: { "Content-Type": "multipart/form-data" },
-            timeout: 120000,
-          });
-          const url = parseMediaUploadResponse(res);
-          lines.push(url);
-          added += 1;
-        } catch (err) {
-          const status = (err as { response?: { status?: number } }).response?.status;
-          if (status === 403 || status === 401) {
-            toast.error(
-              "Upload not allowed for this admin token. Backend: allow admin on POST offerings/upload-image/ or add POST admin/offerings/upload-image/.",
-            );
-          } else {
-            toast.error(getApiErrorMessage(err) || `Upload failed for ${file.name}`);
-          }
-        }
-      }
-      if (added > 0) {
-        setEditDraft((d) => (d ? { ...d, photo_urls_text: lines.join("\n") } : d));
-        toast.success(`Added ${added} image URL(s) from upload.`);
-      }
-    } finally {
-      setPhotoUploading(false);
-      e.target.value = "";
-    }
-  };
-
-  const patchVisibility = async (offeringId: string, admin_hidden: boolean) => {
-    if (!canWrite) {
-      toast.error("Read-only access");
-      return;
-    }
-    try {
-      setActionId(offeringId);
-      const res = await axiosInstance.patch(`/admin/offerings/${offeringId}/visibility/`, {
-        admin_hidden,
+      setBusyId(offeringId);
+      const response = await axiosInstance.patch(`admin/offerings/${offeringId}/visibility/`, {
+        admin_hidden: adminHidden,
       });
-      if (res.data?.status_code !== 200) {
-        toast.error(res.data?.message || "Update failed");
-        return;
+      if (response.data.status_code === 200) {
+        toast.success(adminHidden ? "Listing hidden from public" : "Listing visible again");
+        await fetchList();
+      } else {
+        toast.error(response.data.message || "Update failed");
       }
-      toast.success(res.data?.message || "Offering visibility updated");
-      await fetchList();
-    } catch (err) {
-      toast.error(getApiErrorMessage(err) || "Update failed");
+    } catch {
+      toast.error("Update failed");
     } finally {
-      setActionId(null);
+      setBusyId(null);
     }
   };
 
-  const hasPrev = offset > 0;
-  const hasNext = offset + PAGE_LIMIT < total;
+  const openChatTracking = async (offeringId: string, withMessages = includeMessages) => {
+    try {
+      setTrackingLoading(true);
+      const response = await axiosInstance.get(`admin/offerings/${offeringId}/chats/`, {
+        params: {
+          include_messages: withMessages,
+          message_limit: 30,
+        },
+        timeout: 60000,
+      });
+      if (response.data.status_code === 200 && response.data.data) {
+        setTracking(response.data.data);
+      } else {
+        toast.error(response.data.message || "Failed to load chat tracking");
+      }
+    } catch {
+      toast.error("Failed to load chat tracking");
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 p-4 md:p-6">
       <Toaster />
-      <Card className="border-slate-200 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-xl">Tasker listings</CardTitle>
-          <CardDescription>
-            Browse offerings across users. Hide listings from the public feed and profile discovery
-            without changing the tasker&apos;s draft / published / paused status.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
-            <div className="grid gap-2 min-w-[200px] flex-1">
-              <Label htmlFor="off-user-id">User ID</Label>
-              <Input
-                id="off-user-id"
-                placeholder="Filter by tasker user_id"
-                value={userIdFilter}
-                onChange={(e) => setUserIdFilter(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-            <div className="grid gap-2 w-full sm:w-44">
-              <Label>Status</Label>
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => setStatusFilter(v as StatusFilter)}
-                disabled={isLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="paused">Paused</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2 w-full sm:w-48">
-              <Label>Admin visibility</Label>
-              <Select
-                value={adminHiddenFilter}
-                onValueChange={(v) => setAdminHiddenFilter(v as AdminHiddenFilter)}
-                disabled={isLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="visible">Visible (not hidden)</SelectItem>
-                  <SelectItem value="hidden">Hidden by admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button type="button" onClick={applyFilters} disabled={isLoading} className="lg:mb-0.5">
-              Apply filters
-            </Button>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <Store className="h-6 w-6 text-muted-foreground" />
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Service listings</h1>
+            <p className="text-sm text-muted-foreground">
+              Hide/unhide listings and track how many chats each listing opened, by whom.
+            </p>
           </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Visibility</span>
+          <Select
+            value={visibility}
+            onValueChange={(v) => setVisibility(v as VisibilityFilter)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="visible">Public only</SelectItem>
+              <SelectItem value="hidden">Hidden only</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              fetchList();
+              fetchChatSummary();
+            }}
+            disabled={loading}
+          >
+            Refresh
+          </Button>
+        </div>
+      </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
-            <span>
-              Showing {rows.length === 0 ? 0 : offset + 1}–{offset + rows.length} of {total}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!hasPrev || isLoading}
-                onClick={() => setOffset((o) => Math.max(0, o - PAGE_LIMIT))}
-              >
-                Previous
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!hasNext || isLoading}
-                onClick={() => setOffset((o) => o + PAGE_LIMIT)}
-              >
-                Next
-              </Button>
-            </div>
+      {topChats.length > 0 && (
+        <div className="rounded-md border p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold">Most contacted listings</h2>
           </div>
-
-          <div className="rounded-md border border-slate-200 bg-white overflow-x-auto">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead className="min-w-[140px]">Listing</TableHead>
-                  <TableHead className="min-w-[120px]">Provider</TableHead>
-                  <TableHead className="min-w-[100px]">User ID</TableHead>
-                  <TableHead className="w-[88px]">Status</TableHead>
-                  <TableHead className="w-[100px]">Admin</TableHead>
-                  <TableHead className="min-w-[90px] text-right">Price ₹</TableHead>
-                  <TableHead className="min-w-[100px]">Updated</TableHead>
-                  <TableHead className="min-w-[200px] text-right">Actions</TableHead>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Owner</TableHead>
+                  <TableHead>Chats</TableHead>
+                  <TableHead className="text-right">Details</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoading && rows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center text-slate-500">
-                      <Loader2 className="inline h-5 w-5 animate-spin mr-2 align-middle" />
-                      Loading…
+                {topChats.map((l) => (
+                  <TableRow key={l.offering_id}>
+                    <TableCell className="max-w-[220px] truncate font-medium">
+                      {l.title}
+                    </TableCell>
+                    <TableCell className="max-w-[180px] truncate text-sm">
+                      {l.owner_name || l.owner_email || l.owner_user_id}
+                    </TableCell>
+                    <TableCell>{l.chat_count}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openChatTracking(l.offering_id)}
+                      >
+                        View chats
+                      </Button>
                     </TableCell>
                   </TableRow>
-                ) : rows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center text-slate-500">
-                      No offerings match these filters.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  rows.map((o) => (
-                    <TableRow key={o.id}>
-                      <TableCell className="align-top">
-                        <div className="font-medium text-slate-900 line-clamp-2 max-w-[220px]">
-                          {o.title || "—"}
-                        </div>
-                        <div className="text-xs text-slate-500 mt-0.5 line-clamp-1">{o.category}</div>
-                        <div className="text-[10px] text-slate-400 font-mono mt-1 truncate max-w-[220px]">
-                          {o.id}
-                        </div>
-                      </TableCell>
-                      <TableCell className="align-top text-sm">
-                        {o.provider_display_name ?? "—"}
-                      </TableCell>
-                      <TableCell className="align-top font-mono text-xs break-all max-w-[140px]">
-                        {o.user_id || "—"}
-                      </TableCell>
-                      <TableCell className="align-top">
-                        <Badge className={statusBadgeClass(o.status)}>{o.status}</Badge>
-                      </TableCell>
-                      <TableCell className="align-top">
-                        {o.admin_hidden ? (
-                          <Badge variant="destructive" className="font-normal">
-                            Hidden
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="font-normal">
-                            OK
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="align-top text-right tabular-nums">
-                        {Math.round(o.starting_price_inr).toLocaleString("en-IN")}
-                      </TableCell>
-                      <TableCell className="align-top text-xs text-slate-600 whitespace-nowrap">
-                        {o.updated_at
-                          ? new Date(o.updated_at).toLocaleString(undefined, {
-                              dateStyle: "short",
-                              timeStyle: "short",
-                            })
-                          : "—"}
-                      </TableCell>
-                      <TableCell className="align-top text-right">
-                        <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:flex-wrap sm:justify-end">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="gap-1"
-                            disabled={!canWrite || savingEdit}
-                            title={!canWrite ? "Read-only role" : "Edit listing fields"}
-                            onClick={() => openEdit(o)}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                            Edit
-                          </Button>
-                          {o.admin_hidden ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="gap-1"
-                              disabled={!canWrite || actionId === o.id}
-                              title={!canWrite ? "Read-only role" : "Show on public feed again"}
-                              onClick={() => patchVisibility(o.id, false)}
-                            >
-                              {actionId === o.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Eye className="h-3.5 w-3.5" />
-                              )}
-                              Unhide
-                            </Button>
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="gap-1"
-                              disabled={!canWrite || actionId === o.id}
-                              title={!canWrite ? "Read-only role" : "Remove from public feed / others’ profile view"}
-                              onClick={() => patchVisibility(o.id, true)}
-                            >
-                              {actionId === o.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <EyeOff className="h-3.5 w-3.5" />
-                              )}
-                              Hide
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                ))}
               </TableBody>
             </Table>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
-      <Dialog
-        open={editOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setEditOpen(false);
-            setEditDraft(null);
-          }
-        }}
-      >
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Edit listing</DialogTitle>
-            <DialogDescription>
-              Update fields as the tasker would (writer admin). Add photos by upload (same API as the main app) or
-              paste https URLs, one per line.
-            </DialogDescription>
-          </DialogHeader>
-          {editDraft ? (
-            <div className="grid gap-4 py-2">
-              <div className="grid gap-2">
-                <Label>Type</Label>
-                <Select
-                  value={editDraft.type}
-                  onValueChange={(v) =>
-                    setEditDraft((d) => (d ? { ...d, type: v as OfferingTypeEdit } : d))
-                  }
-                  disabled={savingEdit}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="service">Service</SelectItem>
-                    <SelectItem value="product">Product</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-title">Title</Label>
-                <Input
-                  id="edit-title"
-                  value={editDraft.title}
-                  onChange={(e) => setEditDraft((d) => (d ? { ...d, title: e.target.value } : d))}
-                  disabled={savingEdit}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-category">Category</Label>
-                <Input
-                  id="edit-category"
-                  value={editDraft.category}
-                  onChange={(e) => setEditDraft((d) => (d ? { ...d, category: e.target.value } : d))}
-                  disabled={savingEdit}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-desc">Description</Label>
-                <Textarea
-                  id="edit-desc"
-                  value={editDraft.description}
-                  onChange={(e) => setEditDraft((d) => (d ? { ...d, description: e.target.value } : d))}
-                  disabled={savingEdit}
-                  rows={4}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-loc">Location (text)</Label>
-                <Input
-                  id="edit-loc"
-                  value={editDraft.location_text}
-                  onChange={(e) => setEditDraft((d) => (d ? { ...d, location_text: e.target.value } : d))}
-                  disabled={savingEdit}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-price">Starting price (INR)</Label>
-                <Input
-                  id="edit-price"
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={editDraft.starting_price_inr}
-                  onChange={(e) =>
-                    setEditDraft((d) => (d ? { ...d, starting_price_inr: e.target.value } : d))
-                  }
-                  disabled={savingEdit}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Status</Label>
-                <Select
-                  value={editDraft.status}
-                  onValueChange={(v) =>
-                    setEditDraft((d) => (d ? { ...d, status: v as OfferingStatusEdit } : d))
-                  }
-                  disabled={savingEdit}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="published">Published</SelectItem>
-                    <SelectItem value="paused">Paused</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <Label htmlFor="edit-photos">Photos</Label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      ref={photoFileInputRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      className="sr-only"
-                      disabled={savingEdit || photoUploading || !canWrite}
-                      onChange={(ev) => void onListingPhotoFilesSelected(ev)}
-                    />
+      <p className="text-sm text-muted-foreground">
+        {loading ? "Loading…" : `${total} listing(s)`}
+      </p>
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Title</TableHead>
+              <TableHead>Provider</TableHead>
+              <TableHead>User ID</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Public</TableHead>
+              <TableHead>Chats</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 && !loading ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  No listings match this filter.
+                </TableCell>
+              </TableRow>
+            ) : (
+              rows.map((o) => (
+                <TableRow key={o.id}>
+                  <TableCell className="max-w-[220px] truncate font-medium">{o.title}</TableCell>
+                  <TableCell className="max-w-[140px] truncate">
+                    {o.provider_display_name || "—"}
+                  </TableCell>
+                  <TableCell className="max-w-[120px] truncate font-mono text-xs">{o.user_id}</TableCell>
+                  <TableCell>{o.status}</TableCell>
+                  <TableCell>{o.admin_hidden ? "Hidden" : "Shown"}</TableCell>
+                  <TableCell>{o.chat_count ?? 0}</TableCell>
+                  <TableCell className="text-right space-x-2">
                     <Button
-                      type="button"
-                      variant="secondary"
                       size="sm"
-                      className="gap-1.5"
-                      disabled={savingEdit || photoUploading || !canWrite}
-                      title={
-                        !canWrite
-                          ? "Read-only role"
-                          : `Upload images (max ${MAX_LISTING_PHOTOS}, ${Math.round(MAX_PHOTO_BYTES / 1024)} KB each)`
-                      }
-                      onClick={() => photoFileInputRef.current?.click()}
+                      variant="outline"
+                      onClick={() => openChatTracking(o.id)}
                     >
-                      {photoUploading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <ImagePlus className="h-4 w-4" />
-                      )}
-                      Upload images
+                      Chats
                     </Button>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Uploads call <span className="font-mono">POST …/offerings/upload-image/</span>. If you see 403, the
-                  API must accept the admin JWT on that route (or provide an admin-only upload endpoint).
-                </p>
-                <Textarea
-                  id="edit-photos"
-                  value={editDraft.photo_urls_text}
-                  onChange={(e) =>
-                    setEditDraft((d) => (d ? { ...d, photo_urls_text: e.target.value } : d))
-                  }
-                  disabled={savingEdit || photoUploading}
-                  rows={3}
-                  placeholder="https://... (one per line, or use Upload images)"
-                />
+                    {o.admin_hidden ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busyId === o.id}
+                        onClick={() => setHidden(o.id, false)}
+                      >
+                        Unhide
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={busyId === o.id}
+                        onClick={() => setHidden(o.id, true)}
+                      >
+                        Hide
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {(tracking || trackingLoading) && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/40">
+          <div className="flex h-full w-full max-w-xl flex-col bg-background shadow-xl">
+            <div className="flex items-center justify-between border-b px-4 py-3">
+              <div>
+                <h2 className="text-lg font-semibold">Listing chat tracking</h2>
+                {tracking && (
+                  <p className="text-sm text-muted-foreground">{tracking.offering.title}</p>
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="edit-attest"
-                  checked={editDraft.attestation_accepted}
-                  onCheckedChange={(c) =>
-                    setEditDraft((d) => (d ? { ...d, attestation_accepted: Boolean(c) } : d))
-                  }
-                  disabled={savingEdit}
-                />
-                <Label htmlFor="edit-attest" className="text-sm font-normal cursor-pointer">
-                  Attestation accepted
-                </Label>
-              </div>
-              <p className="text-xs text-muted-foreground font-mono break-all">ID: {editDraft.offeringId}</p>
+              <Button variant="ghost" size="icon" onClick={() => setTracking(null)}>
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-          ) : null}
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setEditOpen(false);
-                setEditDraft(null);
-              }}
-              disabled={savingEdit}
-            >
-              Cancel
-            </Button>
-            <Button type="button" onClick={() => void saveEdit()} disabled={savingEdit || !editDraft}>
-              {savingEdit ? (
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {trackingLoading && !tracking ? (
+                <p className="text-sm text-muted-foreground">Loading chats…</p>
+              ) : tracking ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving…
+                  <div className="grid grid-cols-3 gap-3 rounded-md border p-3 text-center">
+                    <div>
+                      <div className="text-2xl font-bold">{tracking.summary.chat_count}</div>
+                      <div className="text-xs text-muted-foreground">Chats opened</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold">
+                        {tracking.summary.unique_enquirer_count}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Unique people</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold">{tracking.summary.total_messages}</div>
+                      <div className="text-xs text-muted-foreground">Messages</div>
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Owner: </span>
+                    {tracking.offering.owner.user_name ||
+                      tracking.offering.owner.user_email ||
+                      tracking.offering.owner.user_id}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={includeMessages}
+                        onChange={(e) => {
+                          const next = e.target.checked;
+                          setIncludeMessages(next);
+                          if (tracking?.offering.id) {
+                            openChatTracking(tracking.offering.id, next);
+                          }
+                        }}
+                      />
+                      Load full recent messages
+                    </label>
+                  </div>
+                  {tracking.chats.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No chats opened for this listing yet.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {tracking.chats.map((c) => (
+                        <div key={c.chat_id} className="rounded-md border p-3 space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="text-sm font-medium">
+                              {c.enquirers.length
+                                ? c.enquirers
+                                    .map((e) => e.user_name || e.user_email || e.user_id)
+                                    .join(", ")
+                                : "Unknown enquirer"}
+                            </div>
+                            <div className="text-xs text-muted-foreground whitespace-nowrap">
+                              {c.message_count} msg
+                            </div>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Opened: {formatWhen(c.opened_at)} · Last:{" "}
+                            {formatWhen(c.last_message_at)}
+                          </div>
+                          {c.enquirers[0]?.user_email && (
+                            <div className="text-xs text-muted-foreground">
+                              {c.enquirers[0].user_email}
+                            </div>
+                          )}
+                          {c.last_message_preview && (
+                            <p className="text-sm line-clamp-2">&ldquo;{c.last_message_preview}&rdquo;</p>
+                          )}
+                          {c.messages && c.messages.length > 0 && (
+                            <div className="mt-2 max-h-48 overflow-y-auto rounded bg-muted/40 p-2 space-y-1">
+                              {c.messages.map((m) => (
+                                <div key={m.messagesid} className="text-xs">
+                                  <span className="font-mono text-muted-foreground">
+                                    {m.sender_user_id.slice(0, 8)}…
+                                  </span>{" "}
+                                  {m.description}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div className="font-mono text-[10px] text-muted-foreground">
+                            chat: {c.chat_id}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </>
-              ) : (
-                "Save changes"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
