@@ -33,6 +33,29 @@ import {
   type TaskPublicQAItem,
 } from "@/lib/taskPublicQaApi";
 
+const NO_DIGITS_MSG = "Numbers are not allowed in the message.";
+
+function applyNoDigitsInput(
+  input: string,
+  setError: (msg: string) => void,
+  setValue: (v: string) => void,
+) {
+  if (/\d/.test(input)) {
+    setError(NO_DIGITS_MSG);
+  } else {
+    setError("");
+    setValue(input);
+  }
+}
+
+function rejectIfDigits(text: string, setError: (msg: string) => void): boolean {
+  if (/\d/.test(text)) {
+    setError(NO_DIGITS_MSG);
+    return true;
+  }
+  return false;
+}
+
 function formatWhen(iso: string): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -72,6 +95,7 @@ export function TaskPublicQuestionsSection({
   /** List GET returned 401 — API may require login to read Q&A */
   const [listNeedsSignIn, setListNeedsSignIn] = useState(false);
   const [askBody, setAskBody] = useState("");
+  const [askError, setAskError] = useState("");
   const [askSubmitting, setAskSubmitting] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportQaId, setReportQaId] = useState<string | null>(null);
@@ -132,10 +156,12 @@ export function TaskPublicQuestionsSection({
   const handleAsk = async () => {
     const t = askBody.trim();
     if (t.length < 1) return;
+    if (rejectIfDigits(askBody, setAskError)) return;
     setAskSubmitting(true);
     try {
       await postTaskPublicQuestion(taskId, t);
       setAskBody("");
+      setAskError("");
       toast.success("Question posted");
       await refresh();
     } catch (e) {
@@ -228,11 +254,16 @@ export function TaskPublicQuestionsSection({
               rows={3}
               placeholder="e.g. What time works best for access to the property?"
               value={askBody}
-              onChange={(e) => setAskBody(e.target.value)}
+              onChange={(e) =>
+                applyNoDigitsInput(e.target.value, setAskError, setAskBody)
+              }
               maxLength={2000}
               className="rounded-xl border-slate-200"
               disabled={!qaOpen}
             />
+            {askError ? (
+              <p className="text-sm text-red-500">{askError}</p>
+            ) : null}
             <div className="flex justify-between items-center gap-2">
               <span className="text-xs text-slate-500">{askBody.length}/2000</span>
               <Button
@@ -242,7 +273,8 @@ export function TaskPublicQuestionsSection({
                 disabled={
                   askSubmitting ||
                   askBody.trim().length < 1 ||
-                  askBody.length > 2000
+                  askBody.length > 2000 ||
+                  !!askError
                 }
                 onClick={() => void handleAsk()}
               >
@@ -374,6 +406,9 @@ function QuestionThreadRow({
   const [saving, setSaving] = useState(false);
   const [answering, setAnswering] = useState(false);
   const [answerDraft, setAnswerDraft] = useState("");
+  const [editQError, setEditQError] = useState("");
+  const [editAError, setEditAError] = useState("");
+  const [answerError, setAnswerError] = useState("");
 
   const isAuthor =
     currentUserId && String(q.askerId) === String(currentUserId);
@@ -392,11 +427,13 @@ function QuestionThreadRow({
   const saveQuestion = async () => {
     const t = draftQ.trim();
     if (t.length < 1 || t.length > 2000) return;
+    if (rejectIfDigits(draftQ, setEditQError)) return;
     setSaving(true);
     try {
       await patchTaskPublicQuestion(taskId, q.id, t);
       toast.success("Question updated");
       setEditingQ(false);
+      setEditQError("");
       onUpdated();
     } catch (e) {
       toast.error(extractApiErrorMessage(e));
@@ -408,11 +445,13 @@ function QuestionThreadRow({
   const saveAnswerEdit = async () => {
     const t = draftA.trim();
     if (t.length < 1 || t.length > 2000) return;
+    if (rejectIfDigits(draftA, setEditAError)) return;
     setSaving(true);
     try {
       await patchTaskPublicAnswer(taskId, q.id, t);
       toast.success("Answer updated");
       setEditingA(false);
+      setEditAError("");
       onUpdated();
     } catch (e) {
       toast.error(extractApiErrorMessage(e));
@@ -424,12 +463,14 @@ function QuestionThreadRow({
   const submitAnswer = async () => {
     const t = answerDraft.trim();
     if (t.length < 1 || t.length > 2000) return;
+    if (rejectIfDigits(answerDraft, setAnswerError)) return;
     setSaving(true);
     try {
       await putTaskPublicAnswer(taskId, q.id, t);
       toast.success("Answer posted");
       setAnswering(false);
       setAnswerDraft("");
+      setAnswerError("");
       onUpdated();
     } catch (e) {
       toast.error(extractApiErrorMessage(e));
@@ -490,16 +531,33 @@ function QuestionThreadRow({
         <div className="space-y-2">
           <Textarea
             value={draftQ}
-            onChange={(e) => setDraftQ(e.target.value)}
+            onChange={(e) =>
+              applyNoDigitsInput(e.target.value, setEditQError, setDraftQ)
+            }
             rows={3}
             maxLength={2000}
             className="rounded-lg bg-white"
           />
+          {editQError ? (
+            <p className="text-sm text-red-500">{editQError}</p>
+          ) : null}
           <div className="flex gap-2">
-            <Button size="sm" disabled={saving} onClick={() => void saveQuestion()}>
+            <Button
+              size="sm"
+              disabled={saving || !!editQError}
+              onClick={() => void saveQuestion()}
+            >
               Save
             </Button>
-            <Button size="sm" variant="outline" onClick={() => { setEditingQ(false); setDraftQ(q.questionBody); }}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setEditingQ(false);
+                setDraftQ(q.questionBody);
+                setEditQError("");
+              }}
+            >
               Cancel
             </Button>
           </div>
@@ -538,13 +596,22 @@ function QuestionThreadRow({
             <div className="space-y-2">
               <Textarea
                 value={draftA}
-                onChange={(e) => setDraftA(e.target.value)}
+                onChange={(e) =>
+                  applyNoDigitsInput(e.target.value, setEditAError, setDraftA)
+                }
                 rows={3}
                 maxLength={2000}
                 className="rounded-lg bg-white"
               />
+              {editAError ? (
+                <p className="text-sm text-red-500">{editAError}</p>
+              ) : null}
               <div className="flex gap-2">
-                <Button size="sm" disabled={saving} onClick={() => void saveAnswerEdit()}>
+                <Button
+                  size="sm"
+                  disabled={saving || !!editAError}
+                  onClick={() => void saveAnswerEdit()}
+                >
                   Save
                 </Button>
                 <Button
@@ -553,6 +620,7 @@ function QuestionThreadRow({
                   onClick={() => {
                     setEditingA(false);
                     setDraftA(q.answerBody || "");
+                    setEditAError("");
                   }}
                 >
                   Cancel
@@ -582,16 +650,23 @@ function QuestionThreadRow({
               <Textarea
                 placeholder="Your reply (visible to everyone on this task)"
                 value={answerDraft}
-                onChange={(e) => setAnswerDraft(e.target.value)}
+                onChange={(e) =>
+                  applyNoDigitsInput(e.target.value, setAnswerError, setAnswerDraft)
+                }
                 rows={3}
                 maxLength={2000}
                 className="rounded-lg bg-white"
               />
+              {answerError ? (
+                <p className="text-sm text-red-500">{answerError}</p>
+              ) : null}
               <div className="flex gap-2">
                 <Button
                   size="sm"
                   className="bg-emerald-600 hover:bg-emerald-700"
-                  disabled={saving || answerDraft.trim().length < 1}
+                  disabled={
+                    saving || answerDraft.trim().length < 1 || !!answerError
+                  }
                   onClick={() => void submitAnswer()}
                 >
                   Post answer
@@ -602,6 +677,7 @@ function QuestionThreadRow({
                   onClick={() => {
                     setAnswering(false);
                     setAnswerDraft("");
+                    setAnswerError("");
                   }}
                 >
                   Cancel
