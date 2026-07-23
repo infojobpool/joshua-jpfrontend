@@ -78,6 +78,7 @@ export function TaskOffersQuestionsTabs(props: TaskOffersQuestionsTabsProps) {
 
       <div role="tabpanel" hidden={tab !== "offers"} className={tab !== "offers" ? "hidden" : ""}>
         <OffersSection
+          embedded
           task={task}
           offers={offers}
           bidsTotal={bidsTotal}

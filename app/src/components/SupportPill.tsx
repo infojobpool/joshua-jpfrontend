@@ -35,13 +35,21 @@ function isTaskDetailRoute(pathname: string | null): boolean {
   return p.startsWith("/tasks/");
 }
 
+/** Scrollable task lists + bottom nav + support FAB. */
+function isDashboardRoute(pathname: string | null): boolean {
+  if (!pathname) return false;
+  const p = normalizePathname(pathname);
+  return p === "/dashboard" || p === "/browse-tasks" || p === "/browse";
+}
+
 export function SupportPill() {
   const pathname = usePathname();
   if (
     isMessagesRoute(pathname) ||
     isListingsBrowseIndex(pathname) ||
     isNotificationsIndex(pathname) ||
-    isTaskDetailRoute(pathname)
+    isTaskDetailRoute(pathname) ||
+    isDashboardRoute(pathname)
   ) {
     return null;
   }

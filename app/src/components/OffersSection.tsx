@@ -394,6 +394,8 @@ export interface OffersSectionProps {
   /** Total bids from GET /get-job-with-bids/ when paginated */
   bidsTotal?: number | null;
   bidsHasMore?: boolean;
+  /** Inside task Offers/Questions tabs — skip nested card chrome */
+  embedded?: boolean;
 }
 
 function sameOfferUserId(a: unknown, b: unknown): boolean {
@@ -422,6 +424,7 @@ export function OffersSection({
   bidsLoading = false,
   bidsTotal = null,
   bidsHasMore = false,
+  embedded = false,
 }: OffersSectionProps) {
   const [error, setError] = useState("");
   const router = useRouter();
@@ -898,9 +901,271 @@ export function OffersSection({
     }
   };
 
+  const offersBody =
+    visibleOffers.length === 0 ? (
+      bidsLoading ? (
+        <div className="space-y-3 py-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-2xl border-0 p-4 bg-gray-50 dark:bg-slate-800/50 animate-pulse">
+              <div className="flex gap-3">
+                <div className="h-9 w-9 rounded-full bg-gray-200 dark:bg-slate-700" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-24 rounded bg-gray-200 dark:bg-slate-700" />
+                  <div className="h-3 w-32 rounded bg-gray-200 dark:bg-slate-700" />
+                </div>
+              </div>
+              <div className="h-3 w-full rounded bg-gray-200 dark:bg-slate-700 mt-3" />
+            </div>
+          ))}
+          <p className="text-center text-xs text-muted-foreground">Loading offers…</p>
+        </div>
+      ) : (
+        <NoOffersEmptyState
+          variant={
+            effectiveIsTaskPoster
+              ? "poster"
+              : hasSubmittedOffer
+                ? "processing"
+                : "tasker"
+          }
+        />
+      )
+    ) : (
+      visibleOffers.map((offer) => (
+        <div
+          key={offer.id}
+          className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden hover:border-slate-300/80 transition-colors"
+        >
+          <div className="space-y-3.5 p-3.5 md:p-5">
+            <div className="flex items-start gap-3">
+              <Link href={`/profilepage/${offer.tasker.id}`} className="shrink-0 hover:opacity-90">
+                <Avatar className="h-10 w-10 ring-2 ring-slate-100">
+                  <AvatarFallback className="text-sm font-semibold">
+                    {offer.tasker.name.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <div className="flex items-start justify-between gap-2">
+                  <Link
+                    href={`/profilepage/${offer.tasker.id}`}
+                    className="min-w-0 hover:opacity-90"
+                  >
+                    <p className="font-semibold text-slate-900 leading-snug break-words">
+                      {offer.tasker.name}
+                    </p>
+                  </Link>
+                  <p className="shrink-0 text-[11px] text-slate-400 tabular-nums whitespace-nowrap">
+                    {(() => {
+                      try {
+                        return new Date(offer.createdAt).toLocaleString("en-GB", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        });
+                      } catch {
+                        return "Just now";
+                      }
+                    })()}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                  <div className="flex min-w-0 items-center gap-1 text-xs text-slate-500">
+                    <Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0" />
+                    <span className="truncate">
+                      {taskerReviewStats[offer.tasker.id]?.count != null &&
+                      taskerReviewStats[offer.tasker.id].count > 0
+                        ? `${taskerReviewStats[offer.tasker.id].average.toFixed(1)} ★ (${taskerReviewStats[offer.tasker.id].count} reviews)`
+                        : offer.tasker.rating != null && offer.tasker.rating > 0
+                          ? `${offer.tasker.rating} ★`
+                          : "New user"}
+                      {offer.tasker.taskCount != null && offer.tasker.taskCount > 0 && (
+                        <> · {offer.tasker.taskCount} tasks</>
+                      )}
+                    </span>
+                  </div>
+                  {(effectiveIsTaskPoster ||
+                    (currentUserId && sameOfferUserId(offer.tasker.id, currentUserId))) && (
+                    <p className="font-bold text-slate-900 text-sm tabular-nums shrink-0">
+                      <IndianRupee className="w-3.5 h-3.5 inline opacity-70" />{" "}
+                      {offer.amount.toFixed(2)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-200/80 bg-gradient-to-b from-slate-50/95 to-white px-3.5 py-3 md:px-4 md:py-3.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                What they said
+              </p>
+              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                {offer.message}
+              </p>
+            </div>
+            {(offer.status === "accepted" ||
+              (task.assignedTasker && sameOfferUserId(task.assignedTasker.id, offer.tasker.id)) ||
+              (selectedFromSession && sameOfferUserId(selectedFromSession, offer.tasker.id))) && (
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {isPaymentPending && selectedFromSession === offer.tasker.id ? (
+                  <div className="flex flex-col items-end gap-1 w-full sm:w-auto">
+                    <span className="rounded-full bg-amber-50 text-amber-800 px-3 py-1.5 text-xs font-semibold ring-1 ring-amber-200">
+                      Pending payment
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => router.push(paymentsRouteFromSession())}
+                      className="text-xs font-medium text-blue-700 hover:underline"
+                    >
+                      Complete payment
+                    </button>
+                  </div>
+                ) : (
+                  <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-800 ring-1 ring-blue-100">
+                    Selected
+                  </span>
+                )}
+              </div>
+            )}
+            {effectiveIsTaskPoster && (
+              <div className="flex w-full flex-col gap-2 sm:flex-row">
+                {task.status !== "completed" &&
+                  task.status !== "in_progress" &&
+                  !(
+                    (task.status === "in_progress" && effectiveIsTaskPoster) ||
+                    offer.status === "accepted" ||
+                    (task.assignedTasker && sameOfferUserId(task.assignedTasker.id, offer.tasker.id)) ||
+                    (selectedFromSession && sameOfferUserId(selectedFromSession, offer.tasker.id))
+                  ) && (
+                    <Button
+                      className="jp-btn-blue-gradient w-full border-0 sm:flex-1"
+                      size="sm"
+                      onClick={() => openAcceptFeeDialog(offer)}
+                      disabled={isAccepting === offer.id || acceptFeeOffer?.id === offer.id}
+                    >
+                      {isAccepting === offer.id ? "Accepting..." : "Accept Offer"}
+                    </Button>
+                  )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  onClick={() => handleMessageUser(offer.tasker.id)}
+                  disabled={isPaymentPending && selectedFromSession === offer.tasker.id}
+                  title={
+                    isPaymentPending && selectedFromSession === offer.tasker.id
+                      ? "Complete payment to enable messaging"
+                      : ""
+                  }
+                >
+                  {isPaymentPending && selectedFromSession === offer.tasker.id
+                    ? "🔒 Message (Payment Required)"
+                    : "Message"}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      ))
+    );
+
   return (
-    <Card className="border border-slate-200/80 shadow-sm rounded-2xl bg-white/95 overflow-hidden">
-      <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-blue-50/40 pb-4">
+    <>
+    {embedded ? (
+      <div className="w-full min-w-0 space-y-3">
+        {bidsHasMore ? (
+          <p className="text-xs text-slate-500">
+            Showing the latest offers. More bids exist on this task.
+          </p>
+        ) : null}
+        {offersBody}
+        {!effectiveIsTaskPoster && shouldBlockSubmit && (
+          <p className="text-sm text-muted-foreground">This task is no longer accepting offers.</p>
+        )}
+        {!effectiveIsTaskPoster && !shouldBlockSubmit && !hasSubmittedOffer && (
+          <div className="space-y-4 border-t border-slate-100 pt-4">
+            {verificationChecked && !isVerified ? (
+              <div className="w-full p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800 font-medium mb-2">⚠️ Verification Required</p>
+                <p className="text-sm text-yellow-700 mb-3">
+                  Please complete your verification (PAN and Aadhar) to place bids on tasks.
+                </p>
+                <Button
+                  type="button"
+                  onClick={() => router.push("/verification")}
+                  className="w-full bg-yellow-600 hover:bg-yellow-700"
+                >
+                  Complete Verification
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitOffer} className="w-full space-y-5">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="offerAmount-embedded"
+                    className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1"
+                  >
+                    <span>Your offer</span>
+                    <IndianRupee className="w-3 h-3" />
+                  </label>
+                  <Input
+                    id="offerAmount-embedded"
+                    type="number"
+                    placeholder="e.g., 500"
+                    value={offerAmount}
+                    onChange={(e) => setOfferAmount(e.target.value)}
+                    required
+                    min="1"
+                    disabled={!verificationChecked || !isVerified || isSubmitting}
+                    className="h-11 rounded-xl border-slate-200 text-base"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="offerMessage-embedded" className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Your message
+                  </label>
+                  <Textarea
+                    id="offerMessage-embedded"
+                    placeholder="Introduce yourself and why you’re a good fit — keep it friendly and clear."
+                    value={offerMessage}
+                    onChange={handleChange}
+                    rows={5}
+                    required
+                    disabled={!verificationChecked || !isVerified || isSubmitting}
+                    className="min-h-[140px] rounded-xl border-slate-200 bg-slate-50/50 text-sm leading-relaxed resize-y focus:bg-white transition-colors"
+                  />
+                  {error && <p className="text-red-600 text-sm font-medium">{error}</p>}
+                </div>
+                <Button
+                  type="submit"
+                  className="jp-btn-blue-gradient h-11 w-full rounded-xl font-semibold shadow-sm"
+                  disabled={!verificationChecked || !isVerified || isSubmitting}
+                >
+                  {isSubmitting
+                    ? "Submitting..."
+                    : !verificationChecked
+                      ? "Verifying..."
+                      : verificationChecked && !isVerified
+                        ? "Verification Required"
+                        : "Make an offer"}
+                </Button>
+              </form>
+            )}
+          </div>
+        )}
+        {!effectiveIsTaskPoster &&
+          task.status !== "completed" &&
+          task.status !== "in_progress" &&
+          hasSubmittedOffer && (
+            <p className="text-sm text-muted-foreground">
+              You have already submitted an offer for this task.
+            </p>
+          )}
+      </div>
+    ) : (
+    <Card className="gap-0 border border-slate-200/80 py-0 shadow-sm rounded-2xl bg-white/95 overflow-hidden">
+      <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-blue-50/40 px-4 pb-4 pt-4 md:px-6 md:pt-6">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <CardTitle className="text-lg font-semibold text-slate-900">
@@ -921,154 +1186,92 @@ export function OffersSection({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4 pt-5 max-lg:pb-2">
-        {visibleOffers.length === 0 ? (
-          bidsLoading ? (
-            <div className="space-y-3 py-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="rounded-2xl border-0 p-4 bg-gray-50 dark:bg-slate-800/50 animate-pulse">
-                  <div className="flex gap-3">
-                    <div className="h-9 w-9 rounded-full bg-gray-200 dark:bg-slate-700" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 w-24 rounded bg-gray-200 dark:bg-slate-700" />
-                      <div className="h-3 w-32 rounded bg-gray-200 dark:bg-slate-700" />
-                    </div>
-                  </div>
-                  <div className="h-3 w-full rounded bg-gray-200 dark:bg-slate-700 mt-3" />
-                </div>
-              ))}
-              <p className="text-center text-xs text-muted-foreground">Loading offers…</p>
+      <CardContent className="space-y-4 px-4 pt-5 pb-4 md:px-6 md:pb-6">
+        {offersBody}
+      </CardContent>
+      {!effectiveIsTaskPoster && shouldBlockSubmit && (
+        <CardFooter className="px-4 md:px-6">
+          <p className="text-muted-foreground">
+            This task is no longer accepting offers.
+          </p>
+        </CardFooter>
+      )}
+      {!effectiveIsTaskPoster && !shouldBlockSubmit && !hasSubmittedOffer && (
+        <CardFooter className="flex flex-col gap-4 items-center border-t border-slate-100 bg-slate-50/40 px-4 pt-5 pb-4 md:px-6 md:pb-6 dark:border-slate-700 dark:bg-slate-900/20">
+          {verificationChecked && !isVerified ? (
+            <div className="w-full p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800 font-medium mb-2">
+                ⚠️ Verification Required
+              </p>
+              <p className="text-sm text-yellow-700 mb-3">
+                Please complete your verification (PAN and Aadhar) to place bids on tasks.
+              </p>
+              <Button 
+                type="button" 
+                onClick={() => router.push('/verification')}
+                className="w-full bg-yellow-600 hover:bg-yellow-700"
+              >
+                Complete Verification
+              </Button>
             </div>
           ) : (
-          <NoOffersEmptyState
-            variant={
-              effectiveIsTaskPoster
-                ? "poster"
-                : hasSubmittedOffer
-                ? "processing"
-                : "tasker"
-            }
-          />
-          )
-        ) : (
-          visibleOffers.map((offer) => (
-            <div key={offer.id} className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden hover:border-slate-300/80 transition-colors">
-              <div className="p-4 md:p-5 space-y-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start sm:gap-3">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <Link
-                    href={`/profilepage/${offer.tasker.id}`}
-                    className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-90"
-                  >
-                    <Avatar className="h-10 w-10 shrink-0 ring-2 ring-slate-100">
-                      <AvatarFallback className="text-sm font-semibold">
-                        {offer.tasker.name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-slate-900 leading-tight break-words line-clamp-2 sm:truncate">
-                        {offer.tasker.name}
-                      </p>
-                      <div className="mt-1 flex items-center gap-1 text-xs text-slate-500">
-                        <Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0" />
-                        <span className="truncate">
-                          {taskerReviewStats[offer.tasker.id]?.count != null && taskerReviewStats[offer.tasker.id].count > 0
-                            ? `${taskerReviewStats[offer.tasker.id].average.toFixed(1)} ★ (${taskerReviewStats[offer.tasker.id].count} reviews)`
-                            : (offer.tasker.rating != null && offer.tasker.rating > 0)
-                              ? `${offer.tasker.rating} ★`
-                              : "New user"}
-                          {offer.tasker.taskCount != null && offer.tasker.taskCount > 0 && (
-                            <> · {offer.tasker.taskCount} tasks</>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                </div>
-                <div className="flex shrink-0 items-center justify-between gap-3 sm:block sm:text-right pl-[3.25rem] sm:pl-0">
-                  {(effectiveIsTaskPoster || (currentUserId && sameOfferUserId(offer.tasker.id, currentUserId))) && (
-                    <p className="font-bold text-slate-900 text-base tabular-nums sm:mb-0">
-                      <IndianRupee className="w-4 h-4 inline opacity-70" />{" "}
-                      {offer.amount.toFixed(2)}
-                    </p>
-                  )}
-                  <p className="text-[11px] text-slate-400 sm:mt-0.5 whitespace-nowrap">
-                    {(() => {
-                      try {
-                        return new Date(offer.createdAt).toLocaleString("en-GB", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        });
-                      } catch {
-                        return "Just now";
-                      }
-                    })()}
-                  </p>
-                </div>
+            <form onSubmit={handleSubmitOffer} className="w-full space-y-5">
+              <div className="space-y-2">
+                <label
+                  htmlFor="offerAmount"
+                  className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1"
+                >
+                  <span>Your offer</span>
+                  <IndianRupee className="w-3 h-3" />
+                </label>
+                <Input
+                  id="offerAmount"
+                  type="number"
+                  placeholder="e.g., 500"
+                  value={offerAmount}
+                  onChange={(e) => setOfferAmount(e.target.value)}
+                  required
+                  min="1"
+                  disabled={!verificationChecked || !isVerified || isSubmitting}
+                  className="h-11 rounded-xl border-slate-200 text-base"
+                />
               </div>
-              <div className="rounded-xl border border-slate-200/80 bg-gradient-to-b from-slate-50/95 to-white px-4 py-3.5 max-lg:pr-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">What they said</p>
-                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                  {offer.message}
-                </p>
+              <div className="space-y-2">
+                <label htmlFor="offerMessage" className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Your message
+                </label>
+                <Textarea
+                  id="offerMessage"
+                  placeholder="Introduce yourself and why you’re a good fit — keep it friendly and clear."
+                  value={offerMessage}
+                  onChange={handleChange}
+                  rows={5}
+                  required
+                  disabled={!verificationChecked || !isVerified || isSubmitting}
+                  className="min-h-[140px] rounded-xl border-slate-200 bg-slate-50/50 text-sm leading-relaxed resize-y focus:bg-white transition-colors"
+                />
+                {error && <p className="text-red-600 text-sm font-medium">{error}</p>}
               </div>
-              {(offer.status === "accepted" ||
-                (task.assignedTasker && sameOfferUserId(task.assignedTasker.id, offer.tasker.id)) ||
-                (selectedFromSession && sameOfferUserId(selectedFromSession, offer.tasker.id))) && (
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                    {isPaymentPending && selectedFromSession === offer.tasker.id ? (
-                      <div className="flex flex-col items-end gap-1 w-full sm:w-auto">
-                        <span className="rounded-full bg-amber-50 text-amber-800 px-3 py-1.5 text-xs font-semibold ring-1 ring-amber-200">
-                          Pending payment
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => router.push(paymentsRouteFromSession())}
-                          className="text-xs font-medium text-blue-700 hover:underline"
-                        >
-                          Complete payment
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-800 ring-1 ring-blue-100">Selected</span>
-                    )}
-                </div>
-              )}
-              {effectiveIsTaskPoster && (
-                <div className="w-full flex flex-col sm:flex-row gap-2">
-                  {task.status !== "completed" && task.status !== "in_progress" && 
-                   !((task.status === "in_progress" && effectiveIsTaskPoster) || offer.status === "accepted" || 
-                     (task.assignedTasker && sameOfferUserId(task.assignedTasker.id, offer.tasker.id)) || 
-                     (selectedFromSession && sameOfferUserId(selectedFromSession, offer.tasker.id))) && (
-                    <Button
-                      className="jp-btn-blue-gradient w-full border-0 sm:flex-1"
-                      size="sm"
-                      onClick={() => openAcceptFeeDialog(offer)}
-                      disabled={isAccepting === offer.id || acceptFeeOffer?.id === offer.id}
-                    >
-                      {isAccepting === offer.id ? "Accepting..." : "Accept Offer"}
-                    </Button>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full sm:w-auto"
-                    onClick={() => handleMessageUser(offer.tasker.id)}
-                    disabled={isPaymentPending && selectedFromSession === offer.tasker.id}
-                    title={isPaymentPending && selectedFromSession === offer.tasker.id ? "Complete payment to enable messaging" : ""}
-                  >
-                    {isPaymentPending && selectedFromSession === offer.tasker.id ? "🔒 Message (Payment Required)" : "Message"}
-                  </Button>
-                </div>
-              )}
-              </div>
-            </div>
-          ))
-        )}
-      </CardContent>
+              <Button 
+                type="submit" 
+                className="jp-btn-blue-gradient h-11 w-full rounded-xl font-semibold shadow-sm" 
+                disabled={!verificationChecked || !isVerified || isSubmitting}
+              >
+                {isSubmitting ? "Submitting..." : !verificationChecked ? "Verifying..." : verificationChecked && !isVerified ? "Verification Required" : "Make an offer"}
+              </Button>
+            </form>
+          )}
+        </CardFooter>
+      )}
+      {!effectiveIsTaskPoster && task.status !== "completed" && task.status !== "in_progress" && hasSubmittedOffer && (
+        <CardFooter className="px-4 md:px-6">
+          <p className="text-muted-foreground">
+            You have already submitted an offer for this task.
+          </p>
+        </CardFooter>
+      )}
+    </Card>
+    )}
       <Dialog
         open={!!acceptFeeOffer}
         onOpenChange={(open) => {
@@ -1213,87 +1416,6 @@ export function OffersSection({
           )}
         </DialogContent>
       </Dialog>
-      {!effectiveIsTaskPoster && shouldBlockSubmit && (
-        <CardFooter>
-          <p className="text-muted-foreground">
-            This task is no longer accepting offers.
-          </p>
-        </CardFooter>
-      )}
-      {!effectiveIsTaskPoster && !shouldBlockSubmit && !hasSubmittedOffer && (
-        <CardFooter className="flex flex-col gap-4 items-center border-t border-slate-100 bg-slate-50/40 pt-5 dark:border-slate-700 dark:bg-slate-900/20">
-          {verificationChecked && !isVerified ? (
-            <div className="w-full p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800 font-medium mb-2">
-                ⚠️ Verification Required
-              </p>
-              <p className="text-sm text-yellow-700 mb-3">
-                Please complete your verification (PAN and Aadhar) to place bids on tasks.
-              </p>
-              <Button 
-                type="button" 
-                onClick={() => router.push('/verification')}
-                className="w-full bg-yellow-600 hover:bg-yellow-700"
-              >
-                Complete Verification
-              </Button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmitOffer} className="w-full space-y-5">
-              <div className="space-y-2">
-                <label
-                  htmlFor="offerAmount"
-                  className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1"
-                >
-                  <span>Your offer</span>
-                  <IndianRupee className="w-3 h-3" />
-                </label>
-                <Input
-                  id="offerAmount"
-                  type="number"
-                  placeholder="e.g., 500"
-                  value={offerAmount}
-                  onChange={(e) => setOfferAmount(e.target.value)}
-                  required
-                  min="1"
-                  disabled={!verificationChecked || !isVerified || isSubmitting}
-                  className="h-11 rounded-xl border-slate-200 text-base"
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="offerMessage" className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Your message
-                </label>
-                <Textarea
-                  id="offerMessage"
-                  placeholder="Introduce yourself and why you’re a good fit — keep it friendly and clear."
-                  value={offerMessage}
-                  onChange={handleChange}
-                  rows={5}
-                  required
-                  disabled={!verificationChecked || !isVerified || isSubmitting}
-                  className="min-h-[140px] rounded-xl border-slate-200 bg-slate-50/50 text-sm leading-relaxed resize-y focus:bg-white transition-colors"
-                />
-                {error && <p className="text-red-600 text-sm font-medium">{error}</p>}
-              </div>
-              <Button 
-                type="submit" 
-                className="jp-btn-blue-gradient h-11 w-full rounded-xl font-semibold shadow-sm" 
-                disabled={!verificationChecked || !isVerified || isSubmitting}
-              >
-                {isSubmitting ? "Submitting..." : !verificationChecked ? "Verifying..." : verificationChecked && !isVerified ? "Verification Required" : "Make an offer"}
-              </Button>
-            </form>
-          )}
-        </CardFooter>
-      )}
-      {!effectiveIsTaskPoster && task.status !== "completed" && task.status !== "in_progress" && hasSubmittedOffer && (
-        <CardFooter>
-          <p className="text-muted-foreground">
-            You have already submitted an offer for this task.
-          </p>
-        </CardFooter>
-      )}
-    </Card>
+    </>
   );
 }

@@ -961,7 +961,7 @@ export function TaskInfo({
           )}
         </div>
       </CardHeader>
-      <CardContent className="p-4 md:p-5 space-y-4">
+      <CardContent className="space-y-4 p-3 md:p-5">
         {/* Photos: replace / remove / add (open tasks only) */}
         {isEditing && canPosterEdit && (
           <div className="rounded-xl border border-blue-200/60 bg-blue-50/50 p-3 space-y-3">

@@ -3948,7 +3948,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex min-h-0 flex-col bg-gradient-to-b from-slate-50/90 via-white to-slate-50/70 overflow-x-hidden md:min-h-screen">
-      <main className="flex-1 w-full max-w-none mx-auto py-3 md:py-10 px-4 md:px-8 lg:px-12 pb-6 md:pb-10">
+      <main className="mx-auto flex-1 w-full max-w-none px-3 py-3 sm:px-4 md:px-8 md:py-10 lg:px-12 max-lg:pb-2 md:pb-10">
         <div className="contents">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 md:mb-8 gap-3 md:gap-4 animate-fade-in-up">
           {!isMobile && (

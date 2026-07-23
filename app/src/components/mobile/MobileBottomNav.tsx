@@ -138,7 +138,7 @@ export function MobileBottomNav() {
               data-tour={tourId}
               className={`${navLinkClass} ${
                 isActive
-                  ? "text-[#2563eb] dark:text-[#60a5fa] bg-[#eff6ff] dark:bg-slate-700"
+                  ? "text-[#2563eb] dark:text-[#60a5fa] max-lg:bg-transparent lg:bg-[#eff6ff] dark:max-lg:bg-transparent dark:lg:bg-slate-700"
                   : "text-gray-600 dark:text-slate-400 hover:text-[#2563eb] dark:hover:text-[#60a5fa] hover:bg-gray-50 dark:hover:bg-slate-800"
               }`}
             >

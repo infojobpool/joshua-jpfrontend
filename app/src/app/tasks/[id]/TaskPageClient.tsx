@@ -2063,7 +2063,7 @@ export default function TaskDetailPage() {
         </div>
       </div>
 
-      <main className="container mx-auto max-w-6xl px-4 md:px-6 py-4 md:py-6 md:min-h-[60vh]">
+      <main className="mx-auto w-full max-w-6xl px-3 py-4 sm:px-4 md:px-6 md:py-6 md:min-h-[60vh]">
         <div className="grid gap-4 md:grid-cols-3 md:min-h-[400px]">
           {/* Main Content - Left Column */}
           <div className="md:col-span-2 space-y-4">
