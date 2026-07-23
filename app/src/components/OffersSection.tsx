@@ -921,7 +921,7 @@ export function OffersSection({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4 pt-5">
+      <CardContent className="space-y-4 pt-5 max-lg:pb-2">
         {visibleOffers.length === 0 ? (
           bidsLoading ? (
             <div className="space-y-3 py-4">
@@ -954,19 +954,21 @@ export function OffersSection({
           visibleOffers.map((offer) => (
             <div key={offer.id} className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden hover:border-slate-300/80 transition-colors">
               <div className="p-4 md:p-5 space-y-4">
-              <div className="flex justify-between items-start gap-3">
-                <div className="flex items-center gap-3 min-w-0">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start sm:gap-3">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
                   <Link
                     href={`/profilepage/${offer.tasker.id}`}
-                    className="flex items-center gap-3 min-w-0 hover:opacity-90"
+                    className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-90"
                   >
                     <Avatar className="h-10 w-10 shrink-0 ring-2 ring-slate-100">
                       <AvatarFallback className="text-sm font-semibold">
                         {offer.tasker.name.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-slate-900 leading-tight truncate">{offer.tasker.name}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-slate-900 leading-tight break-words line-clamp-2 sm:truncate">
+                        {offer.tasker.name}
+                      </p>
                       <div className="mt-1 flex items-center gap-1 text-xs text-slate-500">
                         <Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0" />
                         <span className="truncate">
@@ -983,14 +985,14 @@ export function OffersSection({
                     </div>
                   </Link>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="flex shrink-0 items-center justify-between gap-3 sm:block sm:text-right pl-[3.25rem] sm:pl-0">
                   {(effectiveIsTaskPoster || (currentUserId && sameOfferUserId(offer.tasker.id, currentUserId))) && (
-                    <p className="font-bold text-slate-900 text-base tabular-nums">
+                    <p className="font-bold text-slate-900 text-base tabular-nums sm:mb-0">
                       <IndianRupee className="w-4 h-4 inline opacity-70" />{" "}
                       {offer.amount.toFixed(2)}
                     </p>
                   )}
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <p className="text-[11px] text-slate-400 sm:mt-0.5 whitespace-nowrap">
                     {(() => {
                       try {
                         return new Date(offer.createdAt).toLocaleString("en-GB", {
@@ -1007,9 +1009,11 @@ export function OffersSection({
                   </p>
                 </div>
               </div>
-              <div className="rounded-xl border border-slate-200/80 bg-gradient-to-b from-slate-50/95 to-white px-4 py-3.5">
+              <div className="rounded-xl border border-slate-200/80 bg-gradient-to-b from-slate-50/95 to-white px-4 py-3.5 max-lg:pr-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">What they said</p>
-                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words">{offer.message}</p>
+                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                  {offer.message}
+                </p>
               </div>
               {(offer.status === "accepted" ||
                 (task.assignedTasker && sameOfferUserId(task.assignedTasker.id, offer.tasker.id)) ||

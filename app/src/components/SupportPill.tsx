@@ -28,9 +28,23 @@ function isNotificationsIndex(pathname: string | null): boolean {
   return normalizePathname(pathname) === "/notifications";
 }
 
+/** Long scroll lists + bottom nav + support FAB (task offers, browse, etc.). */
+function isTaskDetailRoute(pathname: string | null): boolean {
+  if (!pathname) return false;
+  const p = normalizePathname(pathname);
+  return p.startsWith("/tasks/");
+}
+
 export function SupportPill() {
   const pathname = usePathname();
-  if (isMessagesRoute(pathname) || isListingsBrowseIndex(pathname) || isNotificationsIndex(pathname)) return null;
+  if (
+    isMessagesRoute(pathname) ||
+    isListingsBrowseIndex(pathname) ||
+    isNotificationsIndex(pathname) ||
+    isTaskDetailRoute(pathname)
+  ) {
+    return null;
+  }
 
   return (
     <Link
