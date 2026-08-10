@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
+  applyAskerNameHints,
+  cacheTaskQaAsker,
   extractApiErrorMessage,
   fetchTaskPublicQuestions,
   patchTaskPublicAnswer,
@@ -30,6 +32,7 @@ import {
   postTaskPublicQuestion,
   putTaskPublicAnswer,
   reportTaskPublicQuestion,
+  type AskerNameHints,
   type TaskPublicQAItem,
 } from "@/lib/taskPublicQaApi";
 
@@ -73,6 +76,9 @@ type Props = {
   taskId: string;
   posterId: string;
   currentUserId?: string | null;
+  currentUserName?: string | null;
+  /** Known user id → display name (bidders, poster, signed-in user) */
+  askerNameHints?: AskerNameHints;
   isTaskPoster: boolean;
   /** Bump to refetch from parent (e.g. after task refresh) */
   refreshKey?: number;
@@ -83,6 +89,8 @@ export function TaskPublicQuestionsSection({
   taskId,
   posterId,
   currentUserId,
+  currentUserName,
+  askerNameHints,
   isTaskPoster,
   refreshKey = 0,
   onMetaChange,
@@ -109,7 +117,12 @@ export function TaskPublicQuestionsSection({
     setLoading(true);
     setListNeedsSignIn(false);
     try {
-      const meta = await fetchTaskPublicQuestions(taskId, pageSize, 0);
+      const meta = await fetchTaskPublicQuestions(
+        taskId,
+        pageSize,
+        0,
+        askerNameHints,
+      );
       setItems(meta.items);
       setTotal(meta.total);
       setQaOpen(meta.qaOpenForNewPosts);
@@ -131,13 +144,18 @@ export function TaskPublicQuestionsSection({
     } finally {
       setLoading(false);
     }
-  }, [taskId, onMetaChange]);
+  }, [taskId, onMetaChange, askerNameHints]);
 
   const loadMore = useCallback(async () => {
     setLoadingMore(true);
     try {
       const cur = items.length;
-      const meta = await fetchTaskPublicQuestions(taskId, pageSize, cur);
+      const meta = await fetchTaskPublicQuestions(
+        taskId,
+        pageSize,
+        cur,
+        askerNameHints,
+      );
       setItems((prev) => [...prev, ...meta.items]);
       setTotal(meta.total);
       setQaOpen(meta.qaOpenForNewPosts);
@@ -147,7 +165,7 @@ export function TaskPublicQuestionsSection({
     } finally {
       setLoadingMore(false);
     }
-  }, [taskId, items.length, onMetaChange]);
+  }, [taskId, items.length, onMetaChange, askerNameHints]);
 
   useEffect(() => {
     void refresh();
@@ -159,7 +177,10 @@ export function TaskPublicQuestionsSection({
     if (rejectIfDigits(askBody, setAskError)) return;
     setAskSubmitting(true);
     try {
-      await postTaskPublicQuestion(taskId, t);
+      const created = await postTaskPublicQuestion(taskId, t);
+      if (created?.id && currentUserId && currentUserName) {
+        cacheTaskQaAsker(taskId, created.id, currentUserId, currentUserName);
+      }
       setAskBody("");
       setAskError("");
       toast.success("Question posted");

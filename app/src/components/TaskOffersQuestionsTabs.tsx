@@ -1,29 +1,55 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { OffersSection, type OffersSectionProps } from "@/components/OffersSection";
 import { TaskPublicQuestionsSection } from "@/components/TaskPublicQuestionsSection";
-import { fetchTaskPublicQuestions } from "@/lib/taskPublicQaApi";
+import { fetchTaskPublicQuestions, type AskerNameHints } from "@/lib/taskPublicQaApi";
 import { offersCountLabel } from "@/lib/jobBids";
 
 /** Same props as OffersSection plus poster id for Q&A permissions */
 export type TaskOffersQuestionsTabsProps = OffersSectionProps & {
   posterId: string;
+  currentUserName?: string | null;
   /** Increment to refetch Q&A tab (e.g. task reload) */
   qaRefreshKey?: number;
 };
 
 export function TaskOffersQuestionsTabs(props: TaskOffersQuestionsTabsProps) {
-  const { posterId, qaRefreshKey = 0, task, offers, bidsTotal, bidsHasMore, ...offersRest } = props;
+  const {
+    posterId,
+    qaRefreshKey = 0,
+    task,
+    offers,
+    bidsTotal,
+    bidsHasMore,
+    currentUserName,
+    ...offersRest
+  } = props;
   const [tab, setTab] = useState<"offers" | "questions">("offers");
   const [qaTotal, setQaTotal] = useState<number | null>(null);
   const [questionsMounted, setQuestionsMounted] = useState(false);
+
+  const askerNameHints = useMemo((): AskerNameHints => {
+    const hints: AskerNameHints = {};
+    if (props.currentUserId && currentUserName) {
+      hints[String(props.currentUserId)] = currentUserName;
+    }
+    if (posterId && task.poster?.name) {
+      hints[String(posterId)] = task.poster.name;
+    }
+    for (const offer of offers) {
+      const id = offer.tasker?.id;
+      const name = offer.tasker?.name;
+      if (id && name) hints[String(id)] = name;
+    }
+    return hints;
+  }, [props.currentUserId, currentUserName, posterId, task.poster?.name, offers]);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const meta = await fetchTaskPublicQuestions(task.id, 1, 0);
+        const meta = await fetchTaskPublicQuestions(task.id, 1, 0, askerNameHints);
         if (alive) setQaTotal(meta.total);
       } catch {
         if (alive) setQaTotal(0);
@@ -32,7 +58,7 @@ export function TaskOffersQuestionsTabs(props: TaskOffersQuestionsTabsProps) {
     return () => {
       alive = false;
     };
-  }, [task.id, qaRefreshKey]);
+  }, [task.id, qaRefreshKey, askerNameHints]);
 
   const onMetaChange = useCallback((m: { total: number }) => {
     setQaTotal(m.total);
@@ -97,6 +123,8 @@ export function TaskOffersQuestionsTabs(props: TaskOffersQuestionsTabsProps) {
             taskId={task.id}
             posterId={posterId}
             currentUserId={props.currentUserId}
+            currentUserName={currentUserName}
+            askerNameHints={askerNameHints}
             isTaskPoster={props.isTaskPoster}
             refreshKey={qaRefreshKey}
             onMetaChange={onMetaChange}

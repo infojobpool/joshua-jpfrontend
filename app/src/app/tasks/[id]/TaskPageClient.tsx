@@ -2094,6 +2094,7 @@ export default function TaskDetailPage() {
                   setOfferMessage={setOfferMessage}
                   isSubmitting={isSubmitting}
                   currentUserId={userId}
+                  currentUserName={storeUser?.name ?? user?.name}
                   blockSubmitInitial={!isTaskPoster && (task.status === "in_progress" || !!task.assignedTasker)}
                   isVerified={isVerified}
                   verificationChecked={verificationChecked}

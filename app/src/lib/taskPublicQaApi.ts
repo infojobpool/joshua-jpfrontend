@@ -20,53 +20,236 @@ export type TaskPublicQAListMeta = {
   qaOpenForNewPosts: boolean;
 };
 
+export type AskerNameHints = Record<string, string>;
+
 const GENERIC_ASKER_LABELS = new Set(["member", "user", "anonymous", "unknown", ""]);
+
+function qaAskerCacheKey(taskId: string): string {
+  return `jp_task_qa_askers_${taskId}`;
+}
+
+function readQaAskerCache(taskId: string): Record<string, { id: string; name: string }> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = sessionStorage.getItem(qaAskerCacheKey(taskId));
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, { id: string; name: string }>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+export function cacheTaskQaAsker(
+  taskId: string,
+  qaId: string,
+  askerId: string,
+  askerName: string,
+): void {
+  if (typeof window === "undefined" || !taskId || !qaId || !askerId || !askerName) return;
+  if (isGenericAskerName(askerName)) return;
+  const cache = readQaAskerCache(taskId);
+  cache[qaId] = { id: askerId, name: askerName };
+  try {
+    sessionStorage.setItem(qaAskerCacheKey(taskId), JSON.stringify(cache));
+  } catch {
+    /* quota / private mode */
+  }
+}
 
 function isGenericAskerName(name: string | null | undefined): boolean {
   return GENERIC_ASKER_LABELS.has(String(name ?? "").trim().toLowerCase());
 }
 
+function pick(obj: Record<string, unknown>, ...keys: string[]): string {
+  for (const k of keys) {
+    const v = obj[k];
+    if (v != null && String(v).trim() !== "") return String(v).trim();
+  }
+  return "";
+}
+
 function pickNestedName(obj: unknown): string {
   if (!obj || typeof obj !== "object") return "";
   const o = obj as Record<string, unknown>;
-  return String(o.name ?? o.user_name ?? o.full_name ?? o.display_name ?? "").trim();
+  return pick(
+    o,
+    "name",
+    "user_name",
+    "user_fullname",
+    "full_name",
+    "display_name",
+    "member_name",
+    "question_user_name",
+    "asker_name",
+  );
+}
+
+function pickNestedId(obj: unknown): string {
+  if (!obj || typeof obj !== "object") return "";
+  const o = obj as Record<string, unknown>;
+  return pick(
+    o,
+    "user_id",
+    "id",
+    "profile_id",
+    "user_ref_id",
+    "member_id",
+    "question_user_id",
+    "asker_id",
+  );
+}
+
+function flattenQaRaw(raw: Record<string, unknown>): Record<string, unknown> {
+  const nested = raw.question ?? raw.public_qa ?? raw.qa;
+  if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+    return { ...raw, ...(nested as Record<string, unknown>) };
+  }
+  return raw;
 }
 
 function pickAskerId(raw: Record<string, unknown>): string {
-  const nested = [raw.asker, raw.user, raw.question_author, raw.author];
-  for (const n of nested) {
-    if (n && typeof n === "object") {
-      const o = n as Record<string, unknown>;
-      const id = String(o.user_id ?? o.id ?? o.profile_id ?? "").trim();
-      if (id) return id;
-    }
+  const nestedKeys = [
+    "asker",
+    "user",
+    "question_author",
+    "author",
+    "member",
+    "question_user",
+    "created_by",
+    "profile",
+  ];
+  for (const key of nestedKeys) {
+    const id = pickNestedId(raw[key]);
+    if (id) return id;
   }
-  return String(
-    raw.asker_id ??
-      raw.question_author_id ??
-      raw.author_id ??
-      raw.user_id ??
-      "",
-  ).trim();
+
+  const flat = pick(
+    raw,
+    "asker_id",
+    "question_user_id",
+    "question_author_id",
+    "author_id",
+    "author_user_id",
+    "user_id",
+    "member_id",
+    "member_user_id",
+    "created_by_user_id",
+    "created_by",
+    "profile_user_id",
+    "userId",
+    "user_ref_id",
+    "question_user_ref_id",
+  );
+  if (flat) return flat;
+
+  for (const [key, value] of Object.entries(raw)) {
+    if (!key.endsWith("_user_id") && key !== "user_id") continue;
+    if (key === "poster_user_id" || key === "taskmaster_user_id") continue;
+    const id = pick({ v: value }, "v");
+    if (id) return id;
+  }
+
+  return "";
 }
 
 function pickAskerName(raw: Record<string, unknown>): string {
-  for (const n of [raw.asker, raw.user, raw.question_author, raw.author]) {
-    const name = pickNestedName(n);
+  const nestedKeys = [
+    "asker",
+    "user",
+    "question_author",
+    "author",
+    "member",
+    "question_user",
+    "created_by",
+    "profile",
+  ];
+  for (const key of nestedKeys) {
+    const name = pickNestedName(raw[key]);
     if (name && !isGenericAskerName(name)) return name;
   }
-  const flat = String(
-    raw.asker_name ??
-      raw.question_author_name ??
-      raw.author_name ??
-      raw.user_name ??
-      raw.name ??
-      raw.full_name ??
-      raw.display_name ??
-      "",
-  ).trim();
+
+  const flat = pick(
+    raw,
+    "asker_name",
+    "question_user_name",
+    "question_author_name",
+    "author_name",
+    "user_name",
+    "member_name",
+    "name",
+    "full_name",
+    "display_name",
+    "posted_by",
+  );
   if (flat && !isGenericAskerName(flat)) return flat;
+
   return "";
+}
+
+function normalizeQaItem(raw: Record<string, unknown>): TaskPublicQAItem {
+  const flat = flattenQaRaw(raw);
+  const askerId = pickAskerId(flat);
+  const askerName = pickAskerName(flat) || "Member";
+  return {
+    id: String(flat.qa_id ?? flat.id ?? ""),
+    questionBody: String(
+      flat.question_body ?? flat.question ?? flat.body ?? "",
+    ),
+    answerBody:
+      flat.answer_body != null && String(flat.answer_body).trim() !== ""
+        ? String(flat.answer_body)
+        : null,
+    askerId,
+    askerName,
+    createdAt: String(flat.created_at ?? flat.asked_at ?? flat.createdAt ?? ""),
+    answeredAt:
+      flat.answered_at != null && String(flat.answered_at).trim() !== ""
+        ? String(flat.answered_at)
+        : null,
+    questionEditedAt:
+      flat.question_edited_at != null
+        ? String(flat.question_edited_at)
+        : null,
+    answerEditedAt:
+      flat.answer_edited_at != null ? String(flat.answer_edited_at) : null,
+  };
+}
+
+export function applyAskerNameHints(
+  items: TaskPublicQAItem[],
+  hints: AskerNameHints | undefined,
+  taskId?: string,
+): TaskPublicQAItem[] {
+  const cache = taskId ? readQaAskerCache(taskId) : {};
+  const hintMap = hints ?? {};
+
+  return items.map((q) => {
+    const cached = cache[q.id];
+    if (cached?.name && !isGenericAskerName(cached.name)) {
+      return {
+        ...q,
+        askerId: q.askerId || cached.id,
+        askerName: cached.name,
+      };
+    }
+
+    if (q.askerId) {
+      const hinted = hintMap[q.askerId];
+      if (hinted && !isGenericAskerName(hinted) && isGenericAskerName(q.askerName)) {
+        return { ...q, askerName: hinted };
+      }
+    }
+
+    if (isGenericAskerName(q.askerName) && q.askerId) {
+      const hinted = hintMap[q.askerId];
+      if (hinted && !isGenericAskerName(hinted)) {
+        return { ...q, askerName: hinted };
+      }
+    }
+
+    return q;
+  });
 }
 
 async function enrichAskerNames(items: TaskPublicQAItem[]): Promise<TaskPublicQAItem[]> {
@@ -90,7 +273,7 @@ async function enrichAskerNames(items: TaskPublicQAItem[]): Promise<TaskPublicQA
       try {
         const res = await axiosInstance.get(`/profile?user_id=${encodeURIComponent(id)}`);
         const payload = (res.data?.data ?? res.data) as Record<string, unknown>;
-        const name = String(payload?.name ?? "").trim();
+        const name = String(payload?.name ?? payload?.user_fullname ?? "").trim();
         if (name && !isGenericAskerName(name)) {
           nameById.set(id, name);
         }
@@ -109,38 +292,14 @@ async function enrichAskerNames(items: TaskPublicQAItem[]): Promise<TaskPublicQA
   });
 }
 
-function normalizeQaItem(raw: Record<string, unknown>): TaskPublicQAItem {
-  const askerId = pickAskerId(raw);
-  const askerName = pickAskerName(raw) || "Member";
-  return {
-    id: String(raw.qa_id ?? raw.id ?? ""),
-    questionBody: String(
-      raw.question_body ?? raw.question ?? raw.body ?? "",
-    ),
-    answerBody:
-      raw.answer_body != null && String(raw.answer_body).trim() !== ""
-        ? String(raw.answer_body)
-        : null,
-    askerId,
-    askerName,
-    createdAt: String(raw.created_at ?? raw.asked_at ?? raw.createdAt ?? ""),
-    answeredAt:
-      raw.answered_at != null && String(raw.answered_at).trim() !== ""
-        ? String(raw.answered_at)
-        : null,
-    questionEditedAt:
-      raw.question_edited_at != null
-        ? String(raw.question_edited_at)
-        : null,
-    answerEditedAt:
-      raw.answer_edited_at != null ? String(raw.answer_edited_at) : null,
-  };
-}
-
 function parseListPayload(data: unknown): TaskPublicQAListMeta {
   const root = data as Record<string, unknown>;
   const d = (root?.data as Record<string, unknown>) ?? root;
-  const rawItems = (d?.items as unknown[]) ?? (d?.results as unknown[]) ?? [];
+  const rawItems =
+    (d?.items as unknown[]) ??
+    (d?.results as unknown[]) ??
+    (d?.questions as unknown[]) ??
+    [];
   const items = rawItems
     .map((x) => normalizeQaItem(x as Record<string, unknown>))
     .filter((x) => x.id);
@@ -151,6 +310,18 @@ function parseListPayload(data: unknown): TaskPublicQAListMeta {
       ? false
       : true;
   return { items, total, qaOpenForNewPosts };
+}
+
+function parseSingleQaPayload(data: unknown): TaskPublicQAItem | null {
+  const root = data as Record<string, unknown>;
+  const d = (root?.data as Record<string, unknown>) ?? root;
+  const raw =
+    (d?.item as Record<string, unknown>) ??
+    (d?.question as Record<string, unknown>) ??
+    d;
+  if (!raw || typeof raw !== "object") return null;
+  const item = normalizeQaItem(raw as Record<string, unknown>);
+  return item.id ? item : null;
 }
 
 async function withJobIdVariants<T>(
@@ -177,6 +348,7 @@ export async function fetchTaskPublicQuestions(
   jobId: string,
   limit = 20,
   offset = 0,
+  nameHints?: AskerNameHints,
 ): Promise<TaskPublicQAListMeta> {
   return withJobIdVariants(jobId, async (jid) => {
     const res = await axiosInstance.get(
@@ -184,7 +356,9 @@ export async function fetchTaskPublicQuestions(
       { params: { limit, offset } },
     );
     const parsed = parseListPayload(res.data);
+    parsed.items = applyAskerNameHints(parsed.items, nameHints, jid);
     parsed.items = await enrichAskerNames(parsed.items);
+    parsed.items = applyAskerNameHints(parsed.items, nameHints, jid);
     return parsed;
   });
 }
@@ -192,9 +366,14 @@ export async function fetchTaskPublicQuestions(
 export async function postTaskPublicQuestion(
   jobId: string,
   body: string,
-): Promise<void> {
-  await withJobIdVariants(jobId, async (jid) => {
-    await axiosInstance.post(`/tasks/${jid}/public-questions/`, { body });
+): Promise<TaskPublicQAItem | null> {
+  return withJobIdVariants(jobId, async (jid) => {
+    const res = await axiosInstance.post(`/tasks/${jid}/public-questions/`, { body });
+    const item = parseSingleQaPayload(res.data);
+    if (item?.id && item.askerId && !isGenericAskerName(item.askerName)) {
+      cacheTaskQaAsker(jid, item.id, item.askerId, item.askerName);
+    }
+    return item;
   });
 }
 
