@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { MessageSquare, Store, X } from "lucide-react";
+import { MessageSquare, Pencil, Store, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -21,18 +22,80 @@ import {
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import axiosInstance from "@/lib/axiosInstance";
+import { useCanAdminWrite } from "@/lib/adminAuth";
+import { offeringCategoryFromApi } from "@/lib/offeringCategoryDisplay";
+import { promoteOfferingCustomCategory } from "@/lib/promoteCustomCategory";
 
 interface OfferingRow {
   id: string;
   user_id: string;
   title: string;
   type: string;
-  category: string | null;
+  categoryId: string | null;
+  categoryName: string | null;
+  customCategoryName: string | null;
+  categoryLabel: string;
   status: string;
   admin_hidden: boolean;
   provider_display_name: string | null;
   updated_at: string | null;
   chat_count?: number;
+}
+
+function mapOfferingRow(raw: Record<string, unknown>): OfferingRow | null {
+  const id = String(raw.id ?? raw.offering_id ?? raw.pk ?? "").trim();
+  if (!id) return null;
+  const cat = offeringCategoryFromApi(raw);
+  return {
+    id,
+    user_id: String(raw.user_id ?? raw.userId ?? ""),
+    title: String(raw.title ?? ""),
+    type: String(raw.type ?? "service"),
+    categoryId: cat.categoryId,
+    categoryName: cat.categoryName,
+    customCategoryName: cat.customCategoryName,
+    categoryLabel: cat.displayLabel,
+    status: String(raw.status ?? ""),
+    admin_hidden: Boolean(raw.admin_hidden ?? raw.adminHidden),
+    provider_display_name:
+      typeof raw.provider_display_name === "string"
+        ? raw.provider_display_name
+        : typeof raw.providerDisplayName === "string"
+          ? raw.providerDisplayName
+          : null,
+    updated_at:
+      typeof raw.updated_at === "string"
+        ? raw.updated_at
+        : typeof raw.updatedAt === "string"
+          ? raw.updatedAt
+          : null,
+    chat_count:
+      typeof raw.chat_count === "number"
+        ? raw.chat_count
+        : typeof raw.chatCount === "number"
+          ? raw.chatCount
+          : undefined,
+  };
+}
+
+function OfferingCategoryBadge({ row }: { row: OfferingRow }) {
+  if (row.customCategoryName) {
+    return (
+      <Badge
+        variant="outline"
+        className="max-w-[160px] truncate border-blue-300 bg-blue-50 text-xs font-medium text-blue-700 gap-1"
+        title="User suggested category"
+      >
+        <Pencil className="h-3 w-3 shrink-0" />
+        <span className="truncate">{row.customCategoryName}</span>
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="max-w-[160px] truncate text-xs text-gray-700">
+      {row.categoryLabel}
+    </Badge>
+  );
 }
 
 interface UserBrief {
@@ -103,11 +166,13 @@ function formatWhen(iso: string | null | undefined): string {
 }
 
 export default function AdminOfferingsPage() {
+  const canWrite = useCanAdminWrite();
   const [rows, setRows] = useState<OfferingRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [visibility, setVisibility] = useState<VisibilityFilter>("all");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [promotingId, setPromotingId] = useState<string | null>(null);
   const [topChats, setTopChats] = useState<ChatSummaryListing[]>([]);
   const [tracking, setTracking] = useState<OfferingChatTracking | null>(null);
   const [trackingLoading, setTrackingLoading] = useState(false);
@@ -124,8 +189,12 @@ export default function AdminOfferingsPage() {
       if (visibility === "visible") params.set("admin_hidden", "false");
       const response = await axiosInstance.get(`admin/offerings/?${params.toString()}`);
       if (response.data.status_code === 200 && response.data.data) {
-        setRows(response.data.data.offerings ?? []);
-        setTotal(response.data.data.total ?? 0);
+        const rawRows = response.data.data.offerings ?? [];
+        const mapped = (Array.isArray(rawRows) ? rawRows : [])
+          .map((row) => mapOfferingRow(row as Record<string, unknown>))
+          .filter((row): row is OfferingRow => row !== null);
+        setRows(mapped);
+        setTotal(response.data.data.total ?? mapped.length);
       } else {
         toast.error(response.data.message || "Failed to load listings");
       }
@@ -173,6 +242,40 @@ export default function AdminOfferingsPage() {
     }
   };
 
+  const handlePromoteCategory = async (row: OfferingRow) => {
+    if (!canWrite) {
+      toast.error("Read-only access");
+      return;
+    }
+    if (!row.customCategoryName) {
+      toast.error("This listing has no suggested category to promote");
+      return;
+    }
+    try {
+      setPromotingId(row.id);
+      const result = await promoteOfferingCustomCategory(row.id);
+      toast.success(`"${result.category_name}" promoted and listing updated`);
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === row.id
+            ? {
+                ...r,
+                categoryName: result.category_name,
+                categoryId: result.category_id ?? r.categoryId,
+                customCategoryName: null,
+                categoryLabel: result.category_name,
+              }
+            : r,
+        ),
+      );
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to promote category";
+      toast.error(msg);
+    } finally {
+      setPromotingId(null);
+    }
+  };
+
   const openChatTracking = async (offeringId: string, withMessages = includeMessages) => {
     try {
       setTrackingLoading(true);
@@ -204,7 +307,7 @@ export default function AdminOfferingsPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Service listings</h1>
             <p className="text-sm text-muted-foreground">
-              Hide/unhide listings and track how many chats each listing opened, by whom.
+              Hide/unhide listings, promote suggested categories, and track listing chats.
             </p>
           </div>
         </div>
@@ -289,8 +392,8 @@ export default function AdminOfferingsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Title</TableHead>
+              <TableHead>Category</TableHead>
               <TableHead>Provider</TableHead>
-              <TableHead>User ID</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Public</TableHead>
               <TableHead>Chats</TableHead>
@@ -300,18 +403,33 @@ export default function AdminOfferingsPage() {
           <TableBody>
             {rows.length === 0 && !loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                   No listings match this filter.
                 </TableCell>
               </TableRow>
             ) : (
               rows.map((o) => (
                 <TableRow key={o.id}>
-                  <TableCell className="max-w-[220px] truncate font-medium">{o.title}</TableCell>
+                  <TableCell className="max-w-[200px] truncate font-medium">{o.title}</TableCell>
+                  <TableCell className="max-w-[180px]">
+                    <div className="flex flex-col items-start gap-1.5">
+                      <OfferingCategoryBadge row={o} />
+                      {o.customCategoryName && canWrite ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs"
+                          disabled={promotingId === o.id}
+                          onClick={() => handlePromoteCategory(o)}
+                        >
+                          {promotingId === o.id ? "Promoting…" : "Promote to category"}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </TableCell>
                   <TableCell className="max-w-[140px] truncate">
                     {o.provider_display_name || "—"}
                   </TableCell>
-                  <TableCell className="max-w-[120px] truncate font-mono text-xs">{o.user_id}</TableCell>
                   <TableCell>{o.status}</TableCell>
                   <TableCell>{o.admin_hidden ? "Hidden" : "Shown"}</TableCell>
                   <TableCell>{o.chat_count ?? 0}</TableCell>
@@ -369,6 +487,25 @@ export default function AdminOfferingsPage() {
                 <p className="text-sm text-muted-foreground">Loading chats…</p>
               ) : tracking ? (
                 <>
+                  {(() => {
+                    const listingRow = rows.find((r) => r.id === tracking.offering.id);
+                    if (!listingRow) return null;
+                    return (
+                      <div className="flex flex-wrap items-center gap-2 rounded-md border p-3">
+                        <OfferingCategoryBadge row={listingRow} />
+                        {listingRow.customCategoryName && canWrite ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={promotingId === listingRow.id}
+                            onClick={() => handlePromoteCategory(listingRow)}
+                          >
+                            {promotingId === listingRow.id ? "Promoting…" : "Promote to category"}
+                          </Button>
+                        ) : null}
+                      </div>
+                    );
+                  })()}
                   <div className="grid grid-cols-3 gap-3 rounded-md border p-3 text-center">
                     <div>
                       <div className="text-2xl font-bold">{tracking.summary.chat_count}</div>
