@@ -14,6 +14,7 @@ import {
   ImagePlus,
   Briefcase,
   Ban,
+  EyeOff,
   IndianRupee,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -138,6 +139,21 @@ interface Task {
 }
 
 const MAX_TASK_IMAGES_ADMIN = 10;
+
+/** Taskers only see jobs in browse when deletion_status is false (poster soft-delete). */
+function renderTaskBrowseVisibilityBadge(task: Task) {
+  if (!task.deletion_status) return null;
+  return (
+    <Badge
+      variant="outline"
+      className="flex w-fit max-w-full items-center gap-1 whitespace-normal border-amber-300 bg-amber-50 text-xs font-medium text-amber-900"
+      title="Removed by poster or admin — hidden from browse / available tasks. Use Reset Task to restore."
+    >
+      <EyeOff className="h-3 w-3 shrink-0" />
+      <span className="truncate">Hidden from browse</span>
+    </Badge>
+  );
+}
 
 function renderTaskCategoryBadge(task: Task) {
   if (task.customCategoryName) {
@@ -357,7 +373,9 @@ export default function TasksPage() {
     const matchesCategory =
       categoryFilter === "all" || task.category === categoryFilter;
     const matchesStatus =
-      statusFilter === "all" || task.status === statusFilter;
+      statusFilter === "all" ||
+      (statusFilter === "hidden_from_browse" && task.deletion_status) ||
+      (statusFilter !== "hidden_from_browse" && task.status === statusFilter);
 
     // Date-based filters use createdAt so we can talk about "recent" tasks
     let matchesDate = true;
@@ -424,7 +442,8 @@ export default function TasksPage() {
   };
 
   // Calculate statistics
-  const openTasks = tasks.filter((t) => t.status === "Open").length;
+  const openTasks = tasks.filter((t) => t.status === "Open" && !t.deletion_status).length;
+  const hiddenFromBrowseTasks = tasks.filter((t) => t.deletion_status).length;
   const cancelledTasks = tasks.filter((t) => t.status === "Cancelled").length;
   const inProgressTasks = tasks.filter((t) => isInProgressAdminStatus(t.status)).length;
   const completedTasks = tasks.filter((t) => t.status === "Completed").length;
@@ -787,13 +806,27 @@ export default function TasksPage() {
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-slate-900">Tasks Management</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Browse and manage jobs from the admin feed
+          Browse and manage jobs from the admin feed.{" "}
+          <span className="text-amber-800/90">
+            Open ≠ visible to taskers — check &quot;Hidden from browse&quot; or use Reset Task.
+          </span>
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {[
-          { label: "Open", value: openTasks, accent: "bg-amber-500", icon: Briefcase },
+          {
+            label: "Open (live)",
+            value: openTasks,
+            accent: "bg-amber-500",
+            icon: Briefcase,
+          },
+          {
+            label: "Hidden",
+            value: hiddenFromBrowseTasks,
+            accent: "bg-amber-400",
+            icon: EyeOff,
+          },
           { label: "Cancelled", value: cancelledTasks, accent: "bg-red-500", icon: Ban },
           { label: "In progress", value: inProgressTasks, accent: "bg-violet-500", icon: Clock },
           { label: "Completed", value: completedTasks, accent: "bg-emerald-500", icon: CheckCircle },
@@ -866,6 +899,7 @@ export default function TasksPage() {
               <SelectItem value="Tasker confirmed">Tasker confirmed</SelectItem>
               <SelectItem value="Completed">Completed</SelectItem>
               <SelectItem value="Cancelled">Cancelled</SelectItem>
+              <SelectItem value="hidden_from_browse">Hidden from browse</SelectItem>
             </SelectContent>
           </Select>
           {/* New: Date filters for recent / range */}
@@ -1001,6 +1035,7 @@ export default function TasksPage() {
                           No refund (before payment)
                         </Badge>
                       )}
+                      {renderTaskBrowseVisibilityBadge(task)}
                     </div>
                   </TableCell>
                   <TableCell className="hidden whitespace-normal py-3 lg:table-cell">
@@ -1233,7 +1268,15 @@ export default function TasksPage() {
                                   >
                                     {selectedTask.status}
                                   </Badge>
+                                  {renderTaskBrowseVisibilityBadge(selectedTask)}
                                 </div>
+                                {selectedTask.deletion_status && (
+                                  <p className="text-sm text-amber-900/90 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
+                                    This task is <strong>hidden from taskers</strong> (soft-deleted).
+                                    It can still show as Open here because no one is assigned.
+                                    Use <strong>Actions → Reset Task</strong> to put it back on browse.
+                                  </p>
+                                )}
                               </div>
                               <div className="text-right">
                                 <div className="font-medium text-lg">
