@@ -776,6 +776,20 @@ export default function TasksPage() {
     }
   };
 
+  /** Shorter labels in the table so badges fit without overlapping People. */
+  const getStatusTableLabel = (status: Task["status"]): string => {
+    switch (status) {
+      case "Hidden from browse":
+        return "Hidden";
+      case "Taskmaster confirmed":
+        return "Poster confirmed";
+      case "Tasker confirmed":
+        return "Tasker confirmed";
+      default:
+        return status;
+    }
+  };
+
   const getStatusIcon = (status: Task["status"]) => {
     switch (status) {
       case "Open":
@@ -946,17 +960,17 @@ export default function TasksPage() {
             </p>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
-        <Table className="table-fixed w-full min-w-[560px]">
+        <CardContent className="overflow-x-auto p-0">
+        <Table className="w-full min-w-[768px]">
           <TableHeader>
             <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
-              <TableHead className="whitespace-normal pl-4">Task</TableHead>
-              <TableHead className="w-[108px]">Status</TableHead>
-              <TableHead className="hidden w-[148px] lg:table-cell">People</TableHead>
-              <TableHead className="hidden w-[108px] xl:table-cell">Dates</TableHead>
-              <TableHead className="hidden w-[64px] xl:table-cell text-center">Offers</TableHead>
-              <TableHead className="w-[84px]">Budget</TableHead>
-              <TableHead className="w-[52px] pr-4 text-right">Actions</TableHead>
+              <TableHead className="min-w-[200px] whitespace-normal pl-4">Task</TableHead>
+              <TableHead className="w-[148px] min-w-[148px] max-w-[148px]">Status</TableHead>
+              <TableHead className="hidden w-[168px] min-w-[168px] lg:table-cell">People</TableHead>
+              <TableHead className="hidden w-[120px] min-w-[120px] xl:table-cell">Dates</TableHead>
+              <TableHead className="hidden w-[72px] min-w-[72px] xl:table-cell text-center">Offers</TableHead>
+              <TableHead className="w-[96px] min-w-[96px] whitespace-nowrap">Budget</TableHead>
+              <TableHead className="w-[56px] min-w-[56px] pr-4 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -998,18 +1012,19 @@ export default function TasksPage() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="whitespace-normal py-3">
-                    <div className="flex flex-col gap-1">
+                  <TableCell className="w-[148px] min-w-[148px] max-w-[148px] align-top whitespace-normal py-3 pr-3">
+                    <div className="flex max-w-[140px] flex-col gap-1.5">
                     <Badge
                       variant={getStatusBadgeVariant(task.status)}
-                      className={`flex w-fit max-w-full items-center whitespace-normal text-xs ${
+                      title={task.status}
+                      className={`inline-flex w-full max-w-full items-center justify-start whitespace-normal text-left text-[11px] leading-snug px-2 py-1 ${
                         task.status === "Hidden from browse"
                           ? "border-amber-300 bg-amber-50 text-amber-900"
                           : ""
                       }`}
                     >
                       {getStatusIcon(task.status)}
-                      <span className="truncate">{task.status}</span>
+                      <span>{getStatusTableLabel(task.status)}</span>
                     </Badge>
                       {task.status === "Cancelled" && task.refundStatus && (
                         <Badge
@@ -1020,7 +1035,7 @@ export default function TasksPage() {
                               ? "destructive"
                               : "secondary"
                           }
-                          className="text-xs capitalize w-fit"
+                          className="w-full max-w-full whitespace-normal text-left text-[10px] leading-snug px-2 py-1 capitalize"
                         >
                           Refund: {task.refundStatus}
                         </Badge>
@@ -1028,20 +1043,21 @@ export default function TasksPage() {
                       {task.status === "Cancelled" && !task.refundStatus && task.cancelledByRole && task.cancelledByRole !== "admin" && (
                         <Badge
                           variant="outline"
-                          className="text-xs w-fit text-muted-foreground"
+                          title="No refund (before payment)"
+                          className="w-full max-w-full whitespace-normal text-left text-[10px] leading-snug px-2 py-1 text-muted-foreground"
                         >
-                          No refund (before payment)
+                          No refund
                         </Badge>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="hidden whitespace-normal py-3 lg:table-cell">
-                    <div className="space-y-1 text-xs">
-                      <div className="min-w-0">
+                  <TableCell className="hidden min-w-[168px] whitespace-normal py-3 pl-1 pr-2 align-top lg:table-cell">
+                    <div className="space-y-1 text-xs leading-snug">
+                      <div className="min-w-0 break-words">
                         <span className="text-muted-foreground">Poster </span>
                         <span className="font-medium">{task.taskmaster.name}</span>
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 break-words">
                         <span className="text-muted-foreground">Tasker </span>
                         <span className={task.tasker ? "font-medium" : "text-muted-foreground"}>
                           {task.tasker?.name ?? "Unassigned"}
