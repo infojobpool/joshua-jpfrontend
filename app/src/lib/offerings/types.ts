@@ -36,14 +36,14 @@ export type OfferingInput = Omit<Offering, "id" | "createdAt" | "updatedAt"> & {
   id?: string;
 };
 
-/** Label for cards and detail (prefer API category_name). */
+/** Label for cards and detail — custom name wins over fallback official category. */
 export function offeringCategoryLabel(
   o: Pick<Offering, "categoryName" | "customCategoryName" | "categoryId" | "type">,
 ): string {
-  const name = o.categoryName?.trim();
-  if (name) return name;
   const custom = o.customCategoryName?.trim();
   if (custom) return custom;
+  const name = o.categoryName?.trim();
+  if (name) return name;
   if (o.categoryId?.trim()) return "";
   return o.type === "product" ? "Product" : "Service";
 }
