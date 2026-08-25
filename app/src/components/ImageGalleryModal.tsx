@@ -86,14 +86,6 @@ export function ImageGalleryModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative flex h-full w-full max-w-4xl items-center justify-center">
-          <button
-            type="button"
-            className="absolute right-2 top-[max(0.5rem,env(safe-area-inset-top))] z-20 inline-flex h-11 min-w-[2.75rem] items-center justify-center rounded-full bg-white px-4 text-slate-900 shadow-lg ring-2 ring-white/80 hover:bg-slate-100 active:scale-[0.98] sm:right-3"
-            onClick={closeGallery}
-            aria-label="Close gallery"
-          >
-            <X className="h-6 w-6" strokeWidth={2.25} />
-          </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imgFailed ? "/images/placeholder.svg" : resolvedSrc}
