@@ -951,12 +951,7 @@ export default function TasksPage() {
 
       <Card className="min-w-0 overflow-hidden rounded-xl border-slate-200/80 shadow-sm">
         <CardHeader className="border-b bg-slate-50/80 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="text-base font-semibold">All tasks</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {isLoading ? "Loading…" : `${filteredTasks.length} task${filteredTasks.length === 1 ? "" : "s"}`}
-            </p>
-          </div>
+          <CardTitle className="text-base font-semibold">All tasks</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto p-0">
         <Table className="w-full min-w-[768px]">
