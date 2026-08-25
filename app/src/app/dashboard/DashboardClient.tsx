@@ -5255,21 +5255,16 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                <div className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-2 ${isMobile ? "mt-2 pt-0.5" : "mt-1"}`}>
-                  <div className="flex flex-wrap items-center gap-2 min-w-0">
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      {sortedAvailableTasks.length} task{sortedAvailableTasks.length === 1 ? "" : "s"}
-                    </p>
-                    {availableFiltersActive ? (
-                      <button
-                        type="button"
-                        onClick={clearAvailableFilters}
-                        className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white underline underline-offset-2 decoration-slate-300"
-                      >
-                        Clear all
-                      </button>
-                    ) : null}
-                  </div>
+                <div className={`flex flex-wrap items-center justify-end gap-x-3 gap-y-2 ${isMobile ? "mt-2 pt-0.5" : "mt-1"}`}>
+                  {availableFiltersActive ? (
+                    <button
+                      type="button"
+                      onClick={clearAvailableFilters}
+                      className="mr-auto text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white underline underline-offset-2 decoration-slate-300"
+                    >
+                      Clear all
+                    </button>
+                  ) : null}
                   {!isMobile ? (
                     <select
                       value={availableSortBy}
