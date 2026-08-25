@@ -58,6 +58,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import axiosInstance from "@/lib/axiosInstance";
+import { fetchBidCountsForJobs } from "@/lib/bidsApi";
 import { ConfirmDialog } from "@/components/ConfirmDialog"; // Import ConfirmDialog
 import { useCanAdminWrite } from "@/lib/adminAuth";
 import {
@@ -254,34 +255,19 @@ export default function TasksPage() {
         }));
         // Show all tasks including cancelled ones
         setTasks(mappedTasks);
-        // Fetch bid counts for each task (non-blocking for initial render)
-        // Limit to first 20 tasks to reduce API load
-        try {
-          const limitedTasks = mappedTasks.slice(0, 20);
-          const results = await Promise.allSettled(
-            limitedTasks.map(async (t) => {
-              try {
-                const r = await axiosInstance.get(`/get-bids/${t.id}/`);
-                const data = r.data;
-                let rows: any[] = [];
-                if (Array.isArray(data?.data?.bids)) rows = data.data.bids;
-                else if (Array.isArray(data?.data)) rows = data.data;
-                else if (Array.isArray(data)) rows = data;
-                return { id: t.id, count: rows.length };
-              } catch (error: any) {
-                console.warn(`Failed to fetch bids for task ${t.id}:`, error.message);
-                return { id: t.id, count: 0 };
-              }
-            })
-          );
-          const idToCount: Record<string, number> = {};
-          for (const res of results) {
-            if (res.status === "fulfilled") {
-              idToCount[res.value.id] = res.value.count;
-            }
-          }
-          setTasks((prev) => prev.map((t) => ({ ...t, offers: idToCount[t.id] ?? t.offers })));
-        } catch {}
+        // Fetch bid counts for every task (batched; non-blocking after initial render)
+        void fetchBidCountsForJobs(
+          axiosInstance,
+          mappedTasks.map((t) => t.id)
+        )
+          .then((idToCount) => {
+            setTasks((prev) =>
+              prev.map((t) => ({ ...t, offers: idToCount[t.id] ?? t.offers }))
+            );
+          })
+          .catch((error: unknown) => {
+            console.warn("Failed to fetch task offer counts:", error);
+          });
       } else {
         toast.error(response.data.message || "Failed to fetch tasks");
       }
@@ -334,7 +320,13 @@ export default function TasksPage() {
               deletion_status: job.deletion_status || false,
               imageUrls: jobImageUrlsFromJob(job),
             };
-            setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
+            setTasks((prev) =>
+              prev.map((t) =>
+                t.id === updatedTask.id
+                  ? { ...updatedTask, offers: t.offers }
+                  : t
+              )
+            );
           }
           sessionStorage.removeItem("adminLastUpdatedJobId");
         }
@@ -733,7 +725,13 @@ export default function TasksPage() {
               deletion_status: job.deletion_status || false,
               imageUrls: jobImageUrlsFromJob(job),
             };
-            setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
+            setTasks((prev) =>
+              prev.map((t) =>
+                t.id === updatedTask.id
+                  ? { ...updatedTask, offers: t.offers }
+                  : t
+              )
+            );
           }
         } catch {
           // ignore; optimistic state already applied
