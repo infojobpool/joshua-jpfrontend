@@ -1,6 +1,7 @@
 "use client";
 
 import { ImageGalleryModal } from "@/components/ImageGalleryModal";
+import { galleryIndexForTaskImage, realTaskImages } from "@/lib/taskImages";
 import { TaskOffersQuestionsTabs } from "@/components/TaskOffersQuestionsTabs";
 import { PaymentModal } from "@/components/PaymentModal";
 import { CompletionReviewModal } from "@/components/CompletionReviewModal";
@@ -1770,7 +1771,7 @@ export default function TaskDetailPage() {
   };
 
   const openImageGallery = (index: number) => {
-    setCurrentImageIndex(index);
+    setCurrentImageIndex(galleryIndexForTaskImage(task?.images ?? [], index));
     setShowImageGallery(true);
   };
 
@@ -1778,17 +1779,18 @@ export default function TaskDetailPage() {
     setShowImageGallery(false);
   };
 
+  const galleryImages = realTaskImages(task?.images ?? []);
+
   const nextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev + 1) % (task?.images.length || 1));
+    const len = galleryImages.length || 1;
+    setCurrentImageIndex((prev) => (prev + 1) % len);
   };
 
   const prevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setCurrentImageIndex(
-      (prev) =>
-        (prev - 1 + (task?.images.length || 1)) % (task?.images.length || 1)
-    );
+    const len = galleryImages.length || 1;
+    setCurrentImageIndex((prev) => (prev - 1 + len) % len);
   };
 
   // Clear stale payment flags immediately when task is in_progress (avoids verification-pending flicker)
@@ -2173,7 +2175,7 @@ export default function TaskDetailPage() {
       />
       <ImageGalleryModal
         show={showImageGallery}
-        images={task.images}
+        images={galleryImages}
         currentIndex={currentImageIndex}
         closeGallery={closeImageGallery}
         nextImage={nextImage}

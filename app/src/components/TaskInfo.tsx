@@ -163,6 +163,7 @@ import { hasRealProfilePhotoUrl } from "@/lib/payoutProfileCompletion";
 import { paymentsRouteFromSession } from "@/lib/paymentNavigation";
 import type { PosterReviewSnippet } from "@/app/types";
 import { toViewTransitionKey } from "@/lib/viewTransition";
+import { isRealTaskImage } from "@/lib/taskImages";
 
 // Interfaces
 interface Task {
@@ -257,11 +258,10 @@ interface TaskInfoProps {
   posterProfileLoading?: boolean;
 }
 
-function isRealTaskImage(img: Image | undefined): boolean {
-  return Boolean(
-    img?.url &&
-      !String(img.url).includes("placeholder.svg") &&
-      !String(img.url).includes("placeholder.com")
+function taskPhotoRemoveButtonClass(marked: boolean) {
+  return cn(
+    "absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full text-white shadow-md ring-2 ring-white/90",
+    marked ? "bg-blue-600" : "bg-slate-900/80"
   );
 }
 
@@ -880,9 +880,8 @@ export function TaskInfo({
             </div>
           </div>
 
-          {!isEditing && (
-            <div className="flex flex-col gap-4 w-full sm:w-auto sm:max-w-[220px] sm:shrink-0 sm:items-end">
-              {isPaymentPending ? (
+          <div className="flex flex-col gap-4 w-full sm:w-auto sm:max-w-[220px] sm:shrink-0 sm:items-end">
+              {!isEditing && isPaymentPending ? (
                 <Button
                   variant="outline"
                   size="sm"
@@ -893,12 +892,99 @@ export function TaskInfo({
                 </Button>
               ) : null}
 
-              {realImageEntries.length > 0 ? (
+              {(realImageEntries.length > 0 ||
+                (isEditing && canPosterEdit && newImageFiles.length > 0)) ? (
                 <div className="flex flex-col gap-1.5 w-full sm:items-end sm:w-auto">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 sm:text-right">
                     Photos
                   </p>
-                  {realImageEntries.length === 1 ? (
+                  {isEditing && canPosterEdit ? (
+                    realImageEntries.length === 1 && newImageFiles.length === 0 ? (
+                      <div
+                        className={`relative w-full max-w-[min(100%,260px)] aspect-[4/3] overflow-hidden rounded-xl ${photoThumbRing} sm:max-w-[200px] sm:self-end`}
+                      >
+                        <Image
+                          src={realImageEntries[0].image.url}
+                          alt={realImageEntries[0].image.alt}
+                          fill
+                          sizes="(max-width:640px) 260px, 200px"
+                          className={cn(
+                            "object-cover",
+                            removedImageUrls.has(realImageEntries[0].image.url) && "opacity-50"
+                          )}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => toggleRemoveExistingUrl(realImageEntries[0].image.url)}
+                          className={taskPhotoRemoveButtonClass(
+                            removedImageUrls.has(realImageEntries[0].image.url)
+                          )}
+                          aria-label={
+                            removedImageUrls.has(realImageEntries[0].image.url)
+                              ? "Undo remove"
+                              : "Remove photo"
+                          }
+                        >
+                          {removedImageUrls.has(realImageEntries[0].image.url) ? (
+                            <X className="h-4 w-4" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2 w-full max-w-[min(100%,260px)] sm:max-w-none sm:justify-end">
+                        {realImageEntries.map(({ image }) => {
+                          const marked = removedImageUrls.has(image.url);
+                          return (
+                            <div
+                              key={image.id + image.url}
+                              className={cn(
+                                "relative h-20 w-20 overflow-hidden rounded-lg border-2",
+                                marked ? "border-red-300 opacity-50" : "border-white shadow-sm"
+                              )}
+                            >
+                              <Image
+                                src={image.url}
+                                alt={image.alt}
+                                fill
+                                sizes="80px"
+                                className="object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => toggleRemoveExistingUrl(image.url)}
+                                className={taskPhotoRemoveButtonClass(marked)}
+                                aria-label={marked ? "Undo remove" : "Remove photo"}
+                              >
+                                {marked ? (
+                                  <X className="h-4 w-4" />
+                                ) : (
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })}
+                        {newImageFiles.map((row) => (
+                          <div
+                            key={row.id}
+                            className="relative h-20 w-20 overflow-hidden rounded-lg border border-blue-200 shadow-sm"
+                          >
+                            <img src={row.url} alt="" className="h-full w-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => removeNewImage(row.id)}
+                              className={taskPhotoRemoveButtonClass(false)}
+                              aria-label="Remove new photo"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  ) : realImageEntries.length === 1 ? (
                     <button
                       key={realImageEntries[0].image.id}
                       type="button"
@@ -957,63 +1043,17 @@ export function TaskInfo({
                   )}
                 </div>
               ) : null}
-            </div>
-          )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4 p-3 md:p-5">
         {/* Photos: replace / remove / add (open tasks only) */}
         {isEditing && canPosterEdit && (
           <div className="rounded-xl border border-blue-200/60 bg-blue-50/50 p-3 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-blue-900/80">Photos</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-blue-900/80">Add photos</p>
             <p className="text-xs text-blue-800/80">
-              Remove photos you no longer want, then add new ones (max {MAX_TASK_IMAGES} total).
+              Tap the × on a photo above to remove it. You can add up to {MAX_TASK_IMAGES} total.
             </p>
-            {task.images.some((img) => isRealTaskImage(img)) ? (
-              <div className="flex flex-wrap gap-2">
-                {task.images
-                  .filter((img) => isRealTaskImage(img))
-                  .map((img) => {
-                    const marked = removedImageUrls.has(img.url);
-                    return (
-                      <div
-                        key={img.id + img.url}
-                        className={`relative h-20 w-20 overflow-hidden rounded-lg border-2 ${
-                          marked ? "border-red-300 opacity-50" : "border-white shadow-sm"
-                        }`}
-                      >
-                        <img src={img.url} alt="" className="h-full w-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => toggleRemoveExistingUrl(img.url)}
-                          className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-md bg-white/95 text-red-600 shadow border border-red-100"
-                          aria-label={marked ? "Undo remove" : "Remove photo"}
-                          title={marked ? "Undo remove" : "Remove photo"}
-                        >
-                          {marked ? <X className="h-4 w-4" /> : <Trash2 className="h-3.5 w-3.5" />}
-                        </button>
-                      </div>
-                    );
-                  })}
-              </div>
-            ) : null}
-            {newImageFiles.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {newImageFiles.map((row) => (
-                  <div key={row.id} className="relative h-20 w-20 overflow-hidden rounded-lg border border-blue-200 shadow-sm">
-                    <img src={row.url} alt="" className="h-full w-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => removeNewImage(row.id)}
-                      className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-md bg-white/95 text-slate-700 shadow border"
-                      aria-label="Remove new photo"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : null}
             <div>
               <Label htmlFor="task-edit-images" className="text-xs font-medium text-blue-900">
                 Add images

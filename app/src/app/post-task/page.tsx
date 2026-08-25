@@ -946,7 +946,7 @@ export default function PostTaskPage() {
                               <button
                                 type="button"
                                 onClick={() => removeImage(image.id)}
-                                className="absolute top-2 right-2 rounded-full bg-slate-900/70 text-white p-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                                className="absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-slate-900/80 text-white shadow-md ring-2 ring-white/90"
                                 aria-label="Remove image"
                               >
                                 <X className="h-4 w-4" />
