@@ -7,6 +7,7 @@ const DISALLOW = [
   "/profilepage/",
   "/messages/",
   "/wallet/",
+  "/referrals/",
   "/payments/",
   "/verification/",
   "/settings/",

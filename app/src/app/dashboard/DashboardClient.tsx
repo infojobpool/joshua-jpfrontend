@@ -40,6 +40,7 @@ import {
   LayoutList,
   Plus,
   Wallet,
+  Gift,
   Sparkles,
   RotateCcw,
   SlidersHorizontal,
@@ -4084,6 +4085,12 @@ export default function Dashboard() {
                       </div>
                       <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Wallet</span>
                     </Link>
+                    <Link href="/referrals" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                      <div className="p-2 rounded-xl bg-violet-50 dark:bg-violet-900/20">
+                        <Gift className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                      </div>
+                      <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Invite &amp; earn</span>
+                    </Link>
                     <button
                       type="button"
                       onClick={() => {
@@ -4208,6 +4215,12 @@ export default function Dashboard() {
                         <Wallet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                       </div>
                       <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Wallet</span>
+                    </Link>
+                    <Link href="/referrals" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                      <div className="p-2 rounded-xl bg-violet-50 dark:bg-violet-900/20">
+                        <Gift className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                      </div>
+                      <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">Invite &amp; earn</span>
                     </Link>
                     <Link href="/supportpage" className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
                       <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800">

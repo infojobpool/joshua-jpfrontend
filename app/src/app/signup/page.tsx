@@ -26,6 +26,11 @@ import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessH
 import { setPendingEmailVerifyFromSignupClient } from "@/lib/pendingEmailVerifySignin";
 import { isValidProfilePhone, normalizeProfilePhone } from "@/lib/profilePhone";
 import { AuthFlowShell, AuthPageViewport } from "@/components/auth/AuthFlowShell";
+import {
+  captureReferralFromSearchParams,
+  getStoredReferralCode,
+} from "@/lib/referral/referralStorage";
+import { DEFAULT_REFEREE_REWARD_INR } from "@/lib/referral/constants";
 
 interface FormData {
   user_fullname: string;
@@ -50,6 +55,13 @@ export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [signupSuccess, setSignupSuccess] = useState(false);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    captureReferralFromSearchParams(window.location.search);
+    setReferralCode(getStoredReferralCode());
+  }, []);
 
   const togglePasswordVisibility = () => {
     setShowPassword((prev) => !prev);
@@ -89,12 +101,14 @@ export default function SignUpPage() {
       return;
     }
 
+    const storedRef = getStoredReferralCode();
     const payload = {
       user_fullname,
       user_email,
       phone_number: phone_number?.trim() ? normalizeProfilePhone(phone_number) : undefined,
       password,
       confirm_password,
+      ...(storedRef ? { referral_code: storedRef } : {}),
 
       // task_manager:
       //   formData.accountType === "poster" || formData.accountType === "both",
@@ -217,6 +231,18 @@ export default function SignUpPage() {
                 Create your account to start connecting and earning
               </CardDescription>
               <WelcomeBonusProcessHint variant="signup" className="mt-4 text-left" />
+              {referralCode ? (
+                <div
+                  className="mt-3 rounded-xl border border-indigo-200/80 bg-indigo-50/90 px-3 py-2.5 text-left text-xs text-indigo-950"
+                  role="note"
+                >
+                  <p className="font-semibold">You were invited!</p>
+                  <p className="mt-0.5 text-indigo-900/90 leading-snug">
+                    Code <span className="font-mono font-bold">{referralCode}</span> applied. Complete your first
+                    paid task to unlock up to ₹{DEFAULT_REFEREE_REWARD_INR} referral wallet credit.
+                  </p>
+                </div>
+              ) : null}
             </CardHeader>
             <CardContent className="space-y-4 px-6">
               <div className="space-y-1.5">

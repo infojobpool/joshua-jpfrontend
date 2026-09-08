@@ -36,6 +36,7 @@ import {
   X,
   Briefcase,
   Wallet,
+  Gift,
   Package,
   Inbox,
   Images,
@@ -786,6 +787,22 @@ export default function ProfilePage() {
                 <span className="min-w-0 text-left">
                   <span className="block text-sm font-semibold text-slate-900">Wallet</span>
                   <span className="block text-xs text-slate-500">Balance, UPI, and withdrawals</span>
+                </span>
+              </span>
+              <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />
+            </Link>
+
+            <Link
+              href="/referrals"
+              className="mb-4 flex w-full min-w-0 items-center justify-between gap-3 rounded-xl border border-violet-100/80 bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200/60 transition-colors hover:bg-violet-50/40 active:scale-[0.99]"
+            >
+              <span className="flex min-w-0 items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100">
+                  <Gift className="h-5 w-5 text-violet-600" aria-hidden />
+                </span>
+                <span className="min-w-0 text-left">
+                  <span className="block text-sm font-semibold text-slate-900">Invite &amp; earn</span>
+                  <span className="block text-xs text-slate-500">Share your link, get wallet credit</span>
                 </span>
               </span>
               <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />

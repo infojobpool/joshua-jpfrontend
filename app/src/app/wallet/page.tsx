@@ -22,6 +22,7 @@ import {
   Pencil,
   AlertCircle,
   ChevronRight,
+  Gift,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -399,6 +400,22 @@ export default function WalletPage() {
                 </CardContent>
               </Card>
             )}
+
+            <Link
+              href="/referrals"
+              className="flex items-center justify-between gap-3 rounded-2xl border border-violet-200/80 bg-gradient-to-r from-violet-50/90 to-indigo-50/70 px-4 py-4 shadow-sm ring-1 ring-violet-100 transition-colors hover:bg-violet-50"
+            >
+              <span className="flex min-w-0 items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100">
+                  <Gift className="h-5 w-5 text-violet-600" aria-hidden />
+                </span>
+                <span className="min-w-0 text-left">
+                  <span className="block text-sm font-semibold text-slate-900">Invite friends</span>
+                  <span className="block text-xs text-slate-600">Earn wallet credit when they complete a task</span>
+                </span>
+              </span>
+              <ChevronRight className="h-5 w-5 shrink-0 text-violet-400" aria-hidden />
+            </Link>
 
             <PayoutProfileProgress
               variant="wallet"

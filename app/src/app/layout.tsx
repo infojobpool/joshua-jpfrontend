@@ -22,6 +22,7 @@ import { PwaInstallTracker } from "@/components/PwaInstallTracker";
 import { RouteTransition } from "@/components/RouteTransition";
 import { AppFeatureGuide } from "@/components/onboarding/AppFeatureGuide";
 import { FeeConfigWarmup } from "@/components/FeeConfigWarmup";
+import { ReferralCapture } from "@/components/referral/ReferralCapture";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -101,6 +102,7 @@ export default function RootLayout({
           <Suspense fallback={null}>
             <NotificationBadgeSync />
             <HomeJobsPrefetch />
+            <ReferralCapture />
           </Suspense>
           <PromoPopup />
           <FeeConfigWarmup />
