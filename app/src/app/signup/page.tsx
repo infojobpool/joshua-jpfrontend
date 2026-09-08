@@ -29,6 +29,7 @@ import { AuthFlowShell, AuthPageViewport } from "@/components/auth/AuthFlowShell
 import {
   captureReferralFromSearchParams,
   getStoredReferralCode,
+  markRefereeBonusPending,
 } from "@/lib/referral/referralStorage";
 import { DEFAULT_REFEREE_REWARD_INR } from "@/lib/referral/constants";
 
@@ -119,6 +120,9 @@ export default function SignUpPage() {
     try {
       setIsLoading(true);
       await axiosInstance.post("/user-registration/", payload);
+      if (storedRef) {
+        markRefereeBonusPending(storedRef);
+      }
       setSignupSuccess(true);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
@@ -239,7 +243,11 @@ export default function SignUpPage() {
                   <p className="font-semibold">You were invited!</p>
                   <p className="mt-0.5 text-indigo-900/90 leading-snug">
                     Code <span className="font-mono font-bold">{referralCode}</span> applied. Complete your first
-                    paid task to unlock up to ₹{DEFAULT_REFEREE_REWARD_INR} referral wallet credit.
+                    paid task to unlock up to ₹{DEFAULT_REFEREE_REWARD_INR} referral wallet credit.{" "}
+                    <Link href="/referral-terms" className="font-medium underline underline-offset-2">
+                      Terms apply
+                    </Link>
+                    .
                   </p>
                 </div>
               ) : null}

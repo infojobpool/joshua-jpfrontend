@@ -9,3 +9,7 @@ export const DEFAULT_REFEREE_REWARD_INR = 75;
 
 export const REFERRAL_QUALIFYING_COPY =
   "Rewards credit to your JobPool wallet after your friend completes their first paid task on the platform.";
+
+export const REFEREE_PENDING_KEY = "jobpool_referee_bonus_pending";
+export const REFEREE_BANNER_DISMISSED_KEY = "jobpool_referee_banner_dismissed";
+export const REFERRAL_PROMO_DISMISSED_KEY = "jobpool_referral_promo_dismissed";

@@ -4,6 +4,10 @@ import {
   DEFAULT_REFEREE_REWARD_INR,
   DEFAULT_REFERRER_REWARD_INR,
 } from "./constants";
+import {
+  clearRefereeBonusPending,
+  getRefereeBonusPending,
+} from "./referralStorage";
 
 export type ReferralStatus =
   | "pending"
@@ -30,6 +34,15 @@ export type ReferralEntry = {
   created_at: string;
   credited_at?: string | null;
   reward_amount_inr?: number | null;
+};
+
+export type RefereeBonusStatus = "none" | "pending" | "qualified" | "credited";
+
+export type RefereeStatus = {
+  was_referred: boolean;
+  referral_code_used?: string | null;
+  reward_inr: number;
+  status: RefereeBonusStatus;
 };
 
 function fallbackReferralCode(userId: string): string {
@@ -169,4 +182,77 @@ export function referralStatusLabel(status: ReferralStatus): string {
     default:
       return status;
   }
+}
+
+function parseRefereeStatusPayload(data: unknown): RefereeStatus | null {
+  const root = (data as { data?: unknown })?.data ?? data;
+  if (!root || typeof root !== "object") return null;
+  const row = root as Record<string, unknown>;
+  const wasReferred = Boolean(
+    row.was_referred ?? row.is_referred ?? row.referred ?? row.has_referral
+  );
+  if (!wasReferred && !row.referral_code_used && !row.status) return null;
+
+  const statusRaw = String(row.status ?? row.bonus_status ?? "pending").toLowerCase();
+  const status = (
+    ["none", "pending", "qualified", "credited"].includes(statusRaw)
+      ? statusRaw
+      : wasReferred
+        ? "pending"
+        : "none"
+  ) as RefereeBonusStatus;
+
+  return {
+    was_referred: wasReferred || status !== "none",
+    referral_code_used: (row.referral_code_used ?? row.referral_code ?? null) as string | null,
+    reward_inr: Number(row.reward_inr ?? row.referee_reward_inr ?? DEFAULT_REFEREE_REWARD_INR),
+    status,
+  };
+}
+
+/** GET /referral/referee-status/?user_id= — with local pending fallback. */
+export async function fetchRefereeStatus(userId: string): Promise<RefereeStatus> {
+  try {
+    const res = await axiosInstance.get("/referral/referee-status/", {
+      params: { user_id: userId },
+    });
+    const parsed = parseRefereeStatusPayload(res.data);
+    if (parsed) {
+      if (parsed.status === "credited" || parsed.status === "none") {
+        clearRefereeBonusPending();
+      }
+      return parsed;
+    }
+  } catch {
+    try {
+      const res = await axiosInstance.get("/referrals/referee-status/", {
+        params: { user_id: userId },
+      });
+      const parsed = parseRefereeStatusPayload(res.data);
+      if (parsed) {
+        if (parsed.status === "credited" || parsed.status === "none") {
+          clearRefereeBonusPending();
+        }
+        return parsed;
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+
+  const pending = getRefereeBonusPending();
+  if (pending) {
+    return {
+      was_referred: true,
+      referral_code_used: pending.code,
+      reward_inr: DEFAULT_REFEREE_REWARD_INR,
+      status: "pending",
+    };
+  }
+
+  return {
+    was_referred: false,
+    reward_inr: DEFAULT_REFEREE_REWARD_INR,
+    status: "none",
+  };
 }

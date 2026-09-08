@@ -40,6 +40,10 @@ import { toast } from "sonner";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 import { getPayoutEligibilityStats } from "@/lib/payoutProfileCompletion";
 import { PayoutProfileProgress } from "@/components/PayoutProfileProgress";
+import {
+  formatWalletTransactionSubtitle,
+  formatWalletTransactionTitle,
+} from "@/lib/referral/walletTransactionLabel";
 
 interface Transaction {
   id: string | number;
@@ -674,8 +678,8 @@ export default function WalletPage() {
                             </div>
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2 gap-y-1">
-                                <p className="font-medium text-slate-800 capitalize">
-                                  {tx.type || "Transaction"}
+                                <p className="font-medium text-slate-800">
+                                  {formatWalletTransactionTitle(tx)}
                                 </p>
                                 {statusLabel && (
                                   <Badge
@@ -687,7 +691,7 @@ export default function WalletPage() {
                                 )}
                               </div>
                               <p className="text-xs text-slate-500 truncate">
-                                {tx.reference || String(tx.id)} • {formatDate(tx.created_at)}
+                                {formatWalletTransactionSubtitle(tx)}
                               </p>
                             </div>
                           </div>

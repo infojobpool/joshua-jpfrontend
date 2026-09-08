@@ -29,6 +29,7 @@ import {
   copyReferralCode,
   copyReferralLink,
 } from "@/lib/referral/referralShare";
+import { DEFAULT_REFERRER_REWARD_INR } from "@/lib/referral/constants";
 
 type Props = {
   userId: string;
@@ -175,6 +176,12 @@ export function ReferralInvitePanel({ userId, userName, compact = false }: Props
               WhatsApp
             </Button>
           </div>
+          <p className="text-xs text-indigo-100/85">
+            <Link href="/referral-terms" className="underline underline-offset-2 hover:text-white">
+              Referral terms
+            </Link>{" "}
+            apply. You earn ₹{DEFAULT_REFERRER_REWARD_INR} per successful invite.
+          </p>
         </CardContent>
       </Card>
 

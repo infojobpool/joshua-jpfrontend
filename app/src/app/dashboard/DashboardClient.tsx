@@ -58,6 +58,7 @@ import {
 } from "@/lib/taskPriceFilter";
 import { isCoercedTruthy, isJobCompletedFlag, isOpenForAvailableList } from "@/lib/jobStatusNormalize";
 import { jobIdVariants } from "@/lib/jobIdVariants";
+import { ReferralDashboardAlerts } from "@/components/referral/ReferralDashboardAlerts";
 import useStore from "@/lib/Zustand";
 import { DESKTOP_MIN_WIDTH } from "@/lib/breakpoints";
 import { formatJobPostedTimestamp, getJobPostedTimestampRaw } from "@/lib/jobPostedAt";
@@ -4382,6 +4383,7 @@ export default function Dashboard() {
         )}
 
         <div className="w-full">
+          {effectiveUserId ? <ReferralDashboardAlerts userId={effectiveUserId} /> : null}
           {isMobile ? (
             <Sheet open={taskViewPickerOpen} onOpenChange={setTaskViewPickerOpen}>
               <div className="sticky z-20 -mx-4 mb-0 border-b border-slate-200/70 bg-slate-50/98 px-4 pb-1 pt-0 backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-950/98 top-0">
