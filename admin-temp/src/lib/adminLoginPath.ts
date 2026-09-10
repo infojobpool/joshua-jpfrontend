@@ -15,3 +15,9 @@ export function adminLoginPostPath(): string {
   }
   return "admin-login/";
 }
+
+/** POST verify TOTP after password step when `requires_2fa` is true. */
+export function adminLoginVerify2faPath(): string {
+  const base = adminLoginPostPath().replace(/\/+$/, "");
+  return `${base}/verify-2fa/`;
+}

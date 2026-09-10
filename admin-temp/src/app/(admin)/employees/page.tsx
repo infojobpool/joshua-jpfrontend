@@ -445,7 +445,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Pencil, Search } from "lucide-react";
+import { Plus, Pencil, Search, ShieldOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -478,6 +478,17 @@ import { toast } from "sonner";
 import axiosInstance from "@/lib/axiosInstance";
 import { useCanAdminWrite } from "@/lib/adminAuth";
 import { cn } from "@/lib/utils";
+import { resetAdmin2faForUser, getAdmin2faError } from "@/lib/admin2faApi";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type AdminStatusFilter = "active" | "inactive" | "all";
 
@@ -516,6 +527,8 @@ export default function AdminUsersPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
   const [statusFilter, setStatusFilter] = useState<AdminStatusFilter>("active");
+  const [reset2faUser, setReset2faUser] = useState<AdminUser | null>(null);
+  const [reset2faLoading, setReset2faLoading] = useState(false);
   const canWrite = useCanAdminWrite();
 
   const formatDate = (isoString: string): string => {
@@ -589,6 +602,20 @@ export default function AdminUsersPage() {
 
   const validateEmail = (email: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const handleReset2fa = async () => {
+    if (!reset2faUser || !canWrite) return;
+    setReset2faLoading(true);
+    try {
+      await resetAdmin2faForUser(reset2faUser.user_id);
+      toast.success(`2FA reset for ${reset2faUser.full_name || reset2faUser.email}`);
+      setReset2faUser(null);
+    } catch (err) {
+      toast.error(getAdmin2faError(err));
+    } finally {
+      setReset2faLoading(false);
+    }
+  };
 
   const handleAddUser = async () => {
     if (!canWrite) {
@@ -849,6 +876,19 @@ export default function AdminUsersPage() {
                   <TableCell>{user.status ? "Inactive" : "Active"}</TableCell>
                   <TableCell>{formatDate(user.created_at)}</TableCell>
                   <TableCell className="text-right">
+                    <div className="inline-flex items-center justify-end gap-1">
+                      {canWrite ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={isLoading || reset2faLoading}
+                          title="Reset 2FA (superadmin recovery)"
+                          onClick={() => setReset2faUser(user)}
+                        >
+                          <ShieldOff className="h-4 w-4 text-amber-700" />
+                          <span className="sr-only">Reset 2FA</span>
+                        </Button>
+                      ) : null}
                     <Dialog
                       open={isEditDialogOpen && editUser?.user_id === user.user_id}
                       onOpenChange={(open) => {
@@ -964,6 +1004,7 @@ export default function AdminUsersPage() {
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -971,6 +1012,26 @@ export default function AdminUsersPage() {
           </TableBody>
         </Table>
       </div>
+
+      <AlertDialog open={!!reset2faUser} onOpenChange={(open) => !open && setReset2faUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset two-factor authentication?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This clears 2FA for{" "}
+              <strong>{reset2faUser?.full_name || reset2faUser?.email}</strong>. They can sign in with
+              password only until they set up a new authenticator. Superadmin only (
+              <code className="text-xs">POST /admin/2fa/reset/</code>).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={reset2faLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void handleReset2fa()} disabled={reset2faLoading}>
+              {reset2faLoading ? "Resetting…" : "Reset 2FA"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

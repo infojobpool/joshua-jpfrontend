@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
+import { AdminTwoFactorSettings } from "@/components/admin/AdminTwoFactorSettings"
 
 // Define the Admin type for TypeScript
 interface Admin {
@@ -460,38 +461,14 @@ export default function AdminProfilePage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Security Settings</CardTitle>
-                  <CardDescription>Manage your account security and password</CardDescription>
+                  <CardDescription>
+                    Two-factor authentication for admin login. Profile → Security uses{" "}
+                    <code className="text-xs bg-muted px-1 rounded">/admin/2fa/*</code> APIs.
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="current-password">Current Password</Label>
-                    <Input id="current-password" type="password" readOnly={!canWrite} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new-password">New Password</Label>
-                    <Input id="new-password" type="password" readOnly={!canWrite} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Confirm New Password</Label>
-                    <Input id="confirm-password" type="password" readOnly={!canWrite} />
-                  </div>
-
-                  <div className="pt-4">
-                    <h3 className="text-sm font-medium mb-4">Two-Factor Authentication</h3>
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="two-factor">Enable Two-Factor Authentication</Label>
-                        <p className="text-sm text-muted-foreground">Add an extra layer of security to your account</p>
-                      </div>
-                      <Switch id="two-factor" disabled={!canWrite} />
-                    </div>
-                  </div>
+                <CardContent>
+                  <AdminTwoFactorSettings canWrite={canWrite} />
                 </CardContent>
-                <CardFooter>
-                  <Button disabled={!canWrite} title={!canWrite ? "Read-only role" : undefined}>
-                    Update Password
-                  </Button>
-                </CardFooter>
               </Card>
             </TabsContent>
           </Tabs>
