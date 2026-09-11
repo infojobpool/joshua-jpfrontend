@@ -52,9 +52,7 @@ export function ReferralRefereeBanner({ userId }: Props) {
         </span>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-900">
-            {creditedSoon
-              ? "Referral bonus on the way"
-              : `Unlock ₹${status.reward_inr.toLocaleString("en-IN")} referral bonus`}
+            {creditedSoon ? "Referral bonus on the way" : "Unlock your referral bonus"}
           </p>
           <p className="mt-0.5 text-xs text-slate-600 leading-snug">
             {creditedSoon

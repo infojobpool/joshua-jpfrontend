@@ -31,8 +31,6 @@ import {
   getStoredReferralCode,
   markRefereeBonusPending,
 } from "@/lib/referral/referralStorage";
-import { DEFAULT_REFEREE_REWARD_INR } from "@/lib/referral/constants";
-
 interface FormData {
   user_fullname: string;
   user_email: string;
@@ -243,7 +241,7 @@ export default function SignUpPage() {
                   <p className="font-semibold">You were invited!</p>
                   <p className="mt-0.5 text-indigo-900/90 leading-snug">
                     Code <span className="font-mono font-bold">{referralCode}</span> applied. Complete your first
-                    paid task to unlock up to ₹{DEFAULT_REFEREE_REWARD_INR} referral wallet credit.{" "}
+                    paid task to unlock referral wallet credit.{" "}
                     <Link href="/referral-terms" className="font-medium underline underline-offset-2">
                       Terms apply
                     </Link>

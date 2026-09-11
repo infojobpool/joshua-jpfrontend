@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   Copy,
   Gift,
-  IndianRupee,
   Loader2,
   MessageCircle,
   Share2,
@@ -29,8 +28,6 @@ import {
   copyReferralCode,
   copyReferralLink,
 } from "@/lib/referral/referralShare";
-import { DEFAULT_REFERRER_REWARD_INR } from "@/lib/referral/constants";
-
 type Props = {
   userId: string;
   userName?: string;
@@ -117,11 +114,11 @@ export function ReferralInvitePanel({ userId, userName, compact = false }: Props
     },
     {
       title: "They sign up",
-      body: `Friends join JobPool with your link and get up to ₹${summary.referee_reward_inr} wallet credit after their first completed paid task.`,
+      body: "Friends join JobPool with your link and can earn wallet credit after their first completed paid task.",
     },
     {
       title: "You earn too",
-      body: `When they qualify, ₹${summary.referrer_reward_inr} is added to your wallet automatically.`,
+      body: "When they qualify, wallet credit is added to your account automatically.",
     },
   ];
 
@@ -136,8 +133,7 @@ export function ReferralInvitePanel({ userId, userName, compact = false }: Props
             <div className="min-w-0">
               <CardTitle className="text-xl text-white">Invite friends, earn wallet credit</CardTitle>
               <CardDescription className="text-indigo-100/95 mt-1">
-                You get ₹{summary.referrer_reward_inr.toLocaleString("en-IN")} · they get up to ₹
-                {summary.referee_reward_inr.toLocaleString("en-IN")} after their first completed task.
+                Share your link — wallet credit for you both after their first completed task.
               </CardDescription>
             </div>
           </div>
@@ -180,21 +176,16 @@ export function ReferralInvitePanel({ userId, userName, compact = false }: Props
             <Link href="/referral-terms" className="underline underline-offset-2 hover:text-white">
               Referral terms
             </Link>{" "}
-            apply. You earn ₹{DEFAULT_REFERRER_REWARD_INR} per successful invite.
+            apply.
           </p>
         </CardContent>
       </Card>
 
       {!compact ? (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {[
             { label: "Pending", value: summary.pending_count, icon: Users },
             { label: "Completed", value: summary.completed_count, icon: Gift },
-            {
-              label: "Earned",
-              value: `₹${summary.total_earned_inr.toLocaleString("en-IN")}`,
-              icon: IndianRupee,
-            },
           ].map(({ label, value, icon: Icon }) => (
             <Card key={label} className="rounded-xl border-slate-200/80 shadow-sm">
               <CardContent className="p-4 text-center">
@@ -260,11 +251,6 @@ export function ReferralInvitePanel({ userId, userName, compact = false }: Props
                       <p className="text-xs text-slate-500">Joined {formatDate(row.created_at)}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {row.reward_amount_inr != null && row.status === "credited" ? (
-                        <span className="text-sm font-semibold text-emerald-700 tabular-nums">
-                          +₹{row.reward_amount_inr.toLocaleString("en-IN")}
-                        </span>
-                      ) : null}
                       <Badge variant="outline" className={statusBadgeClass(row.status)}>
                         {referralStatusLabel(row.status)}
                       </Badge>

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Gift, X } from "lucide-react";
-import { DEFAULT_REFERRER_REWARD_INR } from "@/lib/referral/constants";
 import {
   dismissReferralPromo,
   isReferralPromoDismissed,
@@ -37,7 +36,7 @@ export function ReferralDashboardPromo() {
         </span>
         <span className="min-w-0 text-left">
           <span className="block text-sm font-semibold text-slate-900 group-hover:text-violet-800">
-            Invite friends — earn ₹{DEFAULT_REFERRER_REWARD_INR.toLocaleString("en-IN")} each
+            Invite friends — earn wallet credit
           </span>
           <span className="block text-xs text-slate-500 mt-0.5">
             Share your link on WhatsApp. Credit lands in your wallet when they complete a task.
