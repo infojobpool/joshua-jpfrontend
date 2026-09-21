@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { BarChart3, Users, Tags, CreditCard, CheckSquare, User2Icon, Ban, Gavel, XCircle, Wallet, Bell, Star, Store, Newspaper, Search, Gift } from "lucide-react"
+import { BarChart3, Users, Tags, CreditCard, CheckSquare, User2Icon, Ban, Gavel, XCircle, Wallet, Bell, Star, Store, Newspaper, Search, Gift, PenLine } from "lucide-react"
 import { cn } from "../lib/utils"
 import { useEffect, useState } from "react"
 import axiosInstance from "@/lib/axiosInstance"
@@ -45,6 +45,11 @@ const sidebarNavItems = [
     title: "Page SEO",
     href: "/page-seo",
     icon: Search,
+  },
+  {
+    title: "Writing tests",
+    href: "/writing-tests",
+    icon: PenLine,
   },
   {
     title: "Tasks",
