@@ -121,8 +121,10 @@ If nothing appears:
 ## 6. Share the test with students
 
 ```
-https://www.jobpool.in/writing-test?topic=Write about a book that changed your thinking
+https://www.jobpool.in/writing-test
 ```
+
+(Random topic from 10 built-in prompts. For one shared prompt: `?topic=...`.)
 
 ## Payload fields (reference)
 

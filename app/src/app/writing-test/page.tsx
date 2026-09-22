@@ -2,18 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Clock, Loader2, PenLine, Send } from "lucide-react";
+import { Clock, Loader2, PenLine, Send, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-
-const TEST_DURATION_SEC = 5 * 60;
-const DEFAULT_TOPIC =
-  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_WRITING_TEST_DEFAULT_TOPIC?.trim()) ||
-  "Write about a challenge you solved recently and what you learned.";
+import {
+  getWritingTestTopicPool,
+  pickRandomWritingTestTopic,
+  WRITING_TEST_DURATION_MINUTES,
+  WRITING_TEST_DURATION_SEC,
+} from "@/lib/writing-test/topics";
 
 type Phase = "setup" | "writing" | "submitting" | "done";
 
@@ -34,17 +35,35 @@ export default function WritingTestPage() {
   const [studentName, setStudentName] = useState("");
   const [studentId, setStudentId] = useState("");
   const [studentEmail, setStudentEmail] = useState("");
-  const [topic, setTopic] = useState(DEFAULT_TOPIC);
+  const [topic, setTopic] = useState("");
+  const [useRandomTopic, setUseRandomTopic] = useState(true);
+  const [topicPoolSize, setTopicPoolSize] = useState(10);
   const [content, setContent] = useState("");
-  const [secondsLeft, setSecondsLeft] = useState(TEST_DURATION_SEC);
+  const [secondsLeft, setSecondsLeft] = useState(WRITING_TEST_DURATION_SEC);
   const [startedAt, setStartedAt] = useState<string | null>(null);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const submittedRef = useRef(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const t = params.get("topic");
-    if (t?.trim()) setTopic(t.trim());
+    const fixed = params.get("topic")?.trim();
+    const pool = getWritingTestTopicPool();
+    setTopicPoolSize(pool.length);
+
+    if (fixed) {
+      setTopic(fixed);
+      setUseRandomTopic(false);
+      return;
+    }
+
+    if (params.get("random") === "0" || params.get("fixed") === "1") {
+      setUseRandomTopic(false);
+      setTopic(pool[0] ?? "");
+      return;
+    }
+
+    setUseRandomTopic(true);
+    setTopic("");
   }, []);
 
   const wordCount = useMemo(() => countWords(content), [content]);
@@ -57,6 +76,10 @@ export default function WritingTestPage() {
         return;
       }
       if (!startedAt) return;
+      if (!topic.trim()) {
+        toast.error("Topic missing. Refresh and try again.");
+        return;
+      }
 
       submittedRef.current = true;
       setPhase("submitting");
@@ -126,13 +149,21 @@ export default function WritingTestPage() {
       toast.error("Enter your name to start.");
       return;
     }
-    if (!topic.trim()) {
+
+    let chosenTopic = topic.trim();
+    if (useRandomTopic) {
+      chosenTopic = pickRandomWritingTestTopic();
+      setTopic(chosenTopic);
+    }
+
+    if (!chosenTopic) {
       toast.error("Topic is required.");
       return;
     }
+
     submittedRef.current = false;
     setContent("");
-    setSecondsLeft(TEST_DURATION_SEC);
+    setSecondsLeft(WRITING_TEST_DURATION_SEC);
     setStartedAt(new Date().toISOString());
     setPhase("writing");
   };
@@ -142,9 +173,13 @@ export default function WritingTestPage() {
       <div className="mx-auto max-w-2xl">
         <div className="mb-6 text-center">
           <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">Timed writing</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900 md:text-3xl">5-minute writing test</h1>
+          <h1 className="mt-1 text-2xl font-bold text-slate-900 md:text-3xl">
+            {WRITING_TEST_DURATION_MINUTES}-minute writing test
+          </h1>
           <p className="mt-2 text-sm text-slate-600">
-            Write freely about the topic. Your response is saved when you submit or when time runs out.
+            {useRandomTopic
+              ? `You will get one random topic from a pool of ${topicPoolSize} when you start.`
+              : "Write about the topic shown below. Your response is saved when you submit or when time runs out."}
           </p>
         </div>
 
@@ -155,7 +190,9 @@ export default function WritingTestPage() {
                 <PenLine className="h-5 w-5 text-blue-600" />
                 Before you start
               </CardTitle>
-              <CardDescription>Timer is {TEST_DURATION_SEC / 60} minutes once you begin.</CardDescription>
+              <CardDescription>
+                Timer is {WRITING_TEST_DURATION_MINUTES} minutes once you begin.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -189,18 +226,33 @@ export default function WritingTestPage() {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="topic">Topic</Label>
-                <Textarea
-                  id="topic"
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  rows={3}
-                  className="resize-y min-h-[4.5rem]"
-                />
-              </div>
+
+              {useRandomTopic ? (
+                <div className="rounded-xl border border-violet-200/80 bg-violet-50/60 px-4 py-3 text-sm text-violet-950">
+                  <p className="flex items-center gap-2 font-semibold">
+                    <Shuffle className="h-4 w-4 shrink-0" aria-hidden />
+                    Random topic
+                  </p>
+                  <p className="mt-1 text-violet-900/90 leading-snug">
+                    When you click Start, you will see one of {topicPoolSize} writing prompts. You
+                    cannot change it after the timer starts.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="topic">Topic (same for everyone via link)</Label>
+                  <Textarea
+                    id="topic"
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                    rows={3}
+                    className="resize-y min-h-[4.5rem]"
+                  />
+                </div>
+              )}
+
               <Button type="button" className="w-full rounded-xl" size="lg" onClick={startTest}>
-                Start {TEST_DURATION_SEC / 60}-minute test
+                Start {WRITING_TEST_DURATION_MINUTES}-minute test
               </Button>
             </CardContent>
           </Card>
@@ -211,7 +263,7 @@ export default function WritingTestPage() {
             <CardHeader className="pb-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <CardTitle className="text-base">Topic</CardTitle>
+                  <CardTitle className="text-base">Your topic</CardTitle>
                   <CardDescription className="mt-1 text-slate-800">{topic}</CardDescription>
                 </div>
                 <div
@@ -270,6 +322,8 @@ export default function WritingTestPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-emerald-900/90">
+                Topic: {topic}
+                <br />
                 Words: {wordCount} · You can close this page.
               </p>
               <Button asChild variant="outline" className="mt-4 rounded-xl">
@@ -279,10 +333,16 @@ export default function WritingTestPage() {
           </Card>
         ) : null}
 
-        <p className="mt-8 text-center text-xs text-slate-500">
-          For instructors: set topic via{" "}
-          <code className="rounded bg-slate-100 px-1">?topic=</code> or env{" "}
-          <code className="rounded bg-slate-100 px-1">NEXT_PUBLIC_WRITING_TEST_DEFAULT_TOPIC</code>.
+        <p className="mt-8 text-center text-xs text-slate-500 leading-relaxed">
+          Students: share{" "}
+          <code className="rounded bg-slate-100 px-1">/writing-test</code> for random topics.
+          <br />
+          Same topic for all:{" "}
+          <code className="rounded bg-slate-100 px-1">/writing-test?topic=...</code>
+          <br />
+          Custom topic list (env):{" "}
+          <code className="rounded bg-slate-100 px-1">NEXT_PUBLIC_WRITING_TEST_TOPICS</code> (
+          separate with <code className="rounded bg-slate-100 px-1">||</code>).
         </p>
       </div>
     </div>

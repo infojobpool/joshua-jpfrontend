@@ -6,7 +6,11 @@
 - Optional topic in query: **`/writing-test?topic=Describe%20your%20city`**
 - Or Vercel env on **user app**: `NEXT_PUBLIC_WRITING_TEST_DEFAULT_TOPIC`
 
-Flow: name → 5-minute timer → textarea → submit (manual or auto at 0:00).
+Flow: name → **10-minute** timer → random topic from pool of 10 → textarea → submit (manual or auto at 0:00).
+
+- Default link **`/writing-test`** — each student gets a **random** prompt at start.
+- Same prompt for everyone: **`/writing-test?topic=Your prompt`**
+- Custom prompts (build-time): env `NEXT_PUBLIC_WRITING_TEST_TOPICS` — separate with `||`
 
 ## Where submissions go
 
