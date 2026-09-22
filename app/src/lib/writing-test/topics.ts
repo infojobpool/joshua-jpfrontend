@@ -1,6 +1,9 @@
 export const WRITING_TEST_DURATION_MINUTES = 10;
 export const WRITING_TEST_DURATION_SEC = WRITING_TEST_DURATION_MINUTES * 60;
 
+/** Shown under the topic while students write. */
+export const WRITING_TEST_WORD_RANGE = "150 - 200 words";
+
 /** Default pool of 10 prompts — one is chosen at random when the student starts. */
 export const DEFAULT_WRITING_TEST_TOPICS: readonly string[] = [
   "Describe a problem in your community and one idea to improve it.",
@@ -10,7 +13,7 @@ export const DEFAULT_WRITING_TEST_TOPICS: readonly string[] = [
   "What does “success” mean to you at this stage of your life?",
   "Write about a place that makes you feel calm or happy, and why.",
   "If you could change one school rule, what would it be and why?",
-  "Describe a skill you want to learn in the next year and how you will practice it.",
+  "Describe a skill (150 - 200 words) you want to learn in the next year and how you will practice it.",
   "Write about an book, film, or story that changed how you think.",
   "What are the benefits and risks of social media for young people?",
 ];

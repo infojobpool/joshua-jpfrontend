@@ -14,6 +14,7 @@ import {
   pickRandomWritingTestTopic,
   WRITING_TEST_DURATION_MINUTES,
   WRITING_TEST_DURATION_SEC,
+  WRITING_TEST_WORD_RANGE,
 } from "@/lib/writing-test/topics";
 
 type Phase = "setup" | "writing" | "submitting" | "done";
@@ -234,8 +235,8 @@ export default function WritingTestPage() {
                     Random topic
                   </p>
                   <p className="mt-1 text-violet-900/90 leading-snug">
-                    When you click Start, you will see one of {topicPoolSize} writing prompts. You
-                    cannot change it after the timer starts.
+                    When you click Start, you will see one of {topicPoolSize} writing prompts. Aim
+                    for {WRITING_TEST_WORD_RANGE}. You cannot change the topic after the timer starts.
                   </p>
                 </div>
               ) : (
@@ -265,6 +266,7 @@ export default function WritingTestPage() {
                 <div className="min-w-0 flex-1">
                   <CardTitle className="text-base">Your topic</CardTitle>
                   <CardDescription className="mt-1 text-slate-800">{topic}</CardDescription>
+                  <p className="mt-2 text-sm font-semibold text-blue-800">{WRITING_TEST_WORD_RANGE}</p>
                 </div>
                 <div
                   className={`flex items-center gap-2 rounded-xl px-3 py-2 font-mono text-lg font-bold tabular-nums ${
