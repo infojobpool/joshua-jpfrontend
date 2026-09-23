@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Clock, Loader2, PenLine, Send, Shuffle } from "lucide-react";
+import { Clock, FileUp, Loader2, PenLine, Send, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,12 @@ import {
   WRITING_TEST_DURATION_SEC,
   WRITING_TEST_WORD_RANGE,
 } from "@/lib/writing-test/topics";
+import {
+  MAX_RESUME_BYTES,
+  readFileAsBase64,
+  RESUME_ACCEPT,
+  validateResumeFile,
+} from "@/lib/writing-test/resumeUpload";
 
 type Phase = "setup" | "writing" | "submitting" | "done";
 
@@ -43,6 +49,8 @@ export default function WritingTestPage() {
   const [secondsLeft, setSecondsLeft] = useState(WRITING_TEST_DURATION_SEC);
   const [startedAt, setStartedAt] = useState<string | null>(null);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
+  const [resumeLabel, setResumeLabel] = useState<string | null>(null);
+  const resumeFileRef = useRef<File | null>(null);
   const submittedRef = useRef(false);
 
   useEffect(() => {
@@ -86,27 +94,48 @@ export default function WritingTestPage() {
       setPhase("submitting");
 
       try {
+        const payload: Record<string, unknown> = {
+          student_name: studentName,
+          student_id: studentId || undefined,
+          student_email: studentEmail || undefined,
+          topic,
+          content,
+          started_at: startedAt,
+          submitted_at: new Date().toISOString(),
+          submitted_reason: reason,
+        };
+
+        const resumeFile = resumeFileRef.current;
+        if (resumeFile) {
+          const err = validateResumeFile(resumeFile);
+          if (err) throw new Error(err);
+          payload.resume_filename = resumeFile.name;
+          payload.resume_mime = resumeFile.type || "application/octet-stream";
+          payload.resume_base64 = await readFileAsBase64(resumeFile);
+        }
+
         const res = await fetch("/api/writing-test/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            student_name: studentName,
-            student_id: studentId || undefined,
-            student_email: studentEmail || undefined,
-            topic,
-            content,
-            started_at: startedAt,
-            submitted_at: new Date().toISOString(),
-            submitted_reason: reason,
-          }),
+          body: JSON.stringify(payload),
         });
-        const data = (await res.json()) as { success?: boolean; id?: string; message?: string };
+        const data = (await res.json()) as {
+          success?: boolean;
+          id?: string;
+          message?: string;
+          resume_url?: string | null;
+          persisted?: { resume_saved?: boolean };
+        };
         if (!res.ok || !data.success) {
           throw new Error(data.message || "Submit failed");
         }
         setSubmissionId(data.id ?? null);
         setPhase("done");
-        toast.success("Your response was submitted.");
+        if (resumeFile && !data.persisted?.resume_saved) {
+          toast.success("Writing submitted. Resume text was sent — update Apps Script for Drive storage.");
+        } else {
+          toast.success("Your response was submitted.");
+        }
       } catch (err) {
         submittedRef.current = false;
         setPhase("writing");
@@ -226,6 +255,45 @@ export default function WritingTestPage() {
                     placeholder="you@school.edu"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="resume">Resume (optional)</Label>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Input
+                    id="resume"
+                    type="file"
+                    accept={RESUME_ACCEPT}
+                    className="cursor-pointer file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-blue-800"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      if (!file) {
+                        resumeFileRef.current = null;
+                        setResumeLabel(null);
+                        return;
+                      }
+                      const err = validateResumeFile(file);
+                      if (err) {
+                        toast.error(err);
+                        e.target.value = "";
+                        resumeFileRef.current = null;
+                        setResumeLabel(null);
+                        return;
+                      }
+                      resumeFileRef.current = file;
+                      setResumeLabel(file.name);
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-slate-500 flex items-start gap-1.5">
+                  <FileUp className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden />
+                  PDF, DOC, or DOCX up to {Math.round(MAX_RESUME_BYTES / (1024 * 1024))} MB. Saved to your
+                  Google Drive folder <strong className="font-medium">JobPool Writing Test Resumes</strong> when
+                  Sheets webhook is set up (link appears in the sheet).
+                </p>
+                {resumeLabel ? (
+                  <p className="text-xs font-medium text-emerald-800">Selected: {resumeLabel}</p>
+                ) : null}
               </div>
 
               {useRandomTopic ? (

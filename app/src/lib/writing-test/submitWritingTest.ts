@@ -30,24 +30,37 @@ export function buildSubmission(
     started_at: payload.started_at,
     submitted_at: payload.submitted_at,
     submitted_reason: payload.submitted_reason,
+    resume_filename: payload.resume_filename?.trim() || null,
+    resume_url: null,
   };
 }
 
-export async function forwardToBackendApi(row: WritingTestSubmission): Promise<boolean> {
+export type WebhookForwardResult = {
+  ok: boolean;
+  resume_url?: string | null;
+};
+
+export async function forwardToBackendApi(
+  row: WritingTestSubmission,
+  extras?: Pick<WritingTestSubmitPayload, "resume_base64" | "resume_mime" | "resume_filename">
+): Promise<boolean> {
   const base = process.env.WRITING_TEST_API_BASE_URL?.replace(/\/+$/, "");
   if (!base) return false;
 
   const res = await fetch(`${base}/writing-test/submissions/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(row),
+    body: JSON.stringify({ ...row, ...extras }),
   });
   return res.ok;
 }
 
-export async function forwardToWebhook(row: WritingTestSubmission): Promise<boolean> {
+export async function forwardToWebhook(
+  row: WritingTestSubmission,
+  extras?: Pick<WritingTestSubmitPayload, "resume_base64" | "resume_mime" | "resume_filename">
+): Promise<WebhookForwardResult> {
   let url = process.env.WRITING_TEST_WEBHOOK_URL?.trim();
-  if (!url) return false;
+  if (!url) return { ok: false };
 
   const secret = process.env.WRITING_TEST_WEBHOOK_SECRET?.trim();
   if (secret && !/[?&]key=/.test(url)) {
@@ -63,7 +76,21 @@ export async function forwardToWebhook(row: WritingTestSubmission): Promise<bool
     body: JSON.stringify({
       event: "writing_test_submitted",
       ...row,
+      ...extras,
     }),
   });
-  return res.ok;
+
+  let resume_url: string | null = null;
+  if (res.ok) {
+    try {
+      const parsed = (await res.json()) as { resume_url?: string };
+      if (parsed?.resume_url && typeof parsed.resume_url === "string") {
+        resume_url = parsed.resume_url;
+      }
+    } catch {
+      /* non-JSON response is ok */
+    }
+  }
+
+  return { ok: res.ok, resume_url };
 }

@@ -13,6 +13,8 @@ export type AdminWritingTestRow = {
   started_at: string;
   submitted_at: string;
   submitted_reason: string;
+  resume_filename?: string | null;
+  resume_url?: string | null;
 };
 
 function normalizeRow(raw: unknown): AdminWritingTestRow | null {
@@ -33,6 +35,8 @@ function normalizeRow(raw: unknown): AdminWritingTestRow | null {
     submitted_at: String(r.submitted_at ?? ""),
     started_at: String(r.started_at ?? ""),
     submitted_reason: String(r.submitted_reason ?? "manual"),
+    resume_filename: (r.resume_filename as string) ?? null,
+    resume_url: (r.resume_url as string) ?? null,
   };
 }
 

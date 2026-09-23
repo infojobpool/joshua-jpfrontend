@@ -6,7 +6,9 @@
 - Optional topic in query: **`/writing-test?topic=Describe%20your%20city`**
 - Or Vercel env on **user app**: `NEXT_PUBLIC_WRITING_TEST_DEFAULT_TOPIC`
 
-Flow: name → **10-minute** timer → random topic from pool of 10 → textarea → submit (manual or auto at 0:00).
+Flow: name (+ optional resume) → **10-minute** timer → random topic from pool of 10 → textarea → submit (manual or auto at 0:00).
+
+**Resume (optional):** PDF/DOC/DOCX up to 2 MB on the setup form. With Google Sheets webhook, files save to Drive folder **`JobPool Writing Test Resumes`**; **`resume_url`** in the sheet. JobPool does not store the file on its servers unless you add a backend endpoint.
 
 - Default link **`/writing-test`** — each student gets a **random** prompt at start.
 - Same prompt for everyone: **`/writing-test?topic=Your prompt`**

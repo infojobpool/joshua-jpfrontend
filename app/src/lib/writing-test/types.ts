@@ -11,6 +11,8 @@ export type WritingTestSubmission = {
   started_at: string;
   submitted_at: string;
   submitted_reason: "manual" | "timer" | "auto";
+  resume_filename?: string | null;
+  resume_url?: string | null;
 };
 
 export type WritingTestSubmitPayload = {
@@ -22,4 +24,7 @@ export type WritingTestSubmitPayload = {
   started_at: string;
   submitted_at: string;
   submitted_reason: "manual" | "timer" | "auto";
+  resume_filename?: string;
+  resume_mime?: string;
+  resume_base64?: string;
 };

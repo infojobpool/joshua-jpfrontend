@@ -183,6 +183,7 @@ export default function WritingTestsAdminPage() {
                     <TableHead>Words</TableHead>
                     <TableHead>Time</TableHead>
                     <TableHead>Submitted</TableHead>
+                    <TableHead>Resume</TableHead>
                     <TableHead className="text-right">View</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -201,6 +202,25 @@ export default function WritingTestsAdminPage() {
                       <TableCell className="tabular-nums">{r.word_count}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{r.submitted_reason}</TableCell>
                       <TableCell className="text-xs whitespace-nowrap">{formatWhen(r.submitted_at)}</TableCell>
+                      <TableCell className="text-xs max-w-[140px]">
+                        {r.resume_url && r.resume_url.startsWith("http") ? (
+                          <a
+                            href={r.resume_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline truncate block"
+                            title={r.resume_filename ?? "Resume"}
+                          >
+                            {r.resume_filename ?? "Open"}
+                          </a>
+                        ) : r.resume_filename ? (
+                          <span className="text-muted-foreground truncate block" title={r.resume_filename}>
+                            {r.resume_filename}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
                         <Button type="button" size="sm" variant="outline" onClick={() => setSelected(r)}>
                           Read
@@ -229,6 +249,19 @@ export default function WritingTestsAdminPage() {
                 <p className="text-xs text-muted-foreground">
                   {selected.word_count} words · {selected.duration_seconds}s · {formatWhen(selected.submitted_at)}
                 </p>
+                {selected.resume_url && selected.resume_url.startsWith("http") ? (
+                  <p>
+                    <span className="text-muted-foreground">Resume:</span>{" "}
+                    <a
+                      href={selected.resume_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {selected.resume_filename ?? "Open file"}
+                    </a>
+                  </p>
+                ) : null}
                 <div className="rounded-lg border bg-muted/30 p-4 whitespace-pre-wrap leading-relaxed">
                   {selected.content}
                 </div>
