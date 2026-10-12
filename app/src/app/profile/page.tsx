@@ -47,6 +47,7 @@ import { resolveProfileImageUrl } from "@/lib/profileImage";
 import Header from "@/components/Header";
 import { TrustBadges } from "@/components/TrustBadges";
 import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint";
+import { welcomeBonusProgressLabel } from "@/lib/welcomeBonus";
 import {
   computeMissingFromProfile,
   getPayoutCompletionStats,
@@ -983,7 +984,11 @@ export default function ProfilePage() {
                     <WelcomeBonusProcessHint
                       variant="compact"
                       percent={payoutBonusPreview.percent}
-                      label={`${payoutBonusPreview.completed} of ${payoutBonusPreview.total} steps toward ₹100 bonus · ${payoutBonusPreview.remaining} left`}
+                      label={welcomeBonusProgressLabel(
+                        payoutBonusPreview.completed,
+                        payoutBonusPreview.total,
+                        payoutBonusPreview.remaining
+                      )}
                     />
                   )}
                 </>
@@ -1057,7 +1062,11 @@ export default function ProfilePage() {
                     <WelcomeBonusProcessHint
                       variant="compact"
                       percent={payoutBonusPreview.percent}
-                      label={`${payoutBonusPreview.completed} of ${payoutBonusPreview.total} steps toward ₹100 bonus · ${payoutBonusPreview.remaining} left`}
+                      label={welcomeBonusProgressLabel(
+                        payoutBonusPreview.completed,
+                        payoutBonusPreview.total,
+                        payoutBonusPreview.remaining
+                      )}
                     />
                   )}
                   <div className="space-y-2">

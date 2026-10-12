@@ -1,9 +1,11 @@
 import axiosInstance from "@/lib/axiosInstance";
 import { buildReferralLink } from "./referralShare";
 import {
-  DEFAULT_REFEREE_REWARD_INR,
-  DEFAULT_REFERRER_REWARD_INR,
+  REFERRAL_MILESTONE_REWARD_INR,
+  REFERRAL_MILESTONE_VERIFIED_COUNT,
+  WELCOME_BONUS_INR,
 } from "./constants";
+import { computeMilestoneProgress, countVerifiedReferees } from "./milestoneProgress";
 import {
   clearRefereeBonusPending,
   getRefereeBonusPending,
@@ -22,8 +24,14 @@ export type ReferralSummary = {
   referrer_reward_inr: number;
   referee_reward_inr: number;
   pending_count: number;
+  /** Referees who completed full payout verification */
   completed_count: number;
   total_earned_inr: number;
+  verified_referee_count: number;
+  milestone_progress_toward_next: number;
+  milestone_verified_required: number;
+  milestone_reward_inr: number;
+  milestones_completed: number;
 };
 
 export type ReferralEntry = {
@@ -58,28 +66,67 @@ function parseSummaryPayload(data: unknown, userId: string): ReferralSummary {
   const rewards = (row.rewards ?? row.reward ?? {}) as Record<string, unknown>;
   const stats = (row.stats ?? row.statistics ?? row) as Record<string, unknown>;
 
+  const verifiedFromApi = Number(
+    stats.verified_referee_count ??
+      stats.verified_count ??
+      stats.completed_count ??
+      stats.completed ??
+      stats.credited_count ??
+      0
+  );
+  const milestoneFromApi =
+    row.milestone_progress_toward_next ??
+    stats.milestone_progress_toward_next ??
+    stats.progress_toward_next;
+  const milestonesPaid = Number(
+    row.milestones_completed ?? stats.milestones_completed ?? stats.milestones_paid ?? NaN
+  );
+  const earnedFromApi = Number(
+    stats.total_earned_inr ?? stats.total_earned ?? stats.earned_inr ?? stats.referral_earned_inr ?? NaN
+  );
+
+  const computed = computeMilestoneProgress(verifiedFromApi);
+  const progressToward =
+    milestoneFromApi != null && milestoneFromApi !== ""
+      ? Number(milestoneFromApi)
+      : computed.progress_toward_next;
+  const milestonesCompleted = Number.isFinite(milestonesPaid)
+    ? milestonesPaid
+    : computed.milestones_completed;
+  const totalEarned = Number.isFinite(earnedFromApi)
+    ? earnedFromApi
+    : milestonesCompleted * REFERRAL_MILESTONE_REWARD_INR;
+
   return {
     referral_code: code,
     referral_link: String(row.referral_link ?? row.link ?? buildReferralLink(code)),
     referrer_reward_inr: Number(
       row.referrer_reward_inr ??
+        rewards.referrer_milestone_inr ??
         rewards.referrer_amount_inr ??
         rewards.referrer ??
-        DEFAULT_REFERRER_REWARD_INR
+        REFERRAL_MILESTONE_REWARD_INR
     ),
     referee_reward_inr: Number(
       row.referee_reward_inr ??
         rewards.referee_amount_inr ??
         rewards.referee ??
-        DEFAULT_REFEREE_REWARD_INR
+        WELCOME_BONUS_INR
     ),
-    pending_count: Number(stats.pending_count ?? stats.pending ?? 0),
-    completed_count: Number(
-      stats.completed_count ?? stats.completed ?? stats.credited_count ?? 0
+    pending_count: Number(stats.pending_count ?? stats.pending ?? stats.verifying_count ?? 0),
+    completed_count: verifiedFromApi,
+    total_earned_inr: totalEarned,
+    verified_referee_count: verifiedFromApi,
+    milestone_progress_toward_next: progressToward,
+    milestone_verified_required: Number(
+      row.milestone_verified_required ??
+        stats.milestone_verified_required ??
+        REFERRAL_MILESTONE_VERIFIED_COUNT
     ),
-    total_earned_inr: Number(
-      stats.total_earned_inr ?? stats.total_earned ?? stats.earned_inr ?? 0
+    milestone_reward_inr: Number(
+      row.milestone_reward_inr ?? stats.milestone_reward_inr ?? REFERRAL_MILESTONE_REWARD_INR
     ),
+    milestones_completed: milestonesCompleted,
   };
 }
 
@@ -122,14 +169,52 @@ function parseReferralRows(data: unknown): ReferralEntry[] {
 
 export function fallbackReferralSummary(userId: string): ReferralSummary {
   const code = fallbackReferralCode(userId);
+  const empty = computeMilestoneProgress(0);
   return {
     referral_code: code,
     referral_link: buildReferralLink(code),
-    referrer_reward_inr: DEFAULT_REFERRER_REWARD_INR,
-    referee_reward_inr: DEFAULT_REFEREE_REWARD_INR,
+    referrer_reward_inr: REFERRAL_MILESTONE_REWARD_INR,
+    referee_reward_inr: WELCOME_BONUS_INR,
     pending_count: 0,
     completed_count: 0,
     total_earned_inr: 0,
+    verified_referee_count: 0,
+    milestone_progress_toward_next: empty.progress_toward_next,
+    milestone_verified_required: empty.required_for_next,
+    milestone_reward_inr: empty.next_payout_inr,
+    milestones_completed: 0,
+  };
+}
+
+/** Reconcile summary stats from referral list when API omits milestone fields. */
+export function enrichSummaryFromReferrals(
+  summary: ReferralSummary,
+  referrals: ReferralEntry[]
+): ReferralSummary {
+  if (referrals.length === 0) return summary;
+
+  const verified = countVerifiedReferees(referrals.map((r) => r.status));
+  const pending = referrals.filter((r) => r.status === "pending").length;
+  const apiVerified = summary.verified_referee_count;
+
+  if (apiVerified > 0 && apiVerified >= verified) {
+    return summary;
+  }
+
+  const progress = computeMilestoneProgress(verified);
+  return {
+    ...summary,
+    pending_count: Math.max(summary.pending_count, pending),
+    completed_count: verified,
+    verified_referee_count: verified,
+    milestone_progress_toward_next: progress.progress_toward_next,
+    milestone_verified_required: progress.required_for_next,
+    milestone_reward_inr: progress.next_payout_inr,
+    milestones_completed: progress.milestones_completed,
+    total_earned_inr:
+      summary.total_earned_inr > 0
+        ? summary.total_earned_inr
+        : progress.total_earned_inr,
   };
 }
 
@@ -170,11 +255,11 @@ export async function fetchReferralList(userId: string): Promise<ReferralEntry[]
 export function referralStatusLabel(status: ReferralStatus): string {
   switch (status) {
     case "pending":
-      return "Signed up";
+      return "Verifying profile";
     case "qualified":
-      return "Task completed";
+      return "Verified";
     case "credited":
-      return "Reward credited";
+      return "Counted toward reward";
     case "expired":
       return "Expired";
     case "cancelled":
@@ -205,7 +290,7 @@ function parseRefereeStatusPayload(data: unknown): RefereeStatus | null {
   return {
     was_referred: wasReferred || status !== "none",
     referral_code_used: (row.referral_code_used ?? row.referral_code ?? null) as string | null,
-    reward_inr: Number(row.reward_inr ?? row.referee_reward_inr ?? DEFAULT_REFEREE_REWARD_INR),
+    reward_inr: Number(row.reward_inr ?? row.referee_reward_inr ?? WELCOME_BONUS_INR),
     status,
   };
 }
@@ -245,14 +330,14 @@ export async function fetchRefereeStatus(userId: string): Promise<RefereeStatus>
     return {
       was_referred: true,
       referral_code_used: pending.code,
-      reward_inr: DEFAULT_REFEREE_REWARD_INR,
+      reward_inr: WELCOME_BONUS_INR,
       status: "pending",
     };
   }
 
   return {
     was_referred: false,
-    reward_inr: DEFAULT_REFEREE_REWARD_INR,
+    reward_inr: WELCOME_BONUS_INR,
     status: "none",
   };
 }

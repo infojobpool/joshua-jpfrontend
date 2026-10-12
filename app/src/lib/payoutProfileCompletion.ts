@@ -1,4 +1,4 @@
-/** Wallet / ₹100 bonus eligibility — aligned with backend deploy 931ba9a (6 fields, no bank/address/photo). */
+/** Wallet / welcome bonus eligibility — aligned with backend (6 fields, no bank/address/photo). */
 
 export const PAYOUT_SETUP_TOTAL_STEPS = 6;
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Gift, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fetchRefereeStatus, type RefereeStatus } from "@/lib/referral/referralApi";
+import { WELCOME_BONUS_INR } from "@/lib/referral/constants";
 import {
   dismissRefereeBanner,
   isRefereeBannerDismissed,
@@ -28,7 +29,8 @@ export function ReferralRefereeBanner({ userId }: Props) {
     return null;
   }
 
-  const creditedSoon = status.status === "qualified";
+  const verifying = status.status === "pending";
+  const bonusInr = status.reward_inr || WELCOME_BONUS_INR;
 
   return (
     <div
@@ -52,12 +54,12 @@ export function ReferralRefereeBanner({ userId }: Props) {
         </span>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-900">
-            {creditedSoon ? "Referral bonus on the way" : "Unlock your referral bonus"}
+            {verifying ? `Complete verification for ₹${bonusInr} welcome bonus` : "Welcome bonus processing"}
           </p>
           <p className="mt-0.5 text-xs text-slate-600 leading-snug">
-            {creditedSoon
-              ? "Your first qualifying task is done. Wallet credit should appear shortly."
-              : "You joined with a friend’s invite. Complete your first paid task on JobPool to receive wallet credit."}
+            {verifying
+              ? "You joined with a friend’s invite. Finish all profile & payout steps (same checklist as Wallet) to receive your welcome bonus."
+              : "Your verification is complete. Your welcome bonus should appear in your wallet shortly."}
             {status.referral_code_used ? (
               <>
                 {" "}
@@ -65,10 +67,10 @@ export function ReferralRefereeBanner({ userId }: Props) {
               </>
             ) : null}
           </p>
-          {!creditedSoon ? (
+          {verifying ? (
             <div className="mt-2 flex flex-wrap gap-2">
               <Button asChild size="sm" className="h-8 rounded-lg bg-indigo-600 hover:bg-indigo-700">
-                <Link href="/dashboard?tab=available">Browse tasks</Link>
+                <Link href="/verification">Continue verification</Link>
               </Button>
               <Button asChild size="sm" variant="outline" className="h-8 rounded-lg">
                 <Link href="/referral-terms">Terms</Link>

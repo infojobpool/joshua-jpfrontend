@@ -305,13 +305,14 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { RemainingPayoutStepsList } from "@/components/RemainingPayoutStepsList"
 import type { PayoutEligibilityItem } from "@/lib/payoutProfileCompletion"
+import { welcomeBonusInrLabel } from "@/lib/welcomeBonus"
 
 interface VerificationCompleteProps {
   verificationStatus: {
     pan: { completed: boolean; skipped: boolean }
     aadhar: { completed: boolean; skipped: boolean }
   }
-  /** Same checklist as Wallet — what’s left for ₹100 / withdrawals */
+  /** Same checklist as Wallet — what’s left for welcome bonus / withdrawals */
   missingPayoutItems?: PayoutEligibilityItem[]
 }
 
@@ -430,7 +431,7 @@ export default function VerificationComplete({
                   PAN and Aadhaar verification on Jobpool is complete.
                 </p>
                 <p className="mt-1 text-gray-600">
-                  Withdrawals and your ₹100 welcome bonus still depend on the checklist below — add your full name,
+                  Withdrawals and your {welcomeBonusInrLabel()} welcome bonus still depend on the checklist below — add your full name,
                   mobile on profile, and UPI on Wallet. Tap each item to finish.
                 </p>
               </>
@@ -586,7 +587,7 @@ export default function VerificationComplete({
             <p className="mt-2 text-lg text-gray-700">You've skipped all verification steps for now.</p>
             <p className="mt-1 text-gray-600">You can complete verification later, but some features may be limited.</p>
             <p className="text-xs text-amber-800/90 mt-2 max-w-md mx-auto">
-              Skipping steps may delay the ₹100 welcome bonus until your wallet checklist is complete. T&amp;Cs apply.
+              Skipping steps may delay the {welcomeBonusInrLabel()} welcome bonus until your wallet checklist is complete. T&amp;Cs apply.
             </p>
           </motion.div>
 

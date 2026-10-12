@@ -5,9 +5,10 @@ import Image from "next/image";
 import { ChevronDown, Smartphone, UserCheck, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePayoutSetupIncomplete } from "@/hooks/usePayoutSetupIncomplete";
+import { welcomeBonusInrLabel } from "@/lib/welcomeBonus";
 
 /**
- * Mobile-only: minimal ₹100 welcome bonus card with expand/collapse (hash #welcome-bonus opens it).
+ * Mobile-only: minimal welcome bonus card with expand/collapse (hash #welcome-bonus opens it).
  */
 export function MobileWelcomeBonus() {
   const { ready, incomplete, awaitingEligibility } = usePayoutSetupIncomplete();
@@ -48,7 +49,7 @@ export function MobileWelcomeBonus() {
           <div className="relative w-full aspect-[512/341] overflow-hidden rounded-3xl bg-[#e3f2fb] shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]">
             <Image
               src="/images/welcome-bonus-banner.png"
-              alt="JobPool ₹100 welcome bonus — install the app, sign up, claim your bonus."
+              alt={`JobPool ${welcomeBonusInrLabel()} welcome bonus — install the app, sign up, claim your bonus.`}
               fill
               className="object-cover object-center"
               sizes="(max-width: 768px) 100vw, 448px"
@@ -59,7 +60,7 @@ export function MobileWelcomeBonus() {
         <div className="px-4 pt-3 pb-4">
         <div className="min-w-0">
           <h2 id={headerId} className="text-base font-bold text-slate-900 tracking-tight">
-            Welcome bonus · ₹100
+            Welcome bonus · {welcomeBonusInrLabel()}
           </h2>
           <p className="text-sm text-slate-500 mt-1 leading-relaxed">
             For new users — credited to your{" "}

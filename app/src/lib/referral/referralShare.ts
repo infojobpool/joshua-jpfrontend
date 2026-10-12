@@ -1,4 +1,9 @@
 import { absoluteUrl } from "@/lib/seo/site";
+import {
+  REFERRAL_MILESTONE_REWARD_INR,
+  REFERRAL_MILESTONE_VERIFIED_COUNT,
+  WELCOME_BONUS_INR,
+} from "./constants";
 
 export function buildReferralSignupPath(code: string): string {
   return `/signup?ref=${encodeURIComponent(code.trim())}`;
@@ -11,7 +16,7 @@ export function buildReferralLink(code: string): string {
 export function buildWhatsAppShareUrl(code: string, referrerName?: string): string {
   const link = buildReferralLink(code);
   const who = referrerName?.trim() ? `${referrerName.trim()} invited you` : "Join JobPool";
-  const text = `${who} to get tasks done or earn as a tasker. Sign up with my link — we both earn wallet credit after your first completed task.\n\n${link}`;
+  const text = `${who} on JobPool. Sign up with my link — get ₹${WELCOME_BONUS_INR} welcome bonus after you complete verification. I earn ₹${REFERRAL_MILESTONE_REWARD_INR} for every ${REFERRAL_MILESTONE_VERIFIED_COUNT} friends who verify.\n\n${link}`;
   return `https://wa.me/?text=${encodeURIComponent(text)}`;
 }
 

@@ -4,6 +4,7 @@ import { useState, ChangeEvent, FormEvent, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { analytics } from "@/lib/analytics";
+import { welcomeBonusInrLabel } from "@/lib/welcomeBonus";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -206,7 +207,11 @@ export default function SignUpPage() {
                   <li>Return here to sign in</li>
                   <li>
                     After sign in, complete verification (PAN &amp; Aadhaar) and your profile in the app — you need
-                    the full journey to earn the <strong className="text-slate-800 dark:text-slate-100">₹100 welcome bonus</strong> in your wallet. T&amp;Cs apply.
+                    the full journey to earn the{" "}
+                    <strong className="text-slate-800 dark:text-slate-100">
+                      {welcomeBonusInrLabel()} welcome bonus
+                    </strong>{" "}
+                    in your wallet. T&amp;Cs apply.
                   </li>
                 </ol>
                 <WelcomeBonusProcessHint variant="compact" className="text-left" />

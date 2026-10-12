@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { PayoutEligibilityItem } from "@/lib/payoutProfileCompletion";
+import { welcomeBonusInrLabel } from "@/lib/welcomeBonus";
 
 function stillToDoIntro(items: PayoutEligibilityItem[]): string {
   if (items.length === 1) {
-    return `${items[0].label} to unlock withdrawals and your ₹100 welcome bonus where eligible. Tap the item to continue.`;
+    return `${items[0].label} to unlock withdrawals and your ${welcomeBonusInrLabel()} welcome bonus where eligible. Tap the item to continue.`;
   }
   const labels = items.map((item) => item.label).join(", ");
-  return `Complete these ${items.length} steps to unlock withdrawals and your ₹100 welcome bonus where eligible: ${labels}. Tap an item to continue.`;
+  return `Complete these ${items.length} steps to unlock withdrawals and your ${welcomeBonusInrLabel()} welcome bonus where eligible: ${labels}. Tap an item to continue.`;
 }
 
 /** Same pattern as Wallet “Next steps” — tap-through list for payout/bonus setup. */

@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { buildPublicMetadata } from "@/lib/seo/metadata";
 import {
-  DEFAULT_REFEREE_REWARD_INR,
-  DEFAULT_REFERRER_REWARD_INR,
+  REFERRAL_MILESTONE_REWARD_INR,
+  REFERRAL_MILESTONE_VERIFIED_COUNT,
   REFERRAL_QUALIFYING_COPY,
+  WELCOME_BONUS_INR,
 } from "@/lib/referral/constants";
 
 export const metadata: Metadata = buildPublicMetadata({
@@ -22,32 +23,40 @@ export default function ReferralTermsPage() {
           ← Back to Invite &amp; earn
         </Link>
         <h1 className="mt-4 text-3xl font-bold text-slate-900 tracking-tight">Referral program terms</h1>
-        <p className="mt-2 text-slate-600 text-sm">Last updated: September 2026</p>
+        <p className="mt-2 text-slate-600 text-sm">Last updated: October 2026</p>
 
         <div className="mt-8 space-y-8 text-slate-700 leading-relaxed">
           <section>
             <h2 className="text-lg font-semibold text-slate-900">Overview</h2>
             <p className="mt-2">
-              JobPool’s referral program rewards existing users (<strong>referrers</strong>) and new users they
-              invite (<strong>referees</strong>) with wallet credit when qualifying conditions are met. Rewards
-              are promotional credits in your JobPool wallet, not cash unless withdrawn under normal wallet
+              JobPool’s referral program rewards users who invite new members (<strong>referrers</strong>) with
+              wallet credit when qualifying conditions are met. New users (<strong>referees</strong>) may receive
+              the standard welcome bonus. Rewards are promotional wallet credits, not cash unless withdrawn under
+              normal wallet rules. Anyone who joined via a referral may also share their own link under the same
               rules.
             </p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-slate-900">Current reward amounts</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Reward amounts</h2>
             <ul className="mt-2 list-disc pl-5 space-y-1">
               <li>
-                Referrer: up to <strong>₹{DEFAULT_REFERRER_REWARD_INR}</strong> wallet credit per successful
-                referral
+                <strong>Welcome bonus (all new users):</strong> up to{" "}
+                <strong>₹{WELCOME_BONUS_INR}</strong> wallet credit after completing the full profile &amp;
+                payout verification checklist.
               </li>
               <li>
-                Referee (invited friend): up to <strong>₹{DEFAULT_REFEREE_REWARD_INR}</strong> wallet credit
+                <strong>Referrer milestone:</strong> <strong>₹{REFERRAL_MILESTONE_REWARD_INR}</strong> each time{" "}
+                <strong>{REFERRAL_MILESTONE_VERIFIED_COUNT}</strong> distinct people sign up with your link and
+                complete that same full verification checklist (repeats for every additional{" "}
+                {REFERRAL_MILESTONE_VERIFIED_COUNT} verified invites).
+              </li>
+              <li>
+                There is no separate per-signup referral bonus for invited friends beyond the welcome bonus.
               </li>
             </ul>
             <p className="mt-2 text-sm text-slate-600">
-              Amounts may change. The amount shown in the app at the time of invite or signup applies.
+              Amounts may change. The amounts and rules shown in the app at the time of invite or signup apply.
             </p>
           </section>
 
@@ -56,31 +65,36 @@ export default function ReferralTermsPage() {
             <p className="mt-2">{REFERRAL_QUALIFYING_COPY}</p>
             <ul className="mt-3 list-disc pl-5 space-y-1 text-sm">
               <li>The referee must be a new JobPool user who has not previously registered.</li>
-              <li>The referee must sign up using the referrer’s valid link or code.</li>
+              <li>The referee must sign up using the referrer’s valid link or code at registration.</li>
               <li>
                 Only one referrer per new account — the first valid code or link used at registration counts.
               </li>
               <li>
-                The referee must complete a genuine paid task (as poster or tasker, per program rules set by
-                JobPool) that is not cancelled, refunded, or flagged as fraudulent.
+                Sign-up alone does not pay the referrer. Only referees who complete{" "}
+                <strong>all</strong> payout verification steps count toward the{" "}
+                {REFERRAL_MILESTONE_VERIFIED_COUNT}-person milestone.
               </li>
-              <li>JobPool may set a minimum task value or other conditions.</li>
+              <li>
+                Partial verification progress is visible in the app but does not count until the checklist is
+                complete.
+              </li>
             </ul>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-slate-900">When credits are paid</h2>
             <p className="mt-2">
-              Wallet credits are issued after JobPool confirms the qualifying task is complete and payment has
-              settled. This may take up to 48 hours. Credits appear in your wallet transaction history as
-              referral bonus entries.
+              Welcome bonus and referral milestone credits are issued after JobPool confirms full verification
+              (and, for milestones, that the verified count reached a multiple of{" "}
+              {REFERRAL_MILESTONE_VERIFIED_COUNT}). This may take up to 48 hours. Credits appear in your wallet
+              transaction history.
             </p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-slate-900">Fair use &amp; limits</h2>
             <ul className="mt-2 list-disc pl-5 space-y-1 text-sm">
-              <li>Self-referrals, duplicate accounts, or fake tasks are not eligible.</li>
+              <li>Self-referrals, duplicate accounts, or fraudulent verification are not eligible.</li>
               <li>JobPool may cap referrals per user per month or per device.</li>
               <li>We may withhold or reverse credits if fraud or abuse is suspected.</li>
               <li>The program may be paused or ended at any time.</li>
@@ -98,13 +112,9 @@ export default function ReferralTermsPage() {
           <section>
             <h2 className="text-lg font-semibold text-slate-900">General terms</h2>
             <p className="mt-2">
-              This program is part of your use of JobPool and is subject to our{" "}
+              This program is subject to JobPool’s{" "}
               <Link href="/termsandconditions" className="text-indigo-600 hover:underline">
                 Terms and Conditions
-              </Link>{" "}
-              and{" "}
-              <Link href="/privacy-policy" className="text-indigo-600 hover:underline">
-                Privacy Policy
               </Link>
               . JobPool’s decision on referral eligibility is final.
             </p>

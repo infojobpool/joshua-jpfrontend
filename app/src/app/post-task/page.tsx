@@ -28,6 +28,7 @@ import useStore from "../../lib/Zustand";
 import LocationDetector from "../../components/LocationDetector";
 import Header from "@/components/Header";
 import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint";
+import { welcomeBonusProgressLabel } from "@/lib/welcomeBonus";
 import {
   getPayoutEligibilityStats,
 } from "@/lib/payoutProfileCompletion";
@@ -203,7 +204,7 @@ export default function PostTaskPage() {
         const payload = data?.data ?? data;
         const wd = walletRes.data?.data ?? walletRes.data;
 
-        // ₹100 bonus progress — same rules as Wallet (API missing_requirements when available)
+        // Welcome bonus progress — same rules as Wallet (API missing_requirements when available)
         try {
           const stats = getPayoutEligibilityStats(wd, payload);
           setPayoutBonusPreview(stats);
@@ -692,7 +693,11 @@ export default function PostTaskPage() {
             <WelcomeBonusProcessHint
               variant="compact"
               percent={payoutBonusPreview.percent}
-              label={`${payoutBonusPreview.completed} of ${payoutBonusPreview.total} steps toward ₹100 bonus · ${payoutBonusPreview.remaining} left`}
+              label={welcomeBonusProgressLabel(
+                payoutBonusPreview.completed,
+                payoutBonusPreview.total,
+                payoutBonusPreview.remaining
+              )}
             />
           )}
           {error && (

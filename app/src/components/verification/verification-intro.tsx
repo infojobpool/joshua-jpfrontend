@@ -3,6 +3,7 @@
 import { Shield, Lock, Clock, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { TrustBadges } from "@/components/TrustBadges"
+import { welcomeBonusInrLabel } from "@/lib/welcomeBonus"
 interface VerificationIntroProps {
   onStart: () => void
 }
@@ -79,10 +80,10 @@ export default function VerificationIntro({ onStart }: VerificationIntroProps) {
           <li>PAN Card</li>
           <li>Aadhar Card or access to your registered mobile for OTP</li>
           <li>Full name and mobile number on your profile</li>
-          <li>UPI ID on Wallet (for ₹100 bonus and withdrawals)</li>
+          <li>UPI ID on Wallet (for welcome bonus and withdrawals)</li>
         </ul>
         <p className="mt-3 text-xs text-gray-500">
-          Complete PAN and Aadhaar, add your name, mobile, and UPI to get ₹100 in your wallet when eligible.
+          Complete PAN and Aadhaar, add your name, mobile, and UPI to get {welcomeBonusInrLabel()} in your wallet when eligible.
         </p>
       </div>
 

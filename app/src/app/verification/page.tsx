@@ -280,6 +280,7 @@ import axiosInstance from "../../lib/axiosInstance"
 import useStore from "../../lib/Zustand"
 import { CheckCircle } from "lucide-react"
 import { WelcomeBonusProcessHint } from "@/components/promo/WelcomeBonusProcessHint"
+import { welcomeBonusProgressLabel } from "@/lib/welcomeBonus"
 import {
   getPayoutEligibilityStats,
   type PayoutEligibilityItem,
@@ -610,7 +611,11 @@ export default function VerificationFlow() {
           {payoutPreview && payoutPreview.remaining > 0 && (
             <WelcomeBonusProcessHint
               percent={payoutPreview.percent}
-              label={`${payoutPreview.completed} of ${payoutPreview.total} steps toward ₹100 bonus · ${payoutPreview.remaining} left`}
+              label={welcomeBonusProgressLabel(
+                payoutPreview.completed,
+                payoutPreview.total,
+                payoutPreview.remaining
+              )}
               className="mt-4 pr-14 md:pr-3"
             />
           )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Copy,
@@ -8,6 +8,7 @@ import {
   Loader2,
   MessageCircle,
   Share2,
+  Target,
   Users,
   Wallet,
 } from "lucide-react";
@@ -16,13 +17,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  enrichSummaryFromReferrals,
   fetchReferralList,
   fetchReferralSummary,
   referralStatusLabel,
   type ReferralEntry,
   type ReferralSummary,
 } from "@/lib/referral/referralApi";
-import { REFERRAL_QUALIFYING_COPY } from "@/lib/referral/constants";
+import {
+  REFERRAL_INVITE_TAGLINE,
+  REFERRAL_MILESTONE_REWARD_INR,
+  REFERRAL_MILESTONE_VERIFIED_COUNT,
+  REFERRAL_QUALIFYING_COPY,
+  WELCOME_BONUS_INR,
+} from "@/lib/referral/constants";
 import {
   buildWhatsAppShareUrl,
   copyReferralCode,
@@ -38,6 +46,10 @@ function formatDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatInr(amount: number): string {
+  return `₹${amount.toLocaleString("en-IN")}`;
 }
 
 function statusBadgeClass(status: ReferralEntry["status"]): string {
@@ -68,8 +80,8 @@ export function ReferralInvitePanel({ userId, userName, compact = false }: Props
         fetchReferralSummary(userId),
         fetchReferralList(userId),
       ]);
-      setSummary(s);
       setReferrals(list);
+      setSummary(enrichSummaryFromReferrals(s, list));
     } finally {
       setLoading(false);
     }
@@ -78,6 +90,18 @@ export function ReferralInvitePanel({ userId, userName, compact = false }: Props
   useEffect(() => {
     void load();
   }, [load]);
+
+  const milestoneUi = useMemo(() => {
+    if (!summary) return null;
+    const required = summary.milestone_verified_required || REFERRAL_MILESTONE_VERIFIED_COUNT;
+    const toward = summary.milestone_progress_toward_next;
+    const progressPercent =
+      toward === 0 && summary.verified_referee_count > 0
+        ? 100
+        : Math.round((toward / required) * 100);
+    const remaining = toward === 0 ? required : required - toward;
+    return { required, toward, progressPercent, remaining };
+  }, [summary]);
 
   const onCopyCode = async () => {
     if (!summary) return;
@@ -105,22 +129,27 @@ export function ReferralInvitePanel({ userId, userName, compact = false }: Props
     );
   }
 
-  if (!summary) return null;
+  if (!summary || !milestoneUi) return null;
 
   const steps = [
     {
       title: "Share your link",
-      body: "Send your code or link on WhatsApp to friends who post tasks or work as taskers.",
+      body: "Invite as many friends as you like — anyone can sign up with your code or link.",
     },
     {
-      title: "They sign up",
-      body: "Friends join JobPool with your link and can earn wallet credit after their first completed paid task.",
+      title: "They verify their profile",
+      body: `Each friend gets ₹${WELCOME_BONUS_INR} welcome bonus after they complete the same payout checklist as you (PAN, Aadhaar, name, mobile, UPI, etc.).`,
     },
     {
-      title: "You earn too",
-      body: "When they qualify, wallet credit is added to your account automatically.",
+      title: `You earn ₹${REFERRAL_MILESTONE_REWARD_INR} per ${REFERRAL_MILESTONE_VERIFIED_COUNT} verified friends`,
+      body: `When ${REFERRAL_MILESTONE_VERIFIED_COUNT} invited friends finish full verification, ₹${REFERRAL_MILESTONE_REWARD_INR} is added to your wallet. Every ${REFERRAL_MILESTONE_VERIFIED_COUNT} after that pays again — they can invite others the same way.`,
     },
   ];
+
+  const progressLabel =
+    milestoneUi.toward === 0 && summary.verified_referee_count > 0
+      ? `${milestoneUi.required} of ${milestoneUi.required} verified — milestone complete`
+      : `${milestoneUi.toward} of ${milestoneUi.required} verified toward next ${formatInr(summary.milestone_reward_inr)}`;
 
   return (
     <div className={compact ? "space-y-4" : "space-y-6"}>
@@ -132,9 +161,7 @@ export function ReferralInvitePanel({ userId, userName, compact = false }: Props
             </span>
             <div className="min-w-0">
               <CardTitle className="text-xl text-white">Invite friends, earn wallet credit</CardTitle>
-              <CardDescription className="text-indigo-100/95 mt-1">
-                Share your link — wallet credit for you both after their first completed task.
-              </CardDescription>
+              <CardDescription className="text-indigo-100/95 mt-1">{REFERRAL_INVITE_TAGLINE}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -182,10 +209,46 @@ export function ReferralInvitePanel({ userId, userName, compact = false }: Props
       </Card>
 
       {!compact ? (
+        <Card className="rounded-2xl border-indigo-200/80 shadow-sm bg-white">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-indigo-600" aria-hidden />
+              <CardTitle className="text-base">Next reward</CardTitle>
+            </div>
+            <CardDescription>{progressLabel}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div
+              className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200"
+              role="progressbar"
+              aria-valuenow={milestoneUi.progressPercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              <div
+                className="h-full rounded-full bg-indigo-600 transition-all duration-300"
+                style={{ width: `${milestoneUi.progressPercent}%` }}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-xl bg-slate-50 px-3 py-2.5 border border-slate-100">
+                <p className="text-xs text-slate-500">Referral earnings</p>
+                <p className="font-bold text-slate-900 tabular-nums">{formatInr(summary.total_earned_inr)}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 px-3 py-2.5 border border-slate-100">
+                <p className="text-xs text-slate-500">Milestones paid</p>
+                <p className="font-bold text-slate-900 tabular-nums">{summary.milestones_completed}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {!compact ? (
         <div className="grid grid-cols-2 gap-3">
           {[
-            { label: "Pending", value: summary.pending_count, icon: Users },
-            { label: "Completed", value: summary.completed_count, icon: Gift },
+            { label: "Verifying", value: summary.pending_count, icon: Users },
+            { label: "Verified", value: summary.verified_referee_count, icon: Gift },
           ].map(({ label, value, icon: Icon }) => (
             <Card key={label} className="rounded-xl border-slate-200/80 shadow-sm">
               <CardContent className="p-4 text-center">

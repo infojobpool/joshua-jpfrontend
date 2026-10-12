@@ -72,7 +72,7 @@ export const APP_GUIDE_STEPS: AppGuideStep[] = [
     id: "profile",
     title: "Profile & wallet",
     body:
-      "Edit your details, verify PAN & Aadhaar, check Wallet & ₹100 bonus, and manage listings from your profile.",
+      "Edit your details, verify PAN & Aadhaar, check Wallet & welcome bonus, and manage listings from your profile.",
     tourTargets: ["tour-dashboard-profile"],
     placement: "below",
     desktopTip: "Profile avatar → My Profile, Wallet, and My listings.",

@@ -39,6 +39,7 @@ import Header from "@/components/Header";
 import { toast } from "sonner";
 import { resolveProfileImageUrl } from "@/lib/profileImage";
 import { getPayoutEligibilityStats } from "@/lib/payoutProfileCompletion";
+import { welcomeBonusInrLabel } from "@/lib/welcomeBonus";
 import { PayoutProfileProgress } from "@/components/PayoutProfileProgress";
 import {
   formatWalletTransactionSubtitle,
@@ -397,7 +398,9 @@ export default function WalletPage() {
             {signupBonusCredited && (
               <Card className="border border-emerald-200/80 shadow-md rounded-2xl bg-gradient-to-br from-emerald-50/95 to-teal-50/40 ring-1 ring-emerald-100">
                 <CardContent className="py-4">
-                  <p className="text-sm font-semibold text-emerald-900">₹100 welcome bonus credited</p>
+                  <p className="text-sm font-semibold text-emerald-900">
+                    {welcomeBonusInrLabel()} welcome bonus credited
+                  </p>
                   <p className="text-xs text-emerald-800/90 mt-1">
                     Your wallet balance includes the signup bonus. Withdraw when eligible using your UPI ID.
                   </p>
@@ -437,7 +440,8 @@ export default function WalletPage() {
                     Next steps
                   </CardTitle>
                   <CardDescription className="text-amber-900/80">
-                    Complete PAN and Aadhaar, add your name, mobile on profile, and UPI for withdrawals and your ₹100
+                    Complete PAN and Aadhaar, add your name, mobile on profile, and UPI for withdrawals and your{" "}
+                    {welcomeBonusInrLabel()}
                     welcome bonus. Tap an item to continue.
                   </CardDescription>
                 </CardHeader>

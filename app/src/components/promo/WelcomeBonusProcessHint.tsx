@@ -2,9 +2,10 @@
 
 import { Gift } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { welcomeBonusInrLabel } from "@/lib/welcomeBonus";
 
 /**
- * ₹100 wallet bonus journey. On logged-in screens pass real `percent` from getPayoutCompletionStats;
+ * Welcome wallet bonus journey. On logged-in screens pass real `percent` from getPayoutCompletionStats;
  * when percent reaches 100, renders nothing. `variant` fallbacks are for marketing (e.g. signup) only.
  */
 export function WelcomeBonusProcessHint({
@@ -57,7 +58,7 @@ export function WelcomeBonusProcessHint({
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-900">
-              ₹100 Welcome Bonus
+              {welcomeBonusInrLabel()} Welcome Bonus
             </p>
             <span className="text-xs font-semibold text-emerald-800 tabular-nums">
               {meta.percent}%

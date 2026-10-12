@@ -39,7 +39,7 @@ export function ReferralDashboardPromo() {
             Invite friends — earn wallet credit
           </span>
           <span className="block text-xs text-slate-500 mt-0.5">
-            Share your link on WhatsApp. Credit lands in your wallet when they complete a task.
+            Share on WhatsApp — earn ₹25 for every 3 friends who complete verification.
           </span>
         </span>
       </Link>
