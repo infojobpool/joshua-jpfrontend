@@ -124,11 +124,11 @@ export async function fetchAdminReferrals(): Promise<AdminReferralRow[]> {
 export function referralStatusLabel(status: AdminReferralStatus): string {
   switch (String(status).toLowerCase()) {
     case "pending":
-      return "Signed up";
+      return "Verifying profile";
     case "qualified":
-      return "Task completed";
+      return "Verified";
     case "credited":
-      return "Rewards credited";
+      return "Counted / paid";
     case "expired":
       return "Expired";
     case "cancelled":

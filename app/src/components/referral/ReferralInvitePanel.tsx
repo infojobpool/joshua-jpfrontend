@@ -36,6 +36,7 @@ import {
   copyReferralCode,
   copyReferralLink,
 } from "@/lib/referral/referralShare";
+import { ReferralMilestoneDots } from "@/components/referral/ReferralMilestoneDots";
 type Props = {
   userId: string;
   userName?: string;
@@ -153,8 +154,12 @@ export function ReferralInvitePanel({ userId, userName, compact = false }: Props
 
   return (
     <div className={compact ? "space-y-4" : "space-y-6"}>
-      <Card className="overflow-hidden border-0 shadow-xl rounded-2xl bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-700 text-white">
-        <CardHeader className="pb-2">
+      <Card className="overflow-hidden border-0 shadow-xl shadow-indigo-500/20 rounded-2xl bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-700 text-white relative">
+        <div
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.12),transparent_55%)]"
+          aria-hidden
+        />
+        <CardHeader className="pb-2 relative">
           <div className="flex items-start gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25">
               <Gift className="h-6 w-6" aria-hidden />
@@ -165,8 +170,8 @@ export function ReferralInvitePanel({ userId, userName, compact = false }: Props
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4 pt-2">
-          <div className="rounded-xl bg-white/10 p-4 ring-1 ring-white/20">
+        <CardContent className="space-y-4 pt-2 relative">
+          <div className="rounded-xl bg-white/10 p-4 ring-1 ring-white/20 backdrop-blur-[2px]">
             <p className="text-xs font-semibold uppercase tracking-wider text-indigo-100/90">Your code</p>
             <p className="mt-1 font-mono text-2xl font-bold tracking-wide">{summary.referral_code}</p>
             <p className="mt-2 break-all text-sm text-indigo-100/90">{summary.referral_link}</p>
@@ -209,27 +214,23 @@ export function ReferralInvitePanel({ userId, userName, compact = false }: Props
       </Card>
 
       {!compact ? (
-        <Card className="rounded-2xl border-indigo-200/80 shadow-sm bg-white">
+        <Card className="rounded-2xl border-violet-200/80 shadow-md bg-gradient-to-br from-white to-violet-50/40">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-indigo-600" aria-hidden />
-              <CardTitle className="text-base">Next reward</CardTitle>
+              <Target className="h-5 w-5 text-violet-600" aria-hidden />
+              <CardTitle className="text-base">Next ₹{summary.milestone_reward_inr} reward</CardTitle>
             </div>
             <CardDescription>{progressLabel}</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div
-              className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200"
-              role="progressbar"
-              aria-valuenow={milestoneUi.progressPercent}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            >
-              <div
-                className="h-full rounded-full bg-indigo-600 transition-all duration-300"
-                style={{ width: `${milestoneUi.progressPercent}%` }}
-              />
-            </div>
+          <CardContent className="space-y-4">
+            <ReferralMilestoneDots
+              toward={milestoneUi.toward}
+              required={milestoneUi.required}
+              milestoneJustCompleted={
+                milestoneUi.toward === 0 && summary.verified_referee_count > 0
+              }
+              className="max-w-full"
+            />
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="rounded-xl bg-slate-50 px-3 py-2.5 border border-slate-100">
                 <p className="text-xs text-slate-500">Referral earnings</p>
@@ -306,18 +307,24 @@ export function ReferralInvitePanel({ userId, userName, compact = false }: Props
                 When someone signs up with your link, they will appear here.
               </p>
             ) : (
-              <ul className="divide-y divide-slate-100">
+              <ul className="space-y-2">
                 {referrals.map((row) => (
-                  <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">{row.referee_name}</p>
-                      <p className="text-xs text-slate-500">Joined {formatDate(row.created_at)}</p>
+                  <li
+                    key={row.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5"
+                  >
+                    <div className="min-w-0 flex items-center gap-2.5">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-violet-700 ring-1 ring-violet-100">
+                        {(row.referee_name?.[0] ?? "?").toUpperCase()}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-900 truncate">{row.referee_name}</p>
+                        <p className="text-xs text-slate-500">Joined {formatDate(row.created_at)}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Badge variant="outline" className={statusBadgeClass(row.status)}>
-                        {referralStatusLabel(row.status)}
-                      </Badge>
-                    </div>
+                    <Badge variant="outline" className={statusBadgeClass(row.status)}>
+                      {referralStatusLabel(row.status)}
+                    </Badge>
                   </li>
                 ))}
               </ul>

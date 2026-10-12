@@ -40,7 +40,7 @@ export default function ReferralsPage() {
   };
 
   return (
-    <div className="flex min-h-screen min-w-0 w-full max-w-full flex-col overflow-x-hidden bg-gradient-to-b from-slate-50 via-indigo-50/20 to-white">
+    <div className="flex min-h-screen min-w-0 w-full max-w-full flex-col overflow-x-hidden bg-gradient-to-b from-slate-50 via-violet-50/25 to-white">
       <Header
         user={headerUser}
         onSignOut={() => {
@@ -58,10 +58,18 @@ export default function ReferralsPage() {
           Back to Dashboard
         </Link>
 
-        <h1 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-          <Gift className="h-7 w-7 text-indigo-600" />
-          Invite &amp; earn
-        </h1>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-sm">
+              <Gift className="h-5 w-5" />
+            </span>
+            Invite &amp; earn
+          </h1>
+          <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+            Share your link on WhatsApp. Friends verify their profile — you earn wallet credit every 3 verified
+            invites.
+          </p>
+        </div>
 
         <ReferralInvitePanel userId={userId} userName={user?.name} />
       </main>

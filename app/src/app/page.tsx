@@ -10,7 +10,7 @@ import { BlogArticlesSection } from '../components/blog/BlogArticlesSection'
 import { HowItWorks } from '../components/mainpage/how-it-works'
 import { Features } from '../components/mainpage/features'
 import { Testimonials } from '../components/mainpage/testimonials'
-import { TrustBadgesSection } from '../components/mainpage/TrustBadgesSection'
+import { ReferralMobileHomeStrip } from '@/components/referral/ReferralMobileHomeStrip'
 import { staticPageMetadata } from "@/lib/seo/staticPageMetadata";
 
 export const generateMetadata = staticPageMetadata("/", {
@@ -25,7 +25,7 @@ export default function Home() {
       {/* Mobile landing (default on small screens) */}
       <div className="lg:hidden min-w-0 w-full">
         <MobileHeroSection />
-        <TrustBadgesSection />
+        <ReferralMobileHomeStrip />
         <MobileWelcomeBonus />
         <RecentAvailableTasks variant="mobile" />
         <HomePublishedOfferings variant="mobile" />
