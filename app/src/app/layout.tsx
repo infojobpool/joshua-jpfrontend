@@ -14,7 +14,6 @@ import { NotificationPoller } from "@/components/NotificationPoller";
 import { NotificationBadgeSync } from "@/components/NotificationBadgeSync";
 import { HomeJobsPrefetch } from "@/components/HomeJobsPrefetch";
 import { SessionExpiredHandler } from "@/components/SessionExpiredHandler";
-import { PromoPopup } from "@/components/PromoPopup";
 import { AppEntranceWrapper } from "@/components/mobile/AppEntranceWrapper";
 import { SupportPill } from "@/components/SupportPill";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
@@ -104,7 +103,6 @@ export default function RootLayout({
             <HomeJobsPrefetch />
             <ReferralCapture />
           </Suspense>
-          <PromoPopup />
           <FeeConfigWarmup />
           <MobileLayout>
             <AppEntranceWrapper>
