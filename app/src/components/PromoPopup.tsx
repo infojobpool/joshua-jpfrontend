@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { WelcomeBonusPromoPanel } from "@/components/promo/WelcomeBonusPromoPanel";
 
 const PROMO_DELAY_MS = 5000;
 const AUTO_SLIDE_MS = 5000;
@@ -11,26 +12,18 @@ const STORAGE_KEY = "jobpool_promo_dismissed";
 export interface PromoSlide {
   src: string;
   alt: string;
-  /** Behind `object-contain` image — avoids wrong-color letterboxing. */
   panelClass: string;
 }
 
-const DEFAULT_SLIDES: PromoSlide[] = [
-  {
-    src: "/images/promopopup.JPG",
-    alt: "JobPool — join us and earn. Download the app.",
-    panelClass: "bg-[#0d2f66]",
-  },
-];
-
 interface PromoPopupProps {
+  /** Optional image carousel; default is ₹25 welcome promo (no legacy ₹100 JPG). */
   slides?: PromoSlide[];
   delayMs?: number;
   autoSlideMs?: number;
 }
 
 export function PromoPopup({
-  slides = DEFAULT_SLIDES,
+  slides,
   delayMs = PROMO_DELAY_MS,
   autoSlideMs = AUTO_SLIDE_MS,
 }: PromoPopupProps) {
@@ -38,6 +31,7 @@ export function PromoPopup({
   const [mounted, setMounted] = useState(false);
   const [index, setIndex] = useState(0);
   const reduceMotionRef = useRef(false);
+  const useImageSlides = Boolean(slides && slides.length > 0);
 
   useEffect(() => {
     setMounted(true);
@@ -57,14 +51,14 @@ export function PromoPopup({
   }, [mounted, delayMs]);
 
   useEffect(() => {
-    if (!visible || slides.length < 2) return;
+    if (!visible || !useImageSlides || !slides || slides.length < 2) return;
 
     const id = window.setInterval(() => {
       setIndex((i) => (i + 1) % slides.length);
     }, autoSlideMs);
 
     return () => window.clearInterval(id);
-  }, [visible, slides.length, autoSlideMs]);
+  }, [visible, slides, useImageSlides, autoSlideMs]);
 
   const handleClose = () => {
     setVisible(false);
@@ -79,7 +73,9 @@ export function PromoPopup({
 
   if (!visible) return null;
 
-  const transitionClass = reduceMotionRef.current ? "" : "transition-transform duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)]";
+  const transitionClass = reduceMotionRef.current
+    ? ""
+    : "transition-transform duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)]";
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4">
@@ -95,7 +91,7 @@ export function PromoPopup({
         )}
         role="dialog"
         aria-modal="true"
-        aria-label="Promotion"
+        aria-label="Welcome bonus promotion"
       >
         <button
           type="button"
@@ -106,54 +102,55 @@ export function PromoPopup({
           <X className="size-5" strokeWidth={2} />
         </button>
 
-        <div className="relative w-full overflow-hidden">
-          <div
-            className={cn("flex", transitionClass)}
-            style={{ transform: `translateX(-${index * 100}%)` }}
-          >
-            {slides.map((slide) => (
-              <div
-                key={slide.src}
-                className={cn("w-full shrink-0 min-h-0", slide.panelClass)}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={slide.src}
-                  alt={slide.alt}
-                  className="block w-full h-auto max-h-[min(88vh,760px)] object-cover object-center select-none"
-                  draggable={false}
-                />
-              </div>
-            ))}
-          </div>
-
-          {slides.length > 1 && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-4 pt-16 bg-gradient-to-t from-black/35 via-black/10 to-transparent">
-              <div
-                className="pointer-events-auto flex items-center gap-2 rounded-full border border-white/12 bg-black/30 px-3 py-2 backdrop-blur-md shadow-lg"
-                role="tablist"
-                aria-label="Promo slides"
-              >
-                {slides.map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    role="tab"
-                    aria-selected={i === index}
-                    onClick={() => goTo(i)}
-                    className={cn(
-                      "h-1.5 rounded-full transition-all duration-300",
-                      i === index
-                        ? "w-7 bg-white shadow-[0_0_12px_rgba(255,255,255,0.35)]"
-                        : "w-1.5 bg-white/45 hover:bg-white/70"
-                    )}
-                    aria-label={`Slide ${i + 1} of ${slides.length}`}
+        {useImageSlides && slides ? (
+          <div className="relative w-full overflow-hidden">
+            <div
+              className={cn("flex", transitionClass)}
+              style={{ transform: `translateX(-${index * 100}%)` }}
+            >
+              {slides.map((slide) => (
+                <div key={slide.src} className={cn("w-full shrink-0 min-h-0", slide.panelClass)}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={slide.src}
+                    alt={slide.alt}
+                    className="block w-full h-auto max-h-[min(88vh,760px)] object-cover object-center select-none"
+                    draggable={false}
                   />
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
+
+            {slides.length > 1 ? (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-4 pt-16 bg-gradient-to-t from-black/35 via-black/10 to-transparent">
+                <div
+                  className="pointer-events-auto flex items-center gap-2 rounded-full border border-white/12 bg-black/30 px-3 py-2 backdrop-blur-md shadow-lg"
+                  role="tablist"
+                  aria-label="Promo slides"
+                >
+                  {slides.map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      role="tab"
+                      aria-selected={i === index}
+                      onClick={() => goTo(i)}
+                      className={cn(
+                        "h-1.5 rounded-full transition-all duration-300",
+                        i === index
+                          ? "w-7 bg-white shadow-[0_0_12px_rgba(255,255,255,0.35)]"
+                          : "w-1.5 bg-white/45 hover:bg-white/70"
+                      )}
+                      aria-label={`Slide ${i + 1} of ${slides.length}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <WelcomeBonusPromoPanel />
+        )}
       </div>
     </div>
   );

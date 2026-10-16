@@ -290,6 +290,7 @@ import Link from "next/link";
 import { Search, Eye, EyeOff, CreditCard, Phone, Download, Calendar, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { formatAxiosApiError } from "@/lib/apiError";
+import { DEFAULT_SIGNUP_BONUS_INR } from "@/lib/signupBonusDefaults";
 import {
   fetchAllUserDetailsAdmin,
   readAdminCustomersCache,
@@ -593,7 +594,7 @@ export default function CustomersPage() {
     }
 
     const amount = Number(customer.signup_bonus_amount);
-    const rupees = Number.isFinite(amount) && amount > 0 ? amount : 100;
+    const rupees = Number.isFinite(amount) && amount > 0 ? amount : DEFAULT_SIGNUP_BONUS_INR;
     const label = `₹${rupees.toLocaleString("en-IN")}`;
 
     const missing = Array.isArray(customer.signup_bonus_missing) ? customer.signup_bonus_missing : [];
