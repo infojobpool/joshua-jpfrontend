@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import axiosInstance from "../../../../lib/axiosInstance";
-import { verificationApiFailureMessage } from "@/lib/slowApiErrors";
+import { verificationFailureMessage } from "@/lib/slowApiErrors";
 import {
   clearDigilockerSession,
   readCallbackUserId,
@@ -76,7 +76,12 @@ function DigilockerCallbackInner() {
         );
       } catch (err: unknown) {
         setFailed(true);
-        setMessage(verificationApiFailureMessage(err));
+        setMessage(
+          verificationFailureMessage(
+            err,
+            "Verification could not be completed. Go back and try DigiLocker again."
+          )
+        );
       }
     };
     void run();

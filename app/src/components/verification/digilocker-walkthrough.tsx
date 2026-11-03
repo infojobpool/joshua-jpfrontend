@@ -33,8 +33,9 @@ export function DigilockerWalkthrough() {
               </li>
               <li>Complete OTP or PIN if asked.</li>
               <li>
-                When Cashfree asks, approve sharing <strong>PAN</strong> and{" "}
-                <strong>Aadhaar</strong> with JobPool.
+                On the <strong>consent screen</strong>, approve sharing{" "}
+                <strong>both PAN and Aadhaar</strong> with JobPool. If you skip
+                or deny PAN, verification will fail with a 400 error.
               </li>
               <li>
                 You&apos;ll be sent back to JobPool automatically — wait for the
