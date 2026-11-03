@@ -216,7 +216,7 @@
 "use client";
 
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -227,6 +227,86 @@ import { postVerificationWithRetry } from "@/lib/verificationApi";
 
 interface AadharVerificationProps {
   onComplete: () => void;
+}
+
+const AADHAAR_OTP_SESSION_MS = 10 * 60 * 1000;
+
+function aadhaarOtpStorageKey(userId: string): string {
+  return `jp_aadhaar_otp_${userId}`;
+}
+
+function readStoredOtpSession(userId: string): {
+  refId: string;
+  aadharNumber: string;
+  sentAt: number;
+} | null {
+  try {
+    const raw = sessionStorage.getItem(aadhaarOtpStorageKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      refId?: string;
+      aadharNumber?: string;
+      sentAt?: number;
+    };
+    if (!parsed.refId || !parsed.aadharNumber || !parsed.sentAt) return null;
+    if (Date.now() - parsed.sentAt > AADHAAR_OTP_SESSION_MS) {
+      sessionStorage.removeItem(aadhaarOtpStorageKey(userId));
+      return null;
+    }
+    return {
+      refId: parsed.refId,
+      aadharNumber: parsed.aadharNumber,
+      sentAt: parsed.sentAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredOtpSession(userId: string, refId: string, aadharNumber: string): void {
+  try {
+    sessionStorage.setItem(
+      aadhaarOtpStorageKey(userId),
+      JSON.stringify({ refId, aadharNumber, sentAt: Date.now() })
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearStoredOtpSession(userId: string): void {
+  try {
+    sessionStorage.removeItem(aadhaarOtpStorageKey(userId));
+  } catch {
+    /* ignore */
+  }
+}
+
+function isOtpSessionExpiredMessage(text: string): boolean {
+  const msg = text.toLowerCase();
+  return (
+    msg.includes("session expired") ||
+    msg.includes("otp session") ||
+    msg.includes("otp has expired") ||
+    msg.includes("otp expired") ||
+    (msg.includes("expired") && msg.includes("otp"))
+  );
+}
+
+function applyOtpSessionExpired(
+  setIsSessionExpired: (v: boolean) => void,
+  setError: (v: string) => void,
+  setOtpSent: (v: boolean) => void,
+  setOtp: (v: string) => void,
+  setRefId: (v: string) => void,
+  userId: string | null
+): void {
+  setIsSessionExpired(true);
+  setError("OTP session has expired. Tap Request New OTP and enter the new code right away.");
+  setOtpSent(false);
+  setOtp("");
+  setRefId("");
+  if (userId) clearStoredOtpSession(userId);
 }
 
 function resolveEffectiveUserId(storeUserId: string | null): string | null {
@@ -355,6 +435,17 @@ export default function AadharVerification({
   const [isSessionExpired, setIsSessionExpired] = useState(false);
   const { userId } = useStore();
 
+  useEffect(() => {
+    const effectiveUserId = resolveEffectiveUserId(userId);
+    if (!effectiveUserId || isVerified) return;
+    const stored = readStoredOtpSession(effectiveUserId);
+    if (!stored) return;
+    setAadharNumber(stored.aadharNumber);
+    setRefId(stored.refId);
+    setOtpSent(true);
+    setIsSessionExpired(false);
+  }, [userId, isVerified]);
+
   // useEffect(() => {
   //   let timer: NodeJS.Timeout
   //   if (otpSent) {
@@ -409,6 +500,7 @@ export default function AadharVerification({
         setOtpSent(true);
         setRefId(refIdValue);
         setOtp("");
+        writeStoredOtpSession(effectiveUserId, refIdValue, aadharNumber);
       } else if (isOtpSendSuccessful(data, response.status) && !refIdValue) {
         setError(
           "OTP may have been sent, but the session reference was missing. Please tap Send OTP again."
@@ -491,6 +583,7 @@ export default function AadharVerification({
 
       if (isSuccess) {
         console.log("✅ Aadhaar verification successful, setting verified state");
+        clearStoredOtpSession(effectiveUserId);
         setIsVerified(true);
         setOtp(""); // Clear OTP input after successful verification
 
@@ -512,9 +605,20 @@ export default function AadharVerification({
         }, 1500); // 1.5 second delay to show success message
       } else {
         console.warn("⚠️ Verification response doesn't indicate success:", data);
-        setError(
-          verificationApiFailureMessage(data, "Invalid OTP. Please try again.")
-        );
+        const failMsg = verificationApiFailureMessage(data, "Invalid OTP. Please try again.");
+        if (isOtpSessionExpiredMessage(failMsg)) {
+          applyOtpSessionExpired(
+            setIsSessionExpired,
+            setError,
+            setOtpSent,
+            setOtp,
+            setRefId,
+            effectiveUserId
+          );
+        } else {
+          setIsSessionExpired(false);
+          setError(failMsg);
+        }
       }
     } catch (err: any) {
       console.error("❌ [Aadhar] OTP verify error:", {
@@ -531,23 +635,26 @@ export default function AadharVerification({
       const errorDetails = errorData?.data?.details || errorData?.data?.error || "";
       
       // Check if error contains "Session expired" or "session expired" or "verification_failed"
-      const isSessionExpired = 
-        errorMessage.toLowerCase().includes("session expired") ||
-        errorMessage.toLowerCase().includes("expired") ||
-        (typeof errorDetails === "string" && errorDetails.toLowerCase().includes("session expired")) ||
-        (errorData?.data?.error && typeof errorData.data.error === "object" && 
-         JSON.stringify(errorData.data.error).toLowerCase().includes("session expired"));
-      
-      if (isSessionExpired) {
-        // Session expired - allow user to request new OTP
-        setIsSessionExpired(true);
-        setError(
-          "OTP session has expired. Please request a new OTP."
+      const detailsStr =
+        typeof errorDetails === "string"
+          ? errorDetails
+          : errorData?.data?.error
+            ? JSON.stringify(errorData.data.error)
+            : "";
+      const expired =
+        isOtpSessionExpiredMessage(errorMessage) ||
+        isOtpSessionExpiredMessage(detailsStr) ||
+        isOtpSessionExpiredMessage(formatApiErrorPayload(errorData, ""));
+
+      if (expired) {
+        applyOtpSessionExpired(
+          setIsSessionExpired,
+          setError,
+          setOtpSent,
+          setOtp,
+          setRefId,
+          effectiveUserId
         );
-        // Reset OTP state so user can request a new one
-        setOtpSent(false);
-        setOtp("");
-        setRefId("");
         console.log("🔄 OTP session expired - resetting state for new OTP request");
       } else {
         setIsSessionExpired(false);
@@ -665,7 +772,8 @@ export default function AadharVerification({
                   />
 
                   <p className="text-xs text-gray-500">
-                    OTP sent to registered mobile number
+                    OTP sent to your Aadhaar-linked mobile. Enter it within a few minutes — if
+                    it fails, tap Request New OTP and use the latest SMS only.
                   </p>
 
                   {error && (
