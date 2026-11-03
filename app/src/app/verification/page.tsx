@@ -260,7 +260,8 @@
 
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { Suspense, useEffect, useState, useCallback } from "react"
+import { useSearchParams } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -270,8 +271,7 @@ import {
   CardTitle,
 } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
-import PanVerification from "../../components/verification/pan-verification"
-import AadharVerification from "../../components/verification/aadhar-verification"
+import DigilockerKyc from "../../components/verification/digilocker-kyc"
 import VerificationComplete from "../../components/verification/verification-complete"
 import VerificationIntro from "../../components/verification/verification-intro"
 import VerticalStepIndicator from "../../components/verification/vertical-step-indicator"
@@ -286,11 +286,10 @@ import {
   type PayoutEligibilityItem,
 } from "@/lib/payoutProfileCompletion"
 
-export default function VerificationFlow() {
+function VerificationFlow() {
+  const searchParams = useSearchParams()
   const { userId } = useStore()
   const [currentStep, setCurrentStep] = useState(0)
-  const [isWaiting, setIsWaiting] = useState(false)
-  const [timer, setTimer] = useState(30)
   const [isLoadingStatus, setIsLoadingStatus] = useState(true)
   const [verificationStatus, setVerificationStatus] = useState({
     pan: { completed: false, skipped: false },
@@ -304,7 +303,7 @@ export default function VerificationFlow() {
     missing: PayoutEligibilityItem[];
   } | null>(null)
 
-  const totalSteps = 4 // Intro, PAN, Aadhar, Complete
+  const totalSteps = 3 // Intro, DigiLocker (PAN + Aadhaar), Complete
 
   const loadPayoutPreview = useCallback(async (effectiveUserId: string) => {
     try {
@@ -374,11 +373,7 @@ export default function VerificationFlow() {
             aadhar: { completed: apiVerificationStatus >= 2, skipped: false },
           });
           
-          // If both are already verified, skip to completion step
           if (apiVerificationStatus >= 2) {
-            setCurrentStep(3); // Go directly to completion step
-          } else if (apiVerificationStatus >= 1) {
-            // PAN is verified, skip to Aadhar step
             setCurrentStep(2);
           }
         } else {
@@ -407,9 +402,7 @@ export default function VerificationFlow() {
             });
             
             if (aadharVerified) {
-              setCurrentStep(3); // Both verified, go to completion
-            } else if (panVerified) {
-              setCurrentStep(2); // PAN verified, go to Aadhar step
+              setCurrentStep(2);
             }
           }
         }
@@ -424,8 +417,62 @@ export default function VerificationFlow() {
     fetchVerificationStatus();
   }, [userId, loadPayoutPreview]);
 
+  const refreshVerificationFromApi = useCallback(async () => {
+    let effectiveUserId = userId as string | undefined;
+    if (!effectiveUserId) {
+      try {
+        const local = localStorage.getItem("user");
+        if (local) {
+          const parsed = JSON.parse(local);
+          effectiveUserId = parsed?.id || parsed?.userId || parsed?.user_id;
+        }
+      } catch {}
+    }
+    if (!effectiveUserId) return null;
+
+    const cacheBuster = `?user_id=${effectiveUserId}&_t=${Date.now()}`;
+    const response = await axiosInstance.get(`/profile${cacheBuster}`);
+    const data = response.data;
+    const payload = data?.data ?? data;
+    const apiVerificationStatus =
+      payload?.verification_status ??
+      payload?.verificationStatus ??
+      data.verification_status ??
+      data.verificationStatus ??
+      null;
+    const statusNum =
+      apiVerificationStatus != null ? Number(apiVerificationStatus) : null;
+    if (statusNum !== null && !isNaN(statusNum)) {
+      setVerificationStatus({
+        pan: { completed: statusNum >= 1, skipped: false },
+        aadhar: { completed: statusNum >= 2, skipped: false },
+      });
+      try {
+        const local = localStorage.getItem("user");
+        if (local) {
+          const parsed = JSON.parse(local);
+          parsed.verification_status = statusNum;
+          localStorage.setItem("user", JSON.stringify(parsed));
+          useStore.setState({ user: { ...parsed, verification_status: statusNum } });
+        }
+      } catch {}
+    }
+    await loadPayoutPreview(String(effectiveUserId));
+    return statusNum;
+  }, [userId, loadPayoutPreview]);
+
   useEffect(() => {
-    if (currentStep !== 3) return;
+    if (searchParams.get("digilocker") !== "success") return;
+    void (async () => {
+      const statusNum = await refreshVerificationFromApi();
+      if (statusNum !== null && statusNum >= 2) {
+        setCurrentStep(2);
+      }
+    })();
+  }, [searchParams, refreshVerificationFromApi]);
+
+  useEffect(() => {
+    if (currentStep !== 2) return;
     let uid = userId as string | undefined;
     if (!uid) {
       try {
@@ -451,139 +498,41 @@ export default function VerificationFlow() {
       setVerificationStatus((prev) => ({
         ...prev,
         pan: { completed: false, skipped: true },
-      }))
-    } else if (currentStep === 2) {
-      setVerificationStatus((prev) => ({
-        ...prev,
         aadhar: { completed: false, skipped: true },
       }))
+      handleNext()
     }
-    handleNext()
   }
 
-  const handleComplete = async (step: "pan" | "aadhar") => {
-    console.log(`✅ Verification step completed: ${step}`);
-
-    let effectiveUserId = userId as string | undefined;
-    if (!effectiveUserId) {
-      try {
-        const local = localStorage.getItem("user");
-        if (local) {
-          const parsed = JSON.parse(local);
-          effectiveUserId = parsed?.id || parsed?.userId || parsed?.user_id;
-        }
-      } catch {}
-    }
-
-    let statusNum: number | null = null;
+  const handleDigilockerComplete = async () => {
     try {
-      if (effectiveUserId) {
-        const cacheBuster = `?user_id=${effectiveUserId}&_t=${Date.now()}`;
-        const response = await axiosInstance.get(`/profile${cacheBuster}`);
-        const data = response.data;
-        const payload = data?.data ?? data;
-        const apiVerificationStatus =
-          payload?.verification_status ??
-          payload?.verificationStatus ??
-          data.verification_status ??
-          data.verificationStatus ??
-          null;
-        statusNum = apiVerificationStatus != null ? Number(apiVerificationStatus) : null;
-        if (statusNum !== null && !isNaN(statusNum)) {
-          setVerificationStatus({
-            pan: { completed: statusNum >= 1, skipped: false },
-            aadhar: { completed: statusNum >= 2, skipped: false },
-          });
-          try {
-            const local = localStorage.getItem("user");
-            if (local) {
-              const parsed = JSON.parse(local);
-              parsed.verification_status = statusNum;
-              localStorage.setItem("user", JSON.stringify(parsed));
-              useStore.setState({ user: { ...parsed, verification_status: statusNum } });
-            }
-          } catch {}
-        }
-        await loadPayoutPreview(String(effectiveUserId));
+      const statusNum = await refreshVerificationFromApi();
+      if (statusNum !== null && statusNum >= 2) {
+        setCurrentStep(2);
+      } else {
+        setVerificationStatus({
+          pan: { completed: true, skipped: false },
+          aadhar: { completed: true, skipped: false },
+        });
+        setCurrentStep(2);
       }
     } catch (error) {
       console.error("Failed to refresh verification status:", error);
-    }
-
-    // For Aadhaar, move to completion step after API confirms (no waiting)
-    if (step === "aadhar") {
-      console.log("✅ Aadhaar step finished — checking API status before completion screen");
-      setTimeout(() => {
-        if (statusNum !== null && statusNum >= 2) {
-          setCurrentStep(3);
-        } else {
-          setCurrentStep(2);
-        }
-      }, 1000);
-    } else {
-      // For PAN, show waiting timer
-      setIsWaiting(true)
-      setTimer(30)
-      
-      // Refresh verification status from API after completion
-      setTimeout(async () => {
-        try {
-          let effectiveUserId = userId as any;
-          if (!effectiveUserId) {
-            const local = localStorage.getItem("user");
-            if (local) {
-              const parsed = JSON.parse(local);
-              effectiveUserId = parsed?.id || parsed?.userId || parsed?.user_id;
-            }
-          }
-          if (effectiveUserId) {
-            const cacheBuster = `?user_id=${effectiveUserId}&_t=${Date.now()}`;
-            const response = await axiosInstance.get(`/profile${cacheBuster}`);
-            const data = response.data;
-            const apiVerificationStatus = data.verification_status ?? data.verificationStatus ?? data?.data?.verification_status ?? null;
-            const statusNum = apiVerificationStatus != null ? Number(apiVerificationStatus) : null;
-            if (statusNum !== null && !isNaN(statusNum)) {
-              setVerificationStatus({
-                pan: { completed: statusNum >= 1, skipped: false },
-                aadhar: { completed: statusNum >= 2, skipped: false },
-              });
-              // Sync to localStorage so Profile page shows correct status
-              try {
-                const local = localStorage.getItem("user");
-                if (local) {
-                  const parsed = JSON.parse(local);
-                  parsed.verification_status = statusNum;
-                  localStorage.setItem("user", JSON.stringify(parsed));
-                  useStore.setState({ user: { ...parsed, verification_status: statusNum } });
-                }
-              } catch {}
-            }
-          }
-        } catch (error) {
-          console.error("Failed to refresh verification status:", error);
-        }
-      }, 2000); // Wait 2 seconds for backend to process
+      setCurrentStep(2);
     }
   }
 
-  // Countdown effect
-  useEffect(() => {
-    if (isWaiting && timer > 0) {
-      const interval = setInterval(() => {
-        setTimer((prev) => prev - 1)
-      }, 1000)
-      return () => clearInterval(interval)
-    } else if (isWaiting && timer === 0) {
-      setIsWaiting(false)
-      handleNext()
-    }
-  }, [isWaiting, timer])
-
   const steps = [
     { name: "Introduction", status: { completed: currentStep > 0, skipped: false } },
-    { name: "PAN Card", status: verificationStatus.pan },
-    { name: "Aadhar", status: verificationStatus.aadhar },
-    { name: "Complete", status: { completed: false, skipped: false } },
+    {
+      name: "PAN & Aadhaar",
+      status: {
+        completed:
+          verificationStatus.pan.completed && verificationStatus.aadhar.completed,
+        skipped: verificationStatus.pan.skipped || verificationStatus.aadhar.skipped,
+      },
+    },
+    { name: "Complete", status: { completed: currentStep >= 2, skipped: false } },
   ]
 
   // Show loading state while fetching verification status
@@ -602,7 +551,7 @@ export default function VerificationFlow() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4 pb-28 lg:pb-8">
-      <Card className={`w-full ${currentStep === 3 ? "max-w-2xl" : "max-w-4xl"}`}>
+      <Card className={`w-full ${currentStep === 2 ? "max-w-2xl" : "max-w-4xl"}`}>
         <CardHeader>
           <CardTitle className="text-2xl font-bold">Account Verification</CardTitle>
           <CardDescription>
@@ -621,12 +570,7 @@ export default function VerificationFlow() {
           )}
         </CardHeader>
         <CardContent>
-          {isWaiting ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <h2 className="text-lg font-medium mb-2">Please wait for the next step</h2>
-              <p className="text-muted-foreground text-sm">Continuing in {timer} seconds...</p>
-            </div>
-          ) : currentStep === 3 ? (
+          {currentStep === 2 ? (
             <VerificationComplete
               verificationStatus={verificationStatus}
               missingPayoutItems={payoutPreview?.missing ?? []}
@@ -643,54 +587,38 @@ export default function VerificationFlow() {
               </div>
               <div className="w-full md:w-2/3">
                 {currentStep === 0 && <VerificationIntro onStart={handleNext} />}
-                {currentStep === 1 && (
-                  verificationStatus.pan.completed ? (
-                    <div className="space-y-4">
-                      <div className="rounded-md bg-green-50 p-4">
-                        <div className="flex items-center gap-3">
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                          <div>
-                            <h3 className="text-sm font-medium text-green-800">PAN Already Verified</h3>
-                            <p className="text-sm text-green-700 mt-1">Your PAN has already been verified.</p>
-                          </div>
-                        </div>
-                      </div>
-                      <Button className="w-full" onClick={handleNext}>
-                        Continue to Aadhar Verification
-                      </Button>
-                    </div>
-                  ) : (
-                    <PanVerification onComplete={() => handleComplete("pan")} />
-                  )
-                )}
-                {currentStep === 2 && (
+                {currentStep === 1 &&
+                  (verificationStatus.pan.completed &&
                   verificationStatus.aadhar.completed ? (
                     <div className="space-y-4">
                       <div className="rounded-md bg-green-50 p-4">
                         <div className="flex items-center gap-3">
                           <CheckCircle className="h-5 w-5 text-green-500" />
                           <div>
-                            <h3 className="text-sm font-medium text-green-800">Aadhar Already Verified</h3>
-                            <p className="text-sm text-green-700 mt-1">Your Aadhar has already been verified.</p>
+                            <h3 className="text-sm font-medium text-green-800">
+                              Already verified
+                            </h3>
+                            <p className="text-sm text-green-700 mt-1">
+                              PAN and Aadhaar are verified on your account.
+                            </p>
                           </div>
                         </div>
                       </div>
-                      <Button className="w-full" onClick={() => setCurrentStep(3)}>
-                        View Verification Summary
+                      <Button className="w-full" onClick={() => setCurrentStep(2)}>
+                        View verification summary
                       </Button>
                     </div>
                   ) : (
-                    <AadharVerification onComplete={() => handleComplete("aadhar")} />
-                  )
-                )}
+                    <DigilockerKyc onComplete={() => void handleDigilockerComplete()} />
+                  ))}
               </div>
             </div>
           )}
         </CardContent>
-        {currentStep !== 3 && !isWaiting && (
+        {currentStep !== 2 && (
           <CardFooter className="flex justify-between">
             <div className="flex gap-2">
-              {currentStep > 0 && currentStep < totalSteps - 1 && (
+              {currentStep === 1 && (
                 <Button variant="ghost" onClick={handleSkip}>
                   Skip for now
                 </Button>
@@ -701,5 +629,24 @@ export default function VerificationFlow() {
         )}
       </Card>
     </div>
+  )
+}
+
+export default function VerificationPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+          <Card className="w-full max-w-4xl">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <div className="w-8 h-8 border-4 border-gray-300 border-t-gray-600 rounded-full animate-spin mb-4" />
+              <p className="text-muted-foreground">Loading verification…</p>
+            </CardContent>
+          </Card>
+        </div>
+      }
+    >
+      <VerificationFlow />
+    </Suspense>
   )
 }
