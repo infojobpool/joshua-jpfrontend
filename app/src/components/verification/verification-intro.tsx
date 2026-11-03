@@ -56,7 +56,8 @@ export default function VerificationIntro({ onStart }: VerificationIntroProps) {
           <div>
             <h4 className="font-medium">Quick Process</h4>
             <p className="text-sm text-gray-600">
-              The verification process takes just a few minutes and can be completed in steps.
+              PAN and Aadhaar are verified together via DigiLocker — usually a
+              few minutes if you already have an account.
             </p>
           </div>
         </div>
@@ -77,13 +78,16 @@ export default function VerificationIntro({ onStart }: VerificationIntroProps) {
       <div className="rounded-lg bg-gray-50 p-4">
         <h4 className="font-medium">What You'll Need:</h4>
         <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-gray-600">
-          <li>PAN Card</li>
-          <li>Aadhar Card or access to your registered mobile for OTP</li>
-          <li>Full name and mobile number on your profile</li>
+          <li>A DigiLocker account (or 10–20 min to create one on the next screen)</li>
+          <li>PAN and Aadhaar added to your DigiLocker wallet</li>
+          <li>Aadhaar-linked mobile for OTP on DigiLocker</li>
+          <li>Full name and mobile on your JobPool profile</li>
           <li>UPI ID on Wallet (for welcome bonus and withdrawals)</li>
         </ul>
         <p className="mt-3 text-xs text-gray-500">
-          Complete PAN and Aadhaar, add your name, mobile, and UPI to get {welcomeBonusInrLabel()} in your wallet when eligible.
+          No DigiLocker yet? On the next step we walk you through Sign up and
+          linking documents. Complete verification plus profile and UPI for{" "}
+          {welcomeBonusInrLabel()} when eligible.
         </p>
       </div>
 

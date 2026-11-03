@@ -555,7 +555,8 @@ function VerificationFlow() {
         <CardHeader>
           <CardTitle className="text-2xl font-bold">Account Verification</CardTitle>
           <CardDescription>
-            Please complete the verification process to access all features
+            Verify PAN and Aadhaar with DigiLocker. Expand the guide on the
+            next step if you&apos;re new or need to link documents.
           </CardDescription>
           {payoutPreview && payoutPreview.remaining > 0 && (
             <WelcomeBonusProcessHint
