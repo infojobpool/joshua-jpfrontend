@@ -60,7 +60,11 @@ function isWalletSummaryRead(url: string | undefined): boolean {
 function isVerificationWrite(url: string | undefined): boolean {
   if (!url) return false;
   const u = url.toLowerCase();
-  return u.includes("verify-aadhaar") || u.includes("verify-pan");
+  return (
+    u.includes("verify-aadhaar") ||
+    u.includes("verify-pan") ||
+    u.includes("digilocker/kyc")
+  );
 }
 
 /** Fee calculator — must not queue behind global throttle or POST dedupe (body varies by amount). */

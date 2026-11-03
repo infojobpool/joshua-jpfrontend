@@ -6,6 +6,7 @@ import axiosInstance from "../../lib/axiosInstance";
 import useStore from "../../lib/Zustand";
 import { verificationApiFailureMessage } from "@/lib/slowApiErrors";
 import { DigilockerWalkthrough } from "./digilocker-walkthrough";
+import { persistDigilockerSession } from "@/lib/digilockerSession";
 
 interface DigilockerKycProps {
   onComplete: () => void;
@@ -44,7 +45,6 @@ export default function DigilockerKyc({ onComplete }: DigilockerKycProps) {
       }
       try {
         setLoading(userFlow);
-        sessionStorage.setItem("digilocker_user_id", effectiveUserId);
         const response = await axiosInstance.post(
           `/digilocker/kyc/start/?user_id=${encodeURIComponent(effectiveUserId)}`,
           { user_flow: userFlow },
@@ -52,12 +52,10 @@ export default function DigilockerKyc({ onComplete }: DigilockerKycProps) {
         );
         const data = response.data;
         if (data.status_code === 200 && data.data?.url) {
-          if (data.data.verification_id) {
-            sessionStorage.setItem(
-              "digilocker_verification_id",
-              String(data.data.verification_id)
-            );
-          }
+          const vid = data.data.verification_id
+            ? String(data.data.verification_id)
+            : undefined;
+          persistDigilockerSession(effectiveUserId, vid);
           window.location.href = data.data.url as string;
           return;
         }
