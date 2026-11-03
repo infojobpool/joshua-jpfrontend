@@ -10,6 +10,8 @@ import { persistDigilockerSession } from "@/lib/digilockerSession";
 
 interface DigilockerKycProps {
   onComplete: () => void;
+  panVerified?: boolean;
+  aadhaarVerified?: boolean;
 }
 
 type DigilockerUserFlow = "signin" | "signup";
@@ -30,7 +32,11 @@ function resolveUserId(storeUserId: string | undefined): string {
   return "";
 }
 
-export default function DigilockerKyc({ onComplete }: DigilockerKycProps) {
+export default function DigilockerKyc({
+  onComplete,
+  panVerified = false,
+  aadhaarVerified = false,
+}: DigilockerKycProps) {
   const { userId } = useStore();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState<DigilockerUserFlow | null>(null);
@@ -80,16 +86,34 @@ export default function DigilockerKyc({ onComplete }: DigilockerKycProps) {
       <div>
         <h3 className="text-lg font-medium">Verify PAN &amp; Aadhaar</h3>
         <p className="text-sm text-gray-500">
-          One secure step through DigiLocker (government). We no longer verify
-          Aadhaar by SMS OTP on this page.
+          DigiLocker (government). We only ask for documents you still need —
+          you can verify Aadhaar first and add PAN later when it&apos;s in your
+          wallet.
         </p>
       </div>
+
+      {(panVerified || aadhaarVerified) && (
+        <div className="space-y-2 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+          {aadhaarVerified && <p>Aadhaar: verified</p>}
+          {panVerified && <p>PAN: verified</p>}
+          {!panVerified && aadhaarVerified && (
+            <p className="text-green-900">
+              Next: add PAN in DigiLocker, then tap Continue again to share PAN.
+            </p>
+          )}
+          {!aadhaarVerified && panVerified && (
+            <p className="text-green-900">
+              Next: complete Aadhaar sharing on the next DigiLocker visit.
+            </p>
+          )}
+        </div>
+      )}
 
       <DigilockerWalkthrough />
 
       <ul className="list-disc space-y-1 pl-5 text-sm text-gray-600">
         <li>Keep your Aadhaar-linked mobile nearby for OTP.</li>
-        <li>You must approve sharing both PAN and Aadhaar.</li>
+        <li>Approve every document JobPool requests on the consent screen.</li>
         <li>Finish within 10 minutes after opening the link.</li>
       </ul>
 

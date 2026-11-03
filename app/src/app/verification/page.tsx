@@ -285,6 +285,10 @@ import {
   getPayoutEligibilityStats,
   type PayoutEligibilityItem,
 } from "@/lib/payoutProfileCompletion"
+import {
+  kycFromProfilePayload,
+  kycFullyComplete,
+} from "@/lib/kycStatusFromProfile"
 
 function VerificationFlow() {
   const searchParams = useSearchParams()
@@ -365,15 +369,21 @@ function VerificationFlow() {
           aadhar_verified: data.aadhar_verified,
         });
 
-        if (apiVerificationStatus !== null && typeof apiVerificationStatus === 'number') {
-          // Set verification status based on API response
-          // verification_status: 1 = PAN, 2 = Aadhar, 3 = Bank
+        const statusNum =
+          apiVerificationStatus !== null && typeof apiVerificationStatus === "number"
+            ? apiVerificationStatus
+            : null;
+        const kyc = kycFromProfilePayload(
+          payload as Record<string, unknown>,
+          statusNum
+        );
+
+        if (statusNum !== null || payload) {
           setVerificationStatus({
-            pan: { completed: apiVerificationStatus >= 1, skipped: false },
-            aadhar: { completed: apiVerificationStatus >= 2, skipped: false },
+            pan: { completed: kyc.pan, skipped: false },
+            aadhar: { completed: kyc.aadhaar, skipped: false },
           });
-          
-          if (apiVerificationStatus >= 2) {
+          if (kycFullyComplete(kyc)) {
             setCurrentStep(2);
           }
         } else {
@@ -442,11 +452,15 @@ function VerificationFlow() {
       null;
     const statusNum =
       apiVerificationStatus != null ? Number(apiVerificationStatus) : null;
+    const kyc = kycFromProfilePayload(
+      payload as Record<string, unknown>,
+      statusNum !== null && !isNaN(statusNum) ? statusNum : null
+    );
+    setVerificationStatus({
+      pan: { completed: kyc.pan, skipped: false },
+      aadhar: { completed: kyc.aadhaar, skipped: false },
+    });
     if (statusNum !== null && !isNaN(statusNum)) {
-      setVerificationStatus({
-        pan: { completed: statusNum >= 1, skipped: false },
-        aadhar: { completed: statusNum >= 2, skipped: false },
-      });
       try {
         const local = localStorage.getItem("user");
         if (local) {
@@ -462,11 +476,14 @@ function VerificationFlow() {
   }, [userId, loadPayoutPreview]);
 
   useEffect(() => {
-    if (searchParams.get("digilocker") !== "success") return;
+    const mode = searchParams.get("digilocker");
+    if (mode !== "success" && mode !== "partial") return;
     void (async () => {
-      const statusNum = await refreshVerificationFromApi();
-      if (statusNum !== null && statusNum >= 2) {
+      await refreshVerificationFromApi();
+      if (mode === "success") {
         setCurrentStep(2);
+      } else {
+        setCurrentStep(1);
       }
     })();
   }, [searchParams, refreshVerificationFromApi]);
@@ -506,19 +523,10 @@ function VerificationFlow() {
 
   const handleDigilockerComplete = async () => {
     try {
-      const statusNum = await refreshVerificationFromApi();
-      if (statusNum !== null && statusNum >= 2) {
-        setCurrentStep(2);
-      } else {
-        setVerificationStatus({
-          pan: { completed: true, skipped: false },
-          aadhar: { completed: true, skipped: false },
-        });
-        setCurrentStep(2);
-      }
+      await refreshVerificationFromApi();
+      setCurrentStep(1);
     } catch (error) {
       console.error("Failed to refresh verification status:", error);
-      setCurrentStep(2);
     }
   }
 
@@ -610,7 +618,11 @@ function VerificationFlow() {
                       </Button>
                     </div>
                   ) : (
-                    <DigilockerKyc onComplete={() => void handleDigilockerComplete()} />
+                    <DigilockerKyc
+                      panVerified={verificationStatus.pan.completed}
+                      aadhaarVerified={verificationStatus.aadhar.completed}
+                      onComplete={() => void handleDigilockerComplete()}
+                    />
                   ))}
               </div>
             </div>

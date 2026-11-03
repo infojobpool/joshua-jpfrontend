@@ -67,7 +67,13 @@ function DigilockerCallbackInner() {
         );
         if (completeRes.data?.status_code === 200) {
           clearDigilockerSession();
-          router.replace("/verification?digilocker=success");
+          const result = completeRes.data?.data ?? {};
+          const stillNeeded = result.documents_still_needed as string[] | undefined;
+          if (stillNeeded?.length) {
+            router.replace("/verification?digilocker=partial");
+          } else {
+            router.replace("/verification?digilocker=success");
+          }
           return;
         }
         setFailed(true);
