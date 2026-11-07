@@ -271,7 +271,7 @@ import {
   CardTitle,
 } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
-import DigilockerKyc from "../../components/verification/digilocker-kyc"
+import OcrKycVerification from "../../components/verification/ocr-kyc-verification"
 import VerificationComplete from "../../components/verification/verification-complete"
 import VerificationIntro from "../../components/verification/verification-intro"
 import VerticalStepIndicator from "../../components/verification/vertical-step-indicator"
@@ -521,10 +521,21 @@ function VerificationFlow() {
     }
   }
 
-  const handleDigilockerComplete = async () => {
+  const handleKycUpdated = async () => {
     try {
       await refreshVerificationFromApi();
-      setCurrentStep(1);
+      const cacheBuster = `?user_id=${userId || ""}&_t=${Date.now()}`;
+      const response = await axiosInstance.get(`/profile${cacheBuster}`);
+      const payload = response.data?.data ?? response.data;
+      const kyc = kycFromProfilePayload(
+        payload as Record<string, unknown>,
+        Number(payload?.verification_status ?? 0)
+      );
+      if (kycFullyComplete(kyc)) {
+        setCurrentStep(2);
+      } else {
+        setCurrentStep(1);
+      }
     } catch (error) {
       console.error("Failed to refresh verification status:", error);
     }
@@ -563,8 +574,8 @@ function VerificationFlow() {
         <CardHeader>
           <CardTitle className="text-2xl font-bold">Account Verification</CardTitle>
           <CardDescription>
-            Verify PAN and Aadhaar with DigiLocker. Expand the guide on the
-            next step if you&apos;re new or need to link documents.
+            Upload photos of your PAN and Aadhaar for verification. Complete
+            either document first and return for the other if needed.
           </CardDescription>
           {payoutPreview && payoutPreview.remaining > 0 && (
             <WelcomeBonusProcessHint
@@ -618,10 +629,10 @@ function VerificationFlow() {
                       </Button>
                     </div>
                   ) : (
-                    <DigilockerKyc
+                    <OcrKycVerification
                       panVerified={verificationStatus.pan.completed}
                       aadhaarVerified={verificationStatus.aadhar.completed}
-                      onComplete={() => void handleDigilockerComplete()}
+                      onUpdated={() => void handleKycUpdated()}
                     />
                   ))}
               </div>

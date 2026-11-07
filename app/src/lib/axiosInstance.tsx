@@ -63,7 +63,8 @@ function isVerificationWrite(url: string | undefined): boolean {
   return (
     u.includes("verify-aadhaar") ||
     u.includes("verify-pan") ||
-    u.includes("digilocker/kyc")
+    u.includes("digilocker/kyc") ||
+    u.includes("ocr/kyc")
   );
 }
 
