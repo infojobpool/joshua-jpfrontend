@@ -130,7 +130,8 @@ export default function OcrKycVerification({
         <h3 className="text-lg font-medium">Verify with document photos</h3>
         <p className="text-sm text-gray-500">
           Upload clear photos of your PAN and Aadhaar (JPEG or PNG, max 5 MB).
-          You can complete one document at a time.
+          Use the camera on the physical card — not screenshots or photos of a
+          screen. You can complete one document at a time.
         </p>
       </div>
 
